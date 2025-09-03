@@ -425,19 +425,25 @@ body {
     border-color: var(--primary);
 }
 
-.rc-dropdown-item.active {
-    color: white;
-    background: var(--primary);
+.rc-dropdown-item.active,
+.rc-dropdown-item.active:hover,
+.rc-dropdown-item.active:focus {
+    color: white !important;
+    background: var(--primary) !important;
     transform: translateX(4px);
 }
 
-.rc-dropdown-item.active::before {
-    width: 100%;
-    background: var(--primary);
+.rc-dropdown-item.active::before,
+.rc-dropdown-item.active:hover::before,
+.rc-dropdown-item.active:focus::before {
+    width: 100% !important;
+    background: var(--primary) !important;
 }
 
-.rc-dropdown-item.active i {
-    color: white;
+.rc-dropdown-item.active i,
+.rc-dropdown-item.active:hover i,
+.rc-dropdown-item.active:focus i {
+    color: white !important;
 }
 
 /* Dropdown System */
@@ -526,17 +532,17 @@ body {
     z-index: -1;
 }
 
-.rc-dropdown-item:hover::before {
+.rc-dropdown-item:hover:not(.active)::before {
     width: 100%;
 }
 
-.rc-dropdown-item:hover {
+.rc-dropdown-item:hover:not(.active) {
     background: var(--surface-2);
     color: var(--accent-electric);
     transform: translateX(4px);
 }
 
-.rc-dropdown-item:focus {
+.rc-dropdown-item:focus:not(.active) {
     outline: none;
     background: var(--surface-2);
     color: var(--accent-electric);
@@ -547,7 +553,7 @@ body {
     transition: color var(--transition-fast) ease;
 }
 
-.rc-dropdown-item:hover i {
+.rc-dropdown-item:hover:not(.active) i {
     color: var(--accent-electric);
 }
 
