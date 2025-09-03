@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Settings - RentalCore</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/images/icon-180.png">
+    <link rel="shortcut icon" type="image/png" href="/static/images/icon-180.png">
+    
+    <!-- iOS PWA Settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <div class="rc-max-w-6xl rc-mx-auto">
+            <!-- Enhanced Header with Gradient Background -->
+            <div class="rc-profile-header rc-mb-lg">
+                <div class="rc-profile-header-bg"></div>
+                <div class="rc-profile-header-content">
+                    <div class="rc-profile-avatar-section">
+                        <div class="rc-profile-avatar">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div class="rc-profile-info">
+                            <h1 class="rc-profile-name">
+                                {{if .user}}{{.user.FirstName}} {{.user.LastName}}{{else}}Guest User{{end}}
+                            </h1>
+                            <p class="rc-profile-username">@{{if .user}}{{.user.Username}}{{else}}guest{{end}}</p>
+                            <div class="rc-profile-stats">
+                                <div class="rc-stat">
+                                    <span class="rc-stat-value">{{if .passkeys}}{{len .passkeys}}{{else}}0{{end}}</span>
+                                    <span class="rc-stat-label">Passkeys</span>
+                                </div>
+                                <div class="rc-stat">
+                                    <span class="rc-stat-value">{{if .twoFAEnabled}}✓{{else}}✗{{end}}</span>
+                                    <span class="rc-stat-label">2FA</span>
+                                </div>
+                                <div class="rc-stat">
+                                    <span class="rc-stat-value">{{if .preferences}}{{.preferences.Language}}{{else}}de{{end}}</span>
+                                    <span class="rc-stat-label">Language</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rc-profile-actions">
+                        <button class="rc-btn rc-btn-primary rc-btn-floating" onclick="scrollToSection('personal')">
+                            <i class="bi bi-pencil-square"></i>
+                            Edit Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert Container -->
+            <div id="alert-container" class="rc-mb-lg"></div>
+
+            <div class="rc-profile-grid">
+                <!-- Personal Information -->
+                <div class="rc-card rc-card-enhanced" id="personal">
+                    <div class="rc-card-header rc-card-header-enhanced">
+                        <div class="rc-card-icon-wrapper">
+                            <i class="bi bi-person-lines-fill"></i>
+                        </div>
+                        <div>
+                            <h3 class="rc-card-title">Personal Information</h3>
+                            <p class="rc-card-desc">Update your basic profile information</p>
+                        </div>
+                    </div>
+                    <div class="rc-card-body">
+                        <form id="personalInfoForm">
+                            <input type="hidden" name="section" value="personal">
+                            
+                            <div class="rc-form-group">
+                                <label for="first_name" class="rc-label">First Name</label>
+                                <input type="text" class="rc-input" id="first_name" name="first_name" 
+                                       value="{{if .user}}{{.user.FirstName}}{{end}}" placeholder="Enter your first name">
+                            </div>
+
+                            <div class="rc-form-group">
+                                <label for="last_name" class="rc-label">Last Name</label>
+                                <input type="text" class="rc-input" id="last_name" name="last_name" 
+                                       value="{{if .user}}{{.user.LastName}}{{end}}" placeholder="Enter your last name">
+                            </div>
+
+                            <div class="rc-form-group">
+                                <label for="email" class="rc-label">Email Address</label>
+                                <input type="email" class="rc-input" id="email" name="email" 
+                                       value="{{if .user}}{{.user.Email}}{{end}}" placeholder="Enter your email address">
+                            </div>
+
+                            <div class="rc-form-group">
+                                <label for="password" class="rc-label">
+                                    New Password
+                                    <small class="rc-text-muted">(leave blank to keep current)</small>
+                                </label>
+                                <input type="password" class="rc-input" id="password" name="password" 
+                                       placeholder="Enter new password">
+                            </div>
+
+                            <div class="rc-flex rc-gap-md">
+                                <button type="submit" class="rc-btn rc-btn-primary rc-flex-1">
+                                    <i class="bi bi-check-lg"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div class="rc-card rc-card-enhanced" id="security">
+                    <div class="rc-card-header rc-card-header-enhanced">
+                        <div class="rc-card-icon-wrapper rc-icon-security">
+                            <i class="bi bi-shield-lock"></i>
+                        </div>
+                        <div>
+                            <h3 class="rc-card-title">Security Settings</h3>
+                            <p class="rc-card-desc">Manage your account security and authentication</p>
+                        </div>
+                    </div>
+                    <div class="rc-card-body">
+                        <!-- 2FA Section -->
+                        <div class="rc-security-feature rc-mb-lg">
+                            <div class="rc-security-feature-header">
+                                <div class="rc-security-icon {{if .twoFAEnabled}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
+                                    <i class="bi bi-shield-{{if .twoFAEnabled}}check{{else}}exclamation{{end}}"></i>
+                                </div>
+                                <div class="rc-security-info">
+                                    <h5 class="rc-security-title">Two-Factor Authentication</h5>
+                                    <p class="rc-security-desc">Add an extra layer of security to your account</p>
+                                </div>
+                                <div class="rc-security-status">
+                                    <div class="rc-status-indicator {{if .twoFAEnabled}}rc-status-enabled{{else}}rc-status-disabled{{end}}">
+                                        <span class="rc-status-dot"></span>
+                                        <span class="rc-status-text">{{if .twoFAEnabled}}Enabled{{else}}Disabled{{end}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="rc-flex rc-gap-sm">
+                                {{if .twoFAEnabled}}
+                                    <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="disable2FA()">
+                                        <i class="bi bi-shield-x"></i> Disable 2FA
+                                    </button>
+                                {{else}}
+                                    <button type="button" class="rc-btn rc-btn-primary rc-btn-sm" onclick="setup2FA()">
+                                        <i class="bi bi-shield-check"></i> Enable 2FA
+                                    </button>
+                                {{end}}
+                            </div>
+                        </div>
+
+                        <hr class="rc-divider rc-my-lg">
+
+                        <!-- Passkeys Section -->
+                        <div class="rc-security-feature">
+                            <div class="rc-security-feature-header">
+                                <div class="rc-security-icon {{if .passkeys}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
+                                    <i class="bi bi-key"></i>
+                                </div>
+                                <div class="rc-security-info">
+                                    <h5 class="rc-security-title">Passkeys</h5>
+                                    <p class="rc-security-desc">Modern passwordless authentication using biometrics or hardware keys</p>
+                                </div>
+                                <div class="rc-security-status">
+                                    <div class="rc-passkey-count">
+                                        <span class="rc-count-number">{{if .passkeys}}{{len .passkeys}}{{else}}0{{end}}</span>
+                                        <span class="rc-count-label">{{if eq (len .passkeys) 1}}Key{{else}}Keys{{end}}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Passkey List -->
+                            <div id="passkeyList" class="rc-mb-md">
+                                {{if .passkeys}}
+                                    {{range .passkeys}}
+                                    <div class="rc-flex rc-flex-between rc-flex-center rc-p-sm rc-border rc-rounded rc-mb-sm" data-passkey-id="{{.PasskeyID}}">
+                                        <div class="rc-flex rc-flex-center rc-gap-sm">
+                                            <i class="bi bi-key rc-text-primary"></i>
+                                            <div>
+                                                <div class="rc-text-sm rc-font-medium">{{.Name}}</div>
+                                                <div class="rc-text-xs rc-text-muted">
+                                                    Created: {{.CreatedAt.Format "Jan 2, 2006"}}
+                                                    {{if .LastUsed}} • Last used: {{.LastUsed.Format "Jan 2, 2006"}}{{end}}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="deletePasskey({{.PasskeyID}})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    {{end}}
+                                {{else}}
+                                <div class="rc-text-center rc-text-muted rc-py-md">
+                                    <i class="bi bi-key rc-text-lg"></i>
+                                    <p>No passkeys configured</p>
+                                </div>
+                                {{end}}
+                            </div>
+
+                            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm rc-w-full" onclick="addPasskey()">
+                                <i class="bi bi-plus-lg"></i> Add Passkey
+                            </button>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        {{if .recentAttempts}}
+                        <hr class="rc-divider rc-my-lg">
+                        <div>
+                            <h5 class="rc-heading-5 rc-mb-md">Recent Activity</h5>
+                            <div class="rc-space-y-sm">
+                                {{range .recentAttempts}}
+                                <div class="rc-flex rc-flex-between rc-text-sm">
+                                    <div class="rc-flex rc-gap-sm">
+                                        <i class="bi {{if .Success}}bi-check-circle rc-text-success{{else}}bi-x-circle rc-text-danger{{end}}"></i>
+                                        <span>{{.Method}}</span>
+                                    </div>
+                                    <span class="rc-text-muted">{{.AttemptedAt.Format "Jan 2, 15:04"}}</span>
+                                </div>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div class="rc-card rc-card-enhanced" id="preferences">
+                    <div class="rc-card-header rc-card-header-enhanced">
+                        <div class="rc-card-icon-wrapper rc-icon-preferences">
+                            <i class="bi bi-palette"></i>
+                        </div>
+                        <div>
+                            <h3 class="rc-card-title">Preferences</h3>
+                            <p class="rc-card-desc">Customize your experience and interface settings</p>
+                        </div>
+                    </div>
+                    <div class="rc-card-body">
+                        <form id="preferencesForm">
+                            <input type="hidden" name="section" value="preferences">
+                            
+                            <!-- Display Preferences -->
+                            <div class="rc-mb-lg">
+                                <h5 class="rc-heading-5 rc-mb-md">Display</h5>
+                                
+                                <div class="rc-form-group">
+                                    <label for="language" class="rc-label">Language</label>
+                                    <select class="rc-input" id="language" name="language">
+                                        <option value="de" {{if and .preferences (eq .preferences.Language "de")}}selected{{end}}>Deutsch</option>
+                                        <option value="en" {{if and .preferences (eq .preferences.Language "en")}}selected{{end}}>English</option>
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-group">
+                                    <label for="theme" class="rc-label">Theme</label>
+                                    <select class="rc-input" id="theme" name="theme">
+                                        <option value="dark" {{if and .preferences (eq .preferences.Theme "dark")}}selected{{end}}>Dark</option>
+                                        <option value="light" {{if and .preferences (eq .preferences.Theme "light")}}selected{{end}}>Light</option>
+                                        <option value="auto" {{if and .preferences (eq .preferences.Theme "auto")}}selected{{end}}>Auto (System)</option>
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-group">
+                                    <label for="time_zone" class="rc-label">Time Zone</label>
+                                    <select class="rc-input" id="time_zone" name="time_zone">
+                                        <option value="Europe/Berlin" {{if and .preferences (eq .preferences.TimeZone "Europe/Berlin")}}selected{{end}}>Europe/Berlin (CET)</option>
+                                        <option value="Europe/London" {{if and .preferences (eq .preferences.TimeZone "Europe/London")}}selected{{end}}>Europe/London (GMT)</option>
+                                        <option value="America/New_York" {{if and .preferences (eq .preferences.TimeZone "America/New_York")}}selected{{end}}>America/New_York (EST)</option>
+                                        <option value="UTC" {{if and .preferences (eq .preferences.TimeZone "UTC")}}selected{{end}}>UTC</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr class="rc-divider rc-my-lg">
+
+                            <!-- Interface Preferences -->
+                            <div class="rc-mb-lg">
+                                <h5 class="rc-heading-5 rc-mb-md">Interface</h5>
+                                
+                                <div class="rc-form-group">
+                                    <label for="items_per_page" class="rc-label">Items per Page</label>
+                                    <select class="rc-input" id="items_per_page" name="items_per_page">
+                                        <option value="10" {{if and .preferences (eq .preferences.ItemsPerPage 10)}}selected{{end}}>10</option>
+                                        <option value="25" {{if and .preferences (eq .preferences.ItemsPerPage 25)}}selected{{end}}>25</option>
+                                        <option value="50" {{if and .preferences (eq .preferences.ItemsPerPage 50)}}selected{{end}}>50</option>
+                                        <option value="100" {{if and .preferences (eq .preferences.ItemsPerPage 100)}}selected{{end}}>100</option>
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-group">
+                                    <label for="default_view" class="rc-label">Default View</label>
+                                    <select class="rc-input" id="default_view" name="default_view">
+                                        <option value="list" {{if and .preferences (eq .preferences.DefaultView "list")}}selected{{end}}>List View</option>
+                                        <option value="grid" {{if and .preferences (eq .preferences.DefaultView "grid")}}selected{{end}}>Grid View</option>
+                                        <option value="table" {{if and .preferences (eq .preferences.DefaultView "table")}}selected{{end}}>Table View</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr class="rc-divider rc-my-lg">
+
+                            <!-- Notifications -->
+                            <div class="rc-mb-lg">
+                                <h5 class="rc-heading-5 rc-mb-md">Notifications</h5>
+                                
+                                <div class="rc-checkbox-wrapper rc-mb-md">
+                                    <input class="rc-checkbox" type="checkbox" id="email_notifications" 
+                                           name="email_notifications" {{if and .preferences .preferences.EmailNotifications}}checked{{end}}>
+                                    <label class="rc-checkbox-label" for="email_notifications">
+                                        Email Notifications
+                                    </label>
+                                </div>
+
+                                <div class="rc-checkbox-wrapper rc-mb-md">
+                                    <input class="rc-checkbox" type="checkbox" id="system_notifications" 
+                                           name="system_notifications" {{if and .preferences .preferences.SystemNotifications}}checked{{end}}>
+                                    <label class="rc-checkbox-label" for="system_notifications">
+                                        System Notifications
+                                    </label>
+                                </div>
+
+                                <div class="rc-checkbox-wrapper rc-mb-md">
+                                    <input class="rc-checkbox" type="checkbox" id="job_status_notifications" 
+                                           name="job_status_notifications" {{if and .preferences .preferences.JobStatusNotifications}}checked{{end}}>
+                                    <label class="rc-checkbox-label" for="job_status_notifications">
+                                        Job Status Updates
+                                    </label>
+                                </div>
+
+                                <div class="rc-checkbox-wrapper">
+                                    <input class="rc-checkbox" type="checkbox" id="device_alert_notifications" 
+                                           name="device_alert_notifications" {{if and .preferences .preferences.DeviceAlertNotifications}}checked{{end}}>
+                                    <label class="rc-checkbox-label" for="device_alert_notifications">
+                                        Device Alerts
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="rc-btn rc-btn-primary rc-w-full">
+                                <i class="bi bi-check-lg"></i> Save Preferences
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 2FA Setup Modal -->
+    <div id="twoFAModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeTwoFAModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3>Setup Two-Factor Authentication</h3>
+                <button type="button" class="rc-btn rc-btn-ghost" onclick="closeTwoFAModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <!-- Step 1: QR Code Scanning -->
+                <div id="twoFAStep1" class="rc-modal-step" style="display: none;">
+                    <p>Scan this QR code with your authenticator app like Google Authenticator, Authy, or 1Password:</p>
+                    <div id="qrCodeContainer"></div>
+                    <p class="rc-text-sm rc-text-muted">
+                        Can't scan? Enter this code manually: <code id="secretCode"></code>
+                    </p>
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="showTwoFAStep2()">
+                        <i class="bi bi-arrow-right"></i> I've Added the Account
+                    </button>
+                </div>
+
+                <!-- Step 2: Code Verification -->
+                <div id="twoFAStep2" class="rc-modal-step" style="display: none;">
+                    <p>Enter the 6-digit code from your authenticator app to verify the setup:</p>
+                    <div class="rc-form-group">
+                        <input type="text" id="verificationCode" placeholder="000000" 
+                               maxlength="6" autocomplete="off" inputmode="numeric">
+                    </div>
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="verifyTwoFA()">
+                        <i class="bi bi-shield-check"></i> Verify & Enable 2FA
+                    </button>
+                </div>
+
+                <!-- Step 3: Success & Backup Codes -->
+                <div id="twoFAStep3" class="rc-modal-step" style="display: none;">
+                    <div class="rc-text-success">
+                        <i class="bi bi-check-circle"></i>
+                        <p><strong>2FA Successfully Enabled!</strong></p>
+                    </div>
+                    
+                    <div class="rc-text-left">
+                        <h5>🔑 Backup Codes</h5>
+                        <p class="rc-text-sm rc-text-muted rc-mb-sm">
+                            <strong>Important:</strong> Save these backup codes in a secure location. 
+                            You can use them to access your account if you lose your authenticator device.
+                        </p>
+                        <div id="backupCodes"></div>
+                        <p class="rc-text-xs rc-text-muted rc-mt-sm">
+                            💡 <strong>Tip:</strong> Print these codes or store them in your password manager.
+                        </p>
+                    </div>
+                    
+                    <button type="button" class="rc-btn rc-btn-primary" onclick="finishTwoFASetup()">
+                        <i class="bi bi-check-lg"></i> I've Saved My Backup Codes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/rental-core-design.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form handlers
+        document.getElementById('personalInfoForm').addEventListener('submit', handlePersonalInfoSubmit);
+        document.getElementById('preferencesForm').addEventListener('submit', handlePreferencesSubmit);
+    });
+
+    // Personal info form handler
+    function handlePersonalInfoSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        
+        fetch('/profile/settings', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'An error occurred while saving your information.');
+        });
+    }
+
+    // Preferences form handler
+    function handlePreferencesSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        
+        fetch('/profile/settings', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+                // Apply theme change immediately
+                const theme = formData.get('theme');
+                if (theme && theme !== 'auto') {
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                }
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'An error occurred while saving your preferences.');
+        });
+    }
+
+    // 2FA Functions
+    function setup2FA() {
+        fetch('/profile/2fa/setup', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showTwoFAModal(data);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Failed to setup 2FA.');
+        });
+    }
+
+    function showTwoFAModal(data) {
+        document.getElementById('secretCode').textContent = data.secret;
+        
+        // Generate QR code
+        const qrContainer = document.getElementById('qrCodeContainer');
+        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qrCodeURL)}" alt="QR Code">`;
+        
+        // Store backup codes for later
+        window.backupCodes = data.backupCodes;
+        
+        document.getElementById('twoFAModal').style.display = 'block';
+        document.getElementById('twoFAStep1').style.display = 'block';
+    }
+
+    function showTwoFAStep2() {
+        document.getElementById('twoFAStep1').style.display = 'none';
+        document.getElementById('twoFAStep2').style.display = 'block';
+    }
+
+    function verifyTwoFA() {
+        const code = document.getElementById('verificationCode').value;
+        
+        console.log('verifyTwoFA called, code:', code);
+        
+        if (!code || code.length !== 6) {
+            showAlert('danger', 'Please enter a 6-digit verification code');
+            return;
+        }
+        
+        // Disable button to prevent double-clicks
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> Verifying...';
+        button.disabled = true;
+        
+        fetch('/profile/2fa/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showTwoFAStep3();
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            showAlert('danger', 'Failed to verify 2FA code: ' + error.message);
+        });
+    }
+
+    function showTwoFAStep3() {
+        document.getElementById('twoFAStep2').style.display = 'none';
+        document.getElementById('twoFAStep3').style.display = 'block';
+        
+        // Display backup codes
+        const backupCodesDiv = document.getElementById('backupCodes');
+        backupCodesDiv.innerHTML = window.backupCodes.map(code => `<div>${code}</div>`).join('');
+    }
+
+    function finishTwoFASetup() {
+        closeTwoFAModal();
+        // Update the UI immediately
+        updateSecurityStatus();
+        showAlert('success', '2FA has been successfully enabled!');
+    }
+
+    function closeTwoFAModal() {
+        document.getElementById('twoFAModal').style.display = 'none';
+        document.getElementById('twoFAStep1').style.display = 'none';
+        document.getElementById('twoFAStep2').style.display = 'none';
+        document.getElementById('twoFAStep3').style.display = 'none';
+    }
+
+    function disable2FA() {
+        const code = prompt('Enter your 2FA code or backup code to disable 2FA:');
+        if (!code) return;
+        
+        fetch('/profile/2fa/disable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+                updateSecurityStatus();
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Failed to disable 2FA.');
+        });
+    }
+
+    // Passkey Functions
+    function addPasskey() {
+        const name = prompt('Enter a name for this passkey:');
+        if (!name) return;
+        
+        // Start registration
+        fetch('/profile/passkeys/start-registration', {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response) {
+                throw new Error('Network request failed - no response received');
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+                return;
+            }
+            
+            console.log('WebAuthn options received:', data.options);
+            
+            // Convert base64url strings to Uint8Array for WebAuthn API
+            const options = {
+                ...data.options,
+                challenge: Uint8Array.from(atob(data.options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+                user: {
+                    ...data.options.user,
+                    id: Uint8Array.from(atob(data.options.user.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+                }
+            };
+            
+            console.log('WebAuthn options converted:', options);
+            
+            // Check if WebAuthn is supported
+            if (!window.PublicKeyCredential) {
+                throw new Error('WebAuthn is not supported in this browser');
+            }
+            
+            console.log('WebAuthn is supported, creating credential...');
+            
+            // Use WebAuthn API to create credential
+            return navigator.credentials.create({
+                publicKey: options
+            }).then(credential => {
+                console.log('WebAuthn credential created:', credential);
+                
+                const requestData = {
+                    sessionId: data.sessionId,
+                    name: name,
+                    credential: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
+                    credentialId: credential.id,
+                    clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON)))
+                };
+                
+                console.log('Sending registration completion data:', requestData);
+                
+                // Complete registration
+                return fetch('/profile/passkeys/complete-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+            });
+        })
+        .then(response => {
+            if (!response) {
+                throw new Error('Network request failed - no response received');
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', 'Passkey added successfully!');
+                updateSecurityStatus();
+                addPasskeyToUI(data.passkeyId, name);
+            }
+        })
+        .catch(error => {
+            console.error('WebAuthn error:', error);
+            console.error('Error details:', error.message, error.name, error.stack);
+            showAlert('danger', 'Failed to add passkey: ' + error.message);
+        });
+    }
+
+    function deletePasskey(passkeyId) {
+        if (!confirm('Are you sure you want to delete this passkey?')) return;
+        
+        fetch(`/profile/passkeys/${passkeyId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert('danger', data.error);
+            } else {
+                showAlert('success', data.message);
+                document.querySelector(`[data-passkey-id="${passkeyId}"]`).remove();
+                updateSecurityStatus();
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Failed to delete passkey.');
+        });
+    }
+
+    // Update security status indicators
+    function updateSecurityStatus() {
+        // Fetch current status from server
+        fetch('/profile/security-status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Failed to fetch security status:', data.error);
+                    return;
+                }
+                
+                // Update 2FA status in header stats
+                const twoFAStatValue = document.querySelector('.rc-stat:nth-child(2) .rc-stat-value');
+                if (twoFAStatValue) {
+                    twoFAStatValue.textContent = data.twoFAEnabled ? '✓' : '✗';
+                }
+                
+                // Update passkey count in header stats
+                const passkeyStatValue = document.querySelector('.rc-stat:nth-child(1) .rc-stat-value');
+                if (passkeyStatValue) {
+                    passkeyStatValue.textContent = data.passkeyCount || '0';
+                }
+                
+                // Update 2FA security feature
+                updateTwoFAStatus(data.twoFAEnabled);
+                
+                // Update passkey count
+                updatePasskeyCount(data.passkeyCount || 0);
+            })
+            .catch(error => {
+                console.error('Error fetching security status:', error);
+            });
+    }
+
+    function updateTwoFAStatus(enabled) {
+        const icon = document.querySelector('.rc-security-feature:first-child .rc-security-icon');
+        const statusIndicator = document.querySelector('.rc-security-feature:first-child .rc-status-indicator');
+        const statusText = document.querySelector('.rc-security-feature:first-child .rc-status-text');
+        const statusDot = document.querySelector('.rc-security-feature:first-child .rc-status-dot');
+        const button = document.querySelector('.rc-security-feature:first-child .rc-flex button');
+        
+        if (enabled) {
+            icon.className = 'rc-security-icon rc-security-enabled';
+            icon.innerHTML = '<i class="bi bi-shield-check"></i>';
+            statusIndicator.className = 'rc-status-indicator rc-status-enabled';
+            statusText.textContent = 'Enabled';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-shield-x"></i> Disable 2FA';
+                button.onclick = () => disable2FA();
+            }
+        } else {
+            icon.className = 'rc-security-icon rc-security-disabled';
+            icon.innerHTML = '<i class="bi bi-shield-exclamation"></i>';
+            statusIndicator.className = 'rc-status-indicator rc-status-disabled';
+            statusText.textContent = 'Disabled';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-shield-check"></i> Enable 2FA';
+                button.onclick = () => setup2FA();
+            }
+        }
+    }
+
+    function updatePasskeyCount(count) {
+        const countNumber = document.querySelector('.rc-passkey-count .rc-count-number');
+        const countLabel = document.querySelector('.rc-passkey-count .rc-count-label');
+        
+        if (countNumber && countLabel) {
+            countNumber.textContent = count;
+            countLabel.textContent = count === 1 ? 'Key' : 'Keys';
+        }
+        
+        // Update security icon
+        const icon = document.querySelector('.rc-security-feature:last-child .rc-security-icon');
+        if (icon) {
+            if (count > 0) {
+                icon.className = 'rc-security-icon rc-security-enabled';
+            } else {
+                icon.className = 'rc-security-icon rc-security-disabled';
+            }
+        }
+    }
+
+    function addPasskeyToUI(passkeyId, name) {
+        const passkeyList = document.getElementById('passkeyList');
+        const noPasskeysMessage = passkeyList.querySelector('.rc-text-center');
+        
+        if (noPasskeysMessage) {
+            noPasskeysMessage.remove();
+        }
+        
+        const passkeyElement = document.createElement('div');
+        passkeyElement.className = 'rc-flex rc-flex-between rc-flex-center rc-p-sm rc-border rc-rounded rc-mb-sm';
+        passkeyElement.setAttribute('data-passkey-id', passkeyId);
+        passkeyElement.innerHTML = `
+            <div class="rc-flex rc-flex-center rc-gap-sm">
+                <i class="bi bi-key rc-text-primary"></i>
+                <div>
+                    <div class="rc-text-sm rc-font-medium">${name}</div>
+                    <div class="rc-text-xs rc-text-muted">
+                        Created: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="deletePasskey(${passkeyId})">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        
+        passkeyList.appendChild(passkeyElement);
+    }
+
+    // Smooth scroll to section
+    function scrollToSection(sectionId) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // Alert function
+    function showAlert(type, message) {
+        const alert = document.createElement('div');
+        alert.className = `rc-alert rc-alert-${type}`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="rc-btn rc-btn-ghost rc-btn-sm" onclick="this.parentElement.remove()">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        
+        const container = document.getElementById('alert-container');
+        container.innerHTML = '';
+        container.appendChild(alert);
+        
+        // Auto-dismiss success alerts
+        if (type === 'success') {
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    }
+    </script>
+
+    <style>
+    /* RentalCore Themed Modal Styles */
+    .rc-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-lg);
+        box-sizing: border-box;
+    }
+
+    .rc-modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .rc-modal-content {
+        position: relative;
+        background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-xl);
+        padding: 0;
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-2xl);
+        animation: slideUp 0.3s ease-out;
+        backdrop-filter: blur(20px);
+    }
+
+    .rc-modal-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-electric), var(--accent-purple), var(--accent-coral));
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .rc-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-xl);
+        border-bottom: 1px solid var(--surface-3);
+        background: var(--surface-1);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        margin-top: 4px;
+    }
+
+    .rc-modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .rc-modal-header h3::before {
+        content: '🔐';
+        font-size: 1.25rem;
+    }
+
+    .rc-modal-body {
+        padding: var(--space-xl);
+        color: var(--text-primary);
+    }
+
+    .rc-modal-step {
+        text-align: center;
+    }
+
+    .rc-modal-step p {
+        color: var(--text-muted);
+        margin-bottom: var(--space-lg);
+        line-height: 1.5;
+    }
+
+    /* QR Code Container */
+    #qrCodeContainer {
+        background: var(--surface-1);
+        border: 2px solid var(--surface-3);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        margin: var(--space-lg) 0;
+        display: inline-block;
+        box-shadow: var(--shadow-md);
+    }
+
+    #qrCodeContainer img {
+        display: block;
+        border-radius: var(--radius-md);
+    }
+
+    /* Secret Code Display */
+    #secretCode {
+        background: var(--surface-2);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-md);
+        padding: var(--space-sm) var(--space-md);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        color: var(--accent-electric);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        word-break: break-all;
+        display: inline-block;
+        margin: 0 var(--space-xs);
+    }
+
+    /* Verification Code Input */
+    #verificationCode {
+        font-family: var(--font-mono);
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: 0.5rem;
+        background: var(--surface-2);
+        border: 2px solid var(--surface-3);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        color: var(--text-primary);
+        width: 100%;
+        max-width: 200px;
+        margin: 0 auto var(--space-lg);
+        transition: var(--transition-normal);
+    }
+
+    #verificationCode:focus {
+        outline: none;
+        border-color: var(--accent-electric);
+        box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+        background: var(--surface-1);
+    }
+
+    /* Success Step Styling */
+    .rc-modal-step .rc-text-success {
+        color: var(--accent-electric);
+        margin-bottom: var(--space-lg);
+    }
+
+    .rc-modal-step .rc-text-success i {
+        font-size: 3rem;
+        margin-bottom: var(--space-md);
+        display: block;
+        text-shadow: 0 0 20px currentColor;
+    }
+
+    /* Backup Codes Display */
+    #backupCodes {
+        background: var(--surface-2);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        line-height: 1.8;
+        color: var(--text-primary);
+        max-height: 200px;
+        overflow-y: auto;
+        margin: var(--space-md) 0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #backupCodes div {
+        padding: var(--space-xs) var(--space-sm);
+        background: var(--surface-3);
+        border-radius: var(--radius-sm);
+        margin-bottom: var(--space-xs);
+        display: inline-block;
+        margin-right: var(--space-sm);
+        color: var(--accent-electric);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    /* Step Navigation */
+    .rc-modal-step h5 {
+        color: var(--text-primary);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: var(--space-md);
+    }
+
+    /* Text alignment utilities */
+    .rc-text-left {
+        text-align: left;
+    }
+
+    .rc-text-left p {
+        text-align: left;
+    }
+
+    /* Button Styling in Modal */
+    .rc-modal-body .rc-btn {
+        min-width: 150px;
+        font-weight: 600;
+        text-transform: none;
+        border-radius: var(--radius-lg);
+        padding: var(--space-md) var(--space-xl);
+        transition: var(--transition-normal);
+    }
+
+    .rc-modal-body .rc-btn-primary {
+        background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+        border: none;
+        color: var(--text-inverse);
+        box-shadow: var(--shadow-md);
+    }
+
+    .rc-modal-body .rc-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-xl);
+    }
+
+    /* Close Button */
+    .rc-modal-header .rc-btn-ghost {
+        background: transparent;
+        border: 1px solid var(--surface-3);
+        color: var(--text-muted);
+        border-radius: var(--radius-lg);
+        padding: var(--space-sm);
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition-normal);
+    }
+
+    .rc-modal-header .rc-btn-ghost:hover {
+        background: var(--surface-3);
+        color: var(--text-primary);
+        border-color: var(--accent-electric);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { 
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .rc-modal {
+            padding: var(--space-md);
+        }
+        
+        .rc-modal-content {
+            max-width: 100%;
+            margin: 0;
+        }
+        
+        .rc-modal-header,
+        .rc-modal-body {
+            padding: var(--space-lg);
+        }
+        
+        #verificationCode {
+            font-size: 1.25rem;
+            letter-spacing: 0.25rem;
+        }
+    }
+
+    .rc-space-y-sm > * + * {
+        margin-top: 0.5rem;
+    }
+
+    /* Enhanced Profile Header Styles */
+    .rc-profile-header {
+        position: relative;
+        background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 50%, var(--surface-1) 100%);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-xl);
+        padding: 0;
+        overflow: hidden;
+        box-shadow: var(--shadow-xl);
+    }
+
+    .rc-profile-header-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 120px;
+        background: linear-gradient(135deg, 
+            var(--accent-electric) 0%, 
+            var(--accent-purple) 50%, 
+            var(--accent-coral) 100%);
+        opacity: 0.1;
+        z-index: 1;
+    }
+
+    .rc-profile-header-bg::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 30% 20%, rgba(0, 245, 255, 0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 80%, rgba(147, 51, 234, 0.3) 0%, transparent 50%);
+        z-index: 2;
+    }
+
+    .rc-profile-header-content {
+        position: relative;
+        padding: var(--space-2xl);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        z-index: 3;
+    }
+
+    .rc-profile-avatar-section {
+        display: flex;
+        gap: var(--space-xl);
+        align-items: flex-end;
+    }
+
+    .rc-profile-avatar {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+        border-radius: var(--radius-xl);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: var(--text-inverse);
+        border: 4px solid var(--surface-1);
+        box-shadow: var(--shadow-xl);
+        position: relative;
+    }
+
+    .rc-profile-avatar::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple), var(--accent-coral));
+        border-radius: var(--radius-xl);
+        z-index: -1;
+        padding: 2px;
+    }
+
+    .rc-profile-info {
+        flex-grow: 1;
+    }
+
+    .rc-profile-name {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0 0 var(--space-sm) 0;
+        background: linear-gradient(135deg, var(--text-primary), var(--accent-electric));
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.1;
+    }
+
+    .rc-profile-username {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        margin: 0 0 var(--space-lg) 0;
+        font-weight: 500;
+        font-family: var(--font-mono);
+    }
+
+    .rc-profile-stats {
+        display: flex;
+        gap: var(--space-xl);
+    }
+
+    .rc-stat {
+        text-align: center;
+        padding: var(--space-sm) var(--space-md);
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: var(--radius-lg);
+        backdrop-filter: blur(10px);
+    }
+
+    .rc-stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-electric);
+        line-height: 1;
+    }
+
+    .rc-stat-label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: var(--space-xs);
+    }
+
+    .rc-profile-actions {
+        display: flex;
+        gap: var(--space-md);
+        align-items: flex-end;
+    }
+
+    .rc-btn-floating {
+        border-radius: 50px;
+        padding: var(--space-md) var(--space-xl);
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+        border: none;
+        color: var(--text-inverse);
+        box-shadow: var(--shadow-xl);
+        transition: all var(--transition-normal);
+    }
+
+    .rc-btn-floating:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 40px rgba(0, 245, 255, 0.3);
+    }
+
+    /* Enhanced Grid Layout */
+    .rc-profile-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: var(--space-xl);
+        margin-top: var(--space-2xl);
+    }
+
+    /* Enhanced Card Styles */
+    .rc-card-enhanced {
+        background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        transition: all var(--transition-normal);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .rc-card-enhanced::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent-electric), var(--accent-purple), var(--accent-coral));
+        opacity: 0;
+        transition: opacity var(--transition-normal);
+    }
+
+    .rc-card-enhanced:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-2xl);
+    }
+
+    .rc-card-enhanced:hover::before {
+        opacity: 1;
+    }
+
+    .rc-card-header-enhanced {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-lg);
+        padding: var(--space-xl);
+        border-bottom: 1px solid var(--surface-3);
+        background: var(--surface-1);
+    }
+
+    .rc-card-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: var(--text-inverse);
+        box-shadow: var(--shadow-md);
+        flex-shrink: 0;
+    }
+
+    .rc-icon-security {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .rc-icon-preferences {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    }
+
+    .rc-card-desc {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin: var(--space-xs) 0 0 0;
+        line-height: 1.4;
+    }
+
+    /* Enhanced Security Features */
+    .rc-security-feature {
+        background: var(--surface-2);
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+    }
+
+    .rc-security-feature-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-lg);
+        margin-bottom: var(--space-lg);
+    }
+
+    .rc-security-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        transition: all var(--transition-normal);
+    }
+
+    .rc-security-enabled {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .rc-security-disabled {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        color: white;
+        box-shadow: 0 4px 20px rgba(107, 114, 128, 0.2);
+    }
+
+    .rc-security-info {
+        flex-grow: 1;
+    }
+
+    .rc-security-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 var(--space-xs) 0;
+    }
+
+    .rc-security-desc {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .rc-security-status {
+        flex-shrink: 0;
+    }
+
+    .rc-status-indicator {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .rc-status-enabled {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .rc-status-disabled {
+        background: rgba(107, 114, 128, 0.1);
+        color: #6b7280;
+        border: 1px solid rgba(107, 114, 128, 0.2);
+    }
+
+    .rc-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: pulse 2s infinite;
+    }
+
+    .rc-passkey-count {
+        text-align: center;
+        padding: var(--space-sm) var(--space-md);
+        background: rgba(0, 245, 255, 0.1);
+        border: 1px solid rgba(0, 245, 255, 0.2);
+        border-radius: var(--radius-lg);
+    }
+
+    .rc-count-number {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-electric);
+        line-height: 1;
+    }
+
+    .rc-count-label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: var(--space-xs);
+    }
+
+    /* Smooth Scrolling */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .rc-profile-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .rc-profile-header-content {
+            flex-direction: column;
+            gap: var(--space-xl);
+            align-items: center;
+            text-align: center;
+        }
+
+        .rc-profile-avatar-section {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .rc-profile-stats {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .rc-profile-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-lg);
+        }
+
+        .rc-profile-header-content {
+            padding: var(--space-xl);
+        }
+
+        .rc-profile-avatar {
+            width: 80px;
+            height: 80px;
+            font-size: 2.5rem;
+        }
+
+        .rc-profile-name {
+            font-size: 2rem;
+        }
+
+        .rc-security-feature-header {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+
+        .rc-card-header-enhanced {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+    }
+
+    /* Animations */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+</body>
+</html>

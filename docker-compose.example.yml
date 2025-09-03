@@ -1,0 +1,149 @@
+# ============================================================================
+# RentalCore Docker Compose Configuration Example
+# ============================================================================
+# Copy this file to docker-compose.yml and customize for your environment
+# Make sure to create a .env file with your actual credentials before running
+
+version: '3.8'
+
+services:
+  rentalcore:
+    # Use the pre-built image from Docker Hub
+    image: nbt4/rentalcore:latest
+    
+    # Or build from source (uncomment the lines below and comment the image line)
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    
+    container_name: rentalcore-app
+    hostname: rentalcore
+    restart: unless-stopped
+    
+    ports:
+      # Map container port 8080 to host port (configurable via APP_PORT)
+      - "${APP_PORT:-8080}:8080"
+    
+    environment:
+      # ================================
+      # Database Configuration
+      # ================================
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # ================================
+      # Server Configuration
+      # ================================
+      - SERVER_HOST=${SERVER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      
+      # ================================
+      # Application Mode
+      # ================================
+      # Set to 'release' for production, 'debug' for development
+      - GIN_MODE=${GIN_MODE:-release}
+      
+      # ================================
+      # Security Configuration
+      # ================================
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-3600}
+      
+      # ================================
+      # Email Configuration (Optional)
+      # ================================
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@rentalcore.com}
+      - FROM_NAME=${FROM_NAME:-RentalCore}
+      - USE_TLS=${USE_TLS:-true}
+      
+      # ================================
+      # Invoice Configuration
+      # ================================
+      - DEFAULT_TAX_RATE=${DEFAULT_TAX_RATE:-19.0}
+      - DEFAULT_PAYMENT_TERMS=${DEFAULT_PAYMENT_TERMS:-30}
+      - CURRENCY_SYMBOL=${CURRENCY_SYMBOL:-€}
+      - CURRENCY_CODE=${CURRENCY_CODE:-EUR}
+      
+      # ================================
+      # Logging Configuration
+      # ================================
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-logs/app.log}
+    
+    volumes:
+      # Persistent data volumes for uploads, logs, and archives
+      - rentalcore_uploads:/app/uploads
+      - rentalcore_logs:/app/logs
+      - rentalcore_archives:/app/archives
+      
+      # Optional: Mount config file if using file-based configuration
+      # - ./config.json:/app/config.json:ro
+    
+    # Health check to ensure the application is running
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Optional: Add to networks for reverse proxy or service discovery
+    # networks:
+    #   - rentalcore_network
+    #   - traefik_proxy  # If using Traefik
+    
+    # Optional: Add labels for reverse proxy configuration
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.rentalcore.rule=Host(`rentalcore.yourdomain.com`)"
+    #   - "traefik.http.services.rentalcore.loadbalancer.server.port=8080"
+    #   - "traefik.http.routers.rentalcore.tls.certresolver=letsencrypt"
+
+# ============================================================================
+# Volumes for persistent data
+# ============================================================================
+volumes:
+  rentalcore_uploads:
+    driver: local
+    # Optional: specify host path for backup purposes
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /opt/rentalcore/uploads
+    
+  rentalcore_logs:
+    driver: local
+    # Optional: specify host path for log monitoring
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /opt/rentalcore/logs
+    
+  rentalcore_archives:
+    driver: local
+
+# ============================================================================
+# Networks (optional)
+# ============================================================================
+# networks:
+#   rentalcore_network:
+#     driver: bridge
+#   traefik_proxy:
+#     external: true
+
+# ============================================================================
+# Usage Instructions:
+# ============================================================================
+# 1. Copy this file to docker-compose.yml
+# 2. Copy .env.example to .env and configure your values
+# 3. Run: docker-compose up -d
+# 4. Access the application at http://localhost:8080 (or your configured port)
+# 5. For updates: docker-compose pull && docker-compose up -d
+# ============================================================================

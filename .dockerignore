@@ -1,0 +1,72 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files
+.env
+
+# Development files
+*.md
+README*
+.vscode/
+.idea/
+
+# Logs and temporary files
+logs/*.log
+*.log
+server_output*.log
+server_debug.log
+
+# Build artifacts
+server
+bin/
+main
+
+# Temporary and cache files
+uploads/
+temp/
+tmp/
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/
+*.md
+
+# Scripts
+*.sh
+deploy-*.sh
+start-*.sh
+
+# Development tools
+Makefile
+
+# Testing files
+*_test.go
+test/
+tests/
+
+# Backup files
+*.backup
+*.bak
+backups/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

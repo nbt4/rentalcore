@@ -1,0 +1,635 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-box-seam text-primary"></i>
+                {{if .package}}Edit Equipment Package{{else}}Create Equipment Package{{end}}
+            </h1>
+            <p class="text-muted mb-0">Configure a reusable collection of equipment for streamlined rental processing</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/workflow/packages" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Packages
+            </a>
+            {{if .package}}
+            <button type="button" class="btn btn-outline-info" onclick="previewPackage()">
+                <i class="bi bi-eye"></i> Preview
+            </button>
+            {{end}}
+        </div>
+    </div>
+
+    <form id="packageForm" novalidate>
+        <div class="row">
+            <!-- Main Form -->
+            <div class="col-lg-8">
+                <!-- Basic Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Basic Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Package Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{if .package}}{{.package.Name}}{{end}}" 
+                                           placeholder="e.g., Complete DJ Setup, Wedding Lighting Package"
+                                           required minlength="3" maxlength="100">
+                                    <div class="invalid-feedback">Please provide a package name (3-100 characters).</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">Category</label>
+                                    <select class="form-select" id="category" name="category">
+                                        <option value="">Select Category...</option>
+                                        {{range .categories}}
+                                        <option value="{{.}}" {{if $.package}}{{if eq $.package.Category .}}selected{{end}}{{end}}>{{.}}</option>
+                                        {{end}}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      placeholder="Describe what this package includes and its intended use..."
+                                      maxlength="1000">{{if .package}}{{.package.Description}}{{end}}</textarea>
+                            <div class="form-text">Help customers understand what this package offers.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">Tags</label>
+                            <input type="text" class="form-control" id="tags" name="tags" 
+                                   value="{{if .package}}{{.package.Tags}}{{end}}"
+                                   placeholder="e.g., wedding, party, corporate, dj, lighting"
+                                   maxlength="500">
+                            <div class="form-text">Comma-separated tags to help with searching and categorization.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing Configuration -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-currency-euro"></i> Pricing & Terms</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="packagePrice" class="form-label">Fixed Package Price (€)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="packagePrice" name="packagePrice" 
+                                               value="{{if .package}}{{.package.PackagePrice}}{{end}}" 
+                                               step="0.01" min="0" placeholder="0.00">
+                                    </div>
+                                    <div class="form-text">Leave empty to use calculated price from individual devices.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="discountPercent" class="form-label">Package Discount (%)</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="discountPercent" name="discountPercent" 
+                                               value="{{if .package}}{{.package.DiscountPercent}}{{end}}" 
+                                               step="0.1" min="0" max="100" placeholder="0.0">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text">Discount applied to the calculated device total.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="minRentalDays" class="form-label">Minimum Rental Days <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="minRentalDays" name="minRentalDays" 
+                                           value="{{if .package}}{{.package.MinRentalDays}}{{else}}1{{end}}" 
+                                           min="1" max="365" required>
+                                    <div class="invalid-feedback">Please specify minimum rental days (1-365).</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="maxRentalDays" class="form-label">Maximum Rental Days</label>
+                                    <input type="number" class="form-control" id="maxRentalDays" name="maxRentalDays" 
+                                           value="{{if .package}}{{.package.MaxRentalDays}}{{end}}" 
+                                           min="1" max="3650" placeholder="No limit">
+                                    <div class="form-text">Leave empty for no maximum limit.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipment Selection -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-gear"></i> Equipment & Devices</h5>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addDevice()">
+                            <i class="bi bi-plus-lg"></i> Add Device
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="devicesContainer">
+                            {{if .package}}
+                                {{range $index, $device := .package.PackageDevices}}
+                                <div class="device-row mb-3 p-3 border rounded" data-device-index="{{$index}}">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Device</label>
+                                            <select class="form-select device-select" name="devices[{{$index}}][deviceID]" required>
+                                                <option value="">Select a device...</option>
+                                                {{range $.availableDevices}}
+                                                <option value="{{.DeviceID}}" 
+                                                        data-price="{{if .Product}}{{.Product.ItemCostPerDay}}{{end}}"
+                                                        data-name="{{if .Product}}{{.Product.Name}}{{end}}"
+                                                        {{if eq .DeviceID $device.DeviceID}}selected{{end}}>
+                                                    {{if .Product}}{{.Product.Name}}{{else}}Unknown Product{{end}} ({{.DeviceID}})
+                                                </option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Quantity</label>
+                                            <input type="number" class="form-control quantity-input" 
+                                                   name="devices[{{$index}}][quantity]" 
+                                                   value="{{$device.Quantity}}" min="1" max="1000" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Custom Price (€)</label>
+                                            <input type="number" class="form-control custom-price-input" 
+                                                   name="devices[{{$index}}][customPrice]" 
+                                                   value="{{$device.CustomPrice}}" step="0.01" min="0" 
+                                                   placeholder="Default">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Options</label>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                       name="devices[{{$index}}][isRequired]" 
+                                                       {{if $device.IsRequired}}checked{{end}}>
+                                                <label class="form-check-label">Required</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div class="d-grid">
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDevice(this)">
+                                                    <i class="bi bi-trash"></i> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <label class="form-label">Notes</label>
+                                            <input type="text" class="form-control" 
+                                                   name="devices[{{$index}}][notes]" 
+                                                   value="{{$device.Notes}}" 
+                                                   placeholder="Optional notes for this device..."
+                                                   maxlength="500">
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
+                            {{end}}
+                        </div>
+
+                        <div id="noDevicesMessage" class="text-center text-muted py-4" {{if .package}}{{if .package.PackageDevices}}style="display: none;"{{end}}{{end}}>
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            <p>No devices added to this package yet.</p>
+                            <button type="button" class="btn btn-primary" onclick="addDevice()">
+                                <i class="bi bi-plus-lg"></i> Add Your First Device
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Package Summary -->
+                <div class="card mb-4 position-sticky" style="top: 2rem;">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-calculator"></i> Package Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Total Devices:</span>
+                                <strong id="totalDevices">0</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Required Devices:</span>
+                                <strong id="requiredDevices">0</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Calculated Price:</span>
+                                <strong id="calculatedPrice">€0.00</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Discount:</span>
+                                <strong id="discountAmount">€0.00</strong>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="h6">Final Price:</span>
+                                <strong class="h5 text-primary" id="finalPrice">€0.00</strong>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="isActive" 
+                                       {{if .package}}{{if .package.IsActive}}checked{{end}}{{else}}checked{{end}}>
+                                <label class="form-check-label" for="isActive">
+                                    Package Active
+                                </label>
+                            </div>
+                            <div class="form-text">Active packages are available for rental assignments.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-lg"></i>
+                                {{if .package}}Update Package{{else}}Create Package{{end}}
+                            </button>
+                            {{if .package}}
+                            <button type="button" class="btn btn-outline-info" onclick="validatePackage()">
+                                <i class="bi bi-shield-check"></i> Validate Package
+                            </button>
+                            {{end}}
+                            <a href="/workflow/packages" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Device Template (Hidden) -->
+<div id="deviceTemplate" style="display: none;">
+    <div class="device-row mb-3 p-3 border rounded" data-device-index="__INDEX__">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label">Device</label>
+                <select class="form-select device-select" name="devices[__INDEX__][deviceID]" required>
+                    <option value="">Select a device...</option>
+                    {{range .availableDevices}}
+                    <option value="{{.DeviceID}}" 
+                            data-price="{{if .Product}}{{.Product.ItemCostPerDay}}{{end}}"
+                            data-name="{{if .Product}}{{.Product.Name}}{{end}}">
+                        {{if .Product}}{{.Product.Name}}{{else}}Unknown Product{{end}} ({{.DeviceID}})
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Quantity</label>
+                <input type="number" class="form-control quantity-input" 
+                       name="devices[__INDEX__][quantity]" 
+                       value="1" min="1" max="1000" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Custom Price (€)</label>
+                <input type="number" class="form-control custom-price-input" 
+                       name="devices[__INDEX__][customPrice]" 
+                       step="0.01" min="0" placeholder="Default">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Options</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" 
+                           name="devices[__INDEX__][isRequired]">
+                    <label class="form-check-label">Required</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeDevice(this)">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <label class="form-label">Notes</label>
+                <input type="text" class="form-control" 
+                       name="devices[__INDEX__][notes]" 
+                       placeholder="Optional notes for this device..."
+                       maxlength="500">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deviceIndex = {{if .package}}{{len .package.PackageDevices}}{{else}}0{{end}};
+
+// Form submission
+document.getElementById('packageForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!this.checkValidity()) {
+        e.stopPropagation();
+        this.classList.add('was-validated');
+        return;
+    }
+
+    const formData = collectFormData();
+    const url = {{if .package}}
+        `/api/v1/workflow/packages/{{.package.PackageID}}`
+    {{else}}
+        '/api/v1/workflow/packages'
+    {{end}};
+    
+    const method = {{if .package}}'PUT'{{else}}'POST'{{end}};
+
+    try {
+        showLoading(true);
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save package');
+        }
+
+        showNotification('Package saved successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = '/workflow/packages';
+        }, 1000);
+
+    } catch (error) {
+        showNotification('Error: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+});
+
+// Add device
+function addDevice() {
+    const container = document.getElementById('devicesContainer');
+    const template = document.getElementById('deviceTemplate');
+    const newDevice = template.innerHTML.replace(/__INDEX__/g, deviceIndex);
+    
+    container.insertAdjacentHTML('beforeend', newDevice);
+    deviceIndex++;
+    
+    // Hide no devices message
+    document.getElementById('noDevicesMessage').style.display = 'none';
+    
+    // Add event listeners to new device
+    const newDeviceRow = container.lastElementChild;
+    attachDeviceEventListeners(newDeviceRow);
+    
+    updateSummary();
+}
+
+// Remove device
+function removeDevice(button) {
+    button.closest('.device-row').remove();
+    
+    // Show no devices message if no devices left
+    const container = document.getElementById('devicesContainer');
+    if (container.children.length === 0) {
+        document.getElementById('noDevicesMessage').style.display = 'block';
+    }
+    
+    updateSummary();
+}
+
+// Attach event listeners to device row
+function attachDeviceEventListeners(deviceRow) {
+    const select = deviceRow.querySelector('.device-select');
+    const quantityInput = deviceRow.querySelector('.quantity-input');
+    const priceInput = deviceRow.querySelector('.custom-price-input');
+    
+    [select, quantityInput, priceInput].forEach(element => {
+        element.addEventListener('change', updateSummary);
+        element.addEventListener('input', updateSummary);
+    });
+}
+
+// Update package summary
+function updateSummary() {
+    const deviceRows = document.querySelectorAll('.device-row');
+    let totalDevices = 0;
+    let requiredDevices = 0;
+    let calculatedPrice = 0;
+
+    deviceRows.forEach(row => {
+        const select = row.querySelector('.device-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const customPriceInput = row.querySelector('.custom-price-input');
+        const requiredCheckbox = row.querySelector('input[type="checkbox"]');
+
+        if (select.value && quantityInput.value) {
+            const quantity = parseInt(quantityInput.value) || 0;
+            totalDevices += quantity;
+
+            if (requiredCheckbox.checked) {
+                requiredDevices += quantity;
+            }
+
+            // Calculate price
+            let price = 0;
+            if (customPriceInput.value) {
+                price = parseFloat(customPriceInput.value) || 0;
+            } else {
+                const selectedOption = select.options[select.selectedIndex];
+                price = parseFloat(selectedOption.dataset.price) || 0;
+            }
+            
+            calculatedPrice += price * quantity;
+        }
+    });
+
+    // Apply discount
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountAmount = calculatedPrice * (discountPercent / 100);
+    const finalPrice = calculatedPrice - discountAmount;
+
+    // Check for fixed package price
+    const packagePrice = parseFloat(document.getElementById('packagePrice').value);
+    const actualFinalPrice = packagePrice || finalPrice;
+
+    // Update display
+    document.getElementById('totalDevices').textContent = totalDevices;
+    document.getElementById('requiredDevices').textContent = requiredDevices;
+    document.getElementById('calculatedPrice').textContent = `€${calculatedPrice.toFixed(2)}`;
+    document.getElementById('discountAmount').textContent = `€${discountAmount.toFixed(2)}`;
+    document.getElementById('finalPrice').textContent = `€${actualFinalPrice.toFixed(2)}`;
+}
+
+// Collect form data
+function collectFormData() {
+    const devices = [];
+    const deviceRows = document.querySelectorAll('.device-row');
+
+    deviceRows.forEach(row => {
+        const select = row.querySelector('.device-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const customPriceInput = row.querySelector('.custom-price-input');
+        const requiredCheckbox = row.querySelector('input[type="checkbox"]');
+        const notesInput = row.querySelector('input[type="text"]');
+
+        if (select.value && quantityInput.value) {
+            devices.push({
+                deviceID: select.value,
+                quantity: parseInt(quantityInput.value),
+                customPrice: customPriceInput.value ? parseFloat(customPriceInput.value) : null,
+                isRequired: requiredCheckbox.checked,
+                notes: notesInput.value || ''
+            });
+        }
+    });
+
+    return {
+        name: document.getElementById('name').value,
+        description: document.getElementById('description').value,
+        category: document.getElementById('category').value,
+        tags: document.getElementById('tags').value,
+        packagePrice: document.getElementById('packagePrice').value ? parseFloat(document.getElementById('packagePrice').value) : null,
+        discountPercent: parseFloat(document.getElementById('discountPercent').value) || 0,
+        minRentalDays: parseInt(document.getElementById('minRentalDays').value),
+        maxRentalDays: document.getElementById('maxRentalDays').value ? parseInt(document.getElementById('maxRentalDays').value) : null,
+        isActive: document.getElementById('isActive').checked,
+        devices: devices
+    };
+}
+
+// Validate package
+async function validatePackage() {
+    {{if .package}}
+    try {
+        const response = await fetch(`/api/v1/workflow/packages/{{.package.PackageID}}/validate`);
+        const data = await response.json();
+        
+        if (data.isValid) {
+            showNotification('Package validation successful! All devices are available.', 'success');
+        } else {
+            const invalidList = data.invalidDevices.join(', ');
+            showNotification(`Package validation failed. Invalid devices: ${invalidList}`, 'warning');
+        }
+    } catch (error) {
+        showNotification('Validation failed: ' + error.message, 'error');
+    }
+    {{end}}
+}
+
+// Preview package
+function previewPackage() {
+    // Open package detail modal with current data
+    // This would be similar to the viewPackage function in the list page
+}
+
+// Utility functions
+function showLoading(show) {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (show) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    } else {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '{{if .package}}<i class="bi bi-check-lg"></i> Update Package{{else}}<i class="bi bi-check-lg"></i> Create Package{{end}}';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach event listeners to existing devices
+    document.querySelectorAll('.device-row').forEach(attachDeviceEventListeners);
+    
+    // Initial summary calculation
+    updateSummary();
+    
+    // Update summary when discount or package price changes
+    document.getElementById('discountPercent').addEventListener('input', updateSummary);
+    document.getElementById('packagePrice').addEventListener('input', updateSummary);
+});
+</script>
+
+<style>
+.device-row {
+    background-color: #f8f9fa;
+    transition: all 0.2s ease-in-out;
+}
+
+.device-row:hover {
+    background-color: #e9ecef;
+}
+
+.position-sticky {
+    z-index: 1;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.125rem;
+}
+</style>
+{{end}}

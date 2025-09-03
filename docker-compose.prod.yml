@@ -1,0 +1,103 @@
+# Production Docker Compose Configuration for RentalCore
+# This version uses the pre-built Docker image from Docker Hub
+# No building required - just configure your .env file and run!
+
+services:
+  rentalcore:
+    # Use the image from Docker Hub instead of building
+    image: nbt4/rentalcore:latest
+    container_name: rentalcore
+    hostname: rentalcore
+    restart: unless-stopped
+    
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    
+    environment:
+      # Database Configuration
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # Server Configuration
+      - SERVER_HOST=${SERVER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      
+      # Application Mode
+      - GIN_MODE=${GIN_MODE:-release}
+      
+      # Security Configuration
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-3600}
+      
+      # Email Configuration (optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@rentalcore.com}
+      - FROM_NAME=${FROM_NAME:-RentalCore}
+      - USE_TLS=${USE_TLS:-true}
+      
+      # Invoice Configuration
+      - DEFAULT_TAX_RATE=${DEFAULT_TAX_RATE:-19.0}
+      - DEFAULT_PAYMENT_TERMS=${DEFAULT_PAYMENT_TERMS:-30}
+      - CURRENCY_SYMBOL=${CURRENCY_SYMBOL:-€}
+      - CURRENCY_CODE=${CURRENCY_CODE:-EUR}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-logs/app.log}
+    
+    volumes:
+      # Persistent data volumes
+      - rentalcore_uploads:/app/uploads
+      - rentalcore_logs:/app/logs
+      - rentalcore_archives:/app/archives
+    
+    depends_on:
+      - db-health-check
+    
+    networks:
+      - rentalcore-network
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Database health check service (for external databases)
+  db-health-check:
+    image: mysql:8.0
+    container_name: rentalcore-db-check
+    command: >
+      sh -c "
+        echo 'Checking database connectivity...' &&
+        mysql -h$$DB_HOST -P$$DB_PORT -u$$DB_USERNAME -p$$DB_PASSWORD -e 'SELECT 1;' $$DB_NAME &&
+        echo 'Database is accessible!'
+      "
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - rentalcore-network
+    restart: "no"
+
+volumes:
+  rentalcore_uploads:
+    driver: local
+  rentalcore_logs:
+    driver: local
+  rentalcore_archives:
+    driver: local
+
+networks:
+  rentalcore-network:
+    driver: bridge

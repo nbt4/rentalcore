@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>{{.title}}</h5>
+                    </div>
+                    <div class="card-body">
+                        {{if .error}}
+                        <div class="alert alert-danger">{{.error}}</div>
+                        {{end}}
+                        
+                        <form method="POST" action="{{if .case.CaseID}}/cases/{{.case.CaseID}}{{else}}/cases{{end}}">
+                            {{if .case.CaseID}}
+                            <input type="hidden" name="_method" value="PUT">
+                            {{end}}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Name *</label>
+                                        <input type="text" class="form-control" name="name" value="{{.case.Name}}" required placeholder="Case name">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status">
+                                            <option value="free" {{if eq .case.Status "free"}}selected{{end}}>Free</option>
+                                            <option value="checked out" {{if eq .case.Status "checked out"}}selected{{end}}>Checked Out</option>
+                                            <option value="maintance" {{if eq .case.Status "maintance"}}selected{{end}}>Maintenance</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" name="description" rows="3" placeholder="Optional description">{{derefString .case.Description}}</textarea>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Width (cm)</label>
+                                        <input type="number" step="0.01" class="form-control" name="width" value="{{derefFloat .case.Width}}" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Height (cm)</label>
+                                        <input type="number" step="0.01" class="form-control" name="height" value="{{derefFloat .case.Height}}" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Depth (cm)</label>
+                                        <input type="number" step="0.01" class="form-control" name="depth" value="{{derefFloat .case.Depth}}" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Weight (kg)</label>
+                                        <input type="number" step="0.01" class="form-control" name="weight" value="{{derefFloat .case.Weight}}" placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Device Selection Section -->
+                            {{if .case.CaseID}}
+                            <div class="mb-4">
+                                <h5>Case Devices</h5>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="deviceSelect" class="form-label">Add Device</label>
+                                            <select class="form-select" id="deviceSelect">
+                                                <option value="">Select a device to add...</option>
+                                                {{if .availableDevices}}
+                                                    {{range .availableDevices}}
+                                                    <option value="{{.DeviceID}}" data-product="{{if .Product}}{{.Product.Name}}{{else}}Unknown Product{{end}}" data-serial="{{derefString .SerialNumber}}">
+                                                        {{.DeviceID}}{{if .SerialNumber}} - {{derefString .SerialNumber}}{{end}} - {{if .Product}}{{.Product.Name}}{{else}}Unknown Product{{end}}
+                                                    </option>
+                                                    {{end}}
+                                                {{else}}
+                                                    <option value="" disabled>No devices available</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <button type="button" class="btn btn-success btn-sm" onclick="addDevice()">
+                                            <i class="bi bi-plus"></i> Add Device
+                                        </button>
+                                        
+                                        <div class="mt-3">
+                                            <h6>Current Devices:</h6>
+                                            <div id="selectedDevices" class="list-group">
+                                                <!-- Selected devices will be added here dynamically -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="/cases" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    {{if .case.CaseID}}Update{{else}}Create{{end}} Case
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    
+    <script>
+        let selectedDevices = [];
+        
+        function addDevice() {
+            const deviceSelect = document.getElementById('deviceSelect');
+            const deviceID = deviceSelect.value;
+            
+            if (!deviceID) {
+                alert('Please select a device first');
+                return;
+            }
+            
+            // Check if device is already added
+            if (selectedDevices.includes(deviceID)) {
+                alert('This device is already added to this case');
+                return;
+            }
+            
+            // Get device name from the select option
+            const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
+            const deviceName = selectedOption.text;
+            
+            // Add to selected devices array
+            selectedDevices.push(deviceID);
+            
+            // Add to the selected devices list
+            const selectedDevicesContainer = document.getElementById('selectedDevices');
+            
+            // Create device item
+            const deviceItem = document.createElement('div');
+            deviceItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            deviceItem.innerHTML = `
+                <span>${deviceName} (${deviceID})</span>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeDevice('${deviceID}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <input type="hidden" name="devices[]" value="${deviceID}">
+            `;
+            
+            selectedDevicesContainer.appendChild(deviceItem);
+            
+            // Reset select
+            deviceSelect.value = '';
+        }
+        
+        function removeDevice(deviceID) {
+            // Remove from selected devices array
+            selectedDevices = selectedDevices.filter(id => id !== deviceID);
+            
+            // Remove from DOM
+            const deviceItems = document.querySelectorAll('.list-group-item');
+            deviceItems.forEach(item => {
+                const hiddenInput = item.querySelector('input[type="hidden"]');
+                if (hiddenInput && hiddenInput.value === deviceID) {
+                    item.remove();
+                }
+            });
+        }
+        
+        // Initialize existing devices in the selectedDevices array
+        document.addEventListener('DOMContentLoaded', function() {
+            const existingDevices = document.querySelectorAll('input[name="devices[]"]');
+            existingDevices.forEach(input => {
+                selectedDevices.push(input.value);
+            });
+        });
+    </script>
+</body>
+</html>

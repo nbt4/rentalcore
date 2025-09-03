@@ -1,0 +1,121 @@
+{{define "content"}}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/devices">Devices</a></li>
+                <li class="breadcrumb-item active">{{.device.Name}}</li>
+            </ol>
+        </nav>
+        <h1>{{.device.Name}} <span class="badge bg-secondary">{{.device.SerialNo}}</span></h1>
+    </div>
+    <div class="btn-group">
+        <a href="/devices/{{.device.ID}}/edit" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="/devices/{{.device.ID}}/qr" target="_blank" class="btn btn-info">
+            <i class="bi bi-qr-code"></i> QR Code
+        </a>
+        <a href="/devices/{{.device.ID}}/barcode" target="_blank" class="btn btn-info">
+            <i class="bi bi-upc"></i> Barcode
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Device Information -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Device Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Serial Number:</strong></td>
+                        <td><code>{{.device.SerialNo}}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Category:</strong></td>
+                        <td>{{.device.Category}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Price:</strong></td>
+                        <td>€{{printf "%.2f" .device.Price}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Available:</strong></td>
+                        <td>
+                            {{if .device.Available}}
+                                <span class="badge bg-success">Yes</span>
+                            {{else}}
+                                <span class="badge bg-warning">No</span>
+                            {{end}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Created:</strong></td>
+                        <td>{{.device.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                    </tr>
+                </table>
+                {{if .device.Description}}
+                <div class="mt-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{.device.Description}}</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Job History -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Job History</h5>
+            </div>
+            <div class="card-body">
+                {{if .history}}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Job</th>
+                                <th>Customer</th>
+                                <th>Assigned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .history}}
+                            <tr>
+                                <td>
+                                    <a href="/jobs/{{.Job.ID}}" class="text-decoration-none">
+                                        {{.Job.Title}}
+                                    </a>
+                                </td>
+                                <td>{{.Job.Customer.Name}}</td>
+                                <td>{{.AssignedAt.Format "2006-01-02"}}</td>
+                                <td>
+                                    {{if .RemovedAt}}
+                                        <span class="badge bg-secondary">Completed</span>
+                                    {{else}}
+                                        <span class="badge bg-success">Active</span>
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="text-center py-3">
+                    <i class="bi bi-clock-history display-4 text-muted"></i>
+                    <p class="text-muted mt-2">No job history available</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

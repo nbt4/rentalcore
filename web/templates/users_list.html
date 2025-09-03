@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+/* User Management Specific Styles */
+.user-management {
+    min-height: calc(100vh - 80px);
+    background: var(--surface-1);
+    padding: var(--space-xl) 0;
+}
+
+/* Header Section */
+.user-header {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(50%, -50%);
+}
+
+.user-header-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+}
+
+.user-header-info h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.user-header-info p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+    font-weight: 400;
+}
+
+.user-stats {
+    display: flex;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+}
+
+.user-stat {
+    text-align: center;
+    min-width: 80px;
+}
+
+.user-stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+}
+
+.user-stat-label {
+    display: block;
+    font-size: 0.875rem;
+    opacity: 0.8;
+    margin-top: var(--space-xs);
+}
+
+/* User Card Grid */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.user-card {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.user-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-300);
+}
+
+.user-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-500), var(--accent-electric));
+}
+
+.user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--accent-electric));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: var(--space-md);
+}
+
+.user-info h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-xs);
+    color: var(--text-primary);
+}
+
+.user-info .user-username {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-sm);
+    font-family: var(--font-mono);
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin: var(--space-md) 0;
+}
+
+.user-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.user-meta-item i {
+    width: 16px;
+    color: var(--primary-400);
+}
+
+.user-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--surface-3);
+}
+
+.user-actions .rc-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 6px !important;
+}
+
+.user-actions .rc-btn i {
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-badge.active {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.inactive {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--surface-3);
+}
+
+/* Search and Filter Bar */
+.user-controls {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    flex: 0 1 450px;
+    min-width: 300px;
+    max-width: 600px;
+    position: relative;
+}
+
+.search-input input {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) + 24px);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+}
+
+.search-input input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(54, 64, 105, 0.2);
+}
+
+.search-input i {
+    position: absolute;
+    left: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.filter-group {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.filter-select {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-width: 120px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-3xl);
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+.empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-lg);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    min-width: 400px;
+    max-width: 500px;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--space-xs);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+    margin-top: var(--space-lg);
+}
+
+/* Button Styles */
+.rc-btn.add-user-btn {
+    padding: 12px 32px !important;
+    min-width: 140px !important;
+    height: auto !important;
+    min-height: auto !important;
+    line-height: 1.3 !important;
+    font-size: 15px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.rc-btn.add-user-btn i {
+    font-size: 16px !important;
+}
+
+/* Role Assignment Styles */
+.role-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    transition: all 0.2s ease;
+}
+
+.role-item:hover {
+    border-color: var(--primary-300);
+    background: var(--surface-2);
+}
+
+.role-item-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.role-item-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.role-item-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.role-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-xs);
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.role-badge.system {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-400);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.role-badge.custom {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.role-expiry {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.role-actions {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.empty-roles {
+    text-align: center;
+    padding: var(--space-xl);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .users-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        min-width: auto;
+    }
+    
+    .filter-group {
+        justify-content: space-between;
+    }
+}
+    </style>
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item rc-active">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security/roles" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Roles
+                            </a>
+                            <a href="/security/audit" class="rc-dropdown-item">
+                                <i class="bi bi-list-check"></i> Security Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="user-management">
+        <div class="rc-container">
+            <!-- Header Section -->
+            <div class="user-header fade-in">
+                <div class="user-header-content">
+                    <div class="user-header-info">
+                        <h1>
+                            <i class="bi bi-people-fill"></i>
+                            User Management
+                        </h1>
+                        <p>Manage system users, permissions, and access control</p>
+                    </div>
+                    <div class="user-stats">
+                        <div class="user-stat">
+                            <span class="user-stat-number" id="totalUsers">{{len .users}}</span>
+                            <span class="user-stat-label">Total Users</span>
+                        </div>
+                        <div class="user-stat">
+                            <span class="user-stat-number" id="activeUsers">0</span>
+                            <span class="user-stat-label">Active</span>
+                        </div>
+                        <div class="user-stat">
+                            <span class="user-stat-number" id="onlineUsers">0</span>
+                            <span class="user-stat-label">Online</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="user-controls fade-in">
+                <div class="search-input">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="userSearch" placeholder="Search users by name, username, or email...">
+                </div>
+                <div class="filter-group">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <select id="roleFilter" class="filter-select">
+                        <option value="">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="user">User</option>
+                    </select>
+                    <button class="rc-btn rc-btn-primary add-user-btn" onclick="openCreateUserModal()">
+                        <i class="bi bi-plus-circle"></i> Add User
+                    </button>
+                </div>
+            </div>
+
+            <!-- Users Grid -->
+            {{if .users}}
+            <div class="users-grid fade-in" id="usersGrid">
+                {{range .users}}
+                <div class="user-card" data-user-status="{{if .IsActive}}active{{else}}inactive{{end}}" data-user-role="user" data-user-id="{{.UserID}}">
+                    <div class="user-avatar">
+                        {{$firstName := .FirstName}}
+                        {{$lastName := .LastName}}
+                        {{$username := .Username}}
+                        {{if and $firstName $lastName}}
+                            {{slice $firstName 0 1}}{{slice $lastName 0 1}}
+                        {{else if $firstName}}
+                            {{slice $firstName 0 2}}
+                        {{else if $lastName}}
+                            {{slice $lastName 0 2}}
+                        {{else if $username}}
+                            {{slice $username 0 2}}
+                        {{else}}
+                            <i class="bi bi-person"></i>
+                        {{end}}
+                    </div>
+                    <div class="user-info">
+                        <h3>{{.FirstName}} {{.LastName}}</h3>
+                        <div class="user-username">@{{.Username}}</div>
+                        <div class="user-meta">
+                            <div class="user-meta-item">
+                                <i class="bi bi-envelope"></i>
+                                <span>{{.Email}}</span>
+                            </div>
+                            <div class="user-meta-item">
+                                <i class="bi bi-calendar-plus"></i>
+                                <span>Created {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+                            </div>
+                            <div class="user-meta-item">
+                                <i class="bi bi-clock"></i>
+                                {{if .LastLogin}}
+                                    <span>Last login {{.LastLogin.Format "Jan 2, 2006"}}</span>
+                                {{else}}
+                                    <span>Never logged in</span>
+                                {{end}}
+                            </div>
+                            <div class="user-meta-item">
+                                <i class="bi bi-shield"></i>
+                                {{if .IsActive}}
+                                    <span class="status-badge active">
+                                        <i class="bi bi-check-circle"></i> Active
+                                    </span>
+                                {{else}}
+                                    <span class="status-badge inactive">
+                                        <i class="bi bi-x-circle"></i> Inactive
+                                    </span>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="openViewUserModal({{.UserID}})" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="openEditUserModal({{.UserID}})" title="Edit User">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="manageUserRoles({{.UserID}}, '{{.Username}}')" title="Manage Roles">
+                            <i class="bi bi-person-badge"></i>
+                        </button>
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="resetPassword({{.UserID}}, '{{.Username}}')" title="Reset Password">
+                            <i class="bi bi-key"></i>
+                        </button>
+                        {{if .IsActive}}
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="toggleUserStatus({{.UserID}}, '{{.Username}}', true)" title="Block User">
+                            <i class="bi bi-person-x"></i>
+                        </button>
+                        {{else}}
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="toggleUserStatus({{.UserID}}, '{{.Username}}', false)" title="Activate User">
+                            <i class="bi bi-person-check"></i>
+                        </button>
+                        {{end}}
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="deleteUser({{.UserID}}, '{{.Username}}')" title="Delete User">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <!-- Empty State -->
+            <div class="empty-state fade-in">
+                <i class="bi bi-people"></i>
+                <h3>No Users Found</h3>
+                <p>Get started by creating your first user account.</p>
+                <button class="rc-btn rc-btn-primary add-user-btn" onclick="openCreateUserModal()">
+                    <i class="bi bi-plus-circle"></i> Create First User
+                </button>
+            </div>
+            {{end}}
+        </div>
+    </main>
+
+    <!-- User Create/Edit Modal -->
+    <div class="modal" id="userModal">
+        <div class="modal-content" style="min-width: 600px; max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Create User</h3>
+                <button class="modal-close" onclick="closeUserModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <form id="userForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Username</label>
+                        <input type="text" id="username" name="username" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Email</label>
+                        <input type="email" id="email" name="email" required placeholder="user@example.com" style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);" id="passwordSection">
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Password</label>
+                        <input type="password" id="password" name="password" style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Confirm Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                </div>
+                <div style="margin-bottom: var(--space-lg);">
+                    <label style="display: flex; align-items: center; gap: var(--space-sm); cursor: pointer;">
+                        <input type="checkbox" id="isActive" name="isActive" checked style="width: 18px; height: 18px;">
+                        <span style="font-weight: 500; color: var(--text-secondary);">Account is active</span>
+                    </label>
+                </div>
+            </form>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeUserModal()">Cancel</button>
+                <button class="rc-btn rc-btn-primary" id="userSubmitBtn" onclick="submitUser()">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Details View Modal -->
+    <div class="modal" id="userDetailsModal">
+        <div class="modal-content" style="min-width: 600px; max-width: 700px;">
+            <div class="modal-header">
+                <h3>User Details</h3>
+                <button class="modal-close" onclick="closeUserDetailsModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="userDetailsContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeUserDetailsModal()">Close</button>
+                <button class="rc-btn rc-btn-primary" id="editFromDetailsBtn" onclick="editFromDetails()">
+                    <i class="bi bi-pencil"></i> Edit User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Role Assignment Modal -->
+    <div class="modal" id="userRoleModal">
+        <div class="modal-content" style="min-width: 700px; max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="userRoleModalTitle">Manage User Roles</h3>
+                <button class="modal-close" onclick="closeUserRoleModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div style="margin-bottom: var(--space-lg);">
+                <div style="background: var(--surface-3); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+                    <div style="display: flex; align-items: center; gap: var(--space-md);">
+                        <div class="user-avatar" style="width: 40px; height: 40px; font-size: 1rem;">
+                            <span id="modalUserAvatar"></span>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; color: var(--text-primary);" id="modalUserName"></h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-family: var(--font-mono);" id="modalUserUsername"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Roles Section -->
+                <div style="margin-bottom: var(--space-lg);">
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-person-badge"></i> Current Roles
+                    </h4>
+                    <div id="currentRolesList" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <!-- Current roles will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Available Roles Section -->
+                <div>
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-plus-circle"></i> Assign New Roles
+                    </h4>
+                    <div id="availableRolesList" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <!-- Available roles will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeUserRoleModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Confirm Action</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="modalMessage">Are you sure you want to perform this action?</div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="rc-btn rc-btn-outline" style="--button-color: var(--error);" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    <script>
+// User Management JavaScript
+class UserManagement {
+    constructor() {
+        this.users = [];
+        this.filteredUsers = [];
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadUsers();
+        this.updateStats();
+    }
+
+    setupEventListeners() {
+        // Search functionality
+        const searchInput = document.getElementById('userSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.filterUsers());
+        }
+
+        // Filter functionality
+        const statusFilter = document.getElementById('statusFilter');
+        const roleFilter = document.getElementById('roleFilter');
+        
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => this.filterUsers());
+        }
+        
+        if (roleFilter) {
+            roleFilter.addEventListener('change', () => this.filterUsers());
+        }
+    }
+
+    loadUsers() {
+        // Get users from the template data
+        const userCards = document.querySelectorAll('.user-card');
+        this.users = Array.from(userCards).map(card => ({
+            element: card,
+            status: card.dataset.userStatus,
+            role: card.dataset.userRole,
+            text: card.textContent.toLowerCase()
+        }));
+        this.filteredUsers = [...this.users];
+    }
+
+    filterUsers() {
+        const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
+        const statusFilter = document.getElementById('statusFilter')?.value || '';
+        const roleFilter = document.getElementById('roleFilter')?.value || '';
+
+        this.filteredUsers = this.users.filter(user => {
+            const matchesSearch = user.text.includes(searchTerm);
+            const matchesStatus = !statusFilter || user.status === statusFilter;
+            const matchesRole = !roleFilter || user.role === roleFilter;
+            
+            return matchesSearch && matchesStatus && matchesRole;
+        });
+
+        this.renderFilteredUsers();
+        this.updateStats();
+    }
+
+    renderFilteredUsers() {
+        this.users.forEach(user => {
+            if (this.filteredUsers.includes(user)) {
+                user.element.style.display = 'block';
+                user.element.style.animation = 'fadeIn 0.3s ease-out';
+            } else {
+                user.element.style.display = 'none';
+            }
+        });
+    }
+
+    updateStats() {
+        const totalUsers = this.users.length;
+        const activeUsers = this.users.filter(user => user.status === 'active').length;
+        const onlineUsers = Math.floor(Math.random() * activeUsers); // Simulated online count
+
+        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('activeUsers').textContent = activeUsers;
+        document.getElementById('onlineUsers').textContent = onlineUsers;
+    }
+}
+
+// Modal functionality
+function showModal(title, message, confirmCallback) {
+    const modal = document.getElementById('confirmModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const confirmBtn = document.getElementById('confirmBtn');
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    
+    // Remove old event listeners
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    // Add new event listener
+    newConfirmBtn.addEventListener('click', () => {
+        confirmCallback();
+        closeModal();
+    });
+
+    modal.classList.add('active');
+}
+
+function closeModal() {
+    const modal = document.getElementById('confirmModal');
+    modal.classList.remove('active');
+}
+
+// User actions
+function deleteUser(userId, username) {
+    showModal(
+        'Delete User',
+        `Are you sure you want to delete user "${username}"? This action cannot be undone.`,
+        () => {
+            fetch(`/user-management/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    showSuccessNotification('User deleted successfully');
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the user');
+            });
+        }
+    );
+}
+
+function resetPassword(userId, username) {
+    // Prompt for new password
+    const password = prompt(`Enter new password for "${username}" (minimum 6 characters):`);
+    if (!password) return;
+    
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters long');
+        return;
+    }
+    
+    showModal(
+        'Reset Password',
+        `Set new password for user "${username}"?`,
+        () => {
+            fetch(`/security/api/admin/users/${userId}/password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    showSuccessNotification('Password updated successfully');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the password');
+            });
+        }
+    );
+}
+
+function toggleUserStatus(userId, username, currentStatus) {
+    const newStatus = !currentStatus;
+    const action = newStatus ? 'activate' : 'block';
+    
+    showModal(
+        `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+        `Are you sure you want to ${action} user "${username}"?`,
+        () => {
+            fetch(`/security/api/admin/users/${userId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ isActive: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    showSuccessNotification(`User ${action}d successfully`);
+                    setTimeout(() => location.reload(), 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`An error occurred while ${action}ing the user`);
+            });
+        }
+    );
+}
+
+// User Modal Functions
+let currentEditUserId = null;
+
+function openCreateUserModal() {
+    currentEditUserId = null;
+    document.getElementById('userModalTitle').textContent = 'Create User';
+    document.getElementById('userSubmitBtn').textContent = 'Create User';
+    document.getElementById('userForm').reset();
+    document.getElementById('isActive').checked = true;
+    document.getElementById('passwordSection').style.display = 'grid';
+    document.getElementById('password').required = true;
+    document.getElementById('confirmPassword').required = true;
+    document.getElementById('userModal').classList.add('active');
+}
+
+function openEditUserModal(userId) {
+    currentEditUserId = userId;
+    document.getElementById('userModalTitle').textContent = 'Edit User';
+    document.getElementById('userSubmitBtn').textContent = 'Update User';
+    document.getElementById('passwordSection').style.display = 'none';
+    document.getElementById('password').required = false;
+    document.getElementById('confirmPassword').required = false;
+    
+    // Find user data from the DOM
+    const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+    if (userCard) {
+        const userData = extractUserDataFromCard(userCard);
+        document.getElementById('firstName').value = userData.firstName || '';
+        document.getElementById('lastName').value = userData.lastName || '';
+        document.getElementById('username').value = userData.username || '';
+        document.getElementById('email').value = userData.email || '';
+        document.getElementById('isActive').checked = userData.isActive;
+    }
+    
+    document.getElementById('userModal').classList.add('active');
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').classList.remove('active');
+    document.getElementById('userForm').reset();
+    currentEditUserId = null;
+}
+
+function submitUser() {
+    const form = document.getElementById('userForm');
+    const formData = new FormData(form);
+    
+    // Validate email format
+    const email = formData.get('email');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address (e.g., user@example.com)');
+        return;
+    }
+    
+    // Validate password fields for new users
+    if (!currentEditUserId) {
+        const password = formData.get('password');
+        const confirmPassword = formData.get('confirmPassword');
+        
+        if (!password || password.length < 6) {
+            alert('Password must be at least 6 characters long');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+    }
+    
+    // Create form data with correct field names for backend
+    const submitData = new FormData();
+    submitData.append('first_name', formData.get('firstName') || '');
+    submitData.append('last_name', formData.get('lastName') || '');
+    submitData.append('username', formData.get('username'));
+    submitData.append('email', formData.get('email'));
+    submitData.append('is_active', formData.get('isActive') === 'on' ? 'on' : '');
+    
+    if (!currentEditUserId) {
+        submitData.append('password', formData.get('password'));
+    }
+    
+    // Debug: Log the form data being sent
+    console.log('Sending form data:');
+    for (let [key, value] of submitData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    const url = currentEditUserId ? `/user-management/${currentEditUserId}` : '/users';
+    const method = currentEditUserId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        body: submitData
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        if (response.status === 302 || response.status === 303) {
+            // Redirect response - user was created successfully
+            showSuccessNotification(currentEditUserId ? 'User updated successfully' : 'User created successfully');
+            closeUserModal();
+            setTimeout(() => location.reload(), 1000);
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Try to parse as JSON, but handle non-JSON responses
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            return response.text().then(text => {
+                console.log('Non-JSON response:', text);
+                // If it's a successful response but not JSON, treat as success
+                if (response.ok) {
+                    showSuccessNotification(currentEditUserId ? 'User updated successfully' : 'User created successfully');
+                    closeUserModal();
+                    setTimeout(() => location.reload(), 1000);
+                }
+                return null;
+            });
+        }
+    })
+    .then(data => {
+        if (data && data.error) {
+            alert('Error: ' + data.error);
+        } else if (data) {
+            showSuccessNotification(currentEditUserId ? 'User updated successfully' : 'User created successfully');
+            closeUserModal();
+            setTimeout(() => location.reload(), 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Full error details:', error);
+        alert('An error occurred while saving the user: ' + error.message);
+    });
+}
+
+function openViewUserModal(userId) {
+    fetch(`/user-management/${userId}/view`)
+    .then(response => response.json())
+    .then(user => {
+        if (user.error) {
+            alert('Error: ' + user.error);
+            return;
+        }
+        
+        const content = `
+            <div style="background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%); padding: var(--space-lg); color: white; border-radius: var(--radius-lg) var(--radius-lg) 0 0; margin: calc(var(--space-lg) * -1) calc(var(--space-lg) * -1) var(--space-lg) calc(var(--space-lg) * -1);">
+                <div style="display: flex; align-items: center; gap: var(--space-md);">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-500), var(--accent-electric)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.5rem;">
+                        ${user.firstName ? user.firstName.charAt(0) : ''}${user.lastName ? user.lastName.charAt(0) : ''}
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700;">${user.firstName} ${user.lastName}</h3>
+                        <p style="margin: 0; opacity: 0.9; font-family: var(--font-mono);">@${user.username}</p>
+                    </div>
+                    <div style="margin-left: auto;">
+                        ${user.isActive ? 
+                            '<span style="background: rgba(34, 197, 94, 0.2); color: white; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600;"><i class="bi bi-check-circle"></i> Active</span>' :
+                            '<span style="background: rgba(107, 114, 128, 0.2); color: rgba(255,255,255,0.7); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600;"><i class="bi bi-x-circle"></i> Inactive</span>'
+                        }
+                    </div>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl); margin-top: var(--space-lg);">
+                <div>
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);"><i class="bi bi-person"></i> Personal Information</h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0; border-bottom: 1px solid var(--surface-3);">
+                            <span style="color: var(--text-secondary);">User ID:</span>
+                            <span style="font-family: var(--font-mono); color: var(--text-primary);">${user.userID}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0; border-bottom: 1px solid var(--surface-3);">
+                            <span style="color: var(--text-secondary);">Email:</span>
+                            <span style="color: var(--text-primary);">${user.email}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0;">
+                            <span style="color: var(--text-secondary);">Full Name:</span>
+                            <span style="color: var(--text-primary);">${user.firstName} ${user.lastName}</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);"><i class="bi bi-gear"></i> System Information</h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0; border-bottom: 1px solid var(--surface-3);">
+                            <span style="color: var(--text-secondary);">Created:</span>
+                            <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">${new Date(user.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0; border-bottom: 1px solid var(--surface-3);">
+                            <span style="color: var(--text-secondary);">Updated:</span>
+                            <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">${new Date(user.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0;">
+                            <span style="color: var(--text-secondary);">Last Login:</span>
+                            <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">
+                                ${user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '<span style="color: var(--text-muted); font-style: italic;">Never</span>'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('userDetailsContent').innerHTML = content;
+        document.getElementById('editFromDetailsBtn').onclick = () => {
+            closeUserDetailsModal();
+            openEditUserModal(userId);
+        };
+        document.getElementById('userDetailsModal').classList.add('active');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while loading user details');
+    });
+}
+
+function closeUserDetailsModal() {
+    document.getElementById('userDetailsModal').classList.remove('active');
+}
+
+function editFromDetails() {
+    closeUserDetailsModal();
+    if (currentEditUserId) {
+        openEditUserModal(currentEditUserId);
+    }
+}
+
+function extractUserDataFromCard(userCard) {
+    const nameElement = userCard.querySelector('h3');
+    const usernameElement = userCard.querySelector('.user-username');
+    const emailElement = userCard.querySelector('[href^="mailto:"], .user-meta-item i.bi-envelope + span');
+    const statusElement = userCard.querySelector('.status-badge');
+    
+    const fullName = nameElement ? nameElement.textContent.trim() : '';
+    const nameParts = fullName.split(' ');
+    
+    return {
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        username: usernameElement ? usernameElement.textContent.replace('@', '').trim() : '',
+        email: emailElement ? emailElement.textContent.trim() : '',
+        isActive: statusElement ? statusElement.classList.contains('active') : false
+    };
+}
+
+// Success notification
+function showSuccessNotification(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--success);
+        color: white;
+        padding: var(--space-md) var(--space-lg);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        z-index: 1001;
+        animation: slideInRight 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    `;
+    notification.innerHTML = `
+        <i class="bi bi-check-circle"></i>
+        ${message}
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// User Role Management
+let currentUserRoleId = null;
+let userRoles = [];
+let availableRoles = [];
+
+function manageUserRoles(userId, username) {
+    currentUserRoleId = userId;
+    
+    // Update modal title and user info
+    document.getElementById('userRoleModalTitle').textContent = `Manage Roles - ${username}`;
+    
+    // Find user data from DOM
+    const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+    if (userCard) {
+        const userData = extractUserDataFromCard(userCard);
+        const firstName = userData.firstName || '';
+        const lastName = userData.lastName || '';
+        const avatar = firstName.charAt(0) + lastName.charAt(0) || username.charAt(0).toUpperCase();
+        
+        document.getElementById('modalUserAvatar').textContent = avatar;
+        document.getElementById('modalUserName').textContent = `${firstName} ${lastName}`.trim() || username;
+        document.getElementById('modalUserUsername').textContent = `@${username}`;
+    }
+    
+    // Load user roles and available roles
+    loadUserRoles(userId);
+    loadAvailableRoles(userId);
+    
+    document.getElementById('userRoleModal').classList.add('active');
+}
+
+async function loadUserRoles(userId) {
+    try {
+        const response = await fetch(`/security/api/users/${userId}/roles`);
+        if (!response.ok) {
+            throw new Error('Failed to load user roles');
+        }
+        
+        const data = await response.json();
+        userRoles = data.userRoles || [];
+        renderCurrentRoles();
+    } catch (error) {
+        console.error('Error loading user roles:', error);
+        document.getElementById('currentRolesList').innerHTML = '<div class="empty-roles">Failed to load user roles</div>';
+    }
+}
+
+async function loadAvailableRoles(userId) {
+    try {
+        const response = await fetch('/api/security/roles');
+        if (!response.ok) {
+            throw new Error('Failed to load available roles');
+        }
+        
+        const data = await response.json();
+        const allRoles = data.roles || [];
+        
+        // Filter out roles that user already has
+        const assignedRoleIds = userRoles.map(ur => ur.roleID || ur.role?.roleID);
+        availableRoles = allRoles.filter(role => !assignedRoleIds.includes(role.roleID));
+        
+        renderAvailableRoles();
+    } catch (error) {
+        console.error('Error loading available roles:', error);
+        document.getElementById('availableRolesList').innerHTML = '<div class="empty-roles">Failed to load available roles</div>';
+    }
+}
+
+function renderCurrentRoles() {
+    const container = document.getElementById('currentRolesList');
+    
+    if (!userRoles || userRoles.length === 0) {
+        container.innerHTML = '<div class="empty-roles">No roles assigned to this user</div>';
+        return;
+    }
+    
+    container.innerHTML = userRoles.map(userRole => {
+        const role = userRole.role || userRole;
+        const expiryText = userRole.expiresAt ? 
+            `<span class="role-expiry">Expires: ${new Date(userRole.expiresAt).toLocaleDateString()}</span>` : 
+            '<span class="role-expiry">No expiry</span>';
+        
+        return `
+            <div class="role-item">
+                <div class="role-item-info">
+                    <div class="role-item-name">${role.displayName || role.name}</div>
+                    <div class="role-item-description">${role.description || 'No description available'}</div>
+                    <div class="role-item-meta">
+                        <span class="role-badge ${role.isSystemRole ? 'system' : 'custom'}">
+                            <i class="bi bi-${role.isSystemRole ? 'shield-lock' : 'star'}"></i>
+                            ${role.isSystemRole ? 'System' : 'Custom'}
+                        </span>
+                        ${expiryText}
+                    </div>
+                </div>
+                <div class="role-actions">
+                    ${!role.isSystemRole ? `
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="setRoleExpiry(${role.roleID})" title="Set Expiry">
+                            <i class="bi bi-calendar-plus"></i>
+                        </button>
+                    ` : ''}
+                    <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="revokeUserRole(${role.roleID}, '${role.displayName || role.name}')" title="Revoke Role">
+                        <i class="bi bi-dash-circle"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAvailableRoles() {
+    const container = document.getElementById('availableRolesList');
+    
+    if (!availableRoles || availableRoles.length === 0) {
+        container.innerHTML = '<div class="empty-roles">No additional roles available to assign</div>';
+        return;
+    }
+    
+    container.innerHTML = availableRoles.map(role => {
+        let permissionCount = 0;
+        try {
+            const permissions = typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions;
+            permissionCount = Array.isArray(permissions) ? permissions.length : 0;
+        } catch (e) {
+            permissionCount = 0;
+        }
+        
+        return `
+            <div class="role-item">
+                <div class="role-item-info">
+                    <div class="role-item-name">${role.displayName || role.name}</div>
+                    <div class="role-item-description">${role.description || 'No description available'}</div>
+                    <div class="role-item-meta">
+                        <span class="role-badge ${role.isSystemRole ? 'system' : 'custom'}">
+                            <i class="bi bi-${role.isSystemRole ? 'shield-lock' : 'star'}"></i>
+                            ${role.isSystemRole ? 'System' : 'Custom'}
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">
+                            <i class="bi bi-key"></i> ${permissionCount} permissions
+                        </span>
+                    </div>
+                </div>
+                <div class="role-actions">
+                    <button class="rc-btn rc-btn-sm rc-btn-primary" onclick="assignUserRole(${role.roleID}, '${role.displayName || role.name}')" title="Assign Role">
+                        <i class="bi bi-plus-circle"></i> Assign
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function assignUserRole(roleId, roleName) {
+    try {
+        const response = await fetch(`/security/api/users/${currentUserRoleId}/roles`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                roleId: roleId
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to assign role');
+        }
+        
+        showSuccessNotification(`Role "${roleName}" assigned successfully`);
+        
+        // Refresh the role lists
+        await loadUserRoles(currentUserRoleId);
+        await loadAvailableRoles(currentUserRoleId);
+        
+    } catch (error) {
+        console.error('Error assigning role:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+function revokeUserRole(roleId, roleName) {
+    showModal(
+        'Revoke Role',
+        `Are you sure you want to revoke the "${roleName}" role from this user?`,
+        async () => {
+            try {
+                const response = await fetch(`/security/api/users/${currentUserRoleId}/roles/${roleId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to revoke role');
+                }
+                
+                showSuccessNotification(`Role "${roleName}" revoked successfully`);
+                
+                // Refresh the role lists
+                await loadUserRoles(currentUserRoleId);
+                await loadAvailableRoles(currentUserRoleId);
+                
+            } catch (error) {
+                console.error('Error revoking role:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    );
+}
+
+function setRoleExpiry(roleId) {
+    // This could be expanded to show a date picker modal
+    const expiryDate = prompt('Enter expiry date (YYYY-MM-DD) or leave empty for no expiry:');
+    
+    if (expiryDate === null) return; // User cancelled
+    
+    const expiryValue = expiryDate.trim() === '' ? null : expiryDate + 'T23:59:59Z';
+    
+    // Here you would make an API call to update the role expiry
+    console.log(`Setting expiry for role ${roleId} to ${expiryValue}`);
+    showSuccessNotification('Role expiry updated (feature coming soon)');
+}
+
+function closeUserRoleModal() {
+    document.getElementById('userRoleModal').classList.remove('active');
+    currentUserRoleId = null;
+    userRoles = [];
+    availableRoles = [];
+}
+
+// Initialize user management
+document.addEventListener('DOMContentLoaded', () => {
+    new UserManagement();
+});
+
+// Close modal when clicking outside or pressing Escape
+document.addEventListener('click', (e) => {
+    const confirmModal = document.getElementById('confirmModal');
+    const userModal = document.getElementById('userModal');
+    const userDetailsModal = document.getElementById('userDetailsModal');
+    const userRoleModal = document.getElementById('userRoleModal');
+    
+    if (e.target === confirmModal) {
+        closeModal();
+    }
+    if (e.target === userModal) {
+        closeUserModal();
+    }
+    if (e.target === userDetailsModal) {
+        closeUserDetailsModal();
+    }
+    if (e.target === userRoleModal) {
+        closeUserRoleModal();
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const confirmModal = document.getElementById('confirmModal');
+        const userModal = document.getElementById('userModal');
+        const userDetailsModal = document.getElementById('userDetailsModal');
+        const userRoleModal = document.getElementById('userRoleModal');
+        
+        if (confirmModal.classList.contains('active')) {
+            closeModal();
+        }
+        if (userModal.classList.contains('active')) {
+            closeUserModal();
+        }
+        if (userDetailsModal.classList.contains('active')) {
+            closeUserDetailsModal();
+        }
+        if (userRoleModal.classList.contains('active')) {
+            closeUserRoleModal();
+        }
+    }
+});
+    </script>
+</body>
+</html>

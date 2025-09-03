@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error {{.error_code}} - RentalCore</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        
+        .error-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            color: #ef4444;
+            margin-bottom: 1rem;
+        }
+        
+        .error-code {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+        
+        .error-message {
+            font-size: 1.2rem;
+            color: #cbd5e1;
+            margin-bottom: 1rem;
+        }
+        
+        .error-details {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-align: left;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+        }
+        
+        .btn-secondary:hover {
+            background: #475569;
+            color: #f8fafc;
+        }
+        
+        .timestamp {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            
+            <div class="error-code">
+                Error {{.error_code}}
+            </div>
+            
+            <div class="error-message">
+                {{.error_message}}
+            </div>
+            
+            {{if .error_details}}
+            <div class="error-details">
+                <strong>Technical Details:</strong><br>
+                {{.error_details}}
+            </div>
+            {{end}}
+            
+            <div class="error-actions">
+                <button onclick="history.back()" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Go Back
+                </button>
+                <a href="/" class="btn btn-primary">
+                    <i class="bi bi-house"></i> Home
+                </a>
+                <button onclick="location.reload()" class="btn btn-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Retry
+                </button>
+            </div>
+            
+            {{if .request_id}}
+            <div class="timestamp">
+                Request ID: {{.request_id}}<br>
+                Time: {{.timestamp}}
+            </div>
+            {{end}}
+        </div>
+    </div>
+    
+    <script>
+        // Auto-reload after 30 seconds for temporary errors
+        {{if eq .error_code 500}}
+        setTimeout(() => {
+            if (confirm('Would you like to automatically retry loading the page?')) {
+                location.reload();
+            }
+        }, 30000);
+        {{end}}
+    </script>
+</body>
+</html>

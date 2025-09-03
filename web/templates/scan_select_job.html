@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container" style="padding-top: var(--space-xl); padding-bottom: var(--space-xl);">
+        
+        <style>
+            /* Clean scan page styles using RentalCore design tokens */
+            .scan-header {
+                background: var(--surface-1);
+                border: 1px solid var(--surface-3);
+                border-radius: var(--radius-lg);
+                padding: var(--space-lg);
+                margin-bottom: var(--space-xl);
+            }
+            
+            .scan-stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: var(--space-lg);
+                margin-bottom: var(--space-xl);
+            }
+            
+            .scan-stat-card {
+                background: var(--surface-1);
+                border: 1px solid var(--surface-3);
+                border-radius: var(--radius-lg);
+                padding: var(--space-lg);
+                text-align: center;
+                transition: var(--transition-normal);
+            }
+            
+            .scan-stat-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+                border-color: var(--accent-electric);
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin-bottom: var(--space-xs);
+            }
+            
+            .stat-label {
+                color: var(--text-secondary);
+                font-size: 0.875rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .jobs-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                gap: var(--space-lg);
+                margin-bottom: var(--space-xl);
+            }
+            
+            .job-card {
+                background: var(--surface-1);
+                border: 1px solid var(--surface-3);
+                border-radius: var(--radius-lg);
+                transition: var(--transition-normal);
+                cursor: pointer;
+                overflow: hidden;
+            }
+            
+            .job-card:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-xl);
+                border-color: var(--accent-electric);
+            }
+            
+            .job-card-header {
+                background: linear-gradient(90deg, var(--accent-electric), var(--accent-cyan));
+                color: white;
+                padding: var(--space-md) var(--space-lg);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .job-id {
+                font-weight: 700;
+                font-size: 1.125rem;
+            }
+            
+            .job-status {
+                padding: var(--space-xs) var(--space-sm);
+                border-radius: var(--radius-full);
+                font-size: 0.75rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                min-width: 80px;
+                text-align: center;
+            }
+            
+            /* Status-specific colors for better visibility */
+            .job-status.status-open {
+                background: #f39c12;
+                color: white;
+                border-color: #e67e22;
+            }
+            
+            .job-status.status-in-progress,
+            .job-status.status-in.progress {
+                background: #3498db;
+                color: white;
+                border-color: #2980b9;
+            }
+            
+            .job-status.status-completed {
+                background: #27ae60;
+                color: white;
+                border-color: #229954;
+            }
+            
+            .job-status.status-paid {
+                background: #16a085;
+                color: white;
+                border-color: #138d75;
+            }
+            
+            .job-status.status-cancelled {
+                background: #e74c3c;
+                color: white;
+                border-color: #c0392b;
+            }
+            
+            .job-status.status-on-hold {
+                background: #95a5a6;
+                color: white;
+                border-color: #7f8c8d;
+            }
+            
+            /* Default fallback for any other status */
+            .job-status:not([class*="status-"]) {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+            
+            .job-card-body {
+                padding: var(--space-lg);
+            }
+            
+            .job-title {
+                font-size: 1.25rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: var(--space-md);
+            }
+            
+            .job-info {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-sm);
+                margin-bottom: var(--space-lg);
+            }
+            
+            .job-info-item {
+                display: flex;
+                align-items: center;
+                gap: var(--space-sm);
+                color: var(--text-secondary);
+                font-size: 0.875rem;
+            }
+            
+            .job-info-item i {
+                color: var(--accent-electric);
+                width: 16px;
+            }
+            
+            .scan-button {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: var(--space-sm);
+                width: 100%;
+                background: var(--surface-2);
+                color: var(--text-primary);
+                border: 2px solid var(--accent-electric);
+                padding: var(--space-md);
+                border-radius: var(--radius-md);
+                font-weight: 600;
+                text-decoration: none;
+                transition: var(--transition-fast);
+                font-size: 0.95rem;
+            }
+            
+            .scan-button:hover {
+                background: var(--surface-3);
+                color: var(--text-primary);
+                border-color: var(--accent-cyan);
+                text-decoration: none;
+                transform: translateY(-1px);
+                box-shadow: var(--shadow-md);
+            }
+            
+            .empty-state {
+                background: var(--surface-1);
+                border: 2px dashed var(--surface-3);
+                border-radius: var(--radius-lg);
+                padding: var(--space-3xl);
+                text-align: center;
+                color: var(--text-secondary);
+            }
+            
+            .empty-icon {
+                font-size: 4rem;
+                color: var(--text-muted);
+                margin-bottom: var(--space-lg);
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .scan-stats {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+                
+                .jobs-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .scan-header {
+                    padding: var(--space-md);
+                }
+                
+                .job-card-body {
+                    padding: var(--space-md);
+                }
+            }
+        </style>
+
+        <!-- Page Header -->
+        <div class="scan-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-xs); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-qr-code-scan" style="color: var(--accent-electric);"></i> 
+                        Select Job for Scanning
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0;">Choose a job to start scanning devices</p>
+                </div>
+                <a href="/jobs" class="rc-btn rc-btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Jobs
+                </a>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="scan-stats">
+            <div class="scan-stat-card">
+                <div class="stat-number">
+                    {{if .jobs}}{{len .jobs}}{{else}}0{{end}}
+                </div>
+                <div class="stat-label">Active Jobs</div>
+            </div>
+            <div class="scan-stat-card">
+                <div class="stat-number">{{.totalDevices}}</div>
+                <div class="stat-label">Available Devices</div>
+            </div>
+            <div class="scan-stat-card">
+                <div class="stat-number">{{.assignedDevices}}</div>
+                <div class="stat-label">Assigned Devices</div>
+            </div>
+        </div>
+
+        <!-- Jobs List -->
+        {{if .jobs}}
+        <div class="jobs-grid">
+            {{range .jobs}}
+            <div class="job-card" onclick="window.location.href='/scan/{{.JobID}}'">
+                <div class="job-card-header">
+                    <div class="job-id">Job #{{.JobID}}</div>
+                    <div class="job-status status-{{.StatusName}}">{{.StatusName}}</div>
+                </div>
+                
+                <div class="job-card-body">
+                    <h3 class="job-title">{{.Description}}</h3>
+                    
+                    <div class="job-info">
+                        <div class="job-info-item">
+                            <i class="bi bi-person"></i>
+                            <strong>{{.CustomerName}}</strong>
+                        </div>
+                        
+                        {{if .StartDate}}
+                        <div class="job-info-item">
+                            <i class="bi bi-calendar"></i>
+                            {{.StartDate.Format "02.01.2006"}}
+                            {{if .EndDate}} - {{.EndDate.Format "02.01.2006"}}{{end}}
+                        </div>
+                        {{end}}
+                        
+                        <div class="job-info-item">
+                            <i class="bi bi-cpu"></i>
+                            {{.DeviceCount}} device(s) assigned
+                        </div>
+                        
+                        <div class="job-info-item">
+                            <i class="bi bi-currency-euro"></i>
+                            <strong>€{{printf "%.2f" .TotalRevenue}}</strong>
+                        </div>
+                    </div>
+                    
+                    <a href="/scan/{{.JobID}}" class="scan-button">
+                        <i class="bi bi-qr-code-scan"></i> Start Scanning
+                    </a>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="bi bi-briefcase"></i>
+            </div>
+            <h3 style="color: var(--text-primary); margin-bottom: var(--space-md);">No Active Jobs Found</h3>
+            <p style="margin-bottom: var(--space-lg);">Create a job first to start scanning devices.</p>
+            <a href="/jobs/new" class="rc-btn rc-btn-primary">
+                <i class="bi bi-plus-lg"></i> Create New Job
+            </a>
+        </div>
+        {{end}}
+    </main>
+
+    <!-- Footer -->
+    <footer class="rc-footer">
+        <div class="rc-container">
+            <div class="rc-footer-content">
+                <p>&copy; 2025 RentalCore. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

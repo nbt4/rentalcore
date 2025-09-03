@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/devices">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers">Customers</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Workflow
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/workflow/packages">Equipment Packages</a></li>
+                            <li><a class="dropdown-item" href="/workflow/bulk">Bulk Operations</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-tasks text-primary me-2"></i>Bulk Operations
+                </h1>
+                <p class="text-muted mb-0">Perform actions on multiple devices simultaneously</p>
+            </div>
+        </div>
+
+        <!-- Operation Tabs -->
+        <div class="row">
+            <div class="col">
+                <ul class="nav nav-tabs" id="operationTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="status-update-tab" data-bs-toggle="tab" data-bs-target="#status-update" type="button" role="tab">
+                            <i class="fas fa-edit me-2"></i>Update Status
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="assign-job-tab" data-bs-toggle="tab" data-bs-target="#assign-job" type="button" role="tab">
+                            <i class="fas fa-link me-2"></i>Assign to Job
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="generate-qr-tab" data-bs-toggle="tab" data-bs-target="#generate-qr" type="button" role="tab">
+                            <i class="fas fa-qrcode me-2"></i>Generate QR Codes
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tab-content" id="operationTabContent">
+            <!-- Status Update Tab -->
+            <div class="tab-pane fade show active" id="status-update" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Bulk Status Update</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="statusUpdateForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="deviceIdsStatus" class="form-label">Device IDs *</label>
+                                    <textarea class="form-control" id="deviceIdsStatus" name="deviceIds" rows="4" 
+                                              placeholder="Enter device IDs, one per line or comma-separated"></textarea>
+                                    <small class="text-muted">Example: DEV001, DEV002, DEV003</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="newStatus" class="form-label">New Status *</label>
+                                    <select class="form-select" id="newStatus" name="newStatus" required>
+                                        <option value="">Select Status</option>
+                                        <option value="free">Free</option>
+                                        <option value="assigned">Assigned</option>
+                                        <option value="maintenance">Maintenance</option>
+                                        <option value="checked out">Checked Out</option>
+                                    </select>
+                                    
+                                    <label for="statusNotes" class="form-label mt-3">Notes</label>
+                                    <textarea class="form-control" id="statusNotes" name="notes" rows="3" 
+                                              placeholder="Optional notes for this status change"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="scanDevicesForStatus()">
+                                    <i class="fas fa-camera me-2"></i>Scan Devices
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="updateDeviceStatus()">
+                                    <i class="fas fa-save me-2"></i>Update Status
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assign to Job Tab -->
+            <div class="tab-pane fade" id="assign-job" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Bulk Job Assignment</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="jobAssignForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="deviceIdsJob" class="form-label">Device IDs *</label>
+                                    <textarea class="form-control" id="deviceIdsJob" name="deviceIds" rows="4" 
+                                              placeholder="Enter device IDs, one per line or comma-separated"></textarea>
+                                    <small class="text-muted">Only available devices can be assigned</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="jobId" class="form-label">Job *</label>
+                                    <select class="form-select" id="jobId" name="jobId" required>
+                                        <option value="">Loading jobs...</option>
+                                    </select>
+                                    
+                                    <div class="mt-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Only active jobs are shown in the dropdown
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="scanDevicesForJob()">
+                                    <i class="fas fa-camera me-2"></i>Scan Devices
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="assignDevicesToJob()">
+                                    <i class="fas fa-link me-2"></i>Assign Devices
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generate QR Codes Tab -->
+            <div class="tab-pane fade" id="generate-qr" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Bulk QR Code Generation</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="qrGenerateForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="deviceIdsQR" class="form-label">Device IDs *</label>
+                                    <textarea class="form-control" id="deviceIdsQR" name="deviceIds" rows="4" 
+                                              placeholder="Enter device IDs, one per line or comma-separated"></textarea>
+                                    <small class="text-muted">QR codes will be generated for all valid device IDs</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="qrFormat" class="form-label">Output Format</label>
+                                    <select class="form-select" id="qrFormat" name="format">
+                                        <option value="pdf">PDF Document</option>
+                                        <option value="zip">ZIP Archive</option>
+                                    </select>
+                                    
+                                    <div class="mt-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeLabels" checked>
+                                            <label class="form-check-label" for="includeLabels">
+                                                Include device labels
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="printReady" checked>
+                                            <label class="form-check-label" for="printReady">
+                                                Print-ready format
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="scanDevicesForQR()">
+                                    <i class="fas fa-camera me-2"></i>Scan Devices
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="generateQRCodes()">
+                                    <i class="fas fa-download me-2"></i>Generate & Download
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="row mt-4" id="resultsSection" style="display: none;">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Operation Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContent">
+                            <!-- Results will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Scanner Modal -->
+    <div class="modal fade" id="scannerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Scan Devices</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <div id="scannerVideo" class="mb-3">
+                            <video id="video" width="100%" height="300" autoplay></video>
+                        </div>
+                        <div class="scanned-devices mb-3">
+                            <h6>Scanned Devices:</h6>
+                            <div id="scannedDevicesList" class="border rounded p-2 bg-light">
+                                <em class="text-muted">No devices scanned yet</em>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="stopScanner()">Stop Scanner</button>
+                    <button type="button" class="btn btn-primary" onclick="useScannedDevices()">Use Scanned Devices</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script>
+        let scannedDevices = [];
+        let currentScanTarget = null;
+        let videoStream = null;
+        
+        // Load jobs for assignment dropdown
+        fetch('/api/v1/jobs')
+        .then(response => response.json())
+        .then(data => {
+            const jobSelect = document.getElementById('jobId');
+            jobSelect.innerHTML = '<option value="">Select Job</option>';
+            
+            if (data.jobs) {
+                data.jobs.forEach(job => {
+                    const option = document.createElement('option');
+                    option.value = job.jobID;
+                    option.textContent = `Job #${job.jobID} - ${job.customer ? job.customer.companyname || 'Customer' : 'No Customer'}`;
+                    jobSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading jobs:', error));
+        
+        function parseDeviceIds(input) {
+            return input.split(/[,\n]/).map(id => id.trim()).filter(id => id.length > 0);
+        }
+        
+        function updateDeviceStatus() {
+            const deviceIds = parseDeviceIds(document.getElementById('deviceIdsStatus').value);
+            const newStatus = document.getElementById('newStatus').value;
+            const notes = document.getElementById('statusNotes').value;
+            
+            if (deviceIds.length === 0 || !newStatus) {
+                alert('Please provide device IDs and select a status');
+                return;
+            }
+            
+            fetch('/workflow/bulk/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    deviceIDs: deviceIds,
+                    newStatus: newStatus,
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResults(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update device statuses');
+            });
+        }
+        
+        function assignDevicesToJob() {
+            const deviceIds = parseDeviceIds(document.getElementById('deviceIdsJob').value);
+            const jobId = document.getElementById('jobId').value;
+            
+            if (deviceIds.length === 0 || !jobId) {
+                alert('Please provide device IDs and select a job');
+                return;
+            }
+            
+            fetch('/workflow/bulk/assign-job', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    deviceIDs: deviceIds,
+                    jobID: parseInt(jobId)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResults(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to assign devices to job');
+            });
+        }
+        
+        function generateQRCodes() {
+            const deviceIds = parseDeviceIds(document.getElementById('deviceIdsQR').value);
+            const format = document.getElementById('qrFormat').value;
+            
+            if (deviceIds.length === 0) {
+                alert('Please provide device IDs');
+                return;
+            }
+            
+            fetch('/workflow/bulk/generate-qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    deviceIds: deviceIds,
+                    format: format,
+                    labelFormat: document.getElementById('includeLabels').checked ? 'detailed' : 'simple',
+                    printReady: document.getElementById('printReady').checked
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Handle PDF download
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'device_labels.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        showResults({
+                            message: `QR codes generated for ${deviceIds.length} devices`,
+                            devices: deviceIds
+                        });
+                    });
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to generate QR codes');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate QR codes: ' + error.message);
+            });
+        }
+        
+        function showResults(data) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let content = `<div class="alert alert-${data.error ? 'danger' : 'success'}"><h6>${data.message}</h6></div>`;
+            
+            if (data.devicesUpdated) {
+                content += `<p><strong>Devices Updated:</strong> ${data.devicesUpdated}</p>`;
+            }
+            
+            if (data.devicesAssigned) {
+                content += `<p><strong>Devices Assigned:</strong> ${data.devicesAssigned}</p>`;
+            }
+            
+            if (data.devices) {
+                content += `<p><strong>Devices Processed:</strong> ${data.devices.length}</p>`;
+            }
+            
+            resultsContent.innerHTML = content;
+            resultsSection.style.display = 'block';
+            
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Scanner functions
+        function scanDevicesForStatus() {
+            currentScanTarget = 'status';
+            startScanner();
+        }
+        
+        function scanDevicesForJob() {
+            currentScanTarget = 'job';
+            startScanner();
+        }
+        
+        function scanDevicesForQR() {
+            currentScanTarget = 'qr';
+            startScanner();
+        }
+        
+        function startScanner() {
+            scannedDevices = [];
+            updateScannedDevicesList();
+            
+            const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
+            modal.show();
+            
+            // Start camera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                videoStream = stream;
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.play();
+                
+                // Start QR code detection
+                scanQRCode();
+            })
+            .catch(error => {
+                console.error('Error accessing camera:', error);
+                alert('Failed to access camera');
+            });
+        }
+        
+        function scanQRCode() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            function tick() {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (code && code.data) {
+                        const deviceId = code.data;
+                        if (!scannedDevices.includes(deviceId)) {
+                            scannedDevices.push(deviceId);
+                            updateScannedDevicesList();
+                        }
+                    }
+                }
+                
+                if (videoStream) {
+                    requestAnimationFrame(tick);
+                }
+            }
+            
+            tick();
+        }
+        
+        function updateScannedDevicesList() {
+            const list = document.getElementById('scannedDevicesList');
+            
+            if (scannedDevices.length === 0) {
+                list.innerHTML = '<em class="text-muted">No devices scanned yet</em>';
+            } else {
+                list.innerHTML = scannedDevices.map(deviceId => 
+                    `<span class="badge bg-primary me-1 mb-1">${deviceId}</span>`
+                ).join('');
+            }
+        }
+        
+        function stopScanner() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            bootstrap.Modal.getInstance(document.getElementById('scannerModal')).hide();
+        }
+        
+        function useScannedDevices() {
+            if (scannedDevices.length === 0) {
+                alert('No devices scanned');
+                return;
+            }
+            
+            let targetInput;
+            
+            switch (currentScanTarget) {
+                case 'status':
+                    targetInput = document.getElementById('deviceIdsStatus');
+                    break;
+                case 'job':
+                    targetInput = document.getElementById('deviceIdsJob');
+                    break;
+                case 'qr':
+                    targetInput = document.getElementById('deviceIdsQR');
+                    break;
+            }
+            
+            if (targetInput) {
+                targetInput.value = scannedDevices.join(', ');
+            }
+            
+            stopScanner();
+        }
+    </script>
+</body>
+</html>

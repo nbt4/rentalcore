@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security/roles" class="rc-dropdown-item">
+                                <i class="bi bi-person-badge"></i> Role Management
+                            </a>
+                            <a href="/security/audit" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">
+                    <i class="bi bi-building-gear"></i> Company Settings
+                </h1>
+                <p class="rc-text">Manage your company information and settings</p>
+            </div>
+        </div>
+
+        <!-- Company Settings Form -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-building"></i> Company Information
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                <!-- Success/Error Messages -->
+                {{if .error}}
+                <div class="rc-alert rc-alert-danger rc-mb-lg">{{.error}}</div>
+                {{end}}
+                {{if .success}}
+                <div class="rc-alert rc-alert-success rc-mb-lg">{{.success}}</div>
+                {{end}}
+                
+                <form method="POST" action="/settings/company" enctype="multipart/form-data">
+                    <div class="rc-grid rc-grid-2 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="company_name">Company Name</label>
+                            <input type="text" class="rc-input" id="company_name" name="company_name" value="{{if .company}}{{.company.CompanyName}}{{end}}" required>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="tax_number">Tax Number</label>
+                            <input type="text" class="rc-input" id="tax_number" name="tax_number" value="{{if and .company .company.TaxNumber}}{{.company.TaxNumber}}{{end}}">
+                        </div>
+                    </div>
+                    
+                    <div class="rc-grid rc-grid-2 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="email">Email</label>
+                            <input type="email" class="rc-input" id="email" name="email" value="{{if and .company .company.Email}}{{.company.Email}}{{end}}">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="phone">Phone</label>
+                            <input type="tel" class="rc-input" id="phone" name="phone" value="{{if and .company .company.Phone}}{{.company.Phone}}{{end}}">
+                        </div>
+                    </div>
+                    
+                    <div class="rc-form-group rc-mb-lg">
+                        <label class="rc-label" for="address_line1">Address Line 1</label>
+                        <input type="text" class="rc-input" id="address_line1" name="address_line1" value="{{if and .company .company.AddressLine1}}{{.company.AddressLine1}}{{end}}">
+                    </div>
+                    
+                    <div class="rc-form-group rc-mb-lg">
+                        <label class="rc-label" for="address_line2">Address Line 2</label>
+                        <input type="text" class="rc-input" id="address_line2" name="address_line2" value="{{if and .company .company.AddressLine2}}{{.company.AddressLine2}}{{end}}">
+                    </div>
+                    
+                    <div class="rc-grid rc-grid-3 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="city">City</label>
+                            <input type="text" class="rc-input" id="city" name="city" value="{{if and .company .company.City}}{{.company.City}}{{end}}">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="postal_code">Postal Code</label>
+                            <input type="text" class="rc-input" id="postal_code" name="postal_code" value="{{if and .company .company.PostalCode}}{{.company.PostalCode}}{{end}}">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label" for="country">Country</label>
+                            <input type="text" class="rc-input" id="country" name="country" value="{{if and .company .company.Country}}{{.company.Country}}{{end}}">
+                        </div>
+                    </div>
+                    
+                    <div class="rc-form-group rc-mb-lg">
+                        <label class="rc-label" for="logo">Company Logo</label>
+                        <input type="file" class="rc-input" id="logo" name="logo" accept="image/*">
+                        {{if and .company .company.LogoPath}}
+                        <div class="rc-mt-sm">
+                            <img src="{{.company.LogoPath}}" alt="Current Logo" style="max-height: 100px; border-radius: var(--radius-md);">
+                        </div>
+                        {{end}}
+                    </div>
+                    
+                    <div class="rc-flex rc-flex-end">
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Email Configuration -->
+        <div class="rc-card rc-mt-xl">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-envelope-gear"></i> Email Configuration
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                <div id="email-form-container">
+                    <form id="email-config-form">
+                        <div class="rc-grid rc-grid-2 rc-mb-lg">
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_host">SMTP Host</label>
+                                <input type="text" class="rc-input" id="smtp_host" name="smtp_host" placeholder="smtp.gmail.com" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_port">SMTP Port</label>
+                                <input type="number" class="rc-input" id="smtp_port" name="smtp_port" value="587" required>
+                            </div>
+                        </div>
+                        
+                        <div class="rc-grid rc-grid-2 rc-mb-lg">
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_username">SMTP Username</label>
+                                <input type="text" class="rc-input" id="smtp_username" name="smtp_username" placeholder="your-email@gmail.com" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_password">SMTP Password</label>
+                                <input type="password" class="rc-input" id="smtp_password" name="smtp_password" placeholder="Leave blank to keep current password">
+                            </div>
+                        </div>
+                        
+                        <div class="rc-grid rc-grid-2 rc-mb-lg">
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_from_email">From Email</label>
+                                <input type="email" class="rc-input" id="smtp_from_email" name="smtp_from_email" placeholder="noreply@yourcompany.com" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label" for="smtp_from_name">From Name</label>
+                                <input type="text" class="rc-input" id="smtp_from_name" name="smtp_from_name" placeholder="Your Company Name">
+                            </div>
+                        </div>
+                        
+                        <div class="rc-form-group rc-mb-lg">
+                            <label class="rc-label">
+                                <input type="checkbox" id="smtp_use_tls" name="smtp_use_tls" checked>
+                                Use TLS/SSL encryption
+                            </label>
+                        </div>
+                        
+                        <div class="rc-flex rc-flex-between">
+                            <button type="button" class="rc-btn rc-btn-secondary" id="test-email-btn">
+                                <i class="bi bi-envelope-check"></i> Test Email
+                            </button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Email Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Loading/Status Messages -->
+                <div id="email-status" class="rc-mt-lg" style="display: none;"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load existing email configuration
+        loadEmailConfig();
+        
+        // Handle email configuration form submission
+        document.getElementById('email-config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveEmailConfig();
+        });
+        
+        // Handle test email button
+        document.getElementById('test-email-btn').addEventListener('click', function() {
+            testEmailConnection();
+        });
+        
+        function loadEmailConfig() {
+            fetch('/api/settings/smtp')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.config) {
+                        document.getElementById('smtp_host').value = data.config.smtp_host || '';
+                        document.getElementById('smtp_port').value = data.config.smtp_port || 587;
+                        document.getElementById('smtp_username').value = data.config.smtp_username || '';
+                        document.getElementById('smtp_from_email').value = data.config.smtp_from_email || '';
+                        document.getElementById('smtp_from_name').value = data.config.smtp_from_name || '';
+                        document.getElementById('smtp_use_tls').checked = data.config.smtp_use_tls !== false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading email config:', error);
+                });
+        }
+        
+        function saveEmailConfig() {
+            const formData = new FormData(document.getElementById('email-config-form'));
+            const data = {
+                smtp_host: formData.get('smtp_host'),
+                smtp_port: parseInt(formData.get('smtp_port')),
+                smtp_username: formData.get('smtp_username'),
+                smtp_password: formData.get('smtp_password'),
+                smtp_from_email: formData.get('smtp_from_email'),
+                smtp_from_name: formData.get('smtp_from_name'),
+                smtp_use_tls: formData.get('smtp_use_tls') === 'on'
+            };
+            
+            showStatus('Saving email configuration...', 'info');
+            
+            fetch('/api/settings/smtp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    // Clear password field after successful save
+                    document.getElementById('smtp_password').value = '';
+                } else {
+                    showStatus(data.error || 'Failed to save email configuration', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving email config:', error);
+                showStatus('Failed to save email configuration', 'error');
+            });
+        }
+        
+        function testEmailConnection() {
+            const testEmail = prompt('Enter email address to send test email to:');
+            if (!testEmail) return;
+            
+            showStatus('Sending test email...', 'info');
+            
+            fetch('/api/settings/smtp/test?test_email=' + encodeURIComponent(testEmail), {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                } else {
+                    showStatus(data.error || 'Test email failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error testing email:', error);
+                showStatus('Test email failed', 'error');
+            });
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('email-status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = `rc-alert rc-alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'}`;
+            statusDiv.textContent = message;
+            
+            // Hide after 5 seconds for success/info messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+    });
+    </script>
+</body>
+</html>

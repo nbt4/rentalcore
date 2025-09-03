@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        try{document.documentElement.setAttribute("data-theme",localStorage.getItem("rc-theme")||"dark")}catch(e){}
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Modal Tree View Styles - Copied from working devices_standalone.html */
+        .tree-container {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .tree-category {
+            margin-bottom: var(--space-md);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+        }
+        
+        .tree-category-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-md);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            border-radius: var(--radius-md);
+        }
+        
+        .tree-category-header:hover {
+            background: var(--surface-2);
+        }
+        
+        .tree-chevron {
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+            font-size: 0.9rem;
+        }
+        
+        .tree-chevron.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .tree-icon {
+            color: var(--accent-electric);
+            font-size: 1.1rem;
+        }
+        
+        .tree-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
+        .tree-count {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: var(--surface-3);
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+        }
+        
+        .tree-devices {
+            padding: 0 var(--space-md) var(--space-md);
+            border-top: 1px solid var(--surface-3);
+            background: var(--surface-0);
+        }
+        
+        .tree-device {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm);
+            margin: var(--space-xs) 0;
+            background: var(--surface-1);
+            border: 1px solid var(--surface-2);
+            border-radius: var(--radius-sm);
+            transition: var(--transition-normal);
+            cursor: pointer;
+        }
+        
+        .tree-device:hover {
+            background: var(--surface-2);
+            border-color: var(--accent-electric);
+        }
+        
+        .tree-device.selected {
+            background: var(--accent-electric-20);
+            border-color: var(--accent-electric);
+        }
+        
+        .tree-device.unavailable {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--surface-1);
+        }
+        
+        .tree-device.unavailable:hover {
+            background: var(--surface-1);
+            border-color: var(--surface-2);
+        }
+        
+        .device-info {
+            flex: 1;
+        }
+        
+        .device-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .device-details {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 0.85rem;
+        }
+        
+        .device-id {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+        
+        .device-serial {
+            color: var(--text-muted);
+        }
+        
+        .device-status {
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .device-status-free {
+            background: var(--success);
+            color: white;
+        }
+        
+        .device-status-assigned {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .device-status-rented {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .device-status-maintenance {
+            background: var(--error);
+            color: white;
+        }
+        
+        .device-actions {
+            display: flex;
+            gap: var(--space-xs);
+        }
+        
+        /* Hierarchical Tree Styles */
+        .tree-content {
+            padding-left: var(--space-lg);
+            border-left: 2px solid var(--surface-3);
+            margin-left: var(--space-lg);
+        }
+        
+        .tree-subcategory, .tree-subbiercategory {
+            margin: var(--space-sm) 0;
+            border: 1px solid var(--surface-2);
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+        }
+        
+        .tree-subcategory-header, .tree-subbiercategory-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            border-radius: var(--radius-sm);
+        }
+        
+        .tree-subcategory-header:hover, .tree-subbiercategory-header:hover {
+            background: var(--surface-1);
+        }
+        
+        .tree-subcategory .tree-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .tree-subbiercategory .tree-title {
+            font-weight: 400;
+            font-size: 0.9rem;
+        }
+        
+        .category-icon {
+            color: var(--accent-electric);
+        }
+        
+        .subcategory-icon {
+            color: var(--accent-purple);
+        }
+        
+        .subbiercategory-icon {
+            color: var(--accent-coral);
+        }
+        
+        .tree-direct-devices {
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--surface-2);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .tree-direct-devices:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .case-info {
+            background: var(--warning-20);
+            color: var(--warning);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .tree-device-checkbox {
+            margin-right: var(--space-sm);
+        }
+    </style>
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">
+                    <i class="bi bi-box"></i> Cases Management
+                </h1>
+                <p class="rc-text">Manage and organize your equipment cases</p>
+            </div>
+            <div>
+                <a href="/cases/new" class="rc-btn rc-btn-primary">
+                    <i class="bi bi-plus-lg"></i> New Case
+                </a>
+            </div>
+        </div>
+
+        <!-- Search Card -->
+        <div class="rc-card rc-mb-lg">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-search"></i> Search Cases
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                <form method="GET" action="/cases">
+                    <div class="rc-flex rc-flex-gap-sm" style="align-items: stretch;">
+                        <input type="text" class="rc-input" name="search" placeholder="Search cases..." value="{{.params.SearchTerm}}" style="max-width: 300px;">
+                        <button type="submit" class="rc-btn rc-btn-primary" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        {{if .params.SearchTerm}}
+                        <a href="/cases" class="rc-btn rc-btn-outline" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {{end}}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cases Table -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-box"></i> Cases
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                {{if .cases}}
+                <div class="rc-table-responsive">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Case ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Dimensions</th>
+                                <th>Status</th>
+                                <th>Device Count</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .cases}}
+                            <tr data-case-id="{{.CaseID}}">
+                                <td><code class="rc-code">{{.CaseID}}</code></td>
+                                <td class="rc-text-semibold">{{.Name}}</td>
+                                <td class="rc-text-muted">{{derefString .Description}}</td>
+                                <td>
+                                    {{if and .Width .Height .Depth}}
+                                        <span class="rc-text-mono">{{derefFloat .Width}}×{{derefFloat .Height}}×{{derefFloat .Depth}} cm</span>
+                                    {{else}}
+                                        <span class="rc-text-muted">-</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if eq .Status "free"}}
+                                        <span class="rc-badge rc-badge-success">Free</span>
+                                    {{else if eq .Status "checked out"}}
+                                        <span class="rc-badge rc-badge-warning">Checked Out</span>
+                                    {{else if eq .Status "maintance"}}
+                                        <span class="rc-badge rc-badge-danger">Maintenance</span>
+                                    {{else}}
+                                        <span class="rc-badge rc-badge-secondary">{{.Status}}</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <span class="rc-badge rc-badge-info">{{.DeviceCount}} devices</span>
+                                </td>
+                                <td>
+                                    <div class="rc-flex rc-flex-gap-xs">
+                                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" title="View Details" onclick="showCaseDetails({{.CaseID}})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" title="View Devices" onclick="showCaseDevices({{.CaseID}})">
+                                            <i class="bi bi-gear-wide-connected"></i>
+                                        </button>
+                                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" title="Edit Case" onclick="showEditCase({{.CaseID}})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" title="Delete" onclick="deleteCase({{.CaseID}})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="rc-text-center">
+                    <div style="font-size: 4rem; color: var(--text-muted); margin-bottom: var(--space-lg);">
+                        <i class="bi bi-box"></i>
+                    </div>
+                    <h3 style="color: var(--text-secondary);">No cases found</h3>
+                    <p class="rc-text-sm">Add your first case to get started with equipment organization.</p>
+                    <a href="/cases/new" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add Case
+                    </a>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Case Details Modal -->
+    <div id="caseDetailsModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeCaseModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-box"></i> Case Details
+                </h3>
+                <button class="rc-modal-close" onclick="closeCaseModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="caseDetailsContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading case details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Case Edit Modal -->
+    <div id="caseEditModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeEditCaseModal()"></div>
+        <div class="rc-modal-content" style="max-width: 700px;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-pencil"></i> Edit Case
+                </h3>
+                <button class="rc-modal-close" onclick="closeEditCaseModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="caseEditContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading case form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Case Devices Modal -->
+    <div id="caseDevicesModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeCaseDevicesModal()"></div>
+        <div class="rc-modal-content" style="max-width: min(95vw, 1100px); width: 100%;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-gear-wide-connected"></i> Case Devices
+                </h3>
+                <button class="rc-modal-close" onclick="closeCaseDevicesModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="caseDevicesContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading case devices...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Device to Case Modal -->
+    <div id="addDeviceToCaseModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeAddDeviceToCaseModal()"></div>
+        <div class="rc-modal-content" style="max-width: min(95vw, 1200px); width: 100%;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-plus-lg"></i> Add Device to Case
+                </h3>
+                <button class="rc-modal-close" onclick="closeAddDeviceToCaseModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="addDeviceToCaseContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading available devices...</p>
+                </div>
+            </div>
+            <div class="rc-modal-footer" style="padding: 1.25rem; gap: 0.75rem; display: flex; justify-content: space-between;">
+                <button class="rc-btn rc-btn-secondary" onclick="closeAddDeviceToCaseModal()">
+                    <i class="bi bi-x-lg"></i> Close
+                </button>
+                <div>
+                    <button class="rc-btn rc-btn-primary" id="addSelectedDevicesBtn" style="display: none;" onclick="addSelectedDevicesToCase()">
+                        <i class="bi bi-plus-lg"></i> <span id="addSelectedButtonText">Add Selected</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    <script>
+    // Case Details Modal
+    function showCaseDetails(caseID) {
+        const modal = document.getElementById('caseDetailsModal');
+        const content = document.getElementById('caseDetailsContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading case details...</p>
+            </div>
+        `;
+        
+        // Fetch case details
+        fetch('/api/v1/cases/' + caseID)
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Case data received:', data);
+                const caseData = data.case || data;
+                content.innerHTML = `
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Case ID</label>
+                            <div class="rc-badge rc-badge-primary">${caseData.caseID}</div>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Status</label>
+                            <div class="rc-badge ${caseData.status === 'free' ? 'rc-badge-success' : caseData.status === 'checked out' ? 'rc-badge-warning' : 'rc-badge-secondary'}">${caseData.status}</div>
+                        </div>
+                        <div class="rc-form-group rc-grid-span-2">
+                            <label class="rc-label">Name</label>
+                            <div class="rc-text-lg">${caseData.name}</div>
+                        </div>
+                        ${caseData.description ? '<div class="rc-form-group rc-grid-span-2"><label class="rc-label">Description</label><div>' + caseData.description + '</div></div>' : ''}
+                        ${caseData.weight ? '<div class="rc-form-group"><label class="rc-label">Weight</label><div><i class="bi bi-speedometer2"></i> ' + caseData.weight + ' kg</div></div>' : ''}
+                        ${caseData.width && caseData.height && caseData.depth ? '<div class="rc-form-group"><label class="rc-label">Dimensions</label><div><i class="bi bi-rulers"></i> ' + caseData.width + ' × ' + caseData.height + ' × ' + caseData.depth + ' cm</div></div>' : ''}
+                        <div class="rc-form-group">
+                            <label class="rc-label">Device Count</label>
+                            <div class="rc-badge rc-badge-info">${caseData.devices ? caseData.devices.length : 0} devices</div>
+                        </div>
+                    </div>
+                    <div class="rc-flex rc-flex-between rc-mt-lg">
+                        <button onclick="showCaseDevices(${caseData.caseID})" class="rc-btn rc-btn-secondary">
+                            <i class="bi bi-gear-wide-connected"></i> View Devices
+                        </button>
+                        <button onclick="showEditCase(${caseData.caseID})" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-pencil"></i> Edit Case
+                        </button>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading case details: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeCaseModal() {
+        document.getElementById('caseDetailsModal').style.display = 'none';
+    }
+
+    // Case Edit Modal
+    function showEditCase(caseID) {
+        // Close details modal if open
+        closeCaseModal();
+        
+        const modal = document.getElementById('caseEditModal');
+        const content = document.getElementById('caseEditContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading case form...</p>
+            </div>
+        `;
+        
+        // Fetch case data for editing
+        fetch('/api/v1/cases/' + caseID)
+            .then(response => response.json())
+            .then(data => {
+                const caseData = data.case || data;
+                console.log('Case edit data:', caseData);
+                
+                content.innerHTML = `
+                    <form id="editCaseForm">
+                        <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                            <div class="rc-form-group">
+                                <label class="rc-label">Case ID *</label>
+                                <input type="text" class="rc-input" value="${caseData.caseID}" readonly style="background: var(--surface-2);">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Status *</label>
+                                <select class="rc-select" name="status" required>
+                                    <option value="free" ${caseData.status === 'free' ? 'selected' : ''}>Free</option>
+                                    <option value="checked out" ${caseData.status === 'checked out' ? 'selected' : ''}>Checked Out</option>
+                                    <option value="maintenance" ${caseData.status === 'maintenance' ? 'selected' : ''}>Maintenance</option>
+                                </select>
+                            </div>
+                            <div class="rc-form-group rc-grid-span-2">
+                                <label class="rc-label">Name *</label>
+                                <input type="text" class="rc-input" name="name" value="${caseData.name || ''}" required>
+                            </div>
+                            <div class="rc-form-group rc-grid-span-2">
+                                <label class="rc-label">Description</label>
+                                <textarea class="rc-textarea" name="description" rows="3">${caseData.description || ''}</textarea>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Weight (kg)</label>
+                                <input type="number" class="rc-input" name="weight" value="${caseData.weight || ''}" step="0.1" min="0">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Width (cm)</label>
+                                <input type="number" class="rc-input" name="width" value="${caseData.width || ''}" step="0.1" min="0">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Height (cm)</label>
+                                <input type="number" class="rc-input" name="height" value="${caseData.height || ''}" step="0.1" min="0">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Depth (cm)</label>
+                                <input type="number" class="rc-input" name="depth" value="${caseData.depth || ''}" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-between">
+                            <button type="button" onclick="closeEditCaseModal()" class="rc-btn rc-btn-secondary">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                `;
+                
+                // Handle form submission
+                document.getElementById('editCaseForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveCase(caseID, new FormData(this));
+                });
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading case form: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeEditCaseModal() {
+        document.getElementById('caseEditModal').style.display = 'none';
+    }
+
+    function saveCase(caseID, formData) {
+        const submitBtn = document.querySelector('#editCaseForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        // Convert FormData to JSON
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            if (key === 'weight' || key === 'width' || key === 'height' || key === 'depth') {
+                data[key] = value ? parseFloat(value) : null;
+            } else {
+                data[key] = value || null;
+            }
+        }
+        
+        console.log('Saving case data:', data);
+        
+        fetch('/api/v1/cases/' + caseID, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('HTTP ' + response.status + ': ' + text);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Success - close modal and reload page
+            closeEditCaseModal();
+            window.location.reload();
+        })
+        .catch(error => {
+            // Restore button and show error
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            alert('Error saving case: ' + error.message);
+        });
+    }
+
+    // Case Devices Modal
+    function showCaseDevices(caseID) {
+        // Close other modals if open
+        closeCaseModal();
+        closeEditCaseModal();
+        closeAddDeviceToCaseModal();
+        
+        const modal = document.getElementById('caseDevicesModal');
+        const content = document.getElementById('caseDevicesContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading case devices...</p>
+            </div>
+        `;
+        
+        // Fetch case devices with product information (with cache busting)
+        fetch('/api/v1/cases/' + caseID + '/devices?_t=' + Date.now())
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Case devices raw data:', data);
+                let devices = data.devices || data || [];
+                
+                // If devices don't have product info, fetch it separately
+                if (devices.length > 0 && (!devices[0].product || !devices[0].product.name)) {
+                    console.log('Devices missing product info, fetching separately...');
+                    
+                    // Create promises to fetch each device's full info
+                    const devicePromises = devices.map(device => 
+                        fetch('/api/v1/devices/' + device.deviceID)
+                            .then(response => response.json())
+                            .then(deviceData => deviceData.device || deviceData)
+                            .catch(error => {
+                                console.error('Error fetching device ' + device.deviceID + ':', error);
+                                return device; // Return original device if fetch fails
+                            })
+                    );
+                    
+                    // Wait for all device details to be fetched
+                    return Promise.all(devicePromises);
+                } else {
+                    return devices;
+                }
+            })
+            .then(devices => {
+                console.log('Final devices data with products:', devices);
+                
+                if (devices.length === 0) {
+                    content.innerHTML = `
+                        <div class="rc-text-center rc-py-xl">
+                            <div style="font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-md);">
+                                <i class="bi bi-inbox"></i>
+                            </div>
+                            <h3 style="color: var(--text-secondary);">No devices in this case</h3>
+                            <p class="rc-text-sm">This case is currently empty.</p>
+                            <button onclick="showAddDeviceToCase(${caseID})" class="rc-btn rc-btn-primary rc-mt-md">
+                                <i class="bi bi-plus-lg"></i> Add Device to Case
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <div class="rc-table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                            <table class="rc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Device ID</th>
+                                        <th>Product</th>
+                                        <th>Serial Number</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${devices.map(device => 
+                                        '<tr>' +
+                                            '<td><code class="rc-code">' + device.deviceID + '</code></td>' +
+                                            '<td>' + (device.product && device.product.name ? device.product.name : 'Unknown') + '</td>' +
+                                            '<td>' + (device.serialnumber || '-') + '</td>' +
+                                            '<td>' +
+                                                '<span class="rc-badge ' + (device.status === 'free' ? 'rc-badge-success' : device.status === 'rented' ? 'rc-badge-warning' : 'rc-badge-secondary') + '">' +
+                                                    (device.status || 'Unknown') +
+                                                '</span>' +
+                                            '</td>' +
+                                            '<td>' +
+                                                '<button onclick="removeDeviceFromCase(' + caseID + ', \'' + device.deviceID + '\')" class="rc-btn rc-btn-outline rc-btn-sm" title="Remove from Case">' +
+                                                    '<i class="bi bi-x-lg"></i>' +
+                                                '</button>' +
+                                            '</td>' +
+                                        '</tr>'
+                                    ).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="rc-flex rc-flex-between rc-mt-lg">
+                            <button onclick="showAddDeviceToCase(${caseID})" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-plus-lg"></i> Add Device
+                            </button>
+                            <div class="rc-text-sm rc-text-muted">${devices.length} device${devices.length !== 1 ? 's' : ''} in this case</div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading case devices: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeCaseDevicesModal() {
+        document.getElementById('caseDevicesModal').style.display = 'none';
+    }
+
+    // Add Device to Case Modal
+    function showAddDeviceToCase(caseID) {
+        // Close other modals if open
+        closeCaseModal();
+        closeEditCaseModal();
+        closeCaseDevicesModal();
+        
+        const modal = document.getElementById('addDeviceToCaseModal');
+        const content = document.getElementById('addDeviceToCaseContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading available devices...</p>
+            </div>
+        `;
+        
+        // Store current case ID for multi-select
+        window.currentCaseID = caseID;
+        window.selectedDevicesForCase = [];
+        
+        // Fetch available devices (devices not in any case)
+        fetch('/api/v1/devices?available=true')
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Available devices data:', data);
+                window.availableDevicesForCase = data.devices || data || [];
+                
+                if (window.availableDevicesForCase.length === 0) {
+                    content.innerHTML = `
+                        <div class="rc-text-center rc-py-xl">
+                            <div style="font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-md);">
+                                <i class="bi bi-inbox"></i>
+                            </div>
+                            <h3 style="color: var(--text-secondary);">No available devices</h3>
+                            <p class="rc-text-sm">All devices are currently assigned to cases or not available.</p>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <div class="rc-mb-lg">
+                            <label class="rc-label">Search devices:</label>
+                            <input type="text" class="rc-input" id="deviceSearchInput" placeholder="Search by device ID or product name..." onkeyup="filterAvailableDevices()">
+                        </div>
+                        <div class="rc-mb-md rc-flex rc-flex-between rc-flex-align-center">
+                            <div>
+                                <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="selectAllVisibleDevices()">
+                                    <i class="bi bi-check-square"></i> Select All Visible
+                                </button>
+                                <button class="rc-btn rc-btn-outline rc-btn-sm rc-ml-sm" onclick="clearAllSelections()">
+                                    <i class="bi bi-square"></i> Clear All
+                                </button>
+                                <span class="rc-ml-md rc-text-sm rc-text-muted" id="selectionCounter">0 devices selected</span>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <button class="rc-btn rc-btn-outline rc-btn-sm" id="modalListViewBtn" onclick="switchModalView('list')">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                                <button class="rc-btn rc-btn-outline rc-btn-sm active" id="modalTreeViewBtn" onclick="switchModalView('tree')">
+                                    <i class="bi bi-diagram-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- List View -->
+                        <div class="rc-table-responsive" id="modalListViewContainer" style="max-height: 50vh; overflow-y: auto; display: none;">
+                            <div id="devicesList" class="rc-grid rc-grid-cols-1 rc-grid-gap-sm">
+                            </div>
+                        </div>
+                        <!-- Tree View -->
+                        <div class="tree-container" id="modalTreeViewContainer" style="max-height: 50vh; overflow-y: auto;">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading tree structure...</p>
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-between rc-mt-lg">
+                            <div class="rc-text-sm rc-text-muted" id="deviceCount">${window.availableDevicesForCase.length} available device${window.availableDevicesForCase.length !== 1 ? 's' : ''}</div>
+                        </div>
+                    `;
+                    
+                    // Since we're starting with tree view, load tree data immediately
+                    loadModalTreeData();
+                }
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading available devices: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeAddDeviceToCaseModal() {
+        document.getElementById('addDeviceToCaseModal').style.display = 'none';
+        // Clear selection state
+        window.selectedDevicesForCase = [];
+        window.availableDevicesForCase = [];
+        window.currentCaseID = null;
+    }
+
+    // Multi-select device functions for case assignment
+    function renderAvailableDevicesForCase() {
+        const container = document.getElementById('devicesList');
+        if (!window.availableDevicesForCase || window.availableDevicesForCase.length === 0) {
+            container.innerHTML = '<div class="rc-text-center rc-py-lg rc-text-muted">No devices available</div>';
+            return;
+        }
+
+        let html = '';
+        window.availableDevicesForCase.forEach(device => {
+            const isSelected = window.selectedDevicesForCase.includes(device.deviceID);
+            html += `
+                <div class="rc-card device-card" style="cursor: pointer; border: 1px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}; background: ${isSelected ? 'var(--primary-color-alpha)' : 'var(--surface-1)'}; padding: 8px 12px;" onclick="toggleDeviceSelectionForCase('${device.deviceID}')" data-device-id="${device.deviceID}" data-product="${(device.product && device.product.name ? device.product.name.toLowerCase() : '')}">
+                    <div class="rc-flex rc-flex-between rc-flex-items-center">
+                        <div class="rc-flex rc-flex-items-center rc-flex-gap-sm">
+                            <input type="checkbox" class="rc-form-check" ${isSelected ? 'checked' : ''} onchange="toggleDeviceSelectionForCase('${device.deviceID}')" onclick="event.stopPropagation()">
+                            <div>
+                                <div class="rc-text-sm rc-font-mono rc-font-weight-600" style="color: var(--primary-color);">${device.deviceID}</div>
+                                <div class="rc-text-xs rc-text-muted">${device.product && device.product.name ? device.product.name : 'Unknown Product'}</div>
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-items-center rc-flex-gap-xs">
+                            <span class="rc-badge rc-badge-success rc-text-xs">Free</span>
+                            ${device.serialnumber ? `<span class="rc-text-xs rc-text-muted">SN: ${device.serialnumber}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Re-apply search filter if there is one
+        const searchInput = document.getElementById('deviceSearchInput');
+        if (searchInput && searchInput.value.trim()) {
+            filterAvailableDevices();
+        }
+        
+        updateSelectionCounter();
+        updateAddSelectedButton();
+    }
+
+    function toggleDeviceSelectionForCase(deviceID) {
+        const index = window.selectedDevicesForCase.indexOf(deviceID);
+        if (index > -1) {
+            window.selectedDevicesForCase.splice(index, 1);
+        } else {
+            window.selectedDevicesForCase.push(deviceID);
+        }
+        
+        renderAvailableDevicesForCase();
+    }
+
+    function selectAllVisibleDevices() {
+        const visibleDevices = document.querySelectorAll('.device-card:not([style*="display: none"])');
+        visibleDevices.forEach(card => {
+            const deviceID = card.getAttribute('data-device-id');
+            if (!window.selectedDevicesForCase.includes(deviceID)) {
+                window.selectedDevicesForCase.push(deviceID);
+            }
+        });
+        renderAvailableDevicesForCase();
+    }
+
+    function clearAllSelections() {
+        window.selectedDevicesForCase = [];
+        renderAvailableDevicesForCase();
+    }
+
+    function updateSelectionCounter() {
+        const counter = document.getElementById('selectionCounter');
+        if (counter) {
+            const count = window.selectedDevicesForCase.length;
+            counter.textContent = `${count} device${count !== 1 ? 's' : ''} selected`;
+        }
+    }
+
+    function updateAddSelectedButton() {
+        const addBtn = document.getElementById('addSelectedDevicesBtn');
+        const addBtnText = document.getElementById('addSelectedButtonText');
+        
+        if (!addBtn || !addBtnText) return;
+        
+        if (window.selectedDevicesForCase.length === 0) {
+            addBtn.style.display = 'none';
+            return;
+        }
+        
+        addBtn.style.display = 'block';
+        
+        // Get product names of selected devices
+        const selectedDeviceData = window.availableDevicesForCase.filter(device => 
+            window.selectedDevicesForCase.includes(device.deviceID)
+        );
+        
+        // Group by product name
+        const productGroups = {};
+        selectedDeviceData.forEach(device => {
+            const productName = device.product && device.product.name ? device.product.name : 'Unknown Product';
+            if (!productGroups[productName]) {
+                productGroups[productName] = 0;
+            }
+            productGroups[productName]++;
+        });
+        
+        // Create button text
+        let buttonText = '';
+        const productNames = Object.keys(productGroups);
+        
+        if (productNames.length === 1) {
+            // Single product type
+            const productName = productNames[0];
+            const count = productGroups[productName];
+            buttonText = `${count}x ${productName} hinzufügen`;
+        } else {
+            // Multiple product types
+            buttonText = `${window.selectedDevicesForCase.length} Geräte hinzufügen`;
+        }
+        
+        addBtnText.textContent = buttonText;
+    }
+
+    function filterAvailableDevices() {
+        const searchTerm = document.getElementById('deviceSearchInput').value.toLowerCase();
+        const deviceCards = document.querySelectorAll('.device-card');
+        
+        deviceCards.forEach(card => {
+            const deviceID = card.getAttribute('data-device-id').toLowerCase();
+            const productName = card.getAttribute('data-product') || '';
+            
+            if (deviceID.includes(searchTerm) || productName.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Update device count
+        const visibleCount = document.querySelectorAll('.device-card:not([style*="display: none"])').length;
+        const deviceCount = document.getElementById('deviceCount');
+        if (deviceCount) {
+            deviceCount.textContent = `${visibleCount} available device${visibleCount !== 1 ? 's' : ''}`;
+        }
+    }
+
+    async function addSelectedDevicesToCase() {
+        if (window.selectedDevicesForCase.length === 0 || !window.currentCaseID) {
+            return;
+        }
+        
+        const addBtn = document.getElementById('addSelectedDevicesBtn');
+        const originalText = addBtn.innerHTML;
+        
+        // Show loading state
+        addBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+        addBtn.disabled = true;
+        
+        try {
+            // Add devices one by one
+            const promises = window.selectedDevicesForCase.map(deviceID => 
+                fetch('/api/v1/cases/' + window.currentCaseID + '/devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceID })
+                })
+            );
+            
+            const results = await Promise.all(promises);
+            
+            // Check if all were successful
+            const allSuccessful = results.every(response => response.ok);
+            
+            if (allSuccessful) {
+                // Success - close modal and refresh case list
+                closeAddDeviceToCaseModal();
+                
+                // Refresh the cases list
+                location.reload();
+            } else {
+                throw new Error('Some devices could not be added');
+            }
+            
+        } catch (error) {
+            console.error('Error adding selected devices:', error);
+            alert('Error adding devices to case: ' + error.message);
+            
+            // Restore button
+            addBtn.innerHTML = originalText;
+            addBtn.disabled = false;
+        }
+    }
+
+
+    function addDeviceToCase(caseID, deviceID) {
+        if (confirm('Add device ' + deviceID + ' to this case?')) {
+            fetch('/api/v1/cases/' + caseID + '/devices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ device_id: deviceID })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                // Success - keep modal open and refresh case devices list
+                
+                // Don't close the modal, just refresh UI
+                setTimeout(() => {
+                    // Check which modal is open and update accordingly
+                    const caseDevicesModal = document.getElementById('caseDevicesModal');
+                    const addDeviceModal = document.getElementById('addDeviceToCaseModal');
+                    
+                    if (caseDevicesModal && caseDevicesModal.style.display === 'flex') {
+                        refreshCaseDevicesModal(caseID);
+                    }
+                    
+                    if (addDeviceModal && addDeviceModal.style.display !== 'none') {
+                        showAddDeviceToCase(caseID);
+                    }
+                    
+                    updateCaseDeviceCount(caseID);
+                }, 200);
+            })
+            .catch(error => {
+                alert('Error adding device to case: ' + error.message);
+            });
+        }
+    }
+
+    function refreshCaseDevicesContent(caseID) {
+        // Check if the case devices modal is currently open
+        const modal = document.getElementById('caseDevicesModal');
+        if (modal && modal.style.display === 'flex') {
+            // Modal is open, just refresh the content
+            showCaseDevices(caseID);
+        }
+        // If modal is not open, don't do anything
+    }
+
+    function refreshCaseDevicesModal(caseID) {
+        // Refresh ONLY the content without closing/opening modal
+        const content = document.getElementById('caseDevicesContent');
+        if (!content) return;
+        
+        // Show loading state
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Refreshing devices...</p>
+            </div>
+        `;
+        
+        // Fetch updated device list
+        fetch('/api/v1/cases/' + caseID + '/devices?_t=' + Date.now())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                let devices = data.devices || data || [];
+                updateCaseDevicesContent(devices, caseID);
+            })
+            .catch(error => {
+                console.error('Error refreshing case devices:', error);
+                content.innerHTML = '<div class="rc-text-center rc-py-xl"><p class="rc-text-danger">Error loading devices</p></div>';
+            });
+    }
+
+    function showSuccessMessage(message) {
+        // Show a temporary success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Add to the top of the modal content
+        const modalContent = document.getElementById('caseDevicesContent');
+        if (modalContent) {
+            modalContent.insertBefore(alertDiv, modalContent.firstChild);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+    }
+
+    function updateCaseDevicesContent(devices, caseID) {
+        const content = document.getElementById('caseDevicesContent');
+        if (!content) return;
+        
+        if (devices.length === 0) {
+            content.innerHTML = `
+                <div class="rc-text-center rc-py-xl">
+                    <div style="font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-md);">
+                        <i class="bi bi-inbox"></i>
+                    </div>
+                    <h3 style="color: var(--text-secondary);">No devices in this case</h3>
+                    <p class="rc-text-sm">This case is currently empty.</p>
+                    <button onclick="showAddDeviceToCase(${caseID})" class="rc-btn rc-btn-primary rc-mt-md">
+                        <i class="bi bi-plus-lg"></i> Add Device to Case
+                    </button>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="rc-table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Device ID</th>
+                                <th>Product</th>
+                                <th>Serial Number</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${devices.map(device => 
+                                '<tr>' +
+                                    '<td><code class="rc-code">' + device.deviceID + '</code></td>' +
+                                    '<td>' + (device.product && device.product.name ? device.product.name : 'Unknown') + '</td>' +
+                                    '<td>' + (device.serialnumber || '-') + '</td>' +
+                                    '<td>' +
+                                        '<span class="rc-badge ' + (device.status === 'free' ? 'rc-badge-success' : device.status === 'rented' ? 'rc-badge-warning' : 'rc-badge-secondary') + '">' +
+                                            (device.status || 'Unknown') +
+                                        '</span>' +
+                                    '</td>' +
+                                    '<td>' +
+                                        '<button onclick="removeDeviceFromCase(' + caseID + ', \'' + device.deviceID + '\')" class="rc-btn rc-btn-outline rc-btn-sm" title="Remove from Case">' +
+                                            '<i class="bi bi-x-lg"></i>' +
+                                        '</button>' +
+                                    '</td>' +
+                                '</tr>'
+                            ).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="rc-flex rc-flex-between rc-mt-lg">
+                    <button onclick="showAddDeviceToCase(${caseID})" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add Device
+                    </button>
+                    <div class="rc-text-sm rc-text-muted">${devices.length} device${devices.length !== 1 ? 's' : ''} in this case</div>
+                </div>
+            `;
+        }
+    }
+
+    async function updateCaseDeviceCount(caseID) {
+        try {
+            const response = await fetch(`/api/v1/cases/${caseID}/devices?_t=${Date.now()}`);
+            if (response.ok) {
+                const data = await response.json();
+                const devices = data.devices || data || [];
+                const deviceCount = devices.length || 0;
+                
+                const caseCard = document.querySelector(`[data-case-id="${caseID}"]`);
+                if (caseCard) {
+                    const badge = caseCard.querySelector('.rc-badge-info');
+                    if (badge) {
+                        badge.textContent = `${deviceCount} devices`;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating case device count:', error);
+        }
+    }
+
+    function removeDeviceFromCase(caseID, deviceID) {
+        if (confirm('Remove device ' + deviceID + ' from this case?')) {
+            fetch('/api/v1/cases/' + caseID + '/devices/' + deviceID, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error('HTTP ' + response.status + ': ' + text);
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                setTimeout(() => {
+                    refreshCaseDevicesModal(caseID);
+                    updateCaseDeviceCount(caseID);
+                }, 200);
+            })
+            .catch(error => {
+                alert('Error removing device from case: ' + error.message);
+            });
+        }
+    }
+
+    function deleteCase(caseID) {
+        if (confirm('Are you sure you want to delete this case?')) {
+            fetch('/api/v1/cases/' + caseID, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                window.location.reload();
+            })
+            .catch(error => {
+                alert('Error deleting case: ' + error.message);
+            });
+        }
+    }
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeCaseModal();
+            closeEditCaseModal();
+            closeCaseDevicesModal();
+            closeAddDeviceToCaseModal();
+        }
+    });
+
+    // Responsive handling for mobile devices
+    function handleMobileResize() {
+        const modals = document.querySelectorAll('.rc-modal-content');
+        const isMobile = window.innerWidth < 768;
+        const isTablet = window.innerWidth >= 768 && window.innerWidth < 1200;
+        
+        modals.forEach(modal => {
+            // Special handling for the Add Device modal
+            if (modal.parentElement.id === 'addDeviceToCaseModal') {
+                if (isMobile) {
+                    modal.style.margin = '5px';
+                    modal.style.maxWidth = 'calc(100vw - 10px)';
+                    modal.style.width = 'auto';
+                    modal.style.maxHeight = '95vh';
+                } else if (isTablet) {
+                    modal.style.margin = '20px';
+                    modal.style.maxWidth = 'calc(100vw - 40px)';
+                    modal.style.width = 'auto';
+                    modal.style.maxHeight = '90vh';
+                } else {
+                    modal.style.margin = '';
+                    modal.style.maxWidth = 'min(95vw, 1200px)';
+                    modal.style.width = '100%';
+                    modal.style.maxHeight = '85vh';
+                }
+            } else if (modal.parentElement.id === 'caseDevicesModal') {
+                // Special handling for the Case Devices modal
+                if (isMobile) {
+                    modal.style.margin = '5px';
+                    modal.style.maxWidth = 'calc(100vw - 10px)';
+                    modal.style.width = 'auto';
+                    modal.style.maxHeight = '95vh';
+                } else if (isTablet) {
+                    modal.style.margin = '20px';
+                    modal.style.maxWidth = 'calc(100vw - 40px)';
+                    modal.style.width = 'auto';
+                    modal.style.maxHeight = '90vh';
+                } else {
+                    modal.style.margin = '';
+                    modal.style.maxWidth = 'min(95vw, 1100px)';
+                    modal.style.width = '100%';
+                    modal.style.maxHeight = '85vh';
+                }
+            } else {
+                // Standard modal handling
+                if (isMobile) {
+                    modal.style.margin = '10px';
+                    modal.style.maxWidth = 'calc(100vw - 20px)';
+                    modal.style.width = 'auto';
+                } else {
+                    modal.style.margin = '';
+                    modal.style.maxWidth = '';
+                    modal.style.width = '';
+                }
+            }
+        });
+    }
+
+    // Add responsive handling
+    window.addEventListener('resize', handleMobileResize);
+    window.addEventListener('load', handleMobileResize);
+    
+    // Modal Tree View Functions
+    let modalCurrentView = 'tree';
+    let modalTreeData = null;
+    
+    function switchModalView(view) {
+        modalCurrentView = view;
+        
+        const listViewBtn = document.getElementById('modalListViewBtn');
+        const treeViewBtn = document.getElementById('modalTreeViewBtn');
+        const listContainer = document.getElementById('modalListViewContainer');
+        const treeContainer = document.getElementById('modalTreeViewContainer');
+        
+        if (view === 'list') {
+            listViewBtn.classList.add('active');
+            treeViewBtn.classList.remove('active');
+            listContainer.style.display = 'block';
+            treeContainer.style.display = 'none';
+        } else if (view === 'tree') {
+            listViewBtn.classList.remove('active');
+            treeViewBtn.classList.add('active');
+            listContainer.style.display = 'none';
+            treeContainer.style.display = 'block';
+            
+            if (!modalTreeData) {
+                loadModalTreeData();
+            }
+        }
+    }
+    
+    async function loadModalTreeData() {
+        try {
+            const response = await fetch('/api/v1/cases/devices/tree');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+            
+            const data = await response.json();
+            modalTreeData = data.treeData;
+            renderModalTreeView(modalTreeData);
+        } catch (error) {
+            console.error('Error loading modal tree data:', error);
+            document.getElementById('modalTreeViewContainer').innerHTML = `
+                <div class="text-center py-3 text-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <p class="mt-2">Error loading tree structure: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    function renderModalTreeView(categories) {
+        const container = document.getElementById('modalTreeViewContainer');
+        
+        if (!categories || categories.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-3 text-muted">
+                    <i class="bi bi-diagram-3 display-6"></i>
+                    <p class="mt-2">No devices found</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        categories.forEach(category => {
+            html += renderModalTreeCategory(category);
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    function renderModalTreeCategory(category) {
+        let html = `
+            <div class="tree-category">
+                <div class="tree-category-header" onclick="toggleModalTreeNode('category-${category.id}')">
+                    <i class="bi bi-chevron-right tree-chevron" id="chevron-category-${category.id}"></i>
+                    <i class="bi bi-folder2 tree-icon category-icon"></i>
+                    <span class="tree-title">${category.name}</span>
+                    <span class="tree-count">${category.device_count} devices</span>
+                </div>
+                <div class="tree-content" id="category-${category.id}" style="display: none;">
+        `;
+
+        // Direct devices
+        if (category.direct_devices && category.direct_devices.length > 0) {
+            category.direct_devices.forEach(device => {
+                html += renderModalTreeDevice(device);
+            });
+        }
+
+        // Subcategories
+        if (category.subcategories && category.subcategories.length > 0) {
+            category.subcategories.forEach(subcategory => {
+                html += renderModalTreeSubcategory(subcategory);
+            });
+        }
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+    
+    function renderModalTreeSubcategory(subcategory) {
+        let html = `
+            <div class="tree-subcategory">
+                <div class="tree-subcategory-header" onclick="toggleModalTreeNode('subcategory-${subcategory.id}')">
+                    <i class="bi bi-chevron-right tree-chevron" id="chevron-subcategory-${subcategory.id}"></i>
+                    <i class="bi bi-folder2 tree-icon subcategory-icon"></i>
+                    <span class="tree-title">${subcategory.name}</span>
+                    <span class="tree-count">${subcategory.device_count} devices</span>
+                </div>
+                <div class="tree-content" id="subcategory-${subcategory.id}" style="display: none;">
+        `;
+
+        // Direct devices
+        if (subcategory.direct_devices && subcategory.direct_devices.length > 0) {
+            subcategory.direct_devices.forEach(device => {
+                html += renderModalTreeDevice(device);
+            });
+        }
+
+        // Subbiercategories
+        if (subcategory.subbiercategories && subcategory.subbiercategories.length > 0) {
+            subcategory.subbiercategories.forEach(subbiercategory => {
+                html += renderModalTreeSubbiercategory(subbiercategory);
+            });
+        }
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+    
+    function renderModalTreeSubbiercategory(subbiercategory) {
+        let html = `
+            <div class="tree-subbiercategory">
+                <div class="tree-subbiercategory-header" onclick="toggleModalTreeNode('subbiercategory-${subbiercategory.id}')">
+                    <i class="bi bi-chevron-right tree-chevron" id="chevron-subbiercategory-${subbiercategory.id}"></i>
+                    <i class="bi bi-folder2 tree-icon subbiercategory-icon"></i>
+                    <span class="tree-title">${subbiercategory.name}</span>
+                    <span class="tree-count">${subbiercategory.device_count} devices</span>
+                </div>
+                <div class="tree-content" id="subbiercategory-${subbiercategory.id}" style="display: none;">
+        `;
+
+        // Direct devices
+        if (subbiercategory.devices && subbiercategory.devices.length > 0) {
+            subbiercategory.devices.forEach(device => {
+                html += renderModalTreeDevice(device);
+            });
+        }
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+    
+    function renderModalTreeDevice(device) {
+        const isSelected = window.selectedDevicesForCase && window.selectedDevicesForCase.includes(device.deviceID);
+        const isUnavailable = !device.available;
+        
+        let statusBadge = '';
+        if (device.status === 'free') {
+            statusBadge = '<span class="device-status device-status-free">Free</span>';
+        } else if (device.status === 'rented') {
+            statusBadge = '<span class="device-status device-status-rented">Rented</span>';
+        } else if (device.status === 'maintenance') {
+            statusBadge = '<span class="device-status device-status-maintenance">Maintenance</span>';
+        }
+
+        let caseInfo = '';
+        if (isUnavailable && device.caseName) {
+            caseInfo = `<span class="case-info">In ${device.caseName}</span>`;
+        }
+
+        const deviceClasses = `tree-device ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}`;
+        
+        return `
+            <div class="${deviceClasses}" onclick="${isUnavailable ? '' : `toggleModalTreeDeviceSelection('${device.deviceID}')`}">
+                ${isUnavailable ? '' : `<input type="checkbox" class="form-check-input tree-device-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleModalTreeDeviceSelection('${device.deviceID}')" onclick="event.stopPropagation()">`}
+                <div class="device-info">
+                    <div class="device-name">${device.productName}</div>
+                    <div class="device-details">
+                        <span class="device-id">${device.deviceID}</span>
+                        ${device.serialNumber ? `<span class="device-serial">• ${device.serialNumber}</span>` : ''}
+                        ${statusBadge}
+                        ${caseInfo}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function toggleModalTreeNode(nodeId) {
+        const content = document.getElementById(nodeId);
+        const chevron = document.getElementById(`chevron-${nodeId}`);
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            chevron.classList.remove('bi-chevron-right');
+            chevron.classList.add('bi-chevron-down');
+        } else {
+            content.style.display = 'none';
+            chevron.classList.remove('bi-chevron-down');
+            chevron.classList.add('bi-chevron-right');
+        }
+    }
+    
+    function toggleModalTreeDeviceSelection(deviceId) {
+        if (!window.selectedDevicesForCase) {
+            window.selectedDevicesForCase = [];
+        }
+        
+        const index = window.selectedDevicesForCase.indexOf(deviceId);
+        if (index > -1) {
+            window.selectedDevicesForCase.splice(index, 1);
+        } else {
+            window.selectedDevicesForCase.push(deviceId);
+        }
+        
+        // Update visual state for tree view
+        const deviceElement = document.querySelector(`[onclick*="toggleModalTreeDeviceSelection('${deviceId}')"]`);
+        if (deviceElement) {
+            const checkbox = deviceElement.querySelector('input[type="checkbox"]');
+            
+            if (checkbox) {
+                checkbox.checked = window.selectedDevicesForCase.includes(deviceId);
+            }
+            
+            if (window.selectedDevicesForCase.includes(deviceId)) {
+                deviceElement.classList.add('selected');
+            } else {
+                deviceElement.classList.remove('selected');
+            }
+        }
+        
+        // Update selection counter
+        updateModalSelectionCounter();
+        
+        // Update footer button state
+        updateAddSelectedButton();
+    }
+    
+    function updateModalSelectionCounter() {
+        const counter = document.getElementById('selectionCounter');
+        if (counter) {
+            const count = window.selectedDevicesForCase ? window.selectedDevicesForCase.length : 0;
+            counter.textContent = `${count} devices selected`;
+        }
+    }
+    
+    function updateAddSelectedButton() {
+        const button = document.getElementById('addSelectedDevicesBtn');
+        const buttonText = document.getElementById('addSelectedButtonText');
+        
+        if (button && buttonText) {
+            const count = window.selectedDevicesForCase ? window.selectedDevicesForCase.length : 0;
+            
+            if (count > 0) {
+                button.style.display = 'inline-flex';
+                buttonText.textContent = `Add Selected (${count})`;
+            } else {
+                button.style.display = 'none';
+                buttonText.textContent = 'Add Selected';
+            }
+        }
+    }
+
+    </script>
+</body>
+</html>

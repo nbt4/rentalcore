@@ -1,0 +1,418 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Invoice Settings</h3>
+                    <a href="/invoices" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Invoices
+                    </a>
+                </div>
+                
+                <div class="card-body">
+                    <form id="invoiceSettingsForm">
+                        <div class="row">
+                            <!-- Left Column - Numbering & Formatting -->
+                            <div class="col-md-6">
+                                <h5>Invoice Numbering</h5>
+                                
+                                <div class="form-group">
+                                    <label for="invoiceNumberPrefix">Invoice Number Prefix</label>
+                                    <input type="text" id="invoiceNumberPrefix" name="invoiceNumberPrefix" class="form-control" 
+                                           value="{{.settings.InvoiceNumberPrefix}}" placeholder="INV-">
+                                    <small class="form-text text-muted">Prefix that appears before the invoice number</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="invoiceNumberFormat">Invoice Number Format</label>
+                                    <select id="invoiceNumberFormat" name="invoiceNumberFormat" class="form-control" onchange="updateFormatPreview()">
+                                        <option value="{prefix}{year}{month}{sequence:4}" {{if eq .settings.InvoiceNumberFormat "{prefix}{year}{month}{sequence:4}"}}selected{{end}}>
+                                            Prefix + Year + Month + Sequence (INV-202512-0001)
+                                        </option>
+                                        <option value="{prefix}{year}-{sequence:4}" {{if eq .settings.InvoiceNumberFormat "{prefix}{year}-{sequence:4}"}}selected{{end}}>
+                                            Prefix + Year + Sequence (INV-2025-0001)
+                                        </option>
+                                        <option value="{prefix}{sequence:6}" {{if eq .settings.InvoiceNumberFormat "{prefix}{sequence:6}"}}selected{{end}}>
+                                            Prefix + Sequence (INV-000001)
+                                        </option>
+                                        <option value="{year}{month}{sequence:4}" {{if eq .settings.InvoiceNumberFormat "{year}{month}{sequence:4}"}}selected{{end}}>
+                                            Year + Month + Sequence (202512-0001)
+                                        </option>
+                                    </select>
+                                    <small class="form-text text-muted">Format for generating invoice numbers</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Preview Next Invoice Number:</label>
+                                    <div class="alert alert-info" id="invoiceNumberPreview">
+                                        INV-202512-0001
+                                    </div>
+                                </div>
+
+                                <h5 class="mt-4">Currency & Localization</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="currencySymbol">Currency Symbol</label>
+                                            <input type="text" id="currencySymbol" name="currencySymbol" class="form-control" 
+                                                   value="{{.settings.CurrencySymbol}}" maxlength="5">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="currencyCode">Currency Code</label>
+                                            <input type="text" id="currencyCode" name="currencyCode" class="form-control" 
+                                                   value="{{.settings.CurrencyCode}}" maxlength="3" placeholder="EUR">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="dateFormat">Date Format</label>
+                                    <select id="dateFormat" name="dateFormat" class="form-control">
+                                        <option value="DD.MM.YYYY" {{if eq .settings.DateFormat "DD.MM.YYYY"}}selected{{end}}>DD.MM.YYYY (31.12.2025)</option>
+                                        <option value="MM/DD/YYYY" {{if eq .settings.DateFormat "MM/DD/YYYY"}}selected{{end}}>MM/DD/YYYY (12/31/2025)</option>
+                                        <option value="YYYY-MM-DD" {{if eq .settings.DateFormat "YYYY-MM-DD"}}selected{{end}}>YYYY-MM-DD (2025-12-31)</option>
+                                        <option value="DD MMM YYYY" {{if eq .settings.DateFormat "DD MMM YYYY"}}selected{{end}}>DD MMM YYYY (31 Dec 2025)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Right Column - Defaults & Behavior -->
+                            <div class="col-md-6">
+                                <h5>Default Values</h5>
+                                
+                                <div class="form-group">
+                                    <label for="defaultPaymentTerms">Default Payment Terms (days)</label>
+                                    <input type="number" id="defaultPaymentTerms" name="defaultPaymentTerms" class="form-control" 
+                                           value="{{.settings.DefaultPaymentTerms}}" min="1" max="365">
+                                    <small class="form-text text-muted">Default number of days for payment due date</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="defaultTaxRate">Default Tax Rate (%)</label>
+                                    <input type="number" id="defaultTaxRate" name="defaultTaxRate" class="form-control" 
+                                           value="{{.settings.DefaultTaxRate}}" step="0.01" min="0" max="100">
+                                    <small class="form-text text-muted">Default tax rate applied to new invoices</small>
+                                </div>
+
+                                <h5 class="mt-4">Invoice Behavior</h5>
+                                
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="autoCalculateRentalDays" name="autoCalculateRentalDays" 
+                                               class="form-check-input" {{if .settings.AutoCalculateRentalDays}}checked{{end}}>
+                                        <label class="form-check-label" for="autoCalculateRentalDays">
+                                            Auto-calculate rental days
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            Automatically calculate quantity based on rental start and end dates
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="showLogoOnInvoice" name="showLogoOnInvoice" 
+                                               class="form-check-input" {{if .settings.ShowLogoOnInvoice}}checked{{end}}>
+                                        <label class="form-check-label" for="showLogoOnInvoice">
+                                            Show company logo on invoices
+                                        </label>
+                                        <small class="form-text text-muted">
+                                            Display company logo in invoice header
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <h5 class="mt-4">Email Settings</h5>
+                                
+                                <div class="form-group">
+                                    <label for="emailSubjectTemplate">Email Subject Template</label>
+                                    <input type="text" id="emailSubjectTemplate" name="emailSubjectTemplate" class="form-control" 
+                                           placeholder="Invoice {invoice_number} from {company_name}">
+                                    <small class="form-text text-muted">
+                                        Variables: {invoice_number}, {company_name}, {customer_name}, {total_amount}
+                                    </small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="emailBodyTemplate">Email Body Template</label>
+                                    <textarea id="emailBodyTemplate" name="emailBodyTemplate" class="form-control" rows="4" 
+                                              placeholder="Dear {customer_name},&#10;&#10;Please find attached invoice {invoice_number} for the amount of {total_amount}.&#10;&#10;Best regards,&#10;{company_name}"></textarea>
+                                    <small class="form-text text-muted">
+                                        Variables: {invoice_number}, {company_name}, {customer_name}, {total_amount}, {due_date}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">
+                                            <button class="btn btn-link p-0" type="button" data-toggle="collapse" 
+                                                    data-target="#advancedSettings" aria-expanded="false">
+                                                <i class="fas fa-chevron-down"></i> Advanced Settings
+                                            </button>
+                                        </h5>
+                                    </div>
+                                    <div class="collapse" id="advancedSettings">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="overdueGracePeriod">Overdue Grace Period (days)</label>
+                                                        <input type="number" id="overdueGracePeriod" name="overdueGracePeriod" 
+                                                               class="form-control" value="0" min="0" max="30">
+                                                        <small class="form-text text-muted">
+                                                            Days after due date before marking as overdue
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label for="lateFeePercentage">Late Fee Percentage</label>
+                                                        <input type="number" id="lateFeePercentage" name="lateFeePercentage" 
+                                                               class="form-control" value="0" step="0.01" min="0" max="50">
+                                                        <small class="form-text text-muted">
+                                                            Percentage fee for overdue invoices
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <div class="form-check">
+                                                    <input type="checkbox" id="enableRecurringInvoices" name="enableRecurringInvoices" 
+                                                           class="form-check-input">
+                                                    <label class="form-check-label" for="enableRecurringInvoices">
+                                                        Enable recurring invoices
+                                                    </label>
+                                                    <small class="form-text text-muted">
+                                                        Allow creating recurring/subscription invoices
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <div class="form-check">
+                                                    <input type="checkbox" id="requireApprovalBeforeSending" name="requireApprovalBeforeSending" 
+                                                           class="form-check-input">
+                                                    <label class="form-check-label" for="requireApprovalBeforeSending">
+                                                        Require approval before sending invoices
+                                                    </label>
+                                                    <small class="form-text text-muted">
+                                                        Invoices must be approved before they can be sent
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Save Settings
+                                    </button>
+                                    <a href="/invoices" class="btn btn-secondary">Cancel</a>
+                                    <button type="button" class="btn btn-info ml-2" onclick="resetToDefaults()">
+                                        <i class="fas fa-undo"></i> Reset to Defaults
+                                    </button>
+                                    <button type="button" class="btn btn-success ml-2" onclick="testEmailSettings()">
+                                        <i class="fas fa-envelope"></i> Test Email
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Email Modal -->
+<div class="modal fade" id="testEmailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Test Email Settings</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="testEmailForm">
+                    <div class="form-group">
+                        <label for="testEmailAddress">Send test email to:</label>
+                        <input type="email" id="testEmailAddress" class="form-control" required 
+                               placeholder="test@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="testInvoiceId">Use invoice for testing:</label>
+                        <select id="testInvoiceId" class="form-control">
+                            <option value="">Select an invoice (optional)</option>
+                            <!-- This would be populated with actual invoices -->
+                        </select>
+                        <small class="form-text text-muted">
+                            If selected, actual invoice data will be used for template variables
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendTestEmail()">Send Test Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up form submission
+    document.getElementById('invoiceSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitInvoiceSettings();
+    });
+    
+    // Initialize format preview
+    updateFormatPreview();
+});
+
+function updateFormatPreview() {
+    const prefix = document.getElementById('invoiceNumberPrefix').value || 'INV-';
+    const format = document.getElementById('invoiceNumberFormat').value;
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    
+    let preview = format;
+    preview = preview.replace('{prefix}', prefix);
+    preview = preview.replace('{year}', year);
+    preview = preview.replace('{month}', month);
+    preview = preview.replace('{sequence:4}', '0001');
+    preview = preview.replace('{sequence:6}', '000001');
+    
+    document.getElementById('invoiceNumberPreview').textContent = preview;
+}
+
+// Update preview when prefix changes
+document.getElementById('invoiceNumberPrefix').addEventListener('input', updateFormatPreview);
+
+function submitInvoiceSettings() {
+    const formData = new FormData(document.getElementById('invoiceSettingsForm'));
+    
+    const settings = {
+        invoiceNumberPrefix: formData.get('invoiceNumberPrefix'),
+        invoiceNumberFormat: formData.get('invoiceNumberFormat'),
+        defaultPaymentTerms: parseInt(formData.get('defaultPaymentTerms')),
+        defaultTaxRate: parseFloat(formData.get('defaultTaxRate')),
+        autoCalculateRentalDays: formData.get('autoCalculateRentalDays') === 'on',
+        showLogoOnInvoice: formData.get('showLogoOnInvoice') === 'on',
+        currencySymbol: formData.get('currencySymbol'),
+        currencyCode: formData.get('currencyCode'),
+        dateFormat: formData.get('dateFormat')
+    };
+    
+    fetch('/api/invoice-settings', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            alert('Invoice settings updated successfully!');
+            // Optionally redirect or reload
+            // window.location.href = '/invoices';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update invoice settings');
+    });
+}
+
+function resetToDefaults() {
+    if (confirm('Are you sure you want to reset all settings to their default values?')) {
+        // Reset form to default values
+        document.getElementById('invoiceNumberPrefix').value = 'INV-';
+        document.getElementById('invoiceNumberFormat').value = '{prefix}{year}{month}{sequence:4}';
+        document.getElementById('defaultPaymentTerms').value = '30';
+        document.getElementById('defaultTaxRate').value = '19.00';
+        document.getElementById('autoCalculateRentalDays').checked = true;
+        document.getElementById('showLogoOnInvoice').checked = true;
+        document.getElementById('currencySymbol').value = '€';
+        document.getElementById('currencyCode').value = 'EUR';
+        document.getElementById('dateFormat').value = 'DD.MM.YYYY';
+        
+        updateFormatPreview();
+    }
+}
+
+function testEmailSettings() {
+    $('#testEmailModal').modal('show');
+}
+
+function sendTestEmail() {
+    const emailAddress = document.getElementById('testEmailAddress').value;
+    
+    if (!emailAddress) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    const testData = {
+        toEmail: emailAddress
+    };
+    
+    // Show loading state
+    const sendButton = document.querySelector('#testEmailModal .btn-primary');
+    const originalText = sendButton.innerHTML;
+    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    sendButton.disabled = true;
+    
+    fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error sending test email: ' + data.error);
+        } else {
+            alert('Test email sent successfully to ' + data.sentTo + '!');
+            $('#testEmailModal').modal('hide');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to send test email');
+    })
+    .finally(() => {
+        // Restore button state
+        sendButton.innerHTML = originalText;
+        sendButton.disabled = false;
+    });
+}
+</script>
+{{end}}

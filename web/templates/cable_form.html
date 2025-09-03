@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">{{.title}}</h1>
+                <p class="rc-text">Add a new cable to your inventory</p>
+            </div>
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/cables" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Cables
+                </a>
+            </div>
+        </div>
+
+        <!-- Cable Form -->
+        <div class="rc-card">
+            <div class="rc-card-body">
+                {{if .error}}
+                <div class="rc-alert rc-alert-error rc-mb-lg">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {{.error}}
+                </div>
+                {{end}}
+                
+                <form method="POST" action="/cables">
+                    <div class="rc-form-grid rc-form-grid-2">
+                        <!-- Cable Type -->
+                        <div class="rc-form-group">
+                            <label for="type" class="rc-label">Cable Type *</label>
+                            <select name="type" id="type" class="rc-select" required>
+                                <option value="">Select cable type</option>
+                                {{range .types}}
+                                <option value="{{.CableTypesID}}" {{if eq $.cable.Type .CableTypesID}}selected{{end}}>{{.Name}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+
+                        <!-- Length -->
+                        <div class="rc-form-group">
+                            <label for="length" class="rc-label">Length (meters) *</label>
+                            <input type="number" name="length" id="length" class="rc-input" step="0.01" min="0" 
+                                   value="{{if .cable.Length}}{{.cable.Length}}{{end}}" required placeholder="e.g., 5.00">
+                        </div>
+
+                        <!-- Connector 1 -->
+                        <div class="rc-form-group">
+                            <label for="connector1" class="rc-label">Connector 1 *</label>
+                            <select name="connector1" id="connector1" class="rc-select" required>
+                                <option value="">Select connector 1</option>
+                                {{range .connectors}}
+                                <option value="{{.CableConnectorsID}}" {{if eq $.cable.Connector1 .CableConnectorsID}}selected{{end}}>
+                                    {{.Name}}{{if .Abbreviation}} ({{.Abbreviation}}){{end}}{{if .Gender}} - {{.Gender}}{{end}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+
+                        <!-- Connector 2 -->
+                        <div class="rc-form-group">
+                            <label for="connector2" class="rc-label">Connector 2 *</label>
+                            <select name="connector2" id="connector2" class="rc-select" required>
+                                <option value="">Select connector 2</option>
+                                {{range .connectors}}
+                                <option value="{{.CableConnectorsID}}" {{if eq $.cable.Connector2 .CableConnectorsID}}selected{{end}}>
+                                    {{.Name}}{{if .Abbreviation}} ({{.Abbreviation}}){{end}}{{if .Gender}} - {{.Gender}}{{end}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+
+                        <!-- Cross Section -->
+                        <div class="rc-form-group">
+                            <label for="mm2" class="rc-label">Cross Section (mm²)</label>
+                            <input type="number" name="mm2" id="mm2" class="rc-input" step="0.01" min="0" 
+                                   value="{{.cable.GetMM2Value}}" placeholder="e.g., 2.5">
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="rc-form-group">
+                            <label for="amount" class="rc-label">Amount *</label>
+                            <input type="number" name="amount" id="amount" class="rc-input" min="1" 
+                                   value="1" required placeholder="e.g., 20">
+                            <small class="rc-text-sm rc-text-muted">Number of identical cables to create</small>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="rc-form-actions rc-mt-xl">
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-check-lg"></i> Create Cable
+                        </button>
+                        <a href="/cables" class="rc-btn rc-btn-outline">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

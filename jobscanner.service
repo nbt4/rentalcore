@@ -1,0 +1,35 @@
+[Unit]
+Description=JobScanner Pro - Equipment Management System
+After=network.target mysql.service
+Wants=network-online.target
+Requires=mysql.service
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/go-barcode-webapp
+ExecStart=/opt/go-barcode-webapp/server -config=config.production.direct.json
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/go-barcode-webapp/logs
+
+# Environment
+Environment=GIN_MODE=release
+Environment=TZ=Europe/Berlin
+
+# Logging
+StandardOutput=append:/opt/go-barcode-webapp/logs/production.log
+StandardError=append:/opt/go-barcode-webapp/logs/production.log
+
+[Install]
+WantedBy=multi-user.target

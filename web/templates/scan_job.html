@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JobScanner">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Professional Scanner Styles */
+        .scanner-container {
+            position: relative;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 0 auto;
+            max-width: 100%;
+            width: 100%;
+            height: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        @media (min-width: 768px) {
+            .scanner-container {
+                max-width: 500px;
+                height: 380px;
+            }
+        }
+        
+        .scanner-video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+            background: #000;
+        }
+        
+        /* Force ALL video elements in scanner to be visible */
+        .scanner-container video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: black !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 1 !important;
+        }
+        
+        /* Ensure modal doesn't interfere with video */
+        .modal {
+            z-index: 1050 !important;
+        }
+        
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .scanner-ready {
+            border: 4px solid #28a745;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .scanner-status-area {
+            margin: 12px 0;
+        }
+
+        
+        .scanner-status {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .scanner-status.code-detected {
+            background: rgba(111, 66, 193, 0.1);
+            border-color: #6f42c1;
+            color: #6f42c1;
+            animation: pulse-ready 2s infinite;
+        }
+        
+        @keyframes pulse-ready {
+            0% { 
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 0 rgba(111, 66, 193, 0.7);
+            }
+            70% {
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 10px rgba(111, 66, 193, 0);
+            }
+            100% {
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 0 rgba(111, 66, 193, 0);
+            }
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            padding-bottom: 40px;
+        }
+        
+        .camera-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .camera-btn.start {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .camera-btn.start:hover::before {
+            content: "Start Camera";
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .camera-btn.stop {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            animation: pulse-red 2s infinite;
+        }
+        
+        .camera-btn.stop:hover::before {
+            content: "Stop Camera";
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4); }
+            100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+        }
+        
+        .camera-status-bar {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin: 16px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #28a745;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0% { 
+                background: #28a745;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            70% {
+                background: #28a745;
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% {
+                background: #28a745;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+        
+        .camera-btn.flash {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: white;
+        }
+        
+        .camera-btn.trigger {
+            background: linear-gradient(135deg, #6f42c1, #563d7c);
+            color: white;
+            animation: pulse-trigger 3s infinite;
+        }
+        
+        .camera-btn.trigger:hover::before {
+            content: "Scan Trigger (or Spacebar)";
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .camera-btn.trigger.active {
+            animation: pulse-trigger-active 1s infinite;
+        }
+        
+        @keyframes pulse-trigger {
+            0% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 4px 20px rgba(111, 66, 193, 0.4); }
+            100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+        }
+        
+        @keyframes pulse-trigger-active {
+            0% { 
+                background: linear-gradient(135deg, #6f42c1, #563d7c);
+                box-shadow: 0 4px 16px rgba(111, 66, 193, 0.3);
+            }
+            50% { 
+                background: linear-gradient(135deg, #28a745, #20c997);
+                box-shadow: 0 4px 20px rgba(40, 167, 69, 0.6);
+            }
+            100% { 
+                background: linear-gradient(135deg, #6f42c1, #563d7c);
+                box-shadow: 0 4px 16px rgba(111, 66, 193, 0.3);
+            }
+        }
+        
+        .camera-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .manual-input-section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .mobile-scanner-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid var(--bg-tertiary);
+        }
+        
+        .device-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .device-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .device-item:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .product-group {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .product-group .accordion-button {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 12px 16px;
+        }
+        
+        .product-group .accordion-button:not(.collapsed) {
+            background: var(--accent-color);
+            color: white;
+            box-shadow: none;
+        }
+        
+        .product-group .accordion-button:focus {
+            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+            border-color: transparent;
+        }
+        
+        .product-info .product-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .device-item-grouped {
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .device-item-grouped:hover {
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+        
+        .product-group:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .device-item-grouped:last-child {
+            margin-bottom: 0;
+        }
+        
+        .accordion-body {
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .device-id {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--accent-color);
+        }
+        
+        .device-name {
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .device-price {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        .job-header {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .job-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .job-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            color: var(--text-muted);
+        }
+        
+        .job-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .scan-result {
+            background: var(--bg-secondary);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        .scan-result.error {
+            border-color: var(--danger-color);
+            background: rgba(220, 53, 69, 0.1);
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--bg-tertiary);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Accordion functionality */
+        .rc-accordion-collapse {
+            display: none;
+            overflow: hidden;
+        }
+        
+        .rc-accordion-collapse.show {
+            display: block;
+        }
+        
+        .rc-accordion-button {
+            width: 100%;
+            text-align: left;
+            border: none;
+            background: transparent;
+            padding: 12px 16px;
+            cursor: pointer;
+            justify-content: flex-start;
+            display: flex;
+        }
+        
+        .rc-accordion-button:not(.collapsed) {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .rc-accordion-button:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .rc-accordion-button:not(.collapsed):hover {
+            background: #b02a37;
+            color: white;
+        }
+        
+        /* CONTROLLED fix - only target problematic > symbols */
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden;
+        }
+        
+        /* Only hide specific breadcrumb elements */
+        .breadcrumb-separator,
+        .breadcrumb-separator::before,
+        .breadcrumb-separator::after {
+            display: none !important;
+        }
+        
+        /* Keep navbar at top but not fixed */
+        .rc-navbar {
+            position: relative;
+            top: 0;
+            margin: 0;
+            z-index: 1000;
+        }
+        
+        /* Normal main content */
+        main.rc-container {
+            margin-top: var(--space-lg);
+        }
+        
+        /* Case scan buttons hover effects */
+        .case-scan-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 245, 255, 0.2);
+            border-color: var(--accent-electric) !important;
+            background: var(--surface-2) !important;
+        }
+        
+        .case-scan-btn:hover .bi-box {
+            color: var(--accent-neon) !important;
+        }
+        
+        .case-scan-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+></head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <main class="rc-container rc-mt-lg">
+        <!-- Job Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-1 rc-mb-sm">{{.job.Description}}</h1>
+                <div class="rc-flex rc-flex-gap-md" style="align-items: center;">
+                    <span class="rc-text-secondary">
+                        <i class="bi bi-person"></i> {{.job.Customer.GetDisplayName}}
+                    </span>
+                    <span class="rc-text-secondary">
+                        <i class="bi bi-calendar"></i> {{if .job.StartDate}}{{.job.StartDate.Format "02.01.2006"}}{{end}}
+                    </span>
+                    <span class="rc-text-secondary">
+                        <i class="bi bi-cpu"></i> {{.DeviceCount}} devices assigned
+                    </span>
+                </div>
+            </div>
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/scan/select" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-arrow-left"></i> Change Job
+                </a>
+                <a href="/jobs/{{.job.JobID}}" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-eye"></i> View Details
+                </a>
+            </div>
+        </div>
+
+        <div class="rc-grid scanner-layout" style="gap: var(--space-lg); grid-template-columns: 1fr; min-height: 500px;">
+            <style>
+                @media (min-width: 1024px) {
+                    .scanner-layout {
+                        grid-template-columns: 1fr 1fr !important;
+                    }
+                }
+            </style>
+            <!-- Scanner Column -->
+            <div>
+                <div class="rc-card" style="border: 2px solid var(--accent-color); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
+                    <div class="rc-card-header" style="background: linear-gradient(135deg, var(--accent-color), #8B0000); color: white;">
+                        <h3 class="rc-card-title"><i class="bi bi-camera"></i> Barcode Scanner</h3>
+                    </div>
+                    <div class="rc-card-body">
+                        <!-- Camera Scanner Container -->
+                        <div class="scanner-container">
+                            <div class="loading active" id="camera-loading">
+                                <div class="spinner"></div>
+                                <p>Click camera button to start continuous scanning</p>
+                                <small style="color: #666; margin-top: 10px; display: block;">
+                                    📱 Camera requires HTTPS or localhost access
+                                </small>
+                            </div>
+                            <video id="scanner-video" class="scanner-video" autoplay muted playsinline style="display: none;"></video>
+                            <div class="scanner-overlay" id="scanner-overlay" style="display: none;">
+                                <!-- Overlay content for targeting box, etc. -->
+                            </div>
+                        </div>
+                        
+                        <!-- Camera Status Indicator -->
+                        <div class="camera-status-bar" id="camera-status-bar" style="display: none;">
+                            <div class="rc-flex rc-flex-center">
+                                <div class="status-dot"></div>
+                                <span class="ms-2">Camera On - Continuous Scanning Active</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Scanner Status -->
+                        <div class="scanner-status-area rc-text-center" id="scanner-status-area" style="margin-top: 16px; margin-bottom: 16px;">
+                            <div class="scanner-status" id="scanner-status">Ready to scan</div>
+                        </div>
+                        
+                        <!-- Camera Controls -->
+                        <div class="camera-controls">
+                            <button class="camera-btn start" id="start-btn" onclick="toggleCamera()">
+                                <i class="bi bi-camera"></i>
+                            </button>
+                            <button class="camera-btn stop" id="stop-btn" onclick="toggleCamera()" style="display: none;">
+                                <i class="bi bi-stop"></i>
+                            </button>
+                            <button class="camera-btn trigger" id="trigger-btn" onclick="triggerScan()" style="display: none;">
+                                <i class="bi bi-bullseye"></i>
+                            </button>
+                            <button class="camera-btn flash" id="flash-btn" onclick="toggleFlash()">
+                                <i class="bi bi-lightbulb"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Scanner Options -->
+                        <div class="mobile-scanner-section rc-mb-md">
+                            <h6 style="margin-bottom: 16px;"><i class="bi bi-phone"></i> Mobile Scanner</h6>
+                            <div class="rc-flex rc-flex-gap-sm">
+                                <a href="/mobile/scanner/{{.job.JobID}}" class="rc-btn rc-btn-outline rc-btn-sm rc-flex-1">
+                                    <i class="bi bi-camera"></i> Standard
+                                </a>
+                                <a href="/mobile/scanner/{{.job.JobID}}/enhanced" class="rc-btn rc-btn-primary rc-btn-sm rc-flex-1">
+                                    <i class="bi bi-stars"></i> Enhanced
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Scan Toggle -->
+                        <div class="manual-input-section rc-mb-md" style="margin-top: 20px; margin-bottom: 20px; padding: 16px; border: 1px solid var(--surface-3); border-radius: 8px; background: var(--surface-1);">
+                            <h6 style="margin-bottom: 16px;"><i class="bi bi-toggles"></i> Scan Mode</h6>
+                            <div class="rc-flex rc-flex-gap-md rc-flex-between">
+                                <div class="rc-flex rc-flex-gap-sm rc-flex-center">
+                                    <input type="checkbox" id="bulk-mode-toggle" class="rc-switch" checked>
+                                    <label for="bulk-mode-toggle" class="rc-label">
+                                        <span id="bulk-mode-label">Bulk Mode</span>
+                                        <small class="rc-text-muted rc-block">Scan multiple devices, then assign all at once</small>
+                                    </label>
+                                </div>
+                                <button id="finish-bulk-btn" class="rc-btn rc-btn-success rc-btn-sm" 
+                                        onclick="finishBulkScan()" style="display: none;">
+                                    <i class="bi bi-check-lg"></i> Assign All (<span id="bulk-count">0</span>)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Manual Input -->
+                        <div class="manual-input-section" style="margin-top: 20px;">
+                            <h6 style="margin-bottom: 16px;"><i class="bi bi-keyboard"></i> Manual Input</h6>
+                            <div class="rc-input-group" style="margin-bottom: 20px;">
+                                <input type="text" id="manual-input" class="rc-input" 
+                                       placeholder="Type device ID (e.g. SUB1001)" autocomplete="off">
+                                <button class="rc-btn rc-btn-primary" onclick="processManualInput()" style="margin-left: 8px;">
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            </div>
+                            <small class="rc-text-muted rc-mt-sm rc-block">
+                                <i class="bi bi-info-circle"></i> Camera not working? Use https:// URL or localhost:9000
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cases & Devices Column -->
+            <div>
+                <!-- Cases Section - Compact -->
+                {{if .cases}}
+                <div class="rc-card rc-mb-md" style="border: 1px solid var(--bg-tertiary);">
+                    <div class="rc-card-header" style="padding: 12px 16px; background: var(--bg-secondary);">
+                        <h6 style="margin: 0; font-size: 14px;"><i class="bi bi-box"></i> Quick Scan Cases</h6>
+                    </div>
+                    <div class="rc-card-body" style="padding: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            {{range $index, $case := .cases}}
+                            {{if lt $index 6}}
+                            <button class="rc-btn rc-btn-outline case-scan-btn" onclick="scanCase({{$case.CaseID}}, '{{$case.Name}}', {{$case.DeviceCount}})" style="font-size: 16px; padding: 20px 12px; min-height: 80px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; border-radius: 12px; border: 2px solid var(--surface-3); background: var(--surface-1); transition: all 0.2s ease;">
+                                <i class="bi bi-box" style="font-size: 24px; color: var(--accent-electric);"></i>
+                                <span style="font-weight: 600; color: var(--text-primary);">{{$case.Name}}</span>
+                                <small style="color: var(--text-muted); font-size: 12px;">{{$case.DeviceCount}} devices</small>
+                            </button>
+                            {{end}}
+                            {{end}}
+                        </div>
+                        {{if gt (len .cases) 6}}
+                        <div class="rc-text-center rc-mt-lg">
+                            <button class="rc-btn rc-btn-link rc-btn-sm" onclick="toggleAllCases()">
+                                <i class="bi bi-chevron-down" id="cases-toggle-icon"></i> +{{sub (len .cases) 6}} more
+                            </button>
+                        </div>
+                        <div id="all-cases" style="display: none;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px;">
+                                {{range $index, $case := .cases}}
+                                {{if ge $index 6}}
+                                <button class="rc-btn rc-btn-outline case-scan-btn" onclick="scanCase({{$case.CaseID}}, '{{$case.Name}}', {{$case.DeviceCount}})" style="font-size: 16px; padding: 20px 12px; min-height: 80px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; border-radius: 12px; border: 2px solid var(--surface-3); background: var(--surface-1); transition: all 0.2s ease;">
+                                    <i class="bi bi-box" style="font-size: 24px; color: var(--accent-electric);"></i>
+                                    <span style="font-weight: 600; color: var(--text-primary);">{{$case.Name}}</span>
+                                    <small style="color: var(--text-muted); font-size: 12px;">{{$case.DeviceCount}} devices</small>
+                                </button>
+                                {{end}}
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+                
+                <!-- Device Selection Tree Section -->
+                <div class="rc-card rc-mb-md">
+                    <div class="rc-card-header rc-flex rc-flex-between" style="align-items: center;">
+                        <h6><i class="bi bi-diagram-3"></i> Device Selection</h6>
+                        <div class="rc-flex rc-flex-gap-sm">
+                            <button type="button" id="refreshDeviceTreeScan" class="rc-btn rc-btn-outline rc-btn-sm">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="rc-card-body">
+                        <div id="deviceSelectionContainerScan">
+                            <div id="loadingDevicesScan" class="rc-flex rc-flex-center rc-py-lg">
+                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i>
+                                Loading available devices for this job...
+                            </div>
+                            
+                            <div id="deviceTreeContainerScan" style="display: none;">
+                                <!-- Tree view will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Devices Section -->
+                <div class="rc-card">
+                    <div class="rc-card-header rc-flex rc-flex-between" style="align-items: center;">
+                        <h6><i class="bi bi-list-check"></i> Scanned Devices</h6>
+                        <div class="rc-flex rc-flex-gap-sm" style="align-items: center;">
+                            <button id="bulk-delete-btn" class="rc-btn rc-btn-danger rc-btn-sm" onclick="bulkDeleteDevices()" style="display: none;">
+                                <i class="bi bi-trash"></i> Delete <span id="bulk-delete-count">0</span>
+                            </button>
+                            <button id="select-all-btn" class="rc-btn rc-btn-outline rc-btn-sm" onclick="toggleSelectAll()">
+                                <i class="bi bi-check-square"></i> Select All
+                            </button>
+                            <span class="rc-badge rc-badge-primary">{{.totalDevices}} devices</span>
+                        </div>
+                    </div>
+                    <div class="rc-card-body">
+                        <div class="device-list" id="device-list">
+                            {{if .productGroups}}
+                            <div class="rc-accordion" id="deviceAccordion">
+                                {{range $productName, $group := .productGroups}}
+                                {{$productId := "unknown"}}
+                                {{if $group.Product}}{{$productId = printf "%d" $group.Product.ProductID}}{{end}}
+                                <div class="rc-accordion-item product-group">
+                                    <h2 class="rc-accordion-header" id="heading-product-{{$productId}}">
+                                        <button class="rc-accordion-button collapsed" type="button" 
+                                                onclick="toggleAccordion('collapse-product-{{$productId}}')" 
+                                                aria-expanded="false" 
+                                                aria-controls="collapse-product-{{$productId}}"
+                                                style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; text-align: left !important;">
+                                            <div class="product-info" style="text-align: left; flex: 1 1 auto;">
+                                                <div class="product-name">{{$productName}}</div>
+                                                {{if and $group.Product $group.Product.ItemCostPerDay}}
+                                                <small class="rc-text-muted">€{{printf "%.2f" (derefFloat $group.Product.ItemCostPerDay)}} per day</small>
+                                                {{end}}
+                                            </div>
+                                            <span class="rc-badge rc-badge-secondary" style="margin-left: 20px; flex: 0 0 auto;">{{$group.Count}} devices</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse-product-{{$productId}}" 
+                                         class="rc-accordion-collapse collapse" 
+                                         aria-labelledby="heading-product-{{$productId}}">
+                                        <div class="rc-accordion-body">
+                                            {{range $group.Devices}}
+                                            <div class="device-item-grouped" data-device-id="{{.Device.DeviceID}}">
+                                                <div class="rc-flex rc-flex-between rc-flex-start">
+                                                    <div class="rc-flex rc-flex-start" style="gap: 12px; flex-grow: 1;">
+                                                        <input type="checkbox" class="device-checkbox" data-device-id="{{.Device.DeviceID}}" onchange="updateBulkDeleteButton()">
+                                                        <div class="flex-grow-1">
+                                                            <div class="device-id">{{.Device.DeviceID}}</div>
+                                                            <div class="device-price">
+                                                                {{if .CustomPrice}}
+                                                                    €{{printf "%.2f" (derefFloat .CustomPrice)}} (custom price)
+                                                                {{else if and .Device.Product .Device.Product.ItemCostPerDay}}
+                                                                    €{{printf "%.2f" (derefFloat .Device.Product.ItemCostPerDay)}} (default price)
+                                                                {{else}}
+                                                                    No price set
+                                                                {{end}}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button class="rc-btn rc-btn-outline-danger rc-btn-sm" onclick="removeDevice('{{.Device.DeviceID}}')">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                            {{else}}
+                            <div class="rc-text-center rc-py-xl" id="empty-state">
+                                <i class="bi bi-qr-code rc-text-4xl rc-text-muted"></i>
+                                <h5 class="rc-mt-md rc-text-muted">No devices scanned yet</h5>
+                                <p class="rc-text-muted">Start scanning to see results here</p>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Price Modal -->
+    <div class="rc-modal" id="priceModal" tabindex="-1" style="display: none;">
+        <div class="rc-modal-dialog" style="width: 90vw; max-width: 40rem; margin: 1.75rem auto;">
+            <div class="rc-modal-content">
+                <div class="rc-modal-header" style="padding: 1.5rem;">
+                    <h5 class="rc-modal-title">Set Custom Price</h5>
+                    <button type="button" class="rc-modal-close"></button>
+                </div>
+                <div class="rc-modal-body" style="padding: 1.5rem;">
+                    <div class="rc-mb-lg">
+                        <label class="rc-label">Device</label>
+                        <div class="rc-p-lg rc-bg-secondary rc-rounded" style="padding: 1rem;">
+                            <div class="device-id" id="modal-device-id" style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">-</div>
+                            <div class="device-name" id="modal-device-name" style="color: #6c757d;">-</div>
+                        </div>
+                    </div>
+                    <div class="rc-mb-md">
+                        <label for="customPrice" class="rc-label">Custom Price (EUR)</label>
+                        <div class="rc-input-group" style="margin-top: 0.5rem;">
+                            <span class="rc-input-group-text">€</span>
+                            <input type="number" class="rc-input" id="customPrice" 
+                                   placeholder="Leave empty for default" step="0.01" min="0"
+                                   style="padding: 0.75rem 1rem; font-size: 1rem;">
+                        </div>
+                        <div class="rc-form-text" id="default-price-info" style="margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(108, 117, 125, 0.1); border-radius: 0.375rem;">
+                            Default price will be used if left empty
+                        </div>
+                    </div>
+                </div>
+                <div class="rc-modal-footer" style="padding: 1.5rem; gap: 0.75rem;">
+                    <button type="button" class="rc-btn rc-btn-secondary rc-modal-close" style="padding: 0.75rem 1.5rem;">Cancel</button>
+                    <button type="button" class="rc-btn rc-btn-primary" id="confirm-assign" style="padding: 0.75rem 1.5rem;">Assign Device</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    
+    <script>
+        // Global variables
+        let isScanning = false;
+        let isBulkMode = true;
+        let bulkDevices = [];
+        let priceModalCallback = null;
+        let scanningEnabled = false;
+        let lastDetectedCode = null;
+        let lastDetectionTime = 0;
+        let triggerCooldown = false;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+            console.log('QuaggaJS available:', typeof Quagga !== 'undefined');
+            console.log('Navigator mediaDevices available:', !!navigator.mediaDevices);
+            console.log('getUserMedia available:', !!navigator.mediaDevices?.getUserMedia);
+            
+            // Force close any open modals on page load
+            const modal = document.getElementById('priceModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            
+            // TARGETED fix - only remove the specific > text node
+            function removeStrayChevron() {
+                // Remove any standalone > text nodes
+                const walker = document.createTreeWalker(
+                    document.body,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                let node;
+                while (node = walker.nextNode()) {
+                    if (node.textContent && node.textContent.trim() === '>') {
+                        // Remove the text node itself, not the parent
+                        node.remove();
+                        console.log('Removed stray > text node');
+                    }
+                }
+            }
+            
+            // Run once to remove the stray >
+            setTimeout(removeStrayChevron, 50);
+            
+            initializeScanner();
+            setupEventListeners();
+            initializeBulkMode();
+        });
+
+        function initializeScanner() {
+            console.log('Scanner initialized, ready to start');
+            // Keep the loading visible with "Click start to begin scanning" message
+            // Don't remove 'active' class here - let startScanner() handle it
+        }
+
+        function setupEventListeners() {
+            // Manual input Enter key
+            document.getElementById('manual-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    processManualInput();
+                }
+            });
+            
+            // Trigger scan with spacebar
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && isScanning) {
+                    e.preventDefault();
+                    triggerScan();
+                }
+            });
+
+            // Price modal Enter key
+            document.getElementById('customPrice').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('confirm-assign').click();
+                }
+            });
+
+            // Confirm assign button
+            document.getElementById('confirm-assign').addEventListener('click', function() {
+                const customPrice = document.getElementById('customPrice').value;
+                const price = customPrice && customPrice.trim() !== '' ? parseFloat(customPrice) : null;
+                
+                const modal = document.getElementById('priceModal');
+                modal.style.display = 'none';
+                
+                if (priceModalCallback) {
+                    priceModalCallback(price);
+                    priceModalCallback = null;
+                }
+            });
+        }
+
+        async function startScanner() {
+            if (isScanning) return;
+
+            console.log('startScanner() called - using simple camera approach');
+            
+            // Check if QuaggaJS is loaded
+            if (typeof Quagga === 'undefined') {
+                updateStatus('QuaggaJS library not loaded', 'error');
+                return;
+            }
+
+            // Check if camera is available
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('Camera not available - HTTPS required or browser incompatible');
+                updateStatus('Camera requires HTTPS or secure connection. Try accessing via https:// or localhost', 'error');
+                
+                // Reset UI
+                document.getElementById('start-btn').style.display = 'block';
+                document.getElementById('stop-btn').style.display = 'none';
+                return;
+            }
+
+            // Update loading message and ensure it's visible
+            const loadingDiv = document.getElementById('camera-loading');
+            const loadingText = loadingDiv.querySelector('p');
+            loadingText.textContent = 'Getting camera stream...';
+            loadingDiv.classList.add('active');
+            
+            const video = document.getElementById('scanner-video');
+            
+            // Update buttons immediately
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            
+            updateStatus('Starting camera...', 'info');
+
+            try {
+                // STEP 1: Get camera stream directly first
+                console.log('Getting camera stream manually...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: "environment"
+                    }
+                });
+                
+                console.log('Got camera stream:', stream);
+                
+                // STEP 2: Set the stream to our video element
+                video.srcObject = stream;
+                video.style.display = 'block';
+                video.style.visibility = 'visible';
+                video.style.opacity = '1';
+                
+                // STEP 3: Wait for video to load and play
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = resolve;
+                });
+                
+                await video.play();
+                console.log('Video is playing - you should see camera feed now!');
+                
+                // STEP 4: Show UI immediately since we have working video
+                document.getElementById('camera-loading').classList.remove('active');
+                document.getElementById('scanner-overlay').style.display = 'block';
+                
+                // Show camera status bar and trigger button
+                document.getElementById('camera-status-bar').style.display = 'block';
+                document.getElementById('trigger-btn').style.display = 'block';
+                
+                // Add ready border to whole container
+                const scannerContainer = document.querySelector('.scanner-container');
+                scannerContainer.classList.add('scanner-ready');
+                
+                updateStatus('Camera working! Initializing barcode scanner...', 'success');
+                
+            } catch (error) {
+                console.error('Manual camera failed:', error);
+                updateStatus('Camera failed: ' + error.message, 'error');
+                
+                // Reset UI
+                document.getElementById('camera-loading').classList.add('active');
+                video.style.display = 'none';
+                document.getElementById('scanner-overlay').style.display = 'none';
+                document.getElementById('camera-status-bar').style.display = 'none';
+                document.getElementById('trigger-btn').style.display = 'none';
+                document.getElementById('start-btn').style.display = 'block';
+                document.getElementById('stop-btn').style.display = 'none';
+                return;
+            }
+
+            // STEP 5: Now initialize QuaggaJS with mobile-optimized config
+            const config = {
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: video
+                },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: true
+                },
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 2) : 1,
+                frequency: 5, // Reduced frequency to prevent overload on mobile
+                decoder: {
+                    readers: [
+                        "code_128_reader",
+                        "ean_reader", 
+                        "code_39_reader"
+                    ]
+                },
+                locate: true,
+                debug: {
+                    drawBoundingBox: false, // Disable debug overlay for better mobile performance
+                    showFrequency: false,
+                    drawScanline: false,
+                    showPattern: false
+                }
+            };
+
+            console.log('Initializing QuaggaJS with existing video stream...');
+            
+            // Clear any existing event listeners first
+            Quagga.offDetected();
+            
+            // Set up barcode detection with mobile-friendly settings
+            Quagga.onDetected(function(result) {
+                if (result && result.codeResult && result.codeResult.code) {
+                    const code = result.codeResult.code.trim();
+                    const confidence = result.codeResult.confidence || 0;
+                    
+                    console.log('Barcode detected:', code, 'confidence:', confidence);
+                    
+                    // Higher confidence threshold for mobile to prevent false positives
+                    if (code && code.length > 3 && confidence > 60) {
+                        // Prevent rapid-fire detections
+                        if (lastDetectedCode === code && (Date.now() - lastDetectionTime) < 1000) {
+                            return;
+                        }
+                        
+                        lastDetectedCode = code;
+                        lastDetectionTime = Date.now();
+                        updateStatus(`Code detected: ${code} - Press trigger to scan`, 'info');
+                        document.getElementById('scanner-status').classList.add('code-detected');
+                    }
+                }
+            });
+            
+            Quagga.init(config, function(err) {
+                if (err) {
+                    console.error('QuaggaJS init failed:', err);
+                    updateStatus('Scanner initialization failed, but camera is working for manual input', 'warning');
+                    return;
+                }
+                
+                console.log('QuaggaJS initialized successfully');
+                Quagga.start();
+                isScanning = true;
+                updateStatus('Point camera at barcode', 'success');
+            });
+        }
+
+        function toggleCamera() {
+            if (isScanning) {
+                stopScanner();
+            } else {
+                startScanner();
+            }
+        }
+
+        function stopScanner() {
+            console.log('Stopping scanner...');
+            
+            if (isScanning) {
+                try {
+                    // Remove event listeners first
+                    Quagga.offDetected();
+                    Quagga.stop();
+                    console.log('QuaggaJS stopped');
+                } catch (error) {
+                    console.error('Error stopping QuaggaJS:', error);
+                }
+                isScanning = false;
+            }
+            
+            // Clean up camera stream
+            const video = document.getElementById('scanner-video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Camera track stopped:', track.label);
+                });
+                video.srcObject = null;
+            }
+            
+            // Reset UI
+            video.style.display = 'none';
+            document.getElementById('scanner-overlay').style.display = 'none';
+            
+            // Hide camera status bar and trigger button
+            document.getElementById('camera-status-bar').style.display = 'none';
+            document.getElementById('trigger-btn').style.display = 'none';
+            
+            // Remove ready border
+            const scannerContainer = document.querySelector('.scanner-container');
+            scannerContainer.classList.remove('scanner-ready');
+            
+            // Reset loading state and message
+            const loadingDiv = document.getElementById('camera-loading');
+            const loadingText = loadingDiv.querySelector('p');
+            loadingText.textContent = 'Click camera button to start continuous scanning';
+            loadingDiv.classList.add('active');
+            
+            // Update buttons
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+            
+            updateStatus('Camera stopped', 'info');
+        }
+
+        function toggleFlash() {
+            updateStatus('Flash toggle not available in this version', 'warning');
+        }
+
+        function triggerScan() {
+            if (triggerCooldown) {
+                updateStatus('Please wait...', 'warning');
+                return;
+            }
+            
+            if (!lastDetectedCode) {
+                updateStatus('No barcode detected - point camera at barcode first', 'warning');
+                return;
+            }
+            
+            // Set cooldown to prevent double-scanning
+            triggerCooldown = true;
+            const triggerBtn = document.getElementById('trigger-btn');
+            triggerBtn.classList.add('active');
+            
+            // Process the last detected code
+            processScannedCode(lastDetectedCode);
+            
+            // Clear the detected code and remove cooldown after 2 seconds
+            setTimeout(() => {
+                lastDetectedCode = null;
+                triggerCooldown = false;
+                triggerBtn.classList.remove('active');
+                document.getElementById('scanner-status').classList.remove('code-detected');
+                updateStatus('Point camera at barcode', 'success');
+            }, 2000);
+        }
+
+        async function processScannedCode(code) {
+            console.log('processScannedCode called with:', code);
+            updateStatus('Checking...', 'info');
+            
+            // Check if this is a case barcode (starts with 'CASE:' or is just a number that could be a case ID)
+            if (code.startsWith('CASE:') || /^\d+$/.test(code)) {
+                await processCaseCode(code);
+                return;
+            }
+            
+            // Validate device exists
+            const device = await validateDevice(code);
+            if (!device) {
+                updateStatus('Device not found: ' + code, 'error');
+                addScanResult(code, 'error', 'Device not found');
+                
+                // Camera stays on regardless of error
+                setTimeout(() => {
+                    updateStatus('Ready for next scan', 'success');
+                }, 2000);
+                return;
+            }
+            
+            console.log('processScannedCode: Device validated, proceeding with assignment');
+            
+            if (isBulkMode) {
+                // Bulk mode - directly assign device to job without popup
+                console.log('processScannedCode: Using bulk mode assignment');
+                await assignDevice(code, null); // No custom price in bulk mode
+                // Keep scanning in bulk mode
+            } else {
+                // Custom price mode - show price modal
+                console.log('processScannedCode: Using individual mode with price modal');
+                // Camera stays on - just show modal over it
+                
+                // Show price modal
+                showPriceModal(code, device, async (customPrice) => {
+                    console.log('processScannedCode: Price modal completed, assigning device');
+                    await assignDevice(code, customPrice);
+                    // Scanner continues running - camera stays on
+                    updateStatus('Added', 'success');
+                });
+            }
+        }
+
+        async function validateDevice(deviceId) {
+            try {
+                const response = await fetch(`/api/v1/devices/${deviceId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.device || null;
+                }
+                return null;
+            } catch (error) {
+                console.error('Error validating device:', error);
+                return null;
+            }
+        }
+
+        async function assignDevice(deviceId, customPrice) {
+            try {
+                const response = await fetch('/api/v1/jobs/{{.job.JobID}}/assign-device', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        job_id: {{.job.JobID}},
+                        device_id: deviceId,
+                        price: customPrice || null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    console.log('Device assignment successful:', result);
+                    
+                    // Get device info - try different possible structures
+                    let deviceInfo = result.device || result.Device || null;
+                    if (!deviceInfo) {
+                        // Fallback: create basic device info from what we have
+                        deviceInfo = {
+                            device_id: deviceId,
+                            DeviceID: deviceId,
+                            product: result.product || null
+                        };
+                    }
+                    
+                    console.log('Device info for UI:', deviceInfo);
+                    
+                    // Add device to scanned devices list immediately with animation
+                    addAssignedDeviceToList(deviceInfo, customPrice);
+                    
+                    if (isBulkMode) {
+                        updateStatus('Device assigned - ready for next scan', 'success');
+                    } else {
+                        updateStatus('Added successfully', 'success');
+                    }
+                    
+                    // Update tree device to show as assigned (without full reload)
+                    console.log('assignDevice: Calling updateTreeDeviceStatus for:', deviceId);
+                    
+                    // Add small delay to ensure tree is ready and DOM operations are complete
+                    setTimeout(() => {
+                        console.log('assignDevice: Executing delayed tree update for:', deviceId);
+                        updateTreeDeviceStatus(deviceId, 'assigned');
+                    }, 100);
+                    
+                    // Keep camera running - no reload needed for individual assignments
+                } else {
+                    console.error('Device assignment failed:', result);
+                    addScanResult(deviceId, 'error', result.error || 'Failed to assign device');
+                    updateStatus('Assignment failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error assigning device:', error);
+                addScanResult(deviceId, 'error', 'Network error');
+                updateStatus('Network error', 'error');
+            }
+        }
+
+        function showPriceModal(deviceCode, device, callback) {
+            priceModalCallback = callback;
+            
+            document.getElementById('modal-device-id').textContent = deviceCode;
+            document.getElementById('modal-device-name').textContent = 
+                device.product ? device.product.name : 'Unknown Product';
+            document.getElementById('customPrice').value = '';
+            
+            if (device.product && device.product.itemcostperday) {
+                document.getElementById('default-price-info').textContent = 
+                    `Default price: €${device.product.itemcostperday.toFixed(2)} per day`;
+            } else {
+                document.getElementById('default-price-info').textContent = 'No default price set';
+            }
+            
+            const modal = document.getElementById('priceModal');
+            
+            // Show modal
+            modal.style.display = 'flex';
+            
+            // Ensure video stays visible after modal close
+            const closeModal = function() {
+                // Hide modal first
+                modal.style.display = 'none';
+                
+                // Force video to stay visible after modal close
+                const video = document.getElementById('scanner-video');
+                if (video && video.srcObject) {
+                    video.style.display = 'block';
+                    video.style.visibility = 'visible';
+                    video.style.opacity = '1';
+                    video.style.zIndex = '1';
+                    
+                    // Make sure it's still playing
+                    video.play().catch(e => console.log('Video play after modal:', e));
+                }
+            };
+            
+            // Add close event listeners
+            const closeButtons = modal.querySelectorAll('.rc-modal-close');
+            closeButtons.forEach(button => {
+                button.onclick = closeModal;
+            });
+            modal.onclick = function(e) {
+                if (e.target === modal) closeModal();
+            };
+        }
+
+        function initializeBulkMode() {
+            const bulkToggle = document.getElementById('bulk-mode-toggle');
+            const bulkLabel = document.getElementById('bulk-mode-label');
+            const finishBulkBtn = document.getElementById('finish-bulk-btn');
+            
+            // Set initial state
+            isBulkMode = bulkToggle.checked;
+            updateBulkModeUI();
+            
+            // Add event listener for toggle
+            bulkToggle.addEventListener('change', function() {
+                isBulkMode = this.checked;
+                updateBulkModeUI();
+                toggleBulkMode();
+            });
+        }
+
+        function updateBulkModeUI() {
+            const bulkLabel = document.getElementById('bulk-mode-label');
+            const finishBulkBtn = document.getElementById('finish-bulk-btn');
+            const bulkCount = document.getElementById('bulk-count');
+            
+            if (isBulkMode) {
+                bulkLabel.textContent = 'Bulk Mode - Direct Assignment';
+                finishBulkBtn.style.display = 'none'; // Hide bulk button since devices are assigned directly
+            } else {
+                bulkLabel.textContent = 'Individual Mode - Custom Price';
+                finishBulkBtn.style.display = 'none';
+            }
+            
+            if (bulkCount) {
+                bulkCount.textContent = '0'; // Not used in direct assignment mode
+            }
+        }
+
+        function toggleBulkMode() {
+            if (isBulkMode) {
+                console.log('Bulk mode enabled - devices will be assigned directly');
+            } else {
+                console.log('Individual mode enabled - custom price popup will be shown');
+            }
+            updateBulkModeUI();
+        }
+
+        async function finishBulkScan() {
+            if (bulkDevices.length === 0) {
+                alert('No devices scanned in bulk mode.');
+                return;
+            }
+            
+            updateStatus(`Assigning ${bulkDevices.length} devices...`, 'info');
+            
+            let successCount = 0;
+            
+            for (const device of bulkDevices) {
+                try {
+                    const response = await fetch('/api/v1/jobs/{{.job.JobID}}/assign-device', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            job_id: {{.job.JobID}},
+                            device_id: device.deviceId,
+                            price: null
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        successCount++;
+                    }
+                } catch (error) {
+                    console.error('Error assigning device:', device.deviceId, error);
+                }
+            }
+            
+            updateStatus(`Bulk scan complete: ${successCount} devices assigned`, 'success');
+            bulkDevices = [];
+            // Keep camera running after bulk scan - user can see results without reload
+        }
+
+        function processManualInput() {
+            const input = document.getElementById('manual-input');
+            const code = input.value.trim();
+            
+            console.log('processManualInput called with:', code);
+            
+            if (code) {
+                console.log('processManualInput: Calling processScannedCode');
+                processScannedCode(code);
+                input.value = '';
+            } else {
+                console.log('processManualInput: Empty input, ignoring');
+            }
+        }
+
+        async function removeDevice(deviceId) {
+            if (!confirm('Remove this device from the job?')) return;
+            
+            try {
+                console.log('Removing device:', deviceId);
+                const response = await fetch(`/api/v1/jobs/{{.job.JobID}}/devices/${deviceId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Delete response status:', response.status);
+                
+                if (response.ok) {
+                    // Remove device from UI without page reload
+                    console.log('Removing device from UI:', deviceId);
+                    const deviceElement = document.querySelector(`.device-item-grouped[data-device-id="${deviceId}"]`);
+                    console.log('Found device element:', deviceElement);
+                    if (deviceElement) {
+                        // Add removal animation
+                        deviceElement.style.transition = 'all 0.3s ease';
+                        deviceElement.style.opacity = '0';
+                        deviceElement.style.transform = 'translateX(100%)';
+                        
+                        // Remove after animation
+                        setTimeout(() => {
+                            // Get parent elements before removing
+                            const accordionBody = deviceElement.closest('.rc-accordion-body');
+                            const accordionItem = accordionBody?.closest('.rc-accordion-item');
+                            
+                            // Remove the device element
+                            deviceElement.remove();
+                            console.log('Device element removed successfully');
+                            
+                            // Check how many devices are left in this product group
+                            if (accordionBody) {
+                                const remainingDevices = accordionBody.querySelectorAll('.device-item-grouped');
+                                console.log('Remaining devices in product group:', remainingDevices.length);
+                                
+                                if (remainingDevices.length === 0) {
+                                    // No more devices, remove the entire product group
+                                    console.log('Removing empty product group');
+                                    if (accordionItem) {
+                                        accordionItem.style.transition = 'all 0.3s ease';
+                                        accordionItem.style.opacity = '0';
+                                        setTimeout(() => {
+                                            accordionItem.remove();
+                                            console.log('Product group removed');
+                                            // Check if device list is completely empty
+                                            checkIfDeviceListEmpty();
+                                        }, 300);
+                                    }
+                                } else {
+                                    // Update device count badge
+                                    const countBadge = accordionItem?.querySelector('.device-count');
+                                    if (countBadge) {
+                                        countBadge.textContent = `${remainingDevices.length} devices`;
+                                        console.log('Updated device count to:', remainingDevices.length);
+                                    }
+                                }
+                            }
+                        }, 300);
+                    } else {
+                        console.error('Device element not found for ID:', deviceId);
+                        // Try alternative selectors
+                        const altElement = document.querySelector(`[data-device-id="${deviceId}"]`);
+                        console.log('Alternative selector found:', altElement);
+                        if (altElement) {
+                            altElement.remove();
+                        }
+                    }
+                    updateStatus('Device removed', 'success');
+                    updateBulkDeleteButton(); // Update button state after device removal
+                    
+                    // Update tree device to show as available again (without full reload)
+                    updateTreeDeviceStatus(deviceId, 'available');
+                } else {
+                    const errorData = await response.text();
+                    console.error('Delete failed:', errorData);
+                    alert('Failed to remove device: ' + errorData);
+                }
+            } catch (error) {
+                console.error('Network error removing device:', error);
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        function addScanResult(deviceId, type, message) {
+            const deviceList = document.getElementById('device-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `scan-result ${type}`;
+            resultDiv.innerHTML = `
+                <div class="rc-flex rc-flex-between rc-flex-start">
+                    <div>
+                        <div class="device-id">${deviceId}</div>
+                        <div class="device-name">${message}</div>
+                    </div>
+                    ${type === 'success' ? 
+                        `<button class="rc-btn rc-btn-outline-danger rc-btn-sm" onclick="removeDevice('${deviceId}')">
+                            <i class="bi bi-trash"></i>
+                        </button>` : ''
+                    }
+                </div>
+            `;
+            
+            deviceList.insertBefore(resultDiv, deviceList.firstChild);
+            
+            // Remove after 5 seconds if it's an error
+            if (type === 'error') {
+                setTimeout(() => {
+                    if (resultDiv.parentNode) {
+                        resultDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('scanner-status');
+            if (statusElement) {
+                statusElement.textContent = message;
+                
+                // Remove existing color classes
+                statusElement.classList.remove('text-success', 'text-danger', 'text-warning', 'text-info');
+                
+                // Add appropriate color class
+                if (type === 'success') statusElement.classList.add('text-success');
+                else if (type === 'error') statusElement.classList.add('text-danger');
+                else if (type === 'warning') statusElement.classList.add('text-warning');
+                else if (type === 'info') statusElement.classList.add('text-info');
+            }
+        }
+
+        // Case scanning functions
+        async function processCaseCode(code) {
+            // Extract case ID from the code
+            let caseId;
+            if (code.startsWith('CASE:')) {
+                caseId = parseInt(code.substring(5));
+            } else {
+                caseId = parseInt(code);
+            }
+            
+            if (isNaN(caseId)) {
+                updateStatus('Invalid case code: ' + code, 'error');
+                return;
+            }
+            
+            // Find the case in our available cases
+            const availableCases = [{{range .cases}}{{.CaseID}},{{end}}];
+            if (!availableCases.includes(caseId)) {
+                updateStatus('Case not found: ' + caseId, 'error');
+                addScanResult(code, 'error', 'Case not found');
+                setTimeout(() => updateStatus('Ready for next scan', 'success'), 2000);
+                return;
+            }
+            
+            // Assign all devices in the case
+            await scanCase(caseId, 'Scanned Case', 0);
+        }
+
+        async function scanCase(caseId, caseName, deviceCount) {
+            updateStatus('Scanning case: ' + caseName + '...', 'info');
+            
+            // Check if bulk mode is disabled - if so, show individual pricing for each device
+            if (!isBulkMode) {
+                await scanCaseWithCustomPricing(caseId, caseName, deviceCount);
+                return;
+            }
+            
+            // Bulk mode enabled - assign all devices directly with default pricing
+            try {
+                const response = await fetch('/api/v1/jobs/{{.job.JobID}}/assign-case', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        job_id: parseInt({{.job.JobID}}),
+                        case_id: parseInt(caseId)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatus('Case scanned successfully!', 'success');
+                    addScanResult('CASE:' + caseId, 'success', 
+                        `${result.case_name}: ${result.success_count} devices assigned` + 
+                        (result.error_count > 0 ? `, ${result.error_count} errors` : ''));
+                    
+                    // Show detailed results if there were errors
+                    if (result.results && result.error_count > 0) {
+                        result.results.forEach(deviceResult => {
+                            if (!deviceResult.success) {
+                                addScanResult(deviceResult.device_id, 'error', deviceResult.message);
+                            }
+                        });
+                    }
+                    
+                    // Keep camera running - devices are shown in scan results
+                    setTimeout(() => updateStatus('Ready for next scan', 'success'), 3000);
+                } else {
+                    updateStatus('Case scan failed: ' + result.error, 'error');
+                    addScanResult('CASE:' + caseId, 'error', result.error || 'Case scan failed');
+                }
+            } catch (error) {
+                console.error('Error scanning case:', error);
+                updateStatus('Network error during case scan', 'error');
+                addScanResult('CASE:' + caseId, 'error', 'Network error');
+            }
+        }
+
+        async function scanCaseWithCustomPricing(caseId, caseName, deviceCount) {
+            updateStatus('Getting devices in case for custom pricing...', 'info');
+            
+            try {
+                // First, get the list of devices in this case
+                const response = await fetch(`/api/v1/cases/${caseId}/devices`);
+                if (!response.ok) {
+                    updateStatus('Failed to get case devices', 'error');
+                    addScanResult('CASE:' + caseId, 'error', 'Failed to get case devices');
+                    return;
+                }
+                
+                const deviceData = await response.json();
+                const devices = deviceData.devices || [];
+                
+                if (devices.length === 0) {
+                    updateStatus('Case is empty', 'warning');
+                    addScanResult('CASE:' + caseId, 'error', 'Case is empty');
+                    return;
+                }
+                
+                updateStatus(`Assigning ${devices.length} devices with custom pricing...`, 'info');
+                
+                // Process each device individually with custom pricing
+                let successCount = 0;
+                let errorCount = 0;
+                
+                for (let i = 0; i < devices.length; i++) {
+                    const deviceCase = devices[i];
+                    const device = deviceCase.device;
+                    
+                    if (!device) {
+                        errorCount++;
+                        addScanResult(deviceCase.deviceID, 'error', 'Device information not found');
+                        continue;
+                    }
+                    
+                    try {
+                        // Show pricing modal for this device
+                        const customPrice = await showDevicePricingModal(device, i + 1, devices.length, caseName);
+                        
+                        // Skip device if user cancelled
+                        if (customPrice === 'CANCEL') {
+                            addScanResult(device.deviceID, 'warning', 'Skipped by user');
+                            continue;
+                        }
+                        
+                        // Assign device with custom price
+                        const assignResponse = await fetch('/api/v1/jobs/{{.job.JobID}}/assign-device', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                job_id: parseInt({{.job.JobID}}),
+                                device_id: device.deviceID,
+                                price: customPrice !== null ? customPrice : null
+                            })
+                        });
+                        
+                        if (assignResponse.ok) {
+                            successCount++;
+                            addScanResult(device.deviceID, 'success', 
+                                customPrice !== null ? `Assigned with custom price €${customPrice.toFixed(2)}` : 'Assigned with default price');
+                        } else {
+                            const error = await assignResponse.json();
+                            errorCount++;
+                            addScanResult(device.deviceID, 'error', error.error || 'Assignment failed');
+                        }
+                    } catch (error) {
+                        errorCount++;
+                        addScanResult(device.deviceID, 'error', 'Failed to assign device');
+                    }
+                    
+                    // Update progress
+                    updateStatus(`Processing device ${i + 1}/${devices.length} from case ${caseName}...`, 'info');
+                }
+                
+                // Final status
+                updateStatus(`Case scan complete: ${successCount} devices assigned` + 
+                    (errorCount > 0 ? `, ${errorCount} errors` : ''), 'success');
+                addScanResult('CASE:' + caseId, 'success', 
+                    `${caseName}: ${successCount} devices assigned with custom pricing` + 
+                    (errorCount > 0 ? `, ${errorCount} errors` : ''));
+                
+            } catch (error) {
+                console.error('Error in case custom pricing:', error);
+                updateStatus('Error processing case with custom pricing', 'error');
+                addScanResult('CASE:' + caseId, 'error', 'Error processing case');
+            }
+        }
+
+        function showDevicePricingModal(device, deviceIndex, totalDevices, caseName) {
+            return new Promise((resolve) => {
+                // Update modal content for case device
+                document.getElementById('modal-device-id').textContent = device.deviceID;
+                document.getElementById('modal-device-name').textContent = 
+                    device.product ? device.product.name : 'Unknown Product';
+                document.getElementById('customPrice').value = '';
+                
+                // Update modal title to show progress
+                const modalTitle = document.querySelector('#priceModal .rc-modal-title');
+                modalTitle.textContent = `Set Price for Device ${deviceIndex}/${totalDevices} from ${caseName}`;
+                
+                if (device.product && device.product.itemcostperday) {
+                    document.getElementById('default-price-info').textContent = 
+                        `Default price: €${device.product.itemcostperday.toFixed(2)} per day`;
+                } else {
+                    document.getElementById('default-price-info').textContent = 'No default price set';
+                }
+                
+                const modal = document.getElementById('priceModal');
+                modal.style.display = 'flex';
+                
+                // Focus the price input
+                setTimeout(() => {
+                    document.getElementById('customPrice').focus();
+                }, 100);
+                
+                // Set up one-time event listeners for this modal instance
+                const confirmBtn = document.getElementById('confirm-assign');
+                const closeButtons = modal.querySelectorAll('.rc-modal-close');
+                
+                function handleConfirm() {
+                    const customPriceValue = document.getElementById('customPrice').value;
+                    const price = customPriceValue && customPriceValue.trim() !== '' ? parseFloat(customPriceValue) : null;
+                    
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve(price);
+                }
+                
+                function handleCancel() {
+                    modal.style.display = 'none';
+                    cleanup();
+                    resolve('CANCEL'); // Return special cancel token
+                }
+                
+                function cleanup() {
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    closeButtons.forEach(btn => btn.removeEventListener('click', handleCancel));
+                    document.removeEventListener('keydown', handleKeydown);
+                }
+                
+                function handleKeydown(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleConfirm();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        handleCancel();
+                    }
+                }
+                
+                // Add event listeners
+                confirmBtn.addEventListener('click', handleConfirm);
+                closeButtons.forEach(btn => btn.addEventListener('click', handleCancel));
+                document.addEventListener('keydown', handleKeydown);
+                
+                // Modal click outside to close
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        handleCancel();
+                    }
+                };
+            });
+        }
+
+        function toggleAllCases() {
+            const allCases = document.getElementById('all-cases');
+            const toggleIcon = document.getElementById('cases-toggle-icon');
+            
+            if (allCases.style.display === 'none') {
+                allCases.style.display = 'block';
+                toggleIcon.className = 'bi bi-chevron-up';
+                event.target.innerHTML = '<i class="bi bi-chevron-up" id="cases-toggle-icon"></i> Show less';
+            } else {
+                allCases.style.display = 'none';
+                toggleIcon.className = 'bi bi-chevron-down';
+                event.target.innerHTML = '<i class="bi bi-chevron-down" id="cases-toggle-icon"></i> Show all {{len .cases}} cases';
+            }
+        }
+
+        // Accordion toggle function
+        function toggleAccordion(targetId) {
+            const target = document.getElementById(targetId);
+            const button = document.querySelector(`[aria-controls="${targetId}"]`);
+            
+            if (target.classList.contains('show')) {
+                target.classList.remove('show');
+                button.classList.add('collapsed');
+                button.setAttribute('aria-expanded', 'false');
+            } else {
+                target.classList.add('show');
+                button.classList.remove('collapsed');
+                button.setAttribute('aria-expanded', 'true');
+            }
+        }
+        
+        // Global escape key handler
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('priceModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        });
+        
+        // Bulk delete functionality
+        function updateBulkDeleteButton() {
+            const checkboxes = document.querySelectorAll('.device-checkbox:checked');
+            const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+            const bulkDeleteCount = document.getElementById('bulk-delete-count');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            
+            if (checkboxes.length > 0) {
+                bulkDeleteBtn.style.display = 'block';
+                bulkDeleteCount.textContent = checkboxes.length;
+            } else {
+                bulkDeleteBtn.style.display = 'none';
+            }
+            
+            // Update select all button text
+            const allCheckboxes = document.querySelectorAll('.device-checkbox');
+            const allChecked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+            selectAllBtn.innerHTML = allChecked ? 
+                '<i class="bi bi-square"></i> Clear All' : 
+                '<i class="bi bi-check-square"></i> Select All';
+        }
+        
+        function toggleSelectAll() {
+            const allCheckboxes = document.querySelectorAll('.device-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.device-checkbox:checked');
+            const shouldCheck = checkedCheckboxes.length < allCheckboxes.length;
+            
+            allCheckboxes.forEach(checkbox => {
+                checkbox.checked = shouldCheck;
+            });
+            
+            updateBulkDeleteButton();
+        }
+        
+        async function bulkDeleteDevices() {
+            const checkedCheckboxes = document.querySelectorAll('.device-checkbox:checked');
+            if (checkedCheckboxes.length === 0) return;
+            
+            const deviceIds = Array.from(checkedCheckboxes).map(cb => cb.getAttribute('data-device-id'));
+            
+            if (!confirm(`Are you sure you want to remove ${deviceIds.length} devices from this job?`)) {
+                return;
+            }
+            
+            const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+            const originalText = bulkDeleteBtn.innerHTML;
+            bulkDeleteBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Removing...';
+            bulkDeleteBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/v1/jobs/{{.job.JobID}}/devices/bulk-remove', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_ids: deviceIds })
+                });
+                
+                if (response.ok) {
+                    // Remove selected devices from UI without page reload with animations
+                    deviceIds.forEach((deviceId, index) => {
+                        const deviceElement = document.querySelector(`.device-item-grouped[data-device-id="${deviceId}"]`);
+                        if (deviceElement) {
+                            // Stagger the animations
+                            setTimeout(() => {
+                                deviceElement.style.transition = 'all 0.3s ease';
+                                deviceElement.style.opacity = '0';
+                                deviceElement.style.transform = 'translateX(100%)';
+                                
+                                setTimeout(() => {
+                                    // Get parent elements before removing
+                                    const accordionBody = deviceElement.closest('.rc-accordion-body');
+                                    const accordionItem = accordionBody?.closest('.rc-accordion-item');
+                                    
+                                    // Remove the device element
+                                    deviceElement.remove();
+                                    
+                                    // Check how many devices are left in this product group
+                                    if (accordionBody) {
+                                        const remainingDevices = accordionBody.querySelectorAll('.device-item-grouped');
+                                        console.log('Bulk delete - remaining devices in product group:', remainingDevices.length);
+                                        
+                                        if (remainingDevices.length === 0) {
+                                            // No more devices, remove the entire product group
+                                            console.log('Bulk delete - removing empty product group');
+                                            if (accordionItem) {
+                                                accordionItem.style.transition = 'all 0.3s ease';
+                                                accordionItem.style.opacity = '0';
+                                                setTimeout(() => {
+                                                    accordionItem.remove();
+                                                    console.log('Bulk delete - product group removed');
+                                                    checkIfDeviceListEmpty();
+                                                }, 300);
+                                            }
+                                        } else {
+                                            // Update device count badge
+                                            const countBadge = accordionItem?.querySelector('.device-count');
+                                            if (countBadge) {
+                                                countBadge.textContent = `${remainingDevices.length} devices`;
+                                                console.log('Bulk delete - updated device count to:', remainingDevices.length);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Update tree device status to available
+                                    updateTreeDeviceStatus(deviceId, 'available');
+                                }, 300);
+                            }, index * 100); // Stagger animations
+                        }
+                    });
+                    
+                    updateStatus(`${deviceIds.length} devices removed`, 'success');
+                    updateBulkDeleteButton(); // Update button state
+                } else {
+                    const result = await response.json();
+                    alert('Error removing devices: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error removing devices:', error);
+                alert('Network error removing devices');
+            } finally {
+                bulkDeleteBtn.innerHTML = originalText;
+                bulkDeleteBtn.disabled = false;
+            }
+        }
+
+        // Functions for smooth device list and tree updates
+        function addAssignedDeviceToList(device, customPrice) {
+            console.log('addAssignedDeviceToList called with:', device, customPrice);
+            
+            const deviceList = document.getElementById('device-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Remove empty state if it exists
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            // Check if accordion structure exists, if not create it
+            let deviceAccordion = document.getElementById('deviceAccordion');
+            if (!deviceAccordion) {
+                deviceAccordion = document.createElement('div');
+                deviceAccordion.className = 'rc-accordion';
+                deviceAccordion.id = 'deviceAccordion';
+                deviceList.appendChild(deviceAccordion);
+            }
+            
+            // Get device ID from different possible sources
+            const deviceId = device.device_id || device.DeviceID || device.deviceID || 'Unknown ID';
+            console.log('Device ID:', deviceId);
+            
+            // Get product name (fallback to "Unknown Product")
+            const productName = device.product?.name || device.Product?.name || device.product?.Name || 'Unknown Product';
+            const productId = device.product?.product_id || device.product?.ProductID || device.Product?.ProductID || 'unknown';
+            
+            console.log('Product name:', productName, 'Product ID:', productId);
+            
+            // Find or create product group
+            let productGroup = document.getElementById(`heading-product-${productId}`);
+            let accordionItem, accordionBody;
+            
+            if (!productGroup) {
+                // Create new product group
+                accordionItem = document.createElement('div');
+                accordionItem.className = 'rc-accordion-item product-group';
+                accordionItem.innerHTML = `
+                    <h2 class="rc-accordion-header" id="heading-product-${productId}">
+                        <button class="rc-accordion-button collapsed" type="button" 
+                                onclick="toggleAccordion('collapse-product-${productId}')" 
+                                aria-expanded="false" 
+                                aria-controls="collapse-product-${productId}"
+                                style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; text-align: left !important;">
+                            <div class="product-info" style="text-align: left; flex: 1 1 auto;">
+                                <div class="product-name">${productName}</div>
+                                ${device.product?.itemcostperday ? `<small class="rc-text-muted">€${device.product.itemcostperday.toFixed(2)} per day</small>` : ''}
+                            </div>
+                            <span class="rc-badge rc-badge-secondary device-count" style="margin-left: 20px; flex: 0 0 auto;">1 devices</span>
+                        </button>
+                    </h2>
+                    <div id="collapse-product-${productId}" 
+                         class="rc-accordion-collapse collapse show" 
+                         aria-labelledby="heading-product-${productId}">
+                        <div class="rc-accordion-body">
+                        </div>
+                    </div>
+                `;
+                
+                // Add with smooth animation
+                accordionItem.style.opacity = '0';
+                accordionItem.style.transform = 'translateY(-20px)';
+                deviceAccordion.appendChild(accordionItem);
+                
+                // Animate in
+                setTimeout(() => {
+                    accordionItem.style.transition = 'all 0.3s ease';
+                    accordionItem.style.opacity = '1';
+                    accordionItem.style.transform = 'translateY(0)';
+                }, 10);
+                
+                accordionBody = accordionItem.querySelector('.rc-accordion-body');
+            } else {
+                // Use existing product group
+                accordionItem = productGroup.closest('.rc-accordion-item');
+                accordionBody = accordionItem.querySelector('.rc-accordion-body');
+                
+                // Update device count
+                const countBadge = accordionItem.querySelector('.device-count');
+                const currentCount = parseInt(countBadge.textContent.split(' ')[0]) || 0;
+                countBadge.textContent = `${currentCount + 1} devices`;
+                
+                // Expand the accordion if collapsed
+                const collapseDiv = accordionItem.querySelector('.rc-accordion-collapse');
+                const button = accordionItem.querySelector('.rc-accordion-button');
+                if (collapseDiv.classList.contains('collapse') && !collapseDiv.classList.contains('show')) {
+                    collapseDiv.classList.add('show');
+                    button.classList.remove('collapsed');
+                    button.setAttribute('aria-expanded', 'true');
+                }
+            }
+            
+            // Create device element
+            const deviceElement = document.createElement('div');
+            deviceElement.className = 'device-item-grouped';
+            deviceElement.setAttribute('data-device-id', deviceId);
+            
+            // Get price from different possible sources
+            const defaultPrice = device.product?.itemcostperday || device.product?.ItemCostPerDay || device.Product?.ItemCostPerDay || null;
+            
+            const priceText = customPrice ? 
+                `€${customPrice.toFixed(2)} (custom price)` : 
+                (defaultPrice ? `€${defaultPrice.toFixed(2)} (default price)` : 'No price set');
+                
+            console.log('Creating device element with ID:', deviceId, 'Price:', priceText);
+                
+            deviceElement.innerHTML = `
+                <div class="rc-flex rc-flex-between rc-flex-start">
+                    <div class="rc-flex rc-flex-start" style="gap: 12px; flex-grow: 1;">
+                        <input type="checkbox" class="device-checkbox" data-device-id="${deviceId}" onchange="updateBulkDeleteButton()">
+                        <div class="flex-grow-1">
+                            <div class="device-id">${deviceId}</div>
+                            <div class="device-price">${priceText}</div>
+                        </div>
+                    </div>
+                    <button class="rc-btn rc-btn-outline-danger rc-btn-sm" onclick="removeDevice('${deviceId}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Add with smooth slide-in animation
+            deviceElement.style.opacity = '0';
+            deviceElement.style.transform = 'translateX(-100%)';
+            accordionBody.appendChild(deviceElement);
+            
+            // Animate in
+            setTimeout(() => {
+                deviceElement.style.transition = 'all 0.3s ease';
+                deviceElement.style.opacity = '1';
+                deviceElement.style.transform = 'translateX(0)';
+            }, 10);
+        }
+        
+        function updateTreeDeviceStatus(deviceId, status) {
+            console.log('Updating tree device status:', deviceId, 'to', status);
+            
+            // Find all device ID elements in the tree using the correct selector from renderScanDeviceHtml
+            const allDeviceIds = document.querySelectorAll('.tree-device .device-details .device-id');
+            console.log('Found device ID elements in tree:', allDeviceIds.length);
+            
+            let foundDevice = false;
+            for (const deviceIdElement of allDeviceIds) {
+                const elementText = deviceIdElement.textContent.trim();
+                console.log('Checking device ID element:', elementText);
+                
+                if (elementText === deviceId) {
+                    console.log('Found matching device in tree:', deviceId);
+                    const treeDeviceContainer = deviceIdElement.closest('.tree-device');
+                    console.log('Tree device container:', treeDeviceContainer);
+                    
+                    if (treeDeviceContainer) {
+                        updateSingleTreeDevice(treeDeviceContainer, status, deviceId);
+                        foundDevice = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!foundDevice) {
+                console.log('Device not found in tree:', deviceId);
+                // Try alternative approach - look for any element containing the device ID
+                const allTreeDevices = document.querySelectorAll('.tree-device');
+                console.log('Searching through all tree devices:', allTreeDevices.length);
+                
+                for (const treeDevice of allTreeDevices) {
+                    if (treeDevice.textContent.includes(deviceId)) {
+                        console.log('Found device using text search:', deviceId);
+                        updateSingleTreeDevice(treeDevice, status, deviceId);
+                        foundDevice = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!foundDevice) {
+                console.warn('Could not find device in tree to update:', deviceId);
+            }
+        }
+        
+        function updateSingleTreeDevice(deviceContainer, status, deviceId) {
+            if (!deviceContainer) {
+                console.log('No device container provided to updateSingleTreeDevice');
+                return;
+            }
+            
+            console.log('Updating single tree device:', deviceId, 'to status:', status);
+            console.log('Device container classes:', deviceContainer.className);
+            
+            const statusElement = deviceContainer.querySelector('.device-status');
+            const iconElement = deviceContainer.querySelector('i.bi-plus-circle, i.bi-x-circle');
+            const iconContainer = iconElement?.parentElement;
+            
+            console.log('Status element found:', !!statusElement);
+            console.log('Icon element found:', !!iconElement);
+            
+            // Add smooth transition first
+            deviceContainer.style.transition = 'all 0.3s ease';
+            
+            if (status === 'assigned') {
+                // Update to assigned status
+                deviceContainer.classList.remove('available');
+                deviceContainer.classList.add('unavailable');
+                deviceContainer.style.opacity = '0.5';
+                deviceContainer.style.cursor = 'not-allowed';
+                deviceContainer.style.borderColor = 'var(--error)';
+                
+                // Remove click handler
+                deviceContainer.onclick = null;
+                deviceContainer.removeAttribute('onclick');
+                
+                if (statusElement) {
+                    statusElement.textContent = 'assigned';
+                    statusElement.style.background = 'var(--warning)';
+                    statusElement.style.color = 'white';
+                }
+                
+                if (iconElement && iconContainer) {
+                    iconElement.className = 'bi bi-x-circle';
+                    iconContainer.style.color = 'var(--error)';
+                }
+                
+                console.log('Device marked as assigned with visual updates');
+                
+            } else if (status === 'available') {
+                // Update to available status
+                deviceContainer.classList.remove('unavailable');
+                deviceContainer.classList.add('available');
+                deviceContainer.style.opacity = '1';
+                deviceContainer.style.cursor = 'pointer';
+                deviceContainer.style.borderColor = 'var(--success)';
+                
+                // Re-add click handler
+                deviceContainer.onclick = () => assignScanDevice(deviceId);
+                
+                if (statusElement) {
+                    statusElement.textContent = 'available';
+                    statusElement.style.background = 'var(--success)';
+                    statusElement.style.color = 'white';
+                }
+                
+                if (iconElement && iconContainer) {
+                    iconElement.className = 'bi bi-plus-circle';
+                    iconContainer.style.color = 'var(--success)';
+                }
+                
+                console.log('Device marked as available with visual updates');
+            }
+        }
+        
+        function checkIfDeviceListEmpty() {
+            const deviceAccordion = document.getElementById('deviceAccordion');
+            const deviceList = document.getElementById('device-list');
+            
+            if (deviceAccordion && deviceAccordion.children.length === 0) {
+                // No more device groups, show empty state
+                deviceAccordion.remove();
+                
+                const emptyState = document.createElement('div');
+                emptyState.className = 'rc-text-center rc-py-xl';
+                emptyState.id = 'empty-state';
+                emptyState.innerHTML = `
+                    <i class="bi bi-qr-code rc-text-4xl rc-text-muted"></i>
+                    <h5 class="rc-mt-md rc-text-muted">No devices scanned yet</h5>
+                    <p class="rc-text-muted">Start scanning to see results here</p>
+                `;
+                
+                // Add with fade in animation
+                emptyState.style.opacity = '0';
+                deviceList.appendChild(emptyState);
+                
+                setTimeout(() => {
+                    emptyState.style.transition = 'opacity 0.3s ease';
+                    emptyState.style.opacity = '1';
+                }, 10);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopScanner();
+        });
+        
+        // Device Tree Selection for Scan Page
+        let scanDeviceTreeData = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load device tree on page load
+            loadScanDeviceTree();
+            
+            // Refresh button
+            const refreshBtn = document.getElementById('refreshDeviceTreeScan');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', loadScanDeviceTree);
+            }
+        });
+        
+        function loadScanDeviceTree() {
+            const jobId = '{{.job.JobID}}';
+            const startDate = '{{.job.StartDate.Format "2006-01-02"}}';
+            const endDate = '{{if .job.EndDate}}{{.job.EndDate.Format "2006-01-02"}}{{else}}{{.job.StartDate.Format "2006-01-02"}}{{end}}';
+            
+            document.getElementById('loadingDevicesScan').style.display = 'block';
+            document.getElementById('deviceTreeContainerScan').style.display = 'none';
+            
+            const url = `/api/v1/devices/tree/availability?start_date=${startDate}&end_date=${endDate}&job_id=${jobId}`;
+            
+            fetch(url, {
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                scanDeviceTreeData = data.treeData;
+                renderScanDeviceTree(scanDeviceTreeData);
+                document.getElementById('loadingDevicesScan').style.display = 'none';
+                document.getElementById('deviceTreeContainerScan').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error loading device tree:', error);
+                document.getElementById('loadingDevicesScan').innerHTML = '<div style="color: var(--error);"><i class="bi bi-exclamation-triangle"></i> Error loading devices: ' + error.message + '</div>';
+                document.getElementById('deviceTreeContainerScan').style.display = 'none';
+            });
+        }
+        
+        function renderScanDeviceTree(treeData) {
+            const container = document.getElementById('deviceTreeContainerScan');
+            
+            if (!treeData || treeData.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: var(--space-xl); color: var(--text-muted);">No devices available for this job period</div>';
+                return;
+            }
+            
+            let html = '<div class="device-tree-container" style="max-height: 400px; overflow-y: auto;">';
+            
+            treeData.forEach(category => {
+                html += renderScanCategoryHtml(category);
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function renderScanCategoryHtml(category) {
+            let html = `
+                <div class="tree-category" style="margin-bottom: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1);">
+                    <div class="tree-category-header" onclick="toggleScanTreeNode('scan-category-${category.id}')" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm); cursor: pointer; transition: var(--transition-normal);">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-scan-category-${category.id}" style="color: var(--text-muted); transition: transform 0.2s ease; font-size: 0.9rem;"></i>
+                        <i class="bi bi-folder2 tree-icon" style="color: var(--accent-electric); font-size: 1rem;"></i>
+                        <span class="tree-title" style="font-weight: 600; color: var(--text-primary); flex: 1; font-size: 0.9rem;">${category.name}</span>
+                        <span class="tree-count" style="font-size: 0.75rem; color: var(--text-muted); background: var(--surface-3); padding: 2px 6px; border-radius: var(--radius-sm);">${category.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="scan-category-${category.id}" style="display: none; padding-left: var(--space-md); border-left: 2px solid var(--surface-3); margin-left: var(--space-md);">
+            `;
+            
+            // Direct devices in category
+            if (category.direct_devices && category.direct_devices.length > 0) {
+                category.direct_devices.forEach(device => {
+                    html += renderScanDeviceHtml(device);
+                });
+            }
+            
+            // Subcategories
+            if (category.subcategories && category.subcategories.length > 0) {
+                category.subcategories.forEach(subcategory => {
+                    html += renderScanSubcategoryHtml(subcategory);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderScanSubcategoryHtml(subcategory) {
+            let html = `
+                <div class="tree-subcategory" style="margin: var(--space-xs) 0; border: 1px solid var(--surface-2); border-radius: var(--radius-sm); background: var(--surface-0);">
+                    <div class="tree-subcategory-header" onclick="toggleScanTreeNode('scan-subcategory-${subcategory.id}')" style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); cursor: pointer; transition: var(--transition-normal);">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-scan-subcategory-${subcategory.id}" style="color: var(--text-muted); transition: transform 0.2s ease; font-size: 0.8rem;"></i>
+                        <i class="bi bi-folder tree-icon" style="color: var(--accent-purple); font-size: 0.9rem;"></i>
+                        <span class="tree-title" style="font-weight: 500; color: var(--text-primary); flex: 1; font-size: 0.85rem;">${subcategory.name}</span>
+                        <span class="tree-count" style="font-size: 0.7rem; color: var(--text-muted); background: var(--surface-3); padding: 1px 4px; border-radius: var(--radius-sm);">${subcategory.device_count}</span>
+                    </div>
+                    <div class="tree-content" id="scan-subcategory-${subcategory.id}" style="display: none; padding-left: var(--space-sm);">
+            `;
+            
+            // Direct devices in subcategory
+            if (subcategory.direct_devices && subcategory.direct_devices.length > 0) {
+                subcategory.direct_devices.forEach(device => {
+                    html += renderScanDeviceHtml(device);
+                });
+            }
+            
+            // Subbiercategories
+            if (subcategory.subbiercategories && subcategory.subbiercategories.length > 0) {
+                subcategory.subbiercategories.forEach(subbiercategory => {
+                    html += renderScanSubbiercategoryHtml(subbiercategory);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderScanSubbiercategoryHtml(subbiercategory) {
+            let html = `
+                <div class="tree-subbiercategory" style="margin: var(--space-xs) 0; border: 1px solid var(--surface-2); border-radius: var(--radius-sm); background: var(--surface-0);">
+                    <div class="tree-subbiercategory-header" onclick="toggleScanTreeNode('scan-subbiercategory-${subbiercategory.id}')" style="display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs); cursor: pointer; transition: var(--transition-normal);">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-scan-subbiercategory-${subbiercategory.id}" style="color: var(--text-muted); transition: transform 0.2s ease; font-size: 0.75rem;"></i>
+                        <i class="bi bi-folder-fill tree-icon" style="color: var(--accent-coral); font-size: 0.85rem;"></i>
+                        <span class="tree-title" style="font-weight: 400; color: var(--text-primary); flex: 1; font-size: 0.8rem;">${subbiercategory.name}</span>
+                        <span class="tree-count" style="font-size: 0.65rem; color: var(--text-muted); background: var(--surface-3); padding: 1px 3px; border-radius: var(--radius-sm);">${subbiercategory.device_count}</span>
+                    </div>
+                    <div class="tree-content" id="scan-subbiercategory-${subbiercategory.id}" style="display: none; padding-left: var(--space-xs);">
+            `;
+            
+            // Devices in subbiercategory
+            if (subbiercategory.devices && subbiercategory.devices.length > 0) {
+                subbiercategory.devices.forEach(device => {
+                    html += renderScanDeviceHtml(device);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderScanDeviceHtml(device) {
+            const isAvailable = device.available === true;
+            
+            let classes = 'tree-device';
+            if (!isAvailable) classes += ' unavailable';
+            else classes += ' available';
+            
+            let onclick = '';
+            if (isAvailable) {
+                onclick = `onclick="assignScanDevice('${device.device_id}')"`;
+            }
+            
+            let statusColor = 'var(--success)';
+            if (device.status === 'assigned') statusColor = 'var(--warning)';
+            if (device.status === 'maintenance') statusColor = 'var(--error)';
+            
+            return `
+                <div class="${classes}" ${onclick} style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-xs); margin: 2px 0; background: var(--surface-1); border: 1px solid ${isAvailable ? 'var(--success)' : 'var(--error)'}; border-radius: var(--radius-sm); transition: var(--transition-normal); cursor: ${isAvailable ? 'pointer' : 'not-allowed'}; opacity: ${isAvailable ? '1' : '0.5'}; font-size: 0.8rem;">
+                    <div class="device-info" style="flex: 1;">
+                        <div class="device-name" style="font-weight: 500; color: var(--text-primary); margin-bottom: 1px; font-size: 0.8rem;">${device.product_name}</div>
+                        <div class="device-details" style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.7rem;">
+                            <span class="device-id" style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); background: var(--surface-2); padding: 1px 3px; border-radius: 2px;">${device.device_id}</span>
+                            ${device.serial_number ? '<span class="device-serial" style="color: var(--text-muted);">• ' + device.serial_number + '</span>' : ''}
+                            <span class="device-status" style="padding: 1px 4px; border-radius: var(--radius-sm); font-size: 0.65rem; font-weight: 500; text-transform: uppercase; background: ${statusColor}; color: white;">${device.status}</span>
+                            ${!isAvailable && device.conflict_job ? '<span style="color: var(--error); font-size: 0.65rem;">• Job ' + device.conflict_job + '</span>' : ''}
+                        </div>
+                    </div>
+                    ${isAvailable ? '<div style="color: var(--success); font-size: 0.9rem;"><i class="bi bi-plus-circle"></i></div>' : '<div style="color: var(--error); font-size: 0.9rem;"><i class="bi bi-x-circle"></i></div>'}
+                </div>
+            `;
+        }
+        
+        function toggleScanTreeNode(nodeId) {
+            const contentDiv = document.getElementById(nodeId);
+            const chevron = document.getElementById('chevron-' + nodeId);
+            
+            if (contentDiv && chevron) {
+                if (contentDiv.style.display === 'none') {
+                    contentDiv.style.display = 'block';
+                    chevron.classList.add('expanded');
+                    chevron.style.transform = 'rotate(90deg)';
+                } else {
+                    contentDiv.style.display = 'none';
+                    chevron.classList.remove('expanded');
+                    chevron.style.transform = 'rotate(0deg)';
+                }
+            }
+        }
+        
+        async function assignScanDevice(deviceId) {
+            // Validate device exists first
+            const device = await validateDevice(deviceId);
+            if (!device) {
+                updateStatus('Device not found: ' + deviceId, 'error');
+                return;
+            }
+            
+            // Use bulk mode logic - assign directly without popup for tree selections
+            if (isBulkMode) {
+                await assignDevice(deviceId, null);
+            } else {
+                // Show price modal for individual mode
+                showPriceModal(deviceId, device, async (customPrice) => {
+                    await assignDevice(deviceId, customPrice);
+                });
+            }
+        }
+    </script>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

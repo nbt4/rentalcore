@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link" href="/jobs">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a>
+                    <a class="nav-link" href="/devices">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a>
+                    <a class="nav-link active" href="/customers">
+                        <i class="bi bi-people"></i> Customers
+                    </a>
+                    <a class="nav-link" href="/cases">
+                        <i class="bi bi-box"></i> Cases
+                    </a>
+                </div>
+                <div class="navbar-nav">
+                    <button class="btn btn-outline-light btn-sm" onclick="toggleTheme()">
+                        <i class="bi bi-moon-fill" id="theme-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>{{.title}}</h5>
+                    </div>
+                    <div class="card-body">
+                        {{if .error}}
+                        <div class="alert alert-danger">{{.error}}</div>
+                        {{end}}
+                        
+                        <form method="POST" action="{{if .customer.CustomerID}}/customers/{{.customer.CustomerID}}{{else}}/customers{{end}}">
+                            {{if .customer.CustomerID}}
+                            <input type="hidden" name="_method" value="PUT">
+                            {{end}}
+                            
+                            <!-- Company or Personal -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" class="form-control" name="company_name" value="{{derefString .customer.CompanyName}}" placeholder="Leave empty for personal customers">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Customer Type</label>
+                                        <select class="form-select" name="customer_type">
+                                            <option value="Kunde" {{if eq (derefString .customer.CustomerType) "Kunde"}}selected{{end}}>Kunde</option>
+                                            <option value="Lieferant" {{if eq (derefString .customer.CustomerType) "Lieferant"}}selected{{end}}>Lieferant</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Personal Details -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">First Name</label>
+                                        <input type="text" class="form-control" name="first_name" value="{{derefString .customer.FirstName}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" name="last_name" value="{{derefString .customer.LastName}}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Contact Details -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Email</label>
+                                        <input type="email" class="form-control" name="email" value="{{derefString .customer.Email}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Phone Number</label>
+                                        <input type="text" class="form-control" name="phone_number" value="{{derefString .customer.PhoneNumber}}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Address -->
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">Street</label>
+                                        <input type="text" class="form-control" name="street" value="{{derefString .customer.Street}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">House Number</label>
+                                        <input type="text" class="form-control" name="house_number" value="{{derefString .customer.HouseNumber}}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">ZIP Code</label>
+                                        <input type="text" class="form-control" name="zip" value="{{derefString .customer.ZIP}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="mb-3">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-control" name="city" value="{{derefString .customer.City}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Federal State</label>
+                                        <input type="text" class="form-control" name="federal_state" value="{{derefString .customer.FederalState}}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Country</label>
+                                        <input type="text" class="form-control" name="country" value="{{derefString .customer.Country}}" placeholder="DE">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" name="notes" rows="3">{{derefString .customer.Notes}}</textarea>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="/customers" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    {{if .customer.CustomerID}}Update{{else}}Create{{end}} Customer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-light mt-5 py-3">
+        <div class="container text-center">
+            <small class="text-muted">RentalCore - Equipment Management System</small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/rental-core-design.js"></script>
+    {{if .scripts}}
+        {{range .scripts}}
+            <script src="{{.}}"></script>
+        {{end}}
+    {{end}}
+</body>
+</html>

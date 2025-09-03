@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <div class="designer-container">
+        <div class="container-fluid p-3">
+            <div class="row">
+                <!-- Control Panel -->
+                <div class="col-lg-3">
+                    <div class="control-panel p-0">
+                        <div class="section-header">
+                            <i class="bi bi-palette2"></i>
+                            Rechnungsvorlage Designer
+                        </div>
+                        
+                        <div class="p-3">
+                            <!-- Template Basic Info -->
+                            <div class="mb-4">
+                                <label class="form-label">Template Name</label>
+                                <input type="text" id="templateName" class="form-control" 
+                                       value="{{.template.Name}}" placeholder="z.B. Standard Rechnung DE">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">Beschreibung</label>
+                                <textarea id="templateDescription" class="form-control" rows="2" 
+                                          placeholder="Template Beschreibung">{{if .template.Description}}{{.template.Description}}{{end}}</textarea>
+                            </div>
+
+                            <!-- Element Toolbar -->
+                            <div class="element-toolbar">
+                                <div class="text-muted mb-2" style="font-size: 12px;">
+                                    <i class="bi bi-plus-circle"></i> Elemente hinzufügen
+                                </div>
+                                <button class="element-btn" onclick="addElement('company-logo')">
+                                    <i class="bi bi-image"></i> Logo
+                                </button>
+                                <button class="element-btn" onclick="addElement('company-address')">
+                                    <i class="bi bi-building"></i> Firmenadresse
+                                </button>
+                                <button class="element-btn" onclick="addElement('recipient-address')">
+                                    <i class="bi bi-person-lines-fill"></i> Empfänger
+                                </button>
+                                <button class="element-btn" onclick="addElement('invoice-header')">
+                                    <i class="bi bi-type-h1"></i> Rechnungstitel
+                                </button>
+                                <button class="element-btn" onclick="addElement('invoice-details')">
+                                    <i class="bi bi-info-circle"></i> Rechnungsdetails
+                                </button>
+                                <button class="element-btn" onclick="addElement('invoice-table')">
+                                    <i class="bi bi-table"></i> Positionen
+                                </button>
+                                <button class="element-btn" onclick="addElement('invoice-totals')">
+                                    <i class="bi bi-calculator"></i> Summen
+                                </button>
+                                <button class="element-btn" onclick="addElement('tax-info')">
+                                    <i class="bi bi-percent"></i> Steuerinfo
+                                </button>
+                                <button class="element-btn" onclick="addElement('invoice-footer')">
+                                    <i class="bi bi-layout-text-window-reverse"></i> Fußzeile
+                                </button>
+                            </div>
+
+                            <!-- Element Properties -->
+                            <div id="elementProperties" style="display: none;">
+                                <div class="section-header mb-3">
+                                    <i class="bi bi-sliders"></i>
+                                    Element Eigenschaften
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label">X Position (mm)</label>
+                                        <input type="number" id="posX" class="form-control" min="0" max="210">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Y Position (mm)</label>
+                                        <input type="number" id="posY" class="form-control" min="0" max="297">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label">Breite (mm)</label>
+                                        <input type="number" id="width" class="form-control" min="10" max="180">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Höhe (mm)</label>
+                                        <input type="number" id="height" class="form-control" min="5" max="280">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Schriftgröße</label>
+                                    <input type="range" id="fontSize" class="range-input" min="6" max="24" value="10">
+                                    <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
+                                        <span>6px</span>
+                                        <span id="fontSizeValue">10px</span>
+                                        <span>24px</span>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label">Textfarbe</label>
+                                        <input type="color" id="textColor" class="color-input" value="#000000">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Hintergrund</label>
+                                        <input type="color" id="bgColor" class="color-input" value="#ffffff">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Schriftart</label>
+                                    <select id="fontFamily" class="form-select">
+                                        <option value="Arial, sans-serif">Arial</option>
+                                        <option value="'Times New Roman', serif">Times New Roman</option>
+                                        <option value="'Courier New', monospace">Courier New</option>
+                                        <option value="Helvetica, sans-serif">Helvetica</option>
+                                        <option value="Georgia, serif">Georgia</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Textausrichtung</label>
+                                    <select id="textAlign" class="form-select">
+                                        <option value="left">Links</option>
+                                        <option value="center">Zentriert</option>
+                                        <option value="right">Rechts</option>
+                                        <option value="justify">Blocksatz</option>
+                                    </select>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="boldText">
+                                            <label class="form-check-label" for="boldText">Fett</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="italicText">
+                                            <label class="form-check-label" for="italicText">Kursiv</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Rahmen</label>
+                                    <select id="borderStyle" class="form-select">
+                                        <option value="none">Kein Rahmen</option>
+                                        <option value="1px solid #000">Durchgezogen</option>
+                                        <option value="1px dashed #000">Gestrichelt</option>
+                                        <option value="1px dotted #000">Gepunktet</option>
+                                        <option value="2px solid #000">Fett</option>
+                                    </select>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button class="btn btn-danger btn-sm" onclick="deleteSelectedElement()">
+                                        <i class="bi bi-trash"></i> Element löschen
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Quick Styles -->
+                            <div class="mt-4">
+                                <div class="text-muted mb-2" style="font-size: 12px;">
+                                    <i class="bi bi-magic"></i> Schnell-Styles
+                                </div>
+                                <button class="quick-style-btn german" onclick="applyGermanStandard()">
+                                    DE Standard
+                                </button>
+                                <button class="quick-style-btn professional" onclick="applyProfessional()">
+                                    Professionell
+                                </button>
+                                <button class="quick-style-btn modern" onclick="applyModern()">
+                                    Modern
+                                </button>
+                                <button class="quick-style-btn minimal" onclick="applyMinimal()">
+                                    Minimal
+                                </button>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="mt-4 d-grid gap-2">
+                                <button class="btn btn-primary" onclick="saveTemplate()">
+                                    <i class="bi bi-save"></i> Template speichern
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="previewInvoice()">
+                                    <i class="bi bi-eye"></i> Vorschau
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview Panel -->
+                <div class="col-lg-9">
+                    <div class="preview-container">
+                        <div class="a4-preview" id="invoicePreview">
+                            <!-- German Standard Invoice Elements will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

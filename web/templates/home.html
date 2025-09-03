@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        .rc-hero {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .rc-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 30% 70%, rgba(0, 245, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+            z-index: -1;
+        }
+        
+        .rc-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .rc-stat-card {
+            background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            text-align: center;
+            transition: var(--transition-normal);
+        }
+        
+        .rc-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+    </style>
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Hero Section -->
+        <div class="rc-hero" style="text-align: center; padding: var(--space-3xl) 0; margin-bottom: var(--space-2xl);">
+            <h1 class="rc-heading-1">
+                <i class="bi bi-gear-wide-connected"></i>
+                Welcome to RentalCore
+            </h1>
+            <div class="rc-flex rc-flex-center" style="gap: var(--space-md); justify-content: center;">
+                <a href="/scan" class="rc-btn rc-btn-primary rc-btn-lg">
+                    <i class="bi bi-qr-code-scan"></i> Start Scanning
+                </a>
+                <a href="/customers" class="rc-btn rc-btn-secondary rc-btn-lg">
+                    <i class="bi bi-people"></i> Manage Customers
+                </a>
+                <a href="/devices" class="rc-btn rc-btn-ghost rc-btn-lg">
+                    <i class="bi bi-cpu"></i> View Equipment
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="rc-grid rc-grid-4 rc-mb-xl">
+            <div class="rc-card" style="text-align: center;">
+                <div style="font-size: 2.5rem; color: var(--accent-electric); margin-bottom: var(--space-sm);">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h3 class="rc-heading-3">{{.stats.TotalCustomers}}</h3>
+                <p class="rc-text-sm">Active Customers</p>
+            </div>
+            <div class="rc-card" style="text-align: center;">
+                <div style="font-size: 2.5rem; color: var(--accent-purple); margin-bottom: var(--space-sm);">
+                    <i class="bi bi-cpu"></i>
+                </div>
+                <h3 class="rc-heading-3">{{.stats.TotalDevices}}</h3>
+                <p class="rc-text-sm">Equipment Items</p>
+            </div>
+            <div class="rc-card" style="text-align: center;">
+                <div style="font-size: 2.5rem; color: var(--accent-coral); margin-bottom: var(--space-sm);">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <h3 class="rc-heading-3">{{.stats.ActiveJobs}}</h3>
+                <p class="rc-text-sm">Active Jobs</p>
+            </div>
+            <div class="rc-card" style="text-align: center;">
+                <div style="font-size: 2.5rem; color: var(--accent-gold); margin-bottom: var(--space-sm);">
+                    <i class="bi bi-box"></i>
+                </div>
+                <h3 class="rc-heading-3">{{.stats.TotalCases}}</h3>
+                <p class="rc-text-sm">Equipment Cases</p>
+            </div>
+        </div>
+
+        <!-- Core Management -->
+        <div class="rc-card rc-mb-xl">
+            <div class="rc-card-header">
+                <h2 class="rc-card-title">
+                    <i class="bi bi-layers"></i> Core Management
+                </h2>
+                <p class="rc-text-sm">Essential tools for daily operations</p>
+            </div>
+            <div class="rc-card-body">
+                <div class="rc-grid rc-grid-2">
+                    <a href="/jobs" class="rc-card" style="text-decoration: none; transition: var(--transition-normal);">
+                        <div class="rc-flex" style="align-items: center; gap: var(--space-lg);">
+                            <div style="font-size: 2rem; color: var(--accent-electric);">
+                                <i class="bi bi-briefcase"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Job Management</h3>
+                                <p class="rc-text-sm">Create, track, and manage rental jobs</p>
+                                <div class="rc-text-sm" style="color: var(--accent-electric); margin-top: var(--space-xs);">
+                                    <i class="bi bi-arrow-right"></i> View Jobs
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="/devices" class="rc-card" style="text-decoration: none; transition: var(--transition-normal);">
+                        <div class="rc-flex" style="align-items: center; gap: var(--space-lg);">
+                            <div style="font-size: 2rem; color: var(--accent-purple);">
+                                <i class="bi bi-cpu"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Equipment Catalog</h3>
+                                <p class="rc-text-sm">Manage your device inventory</p>
+                                <div class="rc-text-sm" style="color: var(--accent-purple); margin-top: var(--space-xs);">
+                                    <i class="bi bi-arrow-right"></i> View Equipment
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="/customers" class="rc-card" style="text-decoration: none; transition: var(--transition-normal);">
+                        <div class="rc-flex" style="align-items: center; gap: var(--space-lg);">
+                            <div style="font-size: 2rem; color: var(--accent-coral);">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Customer Database</h3>
+                                <p class="rc-text-sm">Manage customer relationships</p>
+                                <div class="rc-text-sm" style="color: var(--accent-coral); margin-top: var(--space-xs);">
+                                    <i class="bi bi-arrow-right"></i> View Customers
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="/cases" class="rc-card" style="text-decoration: none; transition: var(--transition-normal);">
+                        <div class="rc-flex" style="align-items: center; gap: var(--space-lg);">
+                            <div style="font-size: 2rem; color: var(--accent-gold);">
+                                <i class="bi bi-box"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Case Management</h3>
+                                <p class="rc-text-sm">Organize equipment in cases</p>
+                                <div class="rc-text-sm" style="color: var(--accent-gold); margin-top: var(--space-xs);">
+                                    <i class="bi bi-arrow-right"></i> View Cases
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions & Business Tools -->
+        <div class="rc-grid rc-grid-2">
+            <!-- Quick Actions -->
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-card-title">
+                        <i class="bi bi-lightning"></i> Quick Actions
+                    </h3>
+                </div>
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-col" style="gap: var(--space-sm);">
+                        <a href="/scan" class="rc-btn rc-btn-primary" style="justify-content: flex-start;">
+                            <i class="bi bi-qr-code-scan"></i> Scan QR Code
+                        </a>
+                        <a href="/jobs/new" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-plus-circle"></i> Create New Job
+                        </a>
+                        <a href="/customers/new" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-person-plus"></i> Add Customer
+                        </a>
+                        <a href="/devices/new" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-plus-square"></i> Add Equipment
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Business Tools -->
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-card-title">
+                        <i class="bi bi-tools"></i> Business Tools
+                    </h3>
+                </div>
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-col" style="gap: var(--space-sm);">
+                        <a href="/invoices" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-file-text"></i> Invoice Management
+                        </a>
+                        <a href="/analytics" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-graph-up"></i> Analytics Dashboard
+                        </a>
+                        <a href="/financial" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-calculator"></i> Financial Reports
+                        </a>
+                        <a href="/settings" class="rc-btn rc-btn-ghost" style="justify-content: flex-start;">
+                            <i class="bi bi-gear"></i> System Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 12px; }
+        }
+        
+        .invoice-header {
+            border-bottom: 3px solid #007bff;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+        }
+        
+        .company-info h1 {
+            color: #007bff;
+            font-size: 2rem;
+            margin-bottom: 0;
+        }
+        
+        .invoice-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .customer-section {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .items-table thead th {
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+        
+        .items-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .totals-section {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 20px;
+        }
+        
+        .total-row {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        .invoice-actions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 768px) {
+            .invoice-actions {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Action buttons (not printed) -->
+    <div class="invoice-actions no-print">
+        <div class="btn-group-vertical">
+            <button onclick="window.print()" class="btn btn-primary mb-2" title="Print Invoice">
+                <i class="bi bi-printer"></i>
+            </button>
+            <a href="/invoices/{{.invoice.InvoiceID}}/pdf" class="btn btn-secondary mb-2" title="Download PDF">
+                <i class="bi bi-download"></i>
+            </a>
+            <a href="/invoices/{{.invoice.InvoiceID}}/edit" class="btn btn-warning mb-2" title="Edit Invoice">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <button onclick="window.close()" class="btn btn-outline-secondary" title="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <!-- Invoice Header -->
+        <div class="invoice-header row">
+            <div class="col-md-6 company-info">
+                <h1>{{.company.CompanyName}}</h1>
+                <div class="mt-3">
+                    {{if .company.AddressLine1}}<div>{{.company.AddressLine1}}</div>{{end}}
+                    {{if .company.AddressLine2}}<div>{{.company.AddressLine2}}</div>{{end}}
+                    {{if or .company.City .company.PostalCode}}
+                    <div>
+                        {{if .company.PostalCode}}{{.company.PostalCode}} {{end}}{{.company.City}}
+                        {{if .company.State}}, {{.company.State}}{{end}}
+                    </div>
+                    {{end}}
+                    {{if .company.Country}}<div>{{.company.Country}}</div>{{end}}
+                </div>
+                <div class="mt-3">
+                    {{if .company.Phone}}<div><strong>Phone:</strong> {{.company.Phone}}</div>{{end}}
+                    {{if .company.Email}}<div><strong>Email:</strong> {{.company.Email}}</div>{{end}}
+                    {{if .company.Website}}<div><strong>Website:</strong> {{.company.Website}}</div>{{end}}
+                </div>
+            </div>
+            
+            <div class="col-md-6 text-md-end">
+                <div class="invoice-number">INVOICE</div>
+                <table class="table table-sm mt-3" style="width: auto; margin-left: auto;">
+                    <tr>
+                        <td><strong>Invoice #:</strong></td>
+                        <td>{{.invoice.InvoiceNumber}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Issue Date:</strong></td>
+                        <td>{{.invoice.IssueDate.Format "02.01.2006"}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Due Date:</strong></td>
+                        <td>{{.invoice.DueDate.Format "02.01.2006"}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            {{if eq .invoice.Status "draft"}}
+                                <span class="badge bg-secondary status-badge">Draft</span>
+                            {{else if eq .invoice.Status "sent"}}
+                                <span class="badge bg-info status-badge">Sent</span>
+                            {{else if eq .invoice.Status "paid"}}
+                                <span class="badge bg-success status-badge">Paid</span>
+                            {{else if eq .invoice.Status "overdue"}}
+                                <span class="badge bg-danger status-badge">Overdue</span>
+                            {{else if eq .invoice.Status "cancelled"}}
+                                <span class="badge bg-dark status-badge">Cancelled</span>
+                            {{else}}
+                                <span class="badge bg-light text-dark status-badge">{{.invoice.Status}}</span>
+                            {{end}}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="customer-section">
+                    <h5 class="text-primary mb-3">
+                        <i class="bi bi-person-circle"></i> Bill To:
+                    </h5>
+                    {{if .invoice.Customer}}
+                    <strong class="fs-5">{{.invoice.Customer.GetDisplayName}}</strong><br>
+                    {{if .invoice.Customer.Email}}<div class="mt-2"><i class="bi bi-envelope"></i> {{.invoice.Customer.Email}}</div>{{end}}
+                    {{if .invoice.Customer.PhoneNumber}}<div><i class="bi bi-telephone"></i> {{.invoice.Customer.PhoneNumber}}</div>{{end}}
+                    {{if .invoice.Customer.Street}}
+                    <div class="mt-2">
+                        <i class="bi bi-geo-alt"></i> 
+                        {{.invoice.Customer.Street}}{{if .invoice.Customer.HouseNumber}} {{.invoice.Customer.HouseNumber}}{{end}}<br>
+                        {{if .invoice.Customer.ZIP}}{{.invoice.Customer.ZIP}} {{end}}{{if .invoice.Customer.City}}{{.invoice.Customer.City}}{{end}}
+                        {{if .invoice.Customer.Country}}<br>{{.invoice.Customer.Country}}{{end}}
+                    </div>
+                    {{end}}
+                    {{else}}
+                    <div class="text-muted">Customer information not available</div>
+                    {{end}}
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                {{if .invoice.Job}}
+                <div class="customer-section">
+                    <h5 class="text-primary mb-3">
+                        <i class="bi bi-briefcase"></i> Job Reference:
+                    </h5>
+                    <strong>{{.invoice.Job.Description}}</strong><br>
+                    {{if .invoice.Job.StartDate}}<small class="text-muted">Start: {{.invoice.Job.StartDate.Format "02.01.2006"}}</small><br>{{end}}
+                    {{if .invoice.Job.EndDate}}<small class="text-muted">End: {{.invoice.Job.EndDate.Format "02.01.2006"}}</small>{{end}}
+                </div>
+                {{end}}
+                
+                {{if .invoice.PaymentTerms}}
+                <div class="{{if not .invoice.Job}}customer-section{{else}}mt-3 p-3 border rounded{{end}}">
+                    <h6 class="text-primary">
+                        <i class="bi bi-credit-card"></i> Payment Terms:
+                    </h6>
+                    {{.invoice.PaymentTerms}}
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h5 class="mb-3">
+                    <i class="bi bi-list-ul"></i> Invoice Items
+                </h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped items-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th width="10%" class="text-center">Quantity</th>
+                                <th width="12%" class="text-end">Unit Price</th>
+                                <th width="15%" class="text-center">Rental Period</th>
+                                <th width="12%" class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .invoice.LineItems}}
+                                {{range .invoice.LineItems}}
+                                <tr>
+                                    <td>
+                                        <strong>{{.Description}}</strong>
+                                        {{if eq .ItemType "device"}}
+                                            {{if .Device}}<br><small class="text-muted">Device: {{.Device.Brand}} {{.Device.Model}} ({{.Device.DeviceID}})</small>{{end}}
+                                        {{else if eq .ItemType "package"}}
+                                            {{if .Package}}<br><small class="text-muted">Package: {{.Package.PackageName}}</small>{{end}}
+                                        {{else if eq .ItemType "service"}}
+                                            <br><small class="text-muted">Service</small>
+                                        {{end}}
+                                    </td>
+                                    <td class="text-center">{{printf "%.2f" .Quantity}}</td>
+                                    <td class="text-end">{{$.settings.CurrencySymbol}}{{printf "%.2f" .UnitPrice}}</td>
+                                    <td class="text-center">
+                                        {{if and .RentalStartDate .RentalEndDate}}
+                                        <small>
+                                            {{.RentalStartDate.Format "02.01"}} - {{.RentalEndDate.Format "02.01.2006"}}
+                                            {{if .RentalDays}}<br>({{.RentalDays}} days){{end}}
+                                        </small>
+                                        {{else}}
+                                        <span class="text-muted">-</span>
+                                        {{end}}
+                                    </td>
+                                    <td class="text-end"><strong>{{$.settings.CurrencySymbol}}{{printf "%.2f" .TotalPrice}}</strong></td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox display-6 text-muted"></i><br>
+                                        <strong>No line items have been added to this invoice yet.</strong><br>
+                                        <small>Edit the invoice to add items.</small>
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Totals and Notes -->
+        <div class="row mt-4">
+            {{if .invoice.Notes}}
+            <div class="col-md-8">
+                <h6 class="text-primary">
+                    <i class="bi bi-sticky"></i> Notes:
+                </h6>
+                <div class="border rounded p-3 bg-light">
+                    {{.invoice.Notes}}
+                </div>
+            </div>
+            {{end}}
+            
+            <div class="{{if .invoice.Notes}}col-md-4{{else}}col-md-6 offset-md-6{{end}}">
+                <div class="totals-section">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td><strong>Subtotal:</strong></td>
+                            <td class="text-end">{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.Subtotal}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tax ({{printf "%.1f" .invoice.TaxRate}}%):</strong></td>
+                            <td class="text-end">{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.TaxAmount}}</td>
+                        </tr>
+                        {{if and .invoice.DiscountAmount (gt .invoice.DiscountAmount 0)}}
+                        <tr>
+                            <td><strong>Discount:</strong></td>
+                            <td class="text-end text-success">-{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.DiscountAmount}}</td>
+                        </tr>
+                        {{end}}
+                        <tr class="total-row">
+                            <td><strong>Total Amount:</strong></td>
+                            <td class="text-end"><strong>{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.TotalAmount}}</strong></td>
+                        </tr>
+                        <tr style="background-color: #ffc107; color: black;">
+                            <td><strong>Balance Due:</strong></td>
+                            <td class="text-end"><strong>{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.BalanceDue}}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terms and Conditions -->
+        {{if .invoice.TermsConditions}}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h6 class="text-primary">
+                    <i class="bi bi-file-text"></i> Terms & Conditions:
+                </h6>
+                <div class="border rounded p-3 bg-light" style="font-size: 0.9rem;">
+                    {{.invoice.TermsConditions}}
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Footer -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <hr>
+                <div class="text-center text-muted" style="font-size: 0.8rem;">
+                    {{if .company.TaxNumber}}<strong>Tax Number:</strong> {{.company.TaxNumber}} | {{end}}
+                    {{if .company.VATNumber}}<strong>VAT Number:</strong> {{.company.VATNumber}} | {{end}}
+                    {{if .company.Email}}{{.company.Email}} | {{end}}
+                    {{if .company.Website}}{{.company.Website}}{{end}}
+                    <br><br>
+                    <small>Generated on {{.invoice.UpdatedAt.Format "02.01.2006 15:04:05"}}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

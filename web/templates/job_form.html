@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        try{document.documentElement.setAttribute("data-theme",localStorage.getItem("rc-theme")||"dark")}catch(e){}
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link active">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">
+                    <i class="bi bi-briefcase"></i> {{.title}}
+                </h1>
+                <p class="rc-text">{{if .job.JobID}}Update job details{{else}}Create a new rental job{{end}}</p>
+            </div>
+            <a href="/jobs" class="rc-btn rc-btn-ghost">
+                <i class="bi bi-arrow-left"></i> Back to Jobs
+            </a>
+        </div>
+
+
+        <!-- Job Form -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-pencil"></i> Job Details
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                {{if .error}}
+                <div class="rc-alert rc-alert-error rc-mb-lg">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {{.error}}
+                </div>
+                {{end}}
+                
+                <form method="POST" action="{{if .job.JobID}}/jobs/{{.job.JobID}}/update{{else}}/jobs{{end}}">
+                    
+                    <div class="rc-grid rc-grid-2 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Customer *</label>
+                            <select class="rc-select" name="customer_id" required>
+                                <option value="">Select Customer</option>
+                                {{range .customers}}
+                                <option value="{{.CustomerID}}" {{if eq .CustomerID $.job.CustomerID}}selected{{end}}>
+                                    {{.GetDisplayName}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label class="rc-label">Status *</label>
+                            <select class="rc-select" name="status_id" required>
+                                <option value="">Select Status</option>
+                                {{range .statuses}}
+                                <option value="{{.StatusID}}" {{if eq .StatusID $.job.StatusID}}selected{{end}}>
+                                    {{.Status}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="rc-grid rc-grid-2 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Start Date *</label>
+                            <input type="date" class="rc-input" name="start_date" value="{{if .job.StartDate}}{{.job.StartDate.Format "2006-01-02"}}{{end}}" required>
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label class="rc-label">End Date *</label>
+                            <input type="date" class="rc-input" name="end_date" value="{{if .job.EndDate}}{{.job.EndDate.Format "2006-01-02"}}{{end}}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="rc-grid rc-grid-2 rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Job Category</label>
+                            <select class="rc-select" name="job_category_id">
+                                <option value="">Select Category</option>
+                                {{range .jobCategories}}
+                                <option value="{{.JobCategoryID}}" {{if eq .JobCategoryID (deref $.job.JobCategoryID)}}selected{{end}}>
+                                    {{.Name}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+                        
+                        <div class="rc-form-group">
+                            <label class="rc-label">Revenue (€)</label>
+                            <input type="number" class="rc-input" name="revenue" value="{{.job.Revenue}}" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <!-- Discount Section -->
+                    <div class="rc-card rc-mb-lg" style="background: var(--surface-2); border: 1px solid var(--surface-3);">
+                        <div class="rc-card-header">
+                            <h4 class="rc-card-title">
+                                <i class="bi bi-percent"></i> Discount Options
+                            </h4>
+                        </div>
+                        <div class="rc-card-body">
+                            <div class="rc-grid rc-grid-2">
+                                <div class="rc-form-group">
+                                    <label class="rc-label">Discount Amount</label>
+                                    <input type="number" class="rc-input" name="discount" value="{{.job.Discount}}" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                
+                                <div class="rc-form-group">
+                                    <label class="rc-label">Discount Type</label>
+                                    <select class="rc-select" name="discount_type">
+                                        <option value="amount" {{if eq .job.DiscountType "amount"}}selected{{end}}>Fixed Amount (€)</option>
+                                        <option value="percent" {{if eq .job.DiscountType "percent"}}selected{{end}}>Percentage (%)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Selection Section -->
+                    <div class="rc-card rc-mb-lg" style="background: var(--surface-2); border: 1px solid var(--surface-3);">
+                        <div class="rc-card-header">
+                            <h4 class="rc-card-title">
+                                <i class="bi bi-cpu"></i> Device Selection
+                            </h4>
+                            <div class="rc-flex rc-flex-gap-sm">
+                                <button type="button" id="refreshDeviceTree" class="rc-btn rc-btn-outline rc-btn-sm">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                                <button type="button" id="toggleTreeView" class="rc-btn rc-btn-outline rc-btn-sm">
+                                    <i class="bi bi-diagram-3"></i> Tree View
+                                </button>
+                            </div>
+                        </div>
+                        <div class="rc-card-body">
+                            <div id="deviceSelectionContainer">
+                                <div id="loadingDevices" class="rc-flex rc-flex-center rc-py-xl">
+                                    <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i>
+                                    Please select start and end dates to load available devices
+                                </div>
+                                
+                                <div id="deviceTreeContainer" style="display: none;">
+                                    <!-- Tree view will be loaded here -->
+                                </div>
+                                
+                                <div id="selectedDevicesContainer" class="rc-mt-lg">
+                                    <h5>Selected Devices</h5>
+                                    <div id="selectedDevicesList" class="rc-flex rc-flex-wrap rc-flex-gap-sm">
+                                        <!-- Selected devices will appear here as badges -->
+                                    </div>
+                                    <input type="hidden" name="selected_devices" id="selectedDevicesInput" value="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="rc-form-group rc-mb-xl">
+                        <label class="rc-label">Description</label>
+                        <textarea class="rc-textarea" name="description" rows="4" placeholder="Additional job details and notes...">{{derefString .job.Description}}</textarea>
+                    </div>
+                    
+                    <div class="rc-flex rc-flex-between" style="align-items: center;">
+                        <a href="/jobs" class="rc-btn rc-btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </a>
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            {{if .job.JobID}}
+                                <i class="bi bi-check-lg"></i> Update Job
+                            {{else}}
+                                <i class="bi bi-plus-lg"></i> Create Job
+                            {{end}}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- Device Tree Styles -->
+    <style>
+        .device-tree-container {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .tree-category {
+            margin-bottom: var(--space-md);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+        }
+        
+        .tree-category-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-md);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            border-radius: var(--radius-md);
+        }
+        
+        .tree-category-header:hover {
+            background: var(--surface-2);
+        }
+        
+        .tree-chevron {
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+            font-size: 0.9rem;
+        }
+        
+        .tree-chevron.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .tree-icon {
+            color: var(--accent-electric);
+            font-size: 1.1rem;
+        }
+        
+        .tree-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
+        .tree-count {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: var(--surface-3);
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+        }
+        
+        .tree-device {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-sm);
+            margin: var(--space-xs) 0;
+            background: var(--surface-1);
+            border: 1px solid var(--surface-2);
+            border-radius: var(--radius-sm);
+            transition: var(--transition-normal);
+            cursor: pointer;
+        }
+        
+        .tree-device:hover {
+            background: var(--surface-2);
+            border-color: var(--accent-electric);
+        }
+        
+        .tree-device.available {
+            border-color: var(--success);
+        }
+        
+        .tree-device.unavailable {
+            opacity: 0.5;
+            background: var(--surface-1);
+            border-color: var(--error);
+            cursor: not-allowed;
+        }
+        
+        .tree-device.selected {
+            background: var(--accent-electric);
+            border-color: var(--accent-electric);
+            color: white;
+        }
+        
+        .device-info {
+            flex: 1;
+        }
+        
+        .device-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        
+        .tree-device.selected .device-name {
+            color: white;
+        }
+        
+        .device-details {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 0.85rem;
+        }
+        
+        .device-id {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+        
+        .tree-device.selected .device-id {
+            background: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .device-status {
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .device-status-free {
+            background: var(--success);
+            color: white;
+        }
+        
+        .device-status-assigned {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .device-status-maintenance {
+            background: var(--error);
+            color: white;
+        }
+        
+        .tree-content {
+            padding-left: var(--space-lg);
+            border-left: 2px solid var(--surface-3);
+            margin-left: var(--space-lg);
+        }
+        
+        .tree-subcategory, .tree-subbiercategory {
+            margin: var(--space-sm) 0;
+            border: 1px solid var(--surface-2);
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+        }
+        
+        .tree-subcategory-header, .tree-subbiercategory-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            border-radius: var(--radius-sm);
+        }
+        
+        .tree-subcategory-header:hover, .tree-subbiercategory-header:hover {
+            background: var(--surface-1);
+        }
+        
+        .selected-device-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            background: var(--accent-electric);
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+        }
+        
+        .selected-device-badge .remove-device {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            margin-left: var(--space-xs);
+        }
+        
+        .category-icon {
+            color: var(--accent-electric);
+        }
+        
+        .subcategory-icon {
+            color: var(--accent-purple);
+        }
+        
+        .subbiercategory-icon {
+            color: var(--accent-coral);
+        }
+    </style>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    
+    <script>
+        // Device selection functionality
+        let selectedDevices = new Set();
+        let deviceTreeData = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listen for date changes
+            const startDateInput = document.querySelector('input[name="start_date"]');
+            const endDateInput = document.querySelector('input[name="end_date"]');
+            
+            if (startDateInput && endDateInput) {
+                startDateInput.addEventListener('change', loadDeviceTree);
+                endDateInput.addEventListener('change', loadDeviceTree);
+            }
+            
+            // Refresh button
+            document.getElementById('refreshDeviceTree').addEventListener('click', loadDeviceTree);
+            
+            // Initially load devices if dates are set (for edit mode)
+            if (startDateInput.value && endDateInput.value) {
+                console.log('DEBUG: Loading device tree for edit mode with dates:', startDateInput.value, 'to', endDateInput.value);
+                loadDeviceTree();
+            } else {
+                console.log('DEBUG: Not loading device tree - missing dates:', startDateInput.value, endDateInput.value);
+            }
+            
+            // Also try loading after a short delay in case of timing issues
+            setTimeout(function() {
+                const startDate = document.querySelector('input[name="start_date"]').value;
+                const endDate = document.querySelector('input[name="end_date"]').value;
+                if (startDate && endDate && (!deviceTreeData || deviceTreeData.length === 0)) {
+                    console.log('DEBUG: Delayed loading device tree with dates:', startDate, 'to', endDate);
+                    loadDeviceTree();
+                }
+            }, 500);
+        });
+        
+        function loadDeviceTree() {
+            const startDate = document.querySelector('input[name="start_date"]').value;
+            const endDate = document.querySelector('input[name="end_date"]').value;
+            
+            if (!startDate || !endDate) {
+                document.getElementById('loadingDevices').innerHTML = '<i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i> Please select start and end dates to load available devices';
+                document.getElementById('deviceTreeContainer').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('loadingDevices').innerHTML = '<i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i> Loading available devices...';
+            document.getElementById('deviceTreeContainer').style.display = 'none';
+            
+            // Get job ID for exclusion (if editing)
+            const jobId = getJobIdFromUrl();
+            
+            const url = `/api/v1/devices/tree/availability?start_date=${startDate}&end_date=${endDate}${jobId ? '&job_id=' + jobId : ''}`;
+            
+            fetch(url, {
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                deviceTreeData = data.treeData;
+                renderDeviceTree(deviceTreeData);
+                document.getElementById('loadingDevices').style.display = 'none';
+                document.getElementById('deviceTreeContainer').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error loading device tree:', error);
+                document.getElementById('loadingDevices').innerHTML = '<div style="color: var(--error);"><i class="bi bi-exclamation-triangle"></i> Error loading devices: ' + error.message + '</div>';
+                document.getElementById('deviceTreeContainer').style.display = 'none';
+            });
+        }
+        
+        function getJobIdFromUrl() {
+            const path = window.location.pathname;
+            const matches = path.match(/\/jobs\/([^\/]+)\/edit/);
+            return matches ? matches[1] : null;
+        }
+        
+        function renderDeviceTree(treeData) {
+            const container = document.getElementById('deviceTreeContainer');
+            
+            if (!treeData || treeData.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: var(--space-xl); color: var(--text-muted);">No devices found</div>';
+                return;
+            }
+            
+            let html = '<div class="device-tree-container">';
+            
+            treeData.forEach(category => {
+                html += renderCategoryHtml(category);
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function renderCategoryHtml(category) {
+            let html = `
+                <div class="tree-category">
+                    <div class="tree-category-header" onclick="toggleTreeNode('category-${category.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-category-${category.id}"></i>
+                        <i class="bi bi-folder2 tree-icon category-icon"></i>
+                        <span class="tree-title">${category.name}</span>
+                        <span class="tree-count">${category.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="category-${category.id}" style="display: none;">
+            `;
+            
+            // Direct devices in category
+            if (category.direct_devices && category.direct_devices.length > 0) {
+                category.direct_devices.forEach(device => {
+                    html += renderDeviceHtml(device);
+                });
+            }
+            
+            // Subcategories
+            if (category.subcategories && category.subcategories.length > 0) {
+                category.subcategories.forEach(subcategory => {
+                    html += renderSubcategoryHtml(subcategory);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderSubcategoryHtml(subcategory) {
+            let html = `
+                <div class="tree-subcategory">
+                    <div class="tree-subcategory-header" onclick="toggleTreeNode('subcategory-${subcategory.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-subcategory-${subcategory.id}"></i>
+                        <i class="bi bi-folder tree-icon subcategory-icon"></i>
+                        <span class="tree-title">${subcategory.name}</span>
+                        <span class="tree-count">${subcategory.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="subcategory-${subcategory.id}" style="display: none;">
+            `;
+            
+            // Direct devices in subcategory
+            if (subcategory.direct_devices && subcategory.direct_devices.length > 0) {
+                subcategory.direct_devices.forEach(device => {
+                    html += renderDeviceHtml(device);
+                });
+            }
+            
+            // Subbiercategories
+            if (subcategory.subbiercategories && subcategory.subbiercategories.length > 0) {
+                subcategory.subbiercategories.forEach(subbiercategory => {
+                    html += renderSubbiercategoryHtml(subbiercategory);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderSubbiercategoryHtml(subbiercategory) {
+            let html = `
+                <div class="tree-subbiercategory">
+                    <div class="tree-subbiercategory-header" onclick="toggleTreeNode('subbiercategory-${subbiercategory.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-subbiercategory-${subbiercategory.id}"></i>
+                        <i class="bi bi-folder-fill tree-icon subbiercategory-icon"></i>
+                        <span class="tree-title">${subbiercategory.name}</span>
+                        <span class="tree-count">${subbiercategory.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="subbiercategory-${subbiercategory.id}" style="display: none;">
+            `;
+            
+            // Devices in subbiercategory
+            if (subbiercategory.devices && subbiercategory.devices.length > 0) {
+                subbiercategory.devices.forEach(device => {
+                    html += renderDeviceHtml(device);
+                });
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderDeviceHtml(device) {
+            const isSelected = selectedDevices.has(device.device_id);
+            const isAvailable = device.available === true;
+            
+            let classes = 'tree-device';
+            if (isSelected) classes += ' selected';
+            if (!isAvailable) classes += ' unavailable';
+            else classes += ' available';
+            
+            let onclick = '';
+            if (isAvailable) {
+                onclick = `onclick="toggleDeviceSelection('${device.device_id}')"`;
+            }
+            
+            return `
+                <div class="${classes}" ${onclick}>
+                    <div class="device-info">
+                        <div class="device-name">${device.product_name}</div>
+                        <div class="device-details">
+                            <span class="device-id">${device.device_id}</span>
+                            ${device.serial_number ? '<span class="device-serial">• ' + device.serial_number + '</span>' : ''}
+                            <span class="device-status device-status-${device.status}">${device.status}</span>
+                            ${!isAvailable && device.conflict_job ? '<span style="color: var(--error); font-size: 0.75rem;">• Conflict with Job ' + device.conflict_job + '</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function toggleTreeNode(nodeId) {
+            const contentDiv = document.getElementById(nodeId);
+            const chevron = document.getElementById('chevron-' + nodeId);
+            
+            if (contentDiv && chevron) {
+                if (contentDiv.style.display === 'none') {
+                    contentDiv.style.display = 'block';
+                    chevron.classList.add('expanded');
+                } else {
+                    contentDiv.style.display = 'none';
+                    chevron.classList.remove('expanded');
+                }
+            }
+        }
+        
+        function toggleDeviceSelection(deviceId) {
+            if (selectedDevices.has(deviceId)) {
+                selectedDevices.delete(deviceId);
+            } else {
+                selectedDevices.add(deviceId);
+            }
+            
+            updateSelectedDevicesDisplay();
+            updateSelectedDevicesInput();
+            updateDeviceTreeDisplay();
+        }
+        
+        function updateSelectedDevicesDisplay() {
+            const container = document.getElementById('selectedDevicesList');
+            
+            if (selectedDevices.size === 0) {
+                container.innerHTML = '<span style="color: var(--text-muted); font-style: italic;">No devices selected</span>';
+                return;
+            }
+            
+            let html = '';
+            selectedDevices.forEach(deviceId => {
+                const device = findDeviceInTree(deviceId);
+                if (device) {
+                    html += `
+                        <span class="selected-device-badge">
+                            ${device.product_name} (${deviceId})
+                            <button class="remove-device" onclick="toggleDeviceSelection('${deviceId}')" title="Remove device">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </span>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function updateSelectedDevicesInput() {
+            document.getElementById('selectedDevicesInput').value = Array.from(selectedDevices).join(',');
+        }
+        
+        function updateDeviceTreeDisplay() {
+            // Re-render tree to update selected states
+            if (deviceTreeData) {
+                renderDeviceTree(deviceTreeData);
+            }
+        }
+        
+        function findDeviceInTree(deviceId) {
+            if (!deviceTreeData) return null;
+            
+            for (const category of deviceTreeData) {
+                // Check direct devices in category
+                if (category.direct_devices) {
+                    const device = category.direct_devices.find(d => d.device_id === deviceId);
+                    if (device) return device;
+                }
+                
+                // Check subcategories
+                if (category.subcategories) {
+                    for (const subcategory of category.subcategories) {
+                        // Check direct devices in subcategory
+                        if (subcategory.direct_devices) {
+                            const device = subcategory.direct_devices.find(d => d.device_id === deviceId);
+                            if (device) return device;
+                        }
+                        
+                        // Check subbiercategories
+                        if (subcategory.subbiercategories) {
+                            for (const subbiercategory of subcategory.subbiercategories) {
+                                if (subbiercategory.devices) {
+                                    const device = subbiercategory.devices.find(d => d.device_id === deviceId);
+                                    if (device) return device;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+    </script>
+    
+    {{if .scripts}}
+        {{range .scripts}}
+            <script src="{{.}}"></script>
+        {{end}}
+    {{end}}
+</body>
+</html>

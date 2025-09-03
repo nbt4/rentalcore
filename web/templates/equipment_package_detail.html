@@ -1,0 +1,562 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-box-seam text-primary"></i>
+                {{.package.Name}}
+                {{if .package.IsActive}}
+                <span class="badge bg-success ms-2">Active</span>
+                {{else}}
+                <span class="badge bg-secondary ms-2">Inactive</span>
+                {{end}}
+            </h1>
+            <p class="text-muted mb-0">Equipment Package Details</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/workflow/packages" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Packages
+            </a>
+            <button type="button" class="btn btn-outline-info" onclick="validatePackage({{.package.PackageID}})">
+                <i class="bi bi-shield-check"></i> Validate
+            </button>
+            <a href="/workflow/packages/edit/{{.package.PackageID}}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit Package
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Package Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Package Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Package Name</label>
+                                <div class="fw-bold">{{.package.Name}}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Category</label>
+                                <div>
+                                    {{if .package.Category}}
+                                    <span class="badge bg-secondary">{{.package.Category}}</span>
+                                    {{else}}
+                                    <span class="text-muted">Uncategorized</span>
+                                    {{end}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Description</label>
+                        <div>{{if .package.Description}}{{.package.Description}}{{else}}<span class="text-muted">No description provided</span>{{end}}</div>
+                    </div>
+                    {{if .package.Tags}}
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Tags</label>
+                        <div>
+                            {{range $tag := (split .package.Tags ",")}}
+                            <span class="badge bg-light text-dark me-1">{{trim $tag}}</span>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Pricing Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-currency-euro"></i> Pricing & Terms</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <div class="h4 text-primary mb-1">€{{printf "%.2f" .package.CalculatedPrice}}</div>
+                                <div class="small text-muted">
+                                    {{if .package.PackagePrice}}Fixed Price{{else}}Calculated Price{{end}}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <div class="h4 text-success mb-1">{{printf "%.1f" .package.DiscountPercent}}%</div>
+                                <div class="small text-muted">Package Discount</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <div class="h4 text-info mb-1">{{.package.MinRentalDays}}</div>
+                                <div class="small text-muted">Min Days</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <div class="h4 text-warning mb-1">{{if .package.MaxRentalDays}}{{.package.MaxRentalDays}}{{else}}∞{{end}}</div>
+                                <div class="small text-muted">Max Days</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipment List -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Equipment & Devices</h5>
+                    <span class="badge bg-primary">{{.package.DeviceCount}} devices</span>
+                </div>
+                <div class="card-body p-0">
+                    {{if .package.PackageDevices}}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Device</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total Price</th>
+                                    <th class="text-center">Type</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .package.PackageDevices}}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" 
+                                                     style="width: 32px; height: 32px; font-size: 14px;">
+                                                    <i class="bi bi-gear"></i>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{if .Device}}{{if .Device.Product}}{{.Device.Product.Name}}{{else}}Unknown Product{{end}}{{else}}Device Not Found{{end}}</div>
+                                                <small class="text-muted">ID: {{.DeviceID}}</small>
+                                                {{if .Notes}}
+                                                <div><small class="text-info"><i class="bi bi-info-circle"></i> {{.Notes}}</small></div>
+                                                {{end}}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info">{{.Quantity}}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        {{if .CustomPrice}}
+                                        €{{printf "%.2f" .CustomPrice}}
+                                        <small class="text-muted d-block">Custom</small>
+                                        {{else}}
+                                        {{if .Device}}{{if .Device.Product}}{{if .Device.Product.ItemCostPerDay}}€{{printf "%.2f" .Device.Product.ItemCostPerDay}}{{else}}N/A{{end}}{{else}}N/A{{end}}{{else}}N/A{{end}}
+                                        <small class="text-muted d-block">Default</small>
+                                        {{end}}
+                                    </td>
+                                    <td class="text-end">
+                                        {{$price := 0.0}}
+                                        {{if .CustomPrice}}
+                                        {{$price = .CustomPrice}}
+                                        {{else if .Device}}{{if .Device.Product}}{{if .Device.Product.ItemCostPerDay}}
+                                        {{$price = .Device.Product.ItemCostPerDay}}
+                                        {{end}}{{end}}{{end}}
+                                        <strong>€{{printf "%.2f" (mul $price .Quantity)}}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        {{if .IsRequired}}
+                                        <span class="badge bg-warning">Required</span>
+                                        {{else}}
+                                        <span class="badge bg-light text-dark">Optional</span>
+                                        {{end}}
+                                    </td>
+                                    <td class="text-center">
+                                        {{if .Device}}
+                                        {{if eq .Device.Status "free"}}
+                                        <span class="badge bg-success">Available</span>
+                                        {{else if eq .Device.Status "available"}}
+                                        <span class="badge bg-success">Available</span>
+                                        {{else if eq .Device.Status "ready"}}
+                                        <span class="badge bg-success">Ready</span>
+                                        {{else}}
+                                        <span class="badge bg-danger">{{.Device.Status}}</span>
+                                        {{end}}
+                                        {{else}}
+                                        <span class="badge bg-secondary">Unknown</span>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{else}}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                        <p class="text-muted">No devices configured for this package</p>
+                        <a href="/workflow/packages/edit/{{.package.PackageID}}" class="btn btn-primary">
+                            <i class="bi bi-plus-lg"></i> Add Devices
+                        </a>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Validation Status -->
+            {{if not .isValid}}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Package Validation Issues</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">The following devices have issues:</p>
+                    <ul class="mb-0">
+                        {{range .invalidDevices}}
+                        <li class="text-danger">{{.}}</li>
+                        {{end}}
+                    </ul>
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Package Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="h4 text-primary">{{.stats.deviceCount}}</div>
+                                <div class="small text-muted">Total Devices</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-success">{{.stats.requiredDevices}}</div>
+                            <div class="small text-muted">Required</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Usage Count:</span>
+                        <strong>{{.package.UsageCount}} times</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Revenue:</span>
+                        <strong>€{{printf "%.2f" .package.TotalRevenue}}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Last Used:</span>
+                        <span>{{if .package.LastUsedAt}}{{formatDate .package.LastUsedAt}}{{else}}Never{{end}}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Created:</span>
+                        <span>{{formatDate .package.CreatedAt}}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-success" onclick="clonePackage({{.package.PackageID}})">
+                            <i class="bi bi-files"></i> Clone Package
+                        </button>
+                        <button type="button" class="btn btn-outline-info" onclick="exportPackage({{.package.PackageID}})">
+                            <i class="bi bi-download"></i> Export Details
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" onclick="togglePackageStatus({{.package.PackageID}}, {{.package.IsActive}})">
+                            <i class="bi bi-power"></i> {{if .package.IsActive}}Deactivate{{else}}Activate{{end}}
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" onclick="confirmDelete({{.package.PackageID}})">
+                            <i class="bi bi-trash"></i> Delete Package
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Package History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Package Created</h6>
+                                <p class="text-muted mb-0 small">{{formatDate .package.CreatedAt}}</p>
+                            </div>
+                        </div>
+                        {{if .package.LastUsedAt}}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Last Used</h6>
+                                <p class="text-muted mb-0 small">{{formatDate .package.LastUsedAt}}</p>
+                            </div>
+                        </div>
+                        {{end}}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Last Updated</h6>
+                                <p class="text-muted mb-0 small">{{formatDate .package.UpdatedAt}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Are you sure you want to delete the package "<strong>{{.package.Name}}</strong>"? This action cannot be undone.
+                </div>
+                <p>This will permanently remove the package and all its device associations.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete Package
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let packageToDelete = null;
+
+// Validate package
+async function validatePackage(packageId) {
+    try {
+        const response = await fetch(`/api/v1/workflow/packages/${packageId}/validate`);
+        const data = await response.json();
+        
+        if (data.isValid) {
+            showNotification('Package validation successful! All devices are available.', 'success');
+        } else {
+            const invalidList = data.invalidDevices.join(', ');
+            showNotification(`Package validation failed. Invalid devices: ${invalidList}`, 'warning');
+        }
+    } catch (error) {
+        showNotification('Validation failed: ' + error.message, 'error');
+    }
+}
+
+// Clone package
+async function clonePackage(packageId) {
+    try {
+        const response = await fetch(`/api/v1/workflow/packages/${packageId}/clone`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) throw new Error('Failed to clone package');
+        
+        showNotification('Package cloned successfully', 'success');
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+        showNotification('Failed to clone package: ' + error.message, 'error');
+    }
+}
+
+// Export package
+function exportPackage(packageId) {
+    // Create downloadable JSON export
+    const packageData = {
+        name: '{{.package.Name}}',
+        description: '{{.package.Description}}',
+        category: '{{.package.Category}}',
+        pricing: {
+            packagePrice: {{if .package.PackagePrice}}{{.package.PackagePrice}}{{else}}null{{end}},
+            discountPercent: {{.package.DiscountPercent}},
+            minRentalDays: {{.package.MinRentalDays}},
+            maxRentalDays: {{if .package.MaxRentalDays}}{{.package.MaxRentalDays}}{{else}}null{{end}}
+        },
+        devices: [
+            {{range .package.PackageDevices}}
+            {
+                deviceID: '{{.DeviceID}}',
+                quantity: {{.Quantity}},
+                customPrice: {{if .CustomPrice}}{{.CustomPrice}}{{else}}null{{end}},
+                isRequired: {{.IsRequired}},
+                notes: '{{.Notes}}'
+            },
+            {{end}}
+        ]
+    };
+
+    const dataStr = JSON.stringify(packageData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `package_${packageId}_export.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    showNotification('Package exported successfully', 'success');
+}
+
+// Toggle package status
+async function togglePackageStatus(packageId, currentStatus) {
+    try {
+        const action = currentStatus ? 'deactivate' : 'activate';
+        const response = await fetch(`/api/v1/workflow/packages/bulk`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                packageIds: [packageId],
+                updates: {
+                    isActive: !currentStatus
+                }
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update package status');
+        
+        showNotification(`Package ${action}d successfully`, 'success');
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+        showNotification('Failed to update package status: ' + error.message, 'error');
+    }
+}
+
+// Delete confirmation
+function confirmDelete(packageId) {
+    packageToDelete = packageId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    modal.show();
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+    if (!packageToDelete) return;
+    
+    try {
+        const response = await fetch(`/api/v1/workflow/packages/${packageToDelete}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to delete package');
+        
+        showNotification('Package deleted successfully', 'success');
+        setTimeout(() => {
+            window.location.href = '/workflow/packages';
+        }, 1000);
+    } catch (error) {
+        showNotification('Failed to delete package: ' + error.message, 'error');
+    }
+    
+    bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+});
+
+// Utility functions
+function showNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+}
+
+.timeline-item:not(:last-child):before {
+    content: '';
+    position: absolute;
+    left: -1.25rem;
+    top: 1.25rem;
+    height: calc(100% - 0.5rem);
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -1.375rem;
+    top: 0.125rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content h6 {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+</style>
+{{end}}

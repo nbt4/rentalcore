@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/images/icon-180.png">
+    <link rel="shortcut icon" type="image/png" href="/static/images/icon-180.png">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 245, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 107, 107, 0.05) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+        }
+
+        .login-card {
+            background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-xl);
+            padding: var(--space-3xl);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-electric), var(--accent-purple), var(--accent-coral));
+        }
+
+        .login-brand {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+
+        .login-brand h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+        }
+
+        .login-brand p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        .security-icon {
+            font-size: 3rem;
+            color: var(--accent-electric);
+            margin-bottom: var(--space-lg);
+            text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+        }
+
+        .verification-input {
+            font-family: var(--font-mono);
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 0.5rem;
+            background: var(--surface-2);
+            border: 2px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            color: var(--text-primary);
+            width: 100%;
+            margin-bottom: var(--space-lg);
+            transition: var(--transition-normal);
+        }
+
+        .verification-input:focus {
+            outline: none;
+            border-color: var(--accent-electric);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+            background: var(--surface-1);
+        }
+
+        .login-submit {
+            width: 100%;
+            padding: var(--space-lg);
+            background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+            color: var(--text-inverse);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+            margin-bottom: var(--space-lg);
+        }
+
+        .login-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .login-footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-xs);
+        }
+
+        .backup-code-hint {
+            background: var(--surface-2);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-top: var(--space-md);
+            text-align: center;
+        }
+
+        .backup-code-hint p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: var(--space-xl);
+                margin: var(--space-md);
+            }
+
+            .login-brand h1 {
+                font-size: 1.75rem;
+            }
+            
+            .verification-input {
+                font-size: 1.5rem;
+                letter-spacing: 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body class="login-page rc-animate-fade-in">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="security-icon">
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+                <h1>Two-Factor Authentication</h1>
+                <p>Enter your verification code to continue</p>
+            </div>
+            
+            {{if .error}}
+            <div class="rc-alert rc-alert-error">
+                <i class="bi bi-exclamation-triangle"></i>
+                {{.error}}
+            </div>
+            {{end}}
+            
+            <form method="POST" action="/login/2fa" class="login-form">
+                <div class="rc-form-group">
+                    <input type="text" class="verification-input" id="code" name="code" 
+                           placeholder="000000" maxlength="6" autocomplete="off" 
+                           inputmode="numeric" required autofocus>
+                </div>
+                
+                <button type="submit" class="login-submit">
+                    <i class="bi bi-shield-check"></i>
+                    Verify & Continue
+                </button>
+            </form>
+            
+            <div class="backup-code-hint">
+                <p>
+                    <i class="bi bi-key"></i>
+                    You can also use a backup code instead of your authenticator app
+                </p>
+            </div>
+            
+            <div class="login-footer">
+                <i class="bi bi-arrow-left"></i>
+                <a href="/login" style="color: var(--text-muted); text-decoration: none;">Back to Login</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-focus on the verification input
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('code').focus();
+        });
+        
+        // Handle form submission with loading state
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('.login-submit');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Verifying...';
+            submitBtn.disabled = true;
+            
+            // Re-enable if form submission fails (page reload doesn't happen)
+            setTimeout(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }, 5000);
+        });
+        
+        // Only allow numeric input for verification code (but allow backup codes)
+        document.getElementById('code').addEventListener('input', function(e) {
+            // Allow alphanumeric for backup codes, but format nicely for numeric codes
+            let value = e.target.value;
+            if (/^\d+$/.test(value)) {
+                // It's all digits, so it's likely a TOTP code
+                e.target.style.letterSpacing = '0.5rem';
+                e.target.style.fontFamily = 'var(--font-mono)';
+            } else {
+                // It contains letters, so it's likely a backup code
+                e.target.style.letterSpacing = '0.1rem';
+                e.target.style.fontFamily = 'var(--font-mono)';
+            }
+        });
+    </script>
+</body>
+</html>

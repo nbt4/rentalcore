@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <h1 class="h3 mb-1">
+                    <i class="fas fa-signature text-primary me-2"></i>Sign Document
+                </h1>
+                <p class="text-muted mb-0">Add your digital signature to this document</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Document Information -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-file-alt me-2"></i>Document Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">{{.document.OriginalFilename}}</h6>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Document Type</small>
+                            <span class="badge bg-primary">{{.document.DocumentType | title}}</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted d-block">File Size</small>
+                            <span>{{.document.FileSize | humanizeBytes}}</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Uploaded</small>
+                            <span>{{.document.UploadedAt.Format "Jan 2, 2006 15:04"}}</span>
+                        </div>
+                        
+                        {{if .document.Description}}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Description</small>
+                            <p class="mb-0">{{.document.Description}}</p>
+                        </div>
+                        {{end}}
+                        
+                        <div class="d-grid">
+                            <a href="/documents/{{.document.DocumentID}}/view" target="_blank" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-2"></i>View Document
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Existing Signatures -->
+                {{if .document.Signatures}}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users me-2"></i>Existing Signatures
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {{range .document.Signatures}}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-signature fa-2x text-success"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{.SignerName}}</div>
+                                <small class="text-muted">{{.SignerRole}}</small>
+                                <div class="small text-muted">{{.SignedAt.Format "Jan 2, 2006 15:04"}}</div>
+                                {{if .IsVerified}}
+                                <span class="badge bg-success small">Verified</span>
+                                {{else}}
+                                <span class="badge bg-warning small">Pending</span>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            
+            <!-- Signature Form -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Create Digital Signature</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="signatureForm">
+                            <!-- Signer Information -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="signerName" class="form-label">Full Name *</label>
+                                    <input type="text" class="form-control" id="signerName" name="signerName" required
+                                           value="{{.user.FirstName}} {{.user.LastName}}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="signerEmail" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="signerEmail" name="signerEmail"
+                                           value="{{.user.Email}}">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="signerRole" class="form-label">Role/Title</label>
+                                    <input type="text" class="form-control" id="signerRole" name="signerRole"
+                                           placeholder="e.g., Project Manager, Customer">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="agreementCheck" required>
+                                        <label class="form-check-label" for="agreementCheck">
+                                            I agree that this constitutes a legal signature
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Signature Canvas -->
+                            <div class="mb-4">
+                                <label class="form-label">Digital Signature *</label>
+                                <div class="signature-container">
+                                    <canvas id="signatureCanvas" width="600" height="200"></canvas>
+                                    <div class="mt-2 d-flex justify-content-between">
+                                        <small class="text-muted">Sign in the box above using your mouse or touch</small>
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="clearSignature()">
+                                                <i class="fas fa-eraser me-1"></i>Clear
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="generateTextSignature()">
+                                                <i class="fas fa-font me-1"></i>Type Signature
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Legal Notice -->
+                            <div class="alert alert-info mb-4">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-info-circle me-2"></i>Legal Notice
+                                </h6>
+                                <p class="mb-0">
+                                    By signing this document electronically, you agree that your electronic signature 
+                                    has the same legal force and effect as a handwritten signature. This signature 
+                                    will be cryptographically secured and timestamped.
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <a href="/documents" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Documents
+                            </a>
+                            <button type="button" class="btn btn-primary" id="signBtn" disabled>
+                                <i class="fas fa-signature me-2"></i>Sign Document
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text Signature Modal -->
+    <div class="modal fade" id="textSignatureModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Type Your Signature</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="signatureText" class="form-label">Enter your full name</label>
+                        <input type="text" class="form-control" id="signatureText" placeholder="Your Full Name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="signatureFont" class="form-label">Choose font style</label>
+                        <select class="form-select" id="signatureFont">
+                            <option value="cursive">Cursive</option>
+                            <option value="serif">Serif</option>
+                            <option value="script">Script</option>
+                        </select>
+                    </div>
+                    <div class="signature-preview" style="height: 100px; border: 1px solid #dee2e6; padding: 20px; text-align: center;">
+                        <div id="signaturePreview" style="font-size: 24px; font-family: cursive;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="useTextSignature()">Use This Signature</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

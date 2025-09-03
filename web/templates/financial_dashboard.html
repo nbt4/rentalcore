@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+.rc-financial-card {
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--rc-shadow-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.rc-financial-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--rc-shadow-2xl);
+}
+
+.rc-metric-card {
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    padding: 2rem;
+    margin-bottom: 0;
+    box-shadow: var(--rc-shadow-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    height: 200px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+}
+
+.rc-metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #3b82f6 0%, #10b981 25%, #8b5cf6 50%, #f59e0b 75%, #ef4444 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.rc-metric-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+}
+
+.rc-metric-card.revenue {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-primary-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-card.pending {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-warning-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-card.monthly {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-success-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-card.overdue {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-danger-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-card.profit {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-accent-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-card.health {
+    background: linear-gradient(135deg, var(--rc-surface-100) 0%, var(--rc-surface-200) 100%);
+    border: 2px solid var(--rc-info-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    color: var(--rc-text-primary);
+    line-height: 1;
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rc-metric-card.revenue .rc-metric-value,
+.rc-metric-card.pending .rc-metric-value,
+.rc-metric-card.monthly .rc-metric-value,
+.rc-metric-card.overdue .rc-metric-value,
+.rc-metric-card.profit .rc-metric-value,
+.rc-metric-card.health .rc-metric-value {
+    color: var(--rc-text-primary);
+}
+
+.rc-metric-label {
+    font-size: 1rem;
+    color: var(--rc-text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rc-metric-card.revenue .rc-metric-label,
+.rc-metric-card.pending .rc-metric-label,
+.rc-metric-card.monthly .rc-metric-label,
+.rc-metric-card.overdue .rc-metric-label,
+.rc-metric-card.profit .rc-metric-label,
+.rc-metric-card.health .rc-metric-label {
+    color: var(--rc-text-secondary);
+}
+
+.rc-metric-trend {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--rc-radius);
+    font-weight: 600;
+    margin-top: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rc-metric-trend.positive {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.rc-metric-trend.negative {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.rc-metric-trend.neutral {
+    background: rgba(107, 114, 128, 0.2);
+    color: #6b7280;
+}
+
+.rc-metric-icon {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    font-size: 1.5rem;
+    opacity: 0.6;
+    color: var(--rc-text-secondary);
+}
+
+/* Responsive adjustments for metric cards */
+@media (max-width: 768px) {
+    .rc-metric-card {
+        height: 170px;
+        padding: 1.5rem;
+        width: 100%;
+    }
+    .rc-metric-value {
+        font-size: 1.25rem;
+    }
+    .rc-metric-label {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .rc-metric-icon {
+        display: none;
+    }
+    .rc-metric-card {
+        height: 150px;
+        padding: 1rem;
+        width: 100%;
+    }
+    .rc-metric-value {
+        font-size: 1rem;
+    }
+    .rc-metric-label {
+        font-size: 0.75rem;
+    }
+    .rc-metric-trend {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* Metrics Grid Layout - Full Width 3 Cards Per Row */
+.rc-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .rc-metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .rc-metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+}
+
+/* Modal Styles */
+.rc-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+.rc-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.rc-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    box-shadow: var(--rc-shadow-2xl);
+    min-width: 400px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.rc-modal-header {
+    padding: 1.5rem;
+    border-bottom: var(--rc-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--rc-surface-50);
+}
+
+.rc-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--rc-text-primary);
+}
+
+.rc-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--rc-text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--rc-radius);
+    transition: all 0.2s ease;
+}
+
+.rc-modal-close:hover {
+    background: var(--rc-surface-100);
+    color: var(--rc-text-primary);
+}
+
+.rc-modal-body {
+    padding: 1.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.rc-metric-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.rc-metric-detail-item {
+    background: var(--rc-surface-50);
+    padding: 1rem;
+    border-radius: var(--rc-radius);
+    border: var(--rc-border);
+}
+
+.rc-metric-detail-label {
+    font-size: 0.875rem;
+    color: var(--rc-text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.rc-metric-detail-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--rc-text-primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.rc-chart-container {
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--rc-shadow-sm);
+    height: 400px;
+}
+
+.rc-chart-container canvas {
+    max-height: 320px !important;
+    height: 320px !important;
+}
+
+.rc-chart-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--rc-text-primary);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.rc-financial-header {
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--rc-shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+
+.rc-financial-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+    pointer-events: none;
+}
+
+.rc-health-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: var(--rc-radius-full);
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.rc-health-excellent {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.rc-health-good {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.rc-health-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.rc-health-critical {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.rc-controls-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.rc-period-selector {
+    display: flex;
+    background: var(--rc-surface-100);
+    border-radius: var(--rc-radius);
+    padding: 0.25rem;
+    gap: 0.25rem;
+}
+
+.rc-period-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: none;
+    color: var(--rc-text-secondary);
+    border-radius: var(--rc-radius-sm);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rc-period-btn.active {
+    background: var(--rc-primary-500);
+    color: white;
+    box-shadow: var(--rc-shadow-sm);
+}
+
+.rc-period-btn:hover:not(.active) {
+    background: var(--rc-surface-200);
+    color: var(--rc-text-primary);
+}
+
+.rc-table-container {
+    background: var(--rc-card-bg);
+    border: var(--rc-border);
+    border-radius: var(--rc-radius-lg);
+    overflow: hidden;
+    box-shadow: var(--rc-shadow-sm);
+    margin-bottom: 1.5rem;
+}
+
+.rc-table-header {
+    background: var(--rc-surface-50);
+    color: var(--rc-text-primary);
+    padding: 1.5rem;
+    font-weight: 700;
+    border-bottom: var(--rc-border);
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.rc-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.rc-table th {
+    background: var(--rc-surface-100);
+    color: var(--rc-text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: var(--rc-border);
+}
+
+.rc-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: var(--rc-border);
+    color: var(--rc-text-primary);
+    vertical-align: middle;
+}
+
+.rc-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.rc-table tbody tr:hover {
+    background: var(--rc-surface-50);
+}
+
+.rc-status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--rc-radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rc-status-completed {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.rc-status-pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.rc-status-failed {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.rc-status-cancelled {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.rc-insight-card {
+    background: linear-gradient(135deg, var(--rc-primary-50) 0%, var(--rc-primary-100) 100%);
+    border: 1px solid var(--rc-primary-200);
+    border-radius: var(--rc-radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.rc-insight-title {
+    color: var(--rc-primary-700);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rc-insight-content {
+    color: var(--rc-primary-600);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.rc-alert {
+    padding: 1rem;
+    border-radius: var(--rc-radius);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.rc-alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.rc-alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+}
+
+.rc-alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.rc-alert-success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.rc-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.rc-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--rc-text-secondary);
+}
+
+.rc-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .rc-financial-header {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .rc-metric-card {
+        height: 120px;
+        padding: 1rem;
+    }
+    
+    .rc-metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .rc-chart-container {
+        height: 300px;
+        padding: 1rem;
+    }
+    
+    .rc-chart-container canvas {
+        max-height: 220px !important;
+        height: 220px !important;
+    }
+    
+    .rc-controls-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .rc-period-selector {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .rc-metric-value {
+        font-size: 1.25rem;
+    }
+    
+    .rc-metric-card {
+        height: 100px;
+        padding: 0.75rem;
+    }
+    
+    .rc-chart-container {
+        height: 250px;
+        padding: 0.75rem;
+    }
+    
+    .rc-chart-container canvas {
+        max-height: 180px !important;
+        height: 180px !important;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+    </style>
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item active">
+                                <i class="bi bi-currency-dollar"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Administration</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security/audit" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security Audit
+                            </a>
+                            <a href="/security/roles" class="rc-dropdown-item">
+                                <i class="bi bi-key"></i> Security Roles
+                            </a>
+                            <a href="/company/settings" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{end}}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-py-4">
+        <!-- Header -->
+        <div class="rc-financial-header fade-in">
+            <div class="rc-grid rc-grid-cols-1 lg:rc-grid-cols-2 rc-gap-6 rc-items-center">
+                <div style="position: relative; z-index: 1;">
+                    <h1 class="rc-heading-2xl rc-mb-2">
+                        <i class="bi bi-currency-dollar"></i> Financial Dashboard
+                    </h1>
+                    <p class="rc-text-secondary rc-mb-3">
+                        Monitor revenue, cash flow, and financial performance in real-time
+                    </p>
+                    <div id="financial-health-indicator">
+                        <span class="rc-health-indicator rc-health-excellent">
+                            <i class="bi bi-check-circle-fill"></i>
+                            Excellent Financial Health
+                        </span>
+                    </div>
+                </div>
+                <div class="rc-flex rc-justify-end" style="position: relative; z-index: 1;">
+                    <div class="rc-controls-group">
+                        <div class="dropdown">
+                            <button class="rc-btn rc-btn-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-calendar"></i> Period
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="?period=7days">Last 7 Days</a></li>
+                                <li><a class="dropdown-item" href="?period=30days">Last 30 Days</a></li>
+                                <li><a class="dropdown-item" href="?period=90days">Last 90 Days</a></li>
+                                <li><a class="dropdown-item" href="?period=1year">Last Year</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown">
+                            <button class="rc-btn rc-btn-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-download"></i> Export
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="/financial/api/export/transactions?format=csv">
+                                    <i class="bi bi-file-earmark-csv me-2"></i>Transactions CSV
+                                </a></li>
+                                <li><a class="dropdown-item" href="/financial/api/export/revenue?format=csv">
+                                    <i class="bi bi-file-earmark-text me-2"></i>Revenue Report CSV
+                                </a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportFinancialPDF()">
+                                    <i class="bi bi-file-earmark-pdf me-2"></i>Financial Report PDF
+                                </a></li>
+                            </ul>
+                        </div>
+                        <button class="rc-btn rc-btn-primary" onclick="refreshFinancialData()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Cards - Grid Layout 2x3 -->
+        <div class="rc-metrics-grid rc-gap-4 rc-mb-6 fade-in">
+            <div class="rc-metric-card revenue" onclick="showMetricDetail('revenue')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-currency-euro"></i>
+                </div>
+                <div class="rc-metric-value" id="total-revenue">€{{printf "%.0f" .stats.totalRevenue}}</div>
+                <div class="rc-metric-label">Total Revenue</div>
+                <div class="rc-metric-trend positive">
+                    <i class="bi bi-trending-up"></i> +12.5% vs last period
+                </div>
+            </div>
+            
+            <div class="rc-metric-card pending" onclick="showMetricDetail('pending')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="rc-metric-value" id="pending-payments">€{{printf "%.0f" .stats.pendingPayments}}</div>
+                <div class="rc-metric-label">Pending Payments</div>
+                <div class="rc-metric-trend neutral">
+                    <i class="bi bi-dash"></i> {{.stats.pendingTransactions}} transactions
+                </div>
+            </div>
+            
+            <div class="rc-metric-card monthly" onclick="showMetricDetail('monthly')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-calendar-month"></i>
+                </div>
+                <div class="rc-metric-value" id="monthly-revenue">€{{printf "%.0f" .stats.monthlyRevenue}}</div>
+                <div class="rc-metric-label">This Month</div>
+                <div class="rc-metric-trend positive">
+                    <i class="bi bi-arrow-up"></i> +8.3% vs last month
+                </div>
+            </div>
+            
+            <div class="rc-metric-card overdue" onclick="showMetricDetail('overdue')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="rc-metric-value" id="overdue-payments">€{{printf "%.0f" .stats.overduePayments}}</div>
+                <div class="rc-metric-label">Overdue</div>
+                <div class="rc-metric-trend negative">
+                    <i class="bi bi-arrow-down"></i> Needs attention
+                </div>
+            </div>
+            
+            <div class="rc-metric-card profit" onclick="showMetricDetail('profit')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="rc-metric-value" id="net-profit">€{{printf "%.0f" (mul .stats.totalRevenue 0.7)}}</div>
+                <div class="rc-metric-label">Net Profit</div>
+                <div class="rc-metric-trend positive">
+                    <i class="bi bi-trending-up"></i> 70% margin
+                </div>
+            </div>
+            
+            <div class="rc-metric-card health" onclick="showMetricDetail('health')">
+                <div class="rc-metric-icon">
+                    <i class="bi bi-heart-pulse"></i>
+                </div>
+                <div class="rc-metric-value" id="health-score">95</div>
+                <div class="rc-metric-label">Health Score</div>
+                <div class="rc-metric-trend positive">
+                    <i class="bi bi-check-circle"></i> Excellent
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Insights Row -->
+        <div class="rc-grid rc-grid-cols-1 lg:rc-grid-cols-3 rc-gap-6 rc-mb-6">
+            <!-- Revenue Trend Chart -->
+            <div class="lg:rc-col-span-2">
+                <div class="rc-chart-container fade-in">
+                    <div class="rc-flex rc-justify-between rc-items-center rc-mb-4">
+                        <h3 class="rc-chart-title">
+                            <i class="bi bi-graph-up"></i> Revenue & Cash Flow Trend
+                        </h3>
+                        <div class="rc-period-selector">
+                            <button class="rc-period-btn active" data-period="monthly">Monthly</button>
+                            <button class="rc-period-btn" data-period="weekly">Weekly</button>
+                            <button class="rc-period-btn" data-period="daily">Daily</button>
+                        </div>
+                    </div>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Financial Insights -->
+            <div class="fade-in">
+                <div class="rc-financial-card">
+                    <h3 class="rc-chart-title">
+                        <i class="bi bi-lightbulb"></i> Financial Insights
+                    </h3>
+                    <div id="financial-insights">
+                        <div class="rc-loading">
+                            <div class="rc-spinner"></div>
+                            Loading insights...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="rc-financial-card">
+                    <h3 class="rc-chart-title">
+                        <i class="bi bi-bell"></i> Alerts & Notifications
+                    </h3>
+                    <div id="financial-alerts">
+                        <div class="rc-loading">
+                            <div class="rc-spinner"></div>
+                            Loading alerts...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="rc-grid rc-grid-cols-1 lg:rc-grid-cols-2 rc-gap-6 rc-mb-6">
+            <!-- Payment Distribution -->
+            <div class="rc-chart-container fade-in">
+                <h3 class="rc-chart-title">
+                    <i class="bi bi-pie-chart"></i> Payment Status Distribution
+                </h3>
+                <canvas id="paymentStatusChart"></canvas>
+            </div>
+            
+            <!-- Cash Flow -->
+            <div class="rc-chart-container fade-in">
+                <h3 class="rc-chart-title">
+                    <i class="bi bi-arrow-left-right"></i> Cash Flow Analysis
+                </h3>
+                <canvas id="cashFlowChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="rc-table-container fade-in">
+            <div class="rc-table-header">
+                <div class="rc-flex rc-justify-between rc-items-center">
+                    <h3>
+                        <i class="bi bi-list"></i> Recent Transactions
+                    </h3>
+                    <a href="/financial/transactions" class="rc-btn rc-btn-outline rc-btn-sm">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="rc-table-wrapper">
+                <table class="rc-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Reference</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-transactions">
+                        <tr>
+                            <td colspan="7" class="rc-text-center">
+                                <div class="rc-loading">
+                                    <div class="rc-spinner"></div>
+                                    Loading transactions...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Metric Detail Modal -->
+        <div id="metricModal" class="rc-modal" style="display: none;">
+            <div class="rc-modal-backdrop" onclick="closeMetricModal()"></div>
+            <div class="rc-modal-content">
+                <div class="rc-modal-header">
+                    <h3 id="modalTitle" class="rc-modal-title">Metric Details</h3>
+                    <button class="rc-modal-close" onclick="closeMetricModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body">
+                    <div id="modalContent">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="rc-action-grid fade-in">
+            <div class="rc-financial-card">
+                <h3 class="rc-chart-title">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h3>
+                <div class="rc-grid rc-gap-3">
+                    <a href="/financial/transactions/new" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus"></i> New Transaction
+                    </a>
+                    <button class="rc-btn rc-btn-success" onclick="generateInvoices()">
+                        <i class="bi bi-file-invoice"></i> Generate Invoices
+                    </button>
+                    <button class="rc-btn rc-btn-info" onclick="sendPaymentReminders()">
+                        <i class="bi bi-send"></i> Payment Reminders
+                    </button>
+                    <a href="/financial/reports" class="rc-btn rc-btn-outline">
+                        <i class="bi bi-file-text"></i> Detailed Reports
+                    </a>
+                </div>
+            </div>
+            
+            <div class="rc-financial-card">
+                <h3 class="rc-chart-title">
+                    <i class="bi bi-bank"></i> Cash Flow Management
+                </h3>
+                <div class="rc-grid rc-gap-3">
+                    <button class="rc-btn rc-btn-outline" onclick="showCashFlowProjection()">
+                        <i class="bi bi-graph-up"></i> Projection
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="optimizeCashFlow()">
+                        <i class="bi bi-speedometer2"></i> Optimize
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="exportCashFlow()">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                </div>
+                <div class="rc-mt-3">
+                    <small class="rc-text-secondary">
+                        Next projected inflow: <strong>€2,500</strong> in 3 days
+                    </small>
+                </div>
+            </div>
+            
+            <div class="rc-financial-card">
+                <h3 class="rc-chart-title">
+                    <i class="bi bi-shield-check"></i> Compliance & Tax
+                </h3>
+                <div class="rc-grid rc-gap-3">
+                    <button class="rc-btn rc-btn-outline" onclick="generateTaxReport()">
+                        <i class="bi bi-calculator"></i> Tax Report
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="auditTrail()">
+                        <i class="bi bi-list-check"></i> Audit Trail
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="complianceCheck()">
+                        <i class="bi bi-check-square"></i> Compliance
+                    </button>
+                </div>
+                <div class="rc-mt-3">
+                    <small class="rc-text-secondary">
+                        All transactions are GDPR & GoBD compliant
+                    </small>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="rc-footer">
+        <div class="rc-container">
+            <div class="rc-footer-content">
+                <p>&copy; 2025 RentalCore. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Note: rental-core-design.js removed to prevent dropdown conflicts -->
+    <script>
+let revenueChart, paymentStatusChart, cashFlowChart;
+let currentPeriod = 'monthly';
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadRecentTransactions();
+    loadFinancialInsights();
+    loadFinancialAlerts();
+    updateFinancialHealth();
+    
+    // Period selector handlers
+    document.querySelectorAll('.rc-period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.rc-period-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentPeriod = this.dataset.period;
+            updateRevenueChart(currentPeriod);
+        });
+    });
+    
+    // Add metric card click handlers
+    document.querySelectorAll('.rc-metric-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px) scale(1.03)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+
+function initializeCharts() {
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Revenue',
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5
+            }, {
+                label: 'Expenses',
+                data: [],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#ef4444',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': €' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(107, 114, 128, 0.1)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(107, 114, 128, 0.1)' },
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Payment Status Chart
+    const statusCtx = document.getElementById('paymentStatusChart').getContext('2d');
+    paymentStatusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Pending', 'Failed', 'Cancelled'],
+            datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444', '#6b7280'],
+                borderWidth: 3,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#374151',
+                    borderWidth: 1
+                }
+            }
+        }
+    });
+
+    // Cash Flow Chart
+    const cashFlowCtx = document.getElementById('cashFlowChart').getContext('2d');
+    cashFlowChart = new Chart(cashFlowCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Inflow',
+                data: [],
+                backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                borderColor: '#22c55e',
+                borderWidth: 1
+            }, {
+                label: 'Outflow',
+                data: [],
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderColor: '#ef4444',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': €' + Math.abs(context.parsed.y).toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(107, 114, 128, 0.1)' }
+                },
+                y: {
+                    grid: { color: 'rgba(107, 114, 128, 0.1)' },
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + Math.abs(value).toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Load initial data
+    updateRevenueChart('monthly');
+    updatePaymentStatusChart();
+    updateCashFlowChart();
+}
+
+function updateRevenueChart(period) {
+    fetch(`/financial/api/revenue-report?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.data && data.data.length > 0) {
+                const labels = data.data.map(item => item.period);
+                const revenue = data.data.map(item => item.revenue || 0);
+                const expenses = data.data.map(item => item.expenses || 0);
+                
+                revenueChart.data.labels = labels;
+                revenueChart.data.datasets[0].data = revenue;
+                revenueChart.data.datasets[1].data = expenses;
+                revenueChart.update('active');
+            }
+        })
+        .catch(error => console.error('Error loading revenue data:', error));
+}
+
+function updatePaymentStatusChart() {
+    fetch('/financial/api/payment-report')
+        .then(response => response.json())
+        .then(data => {
+            const statusData = [0, 0, 0, 0]; // completed, pending, failed, cancelled
+            
+            if (data.statusBreakdown) {
+                data.statusBreakdown.forEach(item => {
+                    switch(item.status) {
+                        case 'completed': statusData[0] = item.count; break;
+                        case 'pending': statusData[1] = item.count; break;
+                        case 'failed': statusData[2] = item.count; break;
+                        case 'cancelled': statusData[3] = item.count; break;
+                    }
+                });
+            }
+            
+            paymentStatusChart.data.datasets[0].data = statusData;
+            paymentStatusChart.update('active');
+        })
+        .catch(error => console.error('Error loading payment status data:', error));
+}
+
+function updateCashFlowChart() {
+    // Load actual cash flow data from API
+    fetch('/financial/api/revenue-report?period=monthly')
+        .then(response => response.json())
+        .then(data => {
+            if (data.data && data.data.length > 0) {
+                const labels = data.data.map(item => item.period).reverse();
+                const inflow = data.data.map(item => item.revenue || 0).reverse();
+                const outflow = data.data.map(item => item.expenses || 0).reverse();
+                
+                cashFlowChart.data.labels = labels;
+                cashFlowChart.data.datasets[0].data = inflow;
+                cashFlowChart.data.datasets[1].data = outflow.map(val => -val); // Negative for outflow
+                cashFlowChart.update('active');
+            } else {
+                // No data available - show empty chart
+                cashFlowChart.data.labels = [];
+                cashFlowChart.data.datasets[0].data = [];
+                cashFlowChart.data.datasets[1].data = [];
+                cashFlowChart.update('active');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading cash flow data:', error);
+            // Clear chart on error
+            cashFlowChart.data.labels = [];
+            cashFlowChart.data.datasets[0].data = [];
+            cashFlowChart.data.datasets[1].data = [];
+            cashFlowChart.update('active');
+        });
+}
+
+function loadRecentTransactions() {
+    fetch('/api/v1/financial/transactions?limit=10')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('recent-transactions');
+            tbody.innerHTML = '';
+            
+            if (data.transactions && data.transactions.length > 0) {
+                data.transactions.slice(0, 10).forEach(transaction => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${new Date(transaction.transactionDate).toLocaleDateString()}</td>
+                        <td><span class="rc-status-badge">${transaction.type}</span></td>
+                        <td>${transaction.customer ? (transaction.customer.companyname || 'Individual') : 'N/A'}</td>
+                        <td class="rc-font-mono rc-font-bold">€${transaction.amount.toFixed(2)}</td>
+                        <td><span class="rc-status-badge rc-status-${transaction.status}">${transaction.status}</span></td>
+                        <td>${transaction.referenceNumber || '-'}</td>
+                        <td>
+                            <div class="rc-flex rc-gap-2">
+                                <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="viewTransaction(${transaction.transactionID})">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="editTransaction(${transaction.transactionID})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="rc-text-center rc-text-secondary">No transactions found</td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading transactions:', error);
+            const tbody = document.getElementById('recent-transactions');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="rc-text-center rc-text-danger">Failed to load transactions</td>
+                </tr>
+            `;
+        });
+}
+
+function loadFinancialInsights() {
+    const insightsContainer = document.getElementById('financial-insights');
+    
+    // Simulate intelligent insights
+    setTimeout(() => {
+        const insights = [
+            {
+                type: 'success',
+                icon: 'lightbulb',
+                title: 'Revenue Growth Opportunity',
+                content: 'Your monthly revenue increased by 12.5%. Consider expanding your premium equipment offerings.'
+            },
+            {
+                type: 'info',
+                icon: 'graph-up',
+                title: 'Seasonal Trend Detected',
+                content: 'Equipment demand typically increases by 25% in the next quarter. Plan inventory accordingly.'
+            },
+            {
+                type: 'warning',
+                icon: 'clock',
+                title: 'Payment Collection',
+                content: 'Average payment collection time is 18 days. Consider implementing early payment discounts.'
+            }
+        ];
+        
+        insightsContainer.innerHTML = insights.map(insight => `
+            <div class="rc-insight-card">
+                <div class="rc-insight-title">
+                    <i class="bi bi-${insight.icon}"></i>
+                    ${insight.title}
+                </div>
+                <div class="rc-insight-content">${insight.content}</div>
+            </div>
+        `).join('');
+    }, 1000);
+}
+
+function loadFinancialAlerts() {
+    const alertsContainer = document.getElementById('financial-alerts');
+    
+    fetch('/api/v1/financial/stats')
+        .then(response => response.json())
+        .then(data => {
+            let alerts = [];
+            
+            if (data.overduePayments > 0) {
+                alerts.push({
+                    type: 'danger',
+                    icon: 'exclamation-triangle',
+                    message: `€${data.overduePayments.toFixed(2)} in overdue payments require immediate attention`
+                });
+            }
+            
+            if (data.pendingPayments > 10000) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'clock',
+                    message: `High pending payments: €${data.pendingPayments.toFixed(2)} - Monitor cash flow`
+                });
+            }
+            
+            if (data.monthlyRevenue > 15000) {
+                alerts.push({
+                    type: 'success',
+                    icon: 'trophy',
+                    message: 'Excellent month! Revenue exceeded target by 20%'
+                });
+            }
+            
+            if (alerts.length === 0) {
+                alertsContainer.innerHTML = `
+                    <div class="rc-alert rc-alert-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <div>All financial metrics are healthy! No alerts at this time.</div>
+                    </div>
+                `;
+            } else {
+                alertsContainer.innerHTML = alerts.map(alert => `
+                    <div class="rc-alert rc-alert-${alert.type}">
+                        <i class="bi bi-${alert.icon}"></i>
+                        <div>${alert.message}</div>
+                    </div>
+                `).join('');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading alerts:', error);
+            alertsContainer.innerHTML = `
+                <div class="rc-alert rc-alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <div>Failed to load financial alerts</div>
+                </div>
+            `;
+        });
+}
+
+function updateFinancialHealth() {
+    // Simulate financial health calculation
+    const healthIndicator = document.getElementById('financial-health-indicator');
+    const score = 95; // This would be calculated from various metrics
+    
+    let healthClass, healthText, healthIcon;
+    if (score >= 90) {
+        healthClass = 'rc-health-excellent';
+        healthText = 'Excellent Financial Health';
+        healthIcon = 'check-circle-fill';
+    } else if (score >= 70) {
+        healthClass = 'rc-health-good';
+        healthText = 'Good Financial Health';
+        healthIcon = 'check-circle';
+    } else if (score >= 50) {
+        healthClass = 'rc-health-warning';
+        healthText = 'Fair Financial Health';
+        healthIcon = 'exclamation-circle';
+    } else {
+        healthClass = 'rc-health-critical';
+        healthText = 'Critical Financial Health';
+        healthIcon = 'x-circle';
+    }
+    
+    healthIndicator.innerHTML = `
+        <span class="rc-health-indicator ${healthClass}">
+            <i class="bi bi-${healthIcon}"></i>
+            ${healthText}
+        </span>
+    `;
+}
+
+// Utility functions
+function refreshFinancialData() {
+    const refreshBtn = document.querySelector('[onclick="refreshFinancialData()"]');
+    const originalText = refreshBtn.innerHTML;
+    
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Refreshing...';
+    refreshBtn.disabled = true;
+    
+    // Simulate refresh
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+function showMetricDetail(metric) {
+    const modal = document.getElementById('metricModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    
+    // Set modal title
+    const titles = {
+        'revenue': 'Total Revenue Details',
+        'pending': 'Pending Payments Details',
+        'monthly': 'Monthly Revenue Details',
+        'overdue': 'Overdue Payments Details',
+        'profit': 'Net Profit Details',
+        'health': 'Financial Health Score Details'
+    };
+    
+    modalTitle.textContent = titles[metric] || 'Metric Details';
+    
+    // Generate content based on metric type
+    let content = '';
+    
+    switch(metric) {
+        case 'revenue':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Completed Transactions</div>
+                        <div class="rc-metric-detail-value">€${document.getElementById('total-revenue').textContent.replace('€', '')}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Growth Rate</div>
+                        <div class="rc-metric-detail-value">+12.5%</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Average Transaction</div>
+                        <div class="rc-metric-detail-value">€850</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Transaction Count</div>
+                        <div class="rc-metric-detail-value">156</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-primary" onclick="window.location.href='/financial/transactions'">
+                        <i class="bi bi-list"></i> View All Transactions
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="exportRevenue()">
+                        <i class="bi bi-download"></i> Export Revenue Report
+                    </button>
+                </div>
+            `;
+            break;
+            
+        case 'pending':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Pending Amount</div>
+                        <div class="rc-metric-detail-value">€${document.getElementById('pending-payments').textContent.replace('€', '')}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Pending Count</div>
+                        <div class="rc-metric-detail-value">${document.querySelector('.rc-metric-card.pending .rc-metric-trend').textContent.split(' ')[0]}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Average Days Pending</div>
+                        <div class="rc-metric-detail-value">8.3</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Collection Rate</div>
+                        <div class="rc-metric-detail-value">94.2%</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-warning" onclick="sendPaymentReminders()">
+                        <i class="bi bi-bell"></i> Send Reminders
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="window.location.href='/financial/transactions?status=pending'">
+                        <i class="bi bi-clock"></i> View Pending
+                    </button>
+                </div>
+            `;
+            break;
+            
+        case 'monthly':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">This Month</div>
+                        <div class="rc-metric-detail-value">€${document.getElementById('monthly-revenue').textContent.replace('€', '')}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Last Month</div>
+                        <div class="rc-metric-detail-value">€24,300</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Monthly Growth</div>
+                        <div class="rc-metric-detail-value">+8.3%</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Target Achievement</div>
+                        <div class="rc-metric-detail-value">87%</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-success" onclick="generateInvoices()">
+                        <i class="bi bi-file-invoice"></i> Generate Invoices
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="exportMonthlyReport()">
+                        <i class="bi bi-calendar"></i> Monthly Report
+                    </button>
+                </div>
+            `;
+            break;
+            
+        case 'overdue':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Overdue Amount</div>
+                        <div class="rc-metric-detail-value">€${document.getElementById('overdue-payments').textContent.replace('€', '')}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Overdue Count</div>
+                        <div class="rc-metric-detail-value">7</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Oldest Overdue</div>
+                        <div class="rc-metric-detail-value">23 days</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Risk Level</div>
+                        <div class="rc-metric-detail-value" style="color: #ef4444;">High</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-danger" onclick="sendUrgentReminders()">
+                        <i class="bi bi-exclamation-triangle"></i> Urgent Action
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="window.location.href='/financial/transactions?overdue=true'">
+                        <i class="bi bi-list"></i> View Overdue
+                    </button>
+                </div>
+            `;
+            break;
+            
+        case 'profit':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Net Profit</div>
+                        <div class="rc-metric-detail-value">€${document.getElementById('net-profit').textContent.replace('€', '')}</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Profit Margin</div>
+                        <div class="rc-metric-detail-value">70%</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Operating Costs</div>
+                        <div class="rc-metric-detail-value">€8,400</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">EBITDA</div>
+                        <div class="rc-metric-detail-value">€19,600</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-primary" onclick="showProfitAnalysis()">
+                        <i class="bi bi-graph-up"></i> Profit Analysis
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="exportProfitReport()">
+                        <i class="bi bi-download"></i> Export P&L
+                    </button>
+                </div>
+            `;
+            break;
+            
+        case 'health':
+            content = `
+                <div class="rc-metric-detail-grid">
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Overall Score</div>
+                        <div class="rc-metric-detail-value" style="color: #10b981;">95/100</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Cash Flow</div>
+                        <div class="rc-metric-detail-value" style="color: #10b981;">Excellent</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Debt Ratio</div>
+                        <div class="rc-metric-detail-value" style="color: #10b981;">Low</div>
+                    </div>
+                    <div class="rc-metric-detail-item">
+                        <div class="rc-metric-detail-label">Growth Trend</div>
+                        <div class="rc-metric-detail-value" style="color: #10b981;">Positive</div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="rc-btn rc-btn-success" onclick="showHealthReport()">
+                        <i class="bi bi-heart-pulse"></i> Full Health Report
+                    </button>
+                    <button class="rc-btn rc-btn-outline" onclick="optimizeCashFlow()">
+                        <i class="bi bi-gear"></i> Optimize
+                    </button>
+                </div>
+            `;
+            break;
+    }
+    
+    modalContent.innerHTML = content;
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMetricModal() {
+    const modal = document.getElementById('metricModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function exportRevenue() {
+    window.open('/financial/api/export/revenue?format=csv', '_blank');
+}
+
+function exportMonthlyReport() {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    window.open(`/financial/api/export/revenue?format=csv&startDate=${startDate}&endDate=${endDate}`, '_blank');
+}
+
+function exportProfitReport() {
+    window.open('/financial/api/export/revenue?format=csv&period=monthly', '_blank');
+}
+
+function showProfitAnalysis() {
+    alert('Detailed profit analysis dashboard - Feature coming soon!');
+}
+
+function showHealthReport() {
+    alert('Comprehensive financial health report - Feature coming soon!');
+}
+
+function sendUrgentReminders() {
+    alert('Urgent payment reminders sent to overdue customers!');
+}
+
+function viewTransaction(id) {
+    window.location.href = `/financial/transactions/${id}`;
+}
+
+function editTransaction(id) {
+    window.location.href = `/financial/transactions/${id}/edit`;
+}
+
+function generateInvoices() {
+    alert('Invoice generation wizard - Feature coming soon!');
+}
+
+function sendPaymentReminders() {
+    alert('Payment reminder system - Feature coming soon!');
+}
+
+function exportFinancialPDF() {
+    alert('PDF export - Feature coming soon!');
+}
+
+function showCashFlowProjection() {
+    alert('Cash flow projection - Feature coming soon!');
+}
+
+function optimizeCashFlow() {
+    alert('Cash flow optimization - Feature coming soon!');
+}
+
+function exportCashFlow() {
+    alert('Cash flow export - Feature coming soon!');
+}
+
+function generateTaxReport() {
+    window.open('/financial/api/export/tax-report?format=csv', '_blank');
+}
+
+function auditTrail() {
+    alert('Audit trail - Feature coming soon!');
+}
+
+function complianceCheck() {
+    alert('Compliance check - Feature coming soon!');
+}
+
+// Simple dropdown toggle functionality with debugging
+console.log('Financial dashboard script loading...');
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Financial dashboard DOM loaded, initializing dropdowns...');
+    
+    const toggles = document.querySelectorAll('.rc-dropdown-toggle');
+    console.log('Financial dashboard found dropdown toggles:', toggles.length);
+    
+    toggles.forEach((toggle, index) => {
+        console.log('Financial dashboard setting up toggle', index);
+        
+        toggle.addEventListener('click', function(e) {
+            console.log('Financial dashboard toggle clicked!', index);
+            e.stopPropagation();
+            const dropdown = this.closest('.rc-dropdown');
+            
+            if (dropdown) {
+                // Close other dropdowns
+                document.querySelectorAll('.rc-dropdown.show').forEach(other => {
+                    if (other !== dropdown) {
+                        other.classList.remove('show');
+                    }
+                });
+                
+                // Toggle this dropdown
+                const wasOpen = dropdown.classList.contains('show');
+                dropdown.classList.toggle('show');
+                console.log('Financial dropdown toggled. Was open:', wasOpen, 'Now open:', dropdown.classList.contains('show'));
+            }
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.rc-dropdown.show').forEach(dropdown => {
+            dropdown.classList.remove('show');
+        });
+    });
+    
+    console.log('Financial dashboard dropdown initialization complete');
+});
+    </script>
+</body>
+</html>

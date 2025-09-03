@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-search me-2"></i>
+                        Search Results
+                    </h2>
+                    <p class="text-muted">
+                        {{ if .query }}
+                            Showing results for "{{ .query }}"
+                        {{ else }}
+                            Enter a search term to find jobs, devices, customers, and cases
+                        {{ end }}
+                    </p>
+                </div>
+                <div>
+                    <a href="/search/saved" class="btn btn-outline-secondary">
+                        <i class="fas fa-bookmark me-2"></i>Saved Searches
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="/search/global" class="row g-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               name="q" 
+                               placeholder="Search jobs, devices, customers..." 
+                               value="{{ .query }}"
+                               autofocus>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="type">
+                        <option value="global" {{ if eq .searchType "global" }}selected{{ end }}>All</option>
+                        <option value="jobs" {{ if eq .searchType "jobs" }}selected{{ end }}>Jobs</option>
+                        <option value="devices" {{ if eq .searchType "devices" }}selected{{ end }}>Devices</option>
+                        <option value="customers" {{ if eq .searchType "customers" }}selected{{ end }}>Customers</option>
+                        <option value="cases" {{ if eq .searchType "cases" }}selected{{ end }}>Cases</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{ if .query }}
+    <!-- Results -->
+    <div class="row">
+        {{ if .results.jobs }}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-briefcase me-2"></i>Jobs ({{ len .results.jobs.data }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ if .results.jobs.data }}
+                        {{ range .results.jobs.data }}
+                        <div class="border-bottom pb-2 mb-2">
+                            <h6><a href="/jobs/{{ .JobID }}" class="text-decoration-none">Job #{{ .JobID }}</a></h6>
+                            <p class="mb-1">{{ .Description }}</p>
+                            <small class="text-muted">
+                                {{ if .Customer }}{{ .Customer.GetDisplayName }}{{ end }} • 
+                                {{ if .Status }}{{ .Status.Status }}{{ end }}
+                            </small>
+                        </div>
+                        {{ end }}
+                        {{ if gt .results.jobs.total (len .results.jobs.data) }}
+                        <div class="text-center mt-3">
+                            <a href="/jobs?q={{ .query }}" class="btn btn-sm btn-outline-primary">
+                                View all {{ .results.jobs.total }} jobs
+                            </a>
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                        <p class="text-muted">No jobs found</p>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+        {{ end }}
+
+        {{ if .results.devices }}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-microchip me-2"></i>Devices ({{ len .results.devices.data }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ if .results.devices.data }}
+                        {{ range .results.devices.data }}
+                        <div class="border-bottom pb-2 mb-2">
+                            <h6><a href="/devices/{{ .DeviceID }}" class="text-decoration-none">{{ .DeviceID }}</a></h6>
+                            <p class="mb-1">{{ .SerialNumber }}</p>
+                            <small class="text-muted">
+                                {{ if .Product }}{{ .Product.Name }}{{ end }} • 
+                                <span class="badge bg-{{ if eq .Status "free" }}success{{ else if eq .Status "in use" }}warning{{ else }}secondary{{ end }}">
+                                    {{ .Status }}
+                                </span>
+                            </small>
+                        </div>
+                        {{ end }}
+                        {{ if gt .results.devices.total (len .results.devices.data) }}
+                        <div class="text-center mt-3">
+                            <a href="/devices?q={{ .query }}" class="btn btn-sm btn-outline-primary">
+                                View all {{ .results.devices.total }} devices
+                            </a>
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                        <p class="text-muted">No devices found</p>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+        {{ end }}
+
+        {{ if .results.customers }}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2"></i>Customers ({{ len .results.customers.data }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ if .results.customers.data }}
+                        {{ range .results.customers.data }}
+                        <div class="border-bottom pb-2 mb-2">
+                            <h6><a href="/customers/{{ .CustomerID }}" class="text-decoration-none">{{ .GetDisplayName }}</a></h6>
+                            <p class="mb-1">{{ .Email }}</p>
+                            <small class="text-muted">{{ .Phone }}</small>
+                        </div>
+                        {{ end }}
+                        {{ if gt .results.customers.total (len .results.customers.data) }}
+                        <div class="text-center mt-3">
+                            <a href="/customers?q={{ .query }}" class="btn btn-sm btn-outline-primary">
+                                View all {{ .results.customers.total }} customers
+                            </a>
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                        <p class="text-muted">No customers found</p>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+        {{ end }}
+
+        {{ if .results.cases }}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-box me-2"></i>Cases ({{ len .results.cases.data }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ if .results.cases.data }}
+                        {{ range .results.cases.data }}
+                        <div class="border-bottom pb-2 mb-2">
+                            <h6><a href="/cases/{{ .CaseID }}" class="text-decoration-none">{{ .CaseName }}</a></h6>
+                            <p class="mb-1">{{ .Description }}</p>
+                            <small class="text-muted">
+                                {{ if .Customer }}{{ .Customer.GetDisplayName }}{{ end }} • 
+                                <span class="badge bg-{{ if eq .Status "active" }}success{{ else if eq .Status "pending" }}warning{{ else }}secondary{{ end }}">
+                                    {{ .Status }}
+                                </span>
+                            </small>
+                        </div>
+                        {{ end }}
+                        {{ if gt .results.cases.total (len .results.cases.data) }}
+                        <div class="text-center mt-3">
+                            <a href="/cases?q={{ .query }}" class="btn btn-sm btn-outline-primary">
+                                View all {{ .results.cases.total }} cases
+                            </a>
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                        <p class="text-muted">No cases found</p>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+
+    {{ if not .results.jobs }}{{ if not .results.devices }}{{ if not .results.customers }}{{ if not .results.cases }}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-search display-1 text-muted mb-3"></i>
+            <h4>No results found</h4>
+            <p class="text-muted">Try adjusting your search terms or search in specific categories</p>
+            <div class="mt-4">
+                <a href="/jobs" class="btn btn-outline-primary me-2">Browse Jobs</a>
+                <a href="/devices" class="btn btn-outline-success me-2">Browse Devices</a>
+                <a href="/customers" class="btn btn-outline-danger">Browse Customers</a>
+            </div>
+        </div>
+    </div>
+    {{ end }}{{ end }}{{ end }}{{ end }}
+
+    {{ else }}
+    <!-- Welcome message when no query -->
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-search display-1 text-primary mb-3"></i>
+            <h3>Global Search</h3>
+            <p class="text-muted mb-4">Search across all jobs, devices, customers, and cases from one place</p>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <form method="GET" action="/search/global">
+                        <div class="input-group input-group-lg">
+                            <input type="text" 
+                                   class="form-control" 
+                                   name="q" 
+                                   placeholder="Enter search term..." 
+                                   autofocus>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+</div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

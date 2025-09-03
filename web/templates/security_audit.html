@@ -1,0 +1,1093 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="rc-page-header">
+    <div class="rc-container">
+        <div class="rc-flex rc-flex-between" style="align-items: center;">
+            <div>
+                <h1 class="rc-page-title">
+                    <i class="bi bi-shield-check"></i>
+                    Security Audit
+                </h1>
+                <p class="rc-page-subtitle">Monitor and review system activity</p>
+            </div>
+            <div class="rc-flex" style="gap: var(--space-md);">
+                <button class="rc-btn rc-btn-secondary" onclick="exportAuditLogs()">
+                    <i class="bi bi-download"></i>
+                    Export Logs
+                </button>
+                <button class="rc-btn rc-btn-ghost" onclick="refreshAuditLogs()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="rc-container">
+    <!-- Audit Statistics Cards -->
+    <div class="rc-grid rc-grid-4 rc-mb-xl" id="auditStats">
+        <div class="rc-card rc-card-stats">
+            <div class="rc-card-icon rc-card-icon-primary">
+                <i class="bi bi-activity"></i>
+            </div>
+            <div class="rc-card-content">
+                <h3 class="rc-stat-number" id="totalEvents">-</h3>
+                <p class="rc-stat-label">Total Events</p>
+            </div>
+        </div>
+        
+        <div class="rc-card rc-card-stats">
+            <div class="rc-card-icon rc-card-icon-success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="rc-card-content">
+                <h3 class="rc-stat-number" id="successEvents">-</h3>
+                <p class="rc-stat-label">Successful Actions</p>
+            </div>
+        </div>
+        
+        <div class="rc-card rc-card-stats">
+            <div class="rc-card-icon rc-card-icon-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div class="rc-card-content">
+                <h3 class="rc-stat-number" id="failedEvents">-</h3>
+                <p class="rc-stat-label">Failed Actions</p>
+            </div>
+        </div>
+        
+        <div class="rc-card rc-card-stats">
+            <div class="rc-card-icon rc-card-icon-info">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="rc-card-content">
+                <h3 class="rc-stat-number" id="activeUsers">-</h3>
+                <p class="rc-stat-label">Active Users</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Filters -->
+    <div class="rc-card rc-mb-lg">
+        <div class="rc-card-header">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-funnel"></i>
+                    Filter Audit Logs
+                </h3>
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="toggleFilters()">
+                    <i class="bi bi-chevron-down" id="filterToggleIcon"></i>
+                </button>
+            </div>
+        </div>
+        <div class="rc-card-body" id="filterPanel" style="display: none;">
+            <form id="auditFilterForm" class="rc-form">
+                <div class="rc-grid rc-grid-4 rc-mb-md">
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="userFilter">User</label>
+                        <select class="rc-form-input" id="userFilter" name="userId">
+                            <option value="">All Users</option>
+                        </select>
+                    </div>
+                    
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="actionFilter">Action</label>
+                        <select class="rc-form-input" id="actionFilter" name="action">
+                            <option value="">All Actions</option>
+                            <option value="create">Create</option>
+                            <option value="update">Update</option>
+                            <option value="delete">Delete</option>
+                            <option value="assign_role">Assign Role</option>
+                            <option value="revoke_role">Revoke Role</option>
+                            <option value="login">Login</option>
+                            <option value="logout">Logout</option>
+                        </select>
+                    </div>
+                    
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="entityTypeFilter">Entity Type</label>
+                        <select class="rc-form-input" id="entityTypeFilter" name="entityType">
+                            <option value="">All Types</option>
+                            <option value="user">User</option>
+                            <option value="role">Role</option>
+                            <option value="job">Job</option>
+                            <option value="device">Device</option>
+                            <option value="customer">Customer</option>
+                            <option value="case">Case</option>
+                            <option value="document">Document</option>
+                            <option value="transaction">Transaction</option>
+                        </select>
+                    </div>
+                    
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="severityFilter">Severity</label>
+                        <select class="rc-form-input" id="severityFilter" name="severity">
+                            <option value="">All Levels</option>
+                            <option value="info">Info</option>
+                            <option value="warning">Warning</option>
+                            <option value="error">Error</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="rc-grid rc-grid-3 rc-mb-md">
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="startDateFilter">Start Date</label>
+                        <input type="datetime-local" class="rc-form-input" id="startDateFilter" name="startDate">
+                    </div>
+                    
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="endDateFilter">End Date</label>
+                        <input type="datetime-local" class="rc-form-input" id="endDateFilter" name="endDate">
+                    </div>
+                    
+                    <div class="rc-form-group">
+                        <label class="rc-form-label" for="ipFilter">IP Address</label>
+                        <input type="text" class="rc-form-input" id="ipFilter" name="ipAddress" placeholder="192.168.1.1">
+                    </div>
+                </div>
+                
+                <div class="rc-flex" style="gap: var(--space-md);">
+                    <button type="submit" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-search"></i>
+                        Apply Filters
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-secondary" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i>
+                        Clear All
+                    </button>
+                    <button type="button" class="rc-btn rc-btn-ghost" onclick="saveFilterPreset()">
+                        <i class="bi bi-bookmark"></i>
+                        Save Preset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Real-time Activity Feed -->
+    <div class="rc-card">
+        <div class="rc-card-header">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-list-ul"></i>
+                    Audit Trail
+                    <span class="rc-badge rc-badge-primary" id="recordCount">Loading...</span>
+                </h3>
+                <div class="rc-flex" style="gap: var(--space-sm); align-items: center;">
+                    <div class="rc-toggle-switch">
+                        <input type="checkbox" id="realTimeToggle" checked>
+                        <label for="realTimeToggle" class="rc-toggle-label">
+                            <span class="rc-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <span class="rc-text-sm" style="color: var(--text-secondary);">Real-time</span>
+                    <div class="rc-status-indicator rc-status-online" id="connectionStatus"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="rc-card-body" style="padding: 0;">
+            <div class="rc-table-container">
+                <table class="rc-table rc-table-striped" id="auditTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 160px;">
+                                <button class="rc-table-sort" data-sort="timestamp">
+                                    Timestamp <i class="bi bi-chevron-expand"></i>
+                                </button>
+                            </th>
+                            <th style="width: 120px;">
+                                <button class="rc-table-sort" data-sort="user">
+                                    User <i class="bi bi-chevron-expand"></i>
+                                </button>
+                            </th>
+                            <th style="width: 140px;">
+                                <button class="rc-table-sort" data-sort="action">
+                                    Action <i class="bi bi-chevron-expand"></i>
+                                </button>
+                            </th>
+                            <th style="width: 160px;">
+                                <button class="rc-table-sort" data-sort="entity">
+                                    Entity <i class="bi bi-chevron-expand"></i>
+                                </button>
+                            </th>
+                            <th style="width: 120px;">IP Address</th>
+                            <th style="width: 100px;">Severity</th>
+                            <th style="width: 80px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                        <!-- Loading state -->
+                        <tr class="rc-table-loading">
+                            <td colspan="7" style="text-align: center; padding: var(--space-2xl);">
+                                <div class="rc-spinner rc-spinner-lg"></div>
+                                <p style="margin-top: var(--space-md); color: var(--text-secondary);">Loading audit logs...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="rc-card-footer">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-flex" style="gap: var(--space-md); align-items: center;">
+                    <span class="rc-text-sm" style="color: var(--text-secondary);">Show</span>
+                    <select class="rc-form-input rc-form-input-sm" id="pageSizeSelect" style="width: auto;">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="rc-text-sm" style="color: var(--text-secondary);">entries</span>
+                </div>
+                <nav class="rc-pagination" id="auditPagination">
+                    <!-- Pagination will be generated here -->
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL COMPLETELY REMOVED FOR DEBUGGING -->
+
+<style>
+/* Audit-specific styles */
+.rc-audit-detail {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.rc-audit-section {
+    padding: var(--space-md);
+    background: var(--surface-1);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-3);
+}
+
+.rc-audit-section h4 {
+    margin: 0 0 var(--space-md) 0;
+    color: var(--accent-electric);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.rc-audit-property {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--space-xs) 0;
+    border-bottom: 1px solid var(--surface-2);
+}
+
+.rc-audit-property:last-child {
+    border-bottom: none;
+}
+
+.rc-audit-property-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 120px;
+}
+
+.rc-audit-property-value {
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-all;
+}
+
+.rc-severity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.rc-severity-info {
+    background: rgba(0, 245, 255, 0.1);
+    color: var(--accent-electric);
+    border: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.rc-severity-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.rc-severity-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.rc-severity-critical {
+    background: rgba(220, 38, 127, 0.1);
+    color: #dc2677;
+    border: 1px solid rgba(220, 38, 127, 0.2);
+}
+
+.rc-action-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-3);
+}
+
+.rc-action-create {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.rc-action-update {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.rc-action-delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.rc-ip-badge {
+    font-family: var(--font-mono);
+    background: var(--surface-2);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.rc-table-actions {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.rc-table-action-btn {
+    padding: var(--space-xs);
+    background: none;
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.rc-table-action-btn:hover {
+    background: var(--surface-2);
+    color: var(--accent-electric);
+    border-color: var(--accent-electric);
+}
+
+.rc-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.rc-status-online {
+    background: var(--success);
+}
+
+.rc-status-offline {
+    background: var(--error);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.rc-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.rc-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.rc-toggle-label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface-3);
+    transition: var(--transition-fast);
+    border-radius: 20px;
+}
+
+.rc-toggle-label:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--text-primary);
+    transition: var(--transition-fast);
+    border-radius: 50%;
+}
+
+input:checked + .rc-toggle-label {
+    background: var(--accent-electric);
+}
+
+input:checked + .rc-toggle-label:before {
+    transform: translateX(20px);
+}
+
+.rc-table-sort {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0;
+}
+
+.rc-table-sort:hover {
+    color: var(--accent-electric);
+}
+
+.rc-table-sort.active {
+    color: var(--accent-electric);
+}
+
+.rc-card-stats {
+    background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--surface-3);
+    padding: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.rc-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.rc-card-icon-primary {
+    background: rgba(0, 245, 255, 0.1);
+    color: var(--accent-electric);
+}
+
+.rc-card-icon-success {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+}
+
+.rc-card-icon-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.rc-card-icon-info {
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--accent-purple);
+}
+
+.rc-stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.rc-stat-label {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+</style>
+
+<script>
+// Audit page functionality
+let currentPage = 1;
+let pageSize = 25;
+let sortBy = 'timestamp';
+let sortOrder = 'desc';
+let realTimeEnabled = true;
+let auditData = [];
+let isPageLoaded = false;
+
+// Initialize audit page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Audit page initializing...');
+    loadAuditStats();
+    loadUsers();
+    loadAuditLogs();
+    setupRealTime();
+    setupEventListeners();
+    
+    // Ensure modal is hidden on page load
+    const modal = document.getElementById('auditDetailModal');
+    if (modal) {
+        console.log('Modal classes before cleanup:', modal.classList.toString());
+        modal.classList.remove('show');
+        console.log('Modal forced hidden on page load, classes after:', modal.classList.toString());
+        
+        // COMPLETELY PREVENT MODAL FROM OPENING
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    console.log('*** MODAL OPENING ATTEMPT BLOCKED:', modal.classList.toString());
+                    if (modal.classList.contains('show')) {
+                        console.log('*** FORCING MODAL CLOSED');
+                        console.trace('Call stack of modal opening attempt:');
+                        modal.classList.remove('show');
+                        modal.style.display = 'none';
+                    }
+                }
+            });
+        });
+        observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
+    
+    isPageLoaded = true;
+    console.log('Audit page initialization complete');
+});
+
+function setupEventListeners() {
+    // Filter form submission
+    document.getElementById('auditFilterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadAuditLogs();
+    });
+    
+    // Page size change
+    document.getElementById('pageSizeSelect').addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        loadAuditLogs();
+    });
+    
+    // Real-time toggle
+    document.getElementById('realTimeToggle').addEventListener('change', function() {
+        realTimeEnabled = this.checked;
+        if (realTimeEnabled) {
+            setupRealTime();
+        }
+    });
+    
+    // Table sorting
+    document.querySelectorAll('.rc-table-sort').forEach(button => {
+        button.addEventListener('click', function() {
+            const newSortBy = this.dataset.sort;
+            if (sortBy === newSortBy) {
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortBy = newSortBy;
+                sortOrder = 'desc';
+            }
+            updateSortIndicators();
+            loadAuditLogs();
+        });
+    });
+    
+    // Audit table row clicks - use event delegation
+    document.getElementById('auditTableBody').addEventListener('click', function(e) {
+        const row = e.target.closest('.audit-row');
+        const detailBtn = e.target.closest('.audit-detail-btn');
+        const exportBtn = e.target.closest('.audit-export-btn');
+        
+        if (detailBtn) {
+            e.stopPropagation();
+            const auditID = detailBtn.dataset.auditId;
+            if (auditID && auditID !== '0') {
+                console.log('Detail button clicked for audit ID:', auditID);
+                showAuditDetail(parseInt(auditID));
+            }
+        } else if (exportBtn) {
+            e.stopPropagation();
+            const auditID = exportBtn.dataset.auditId;
+            if (auditID && auditID !== '0') {
+                console.log('Export button clicked for audit ID:', auditID);
+                exportSingleLog(parseInt(auditID));
+            }
+        } else if (row) {
+            const auditID = row.dataset.auditId;
+            if (auditID && auditID !== '0') {
+                console.log('Row clicked for audit ID:', auditID);
+                showAuditDetail(parseInt(auditID));
+            }
+        }
+    });
+}
+
+function loadAuditStats() {
+    // For now, set placeholder values since the stats API isn't implemented yet
+    document.getElementById('totalEvents').textContent = '-';
+    document.getElementById('successEvents').textContent = '-';
+    document.getElementById('failedEvents').textContent = '-';
+    document.getElementById('activeUsers').textContent = '-';
+    
+    // Optional: Load basic stats from the main audit endpoint
+    fetch('/api/security/audit?pageSize=1')
+        .then(response => response.json())
+        .then(data => {
+            if (data.pagination) {
+                document.getElementById('totalEvents').textContent = data.pagination.total || 0;
+            }
+        })
+        .catch(error => console.error('Error loading audit stats:', error));
+}
+
+function loadUsers() {
+    fetch('/api/v1/security/auth/users')
+        .then(response => response.json())
+        .then(data => {
+            const userSelect = document.getElementById('userFilter');
+            userSelect.innerHTML = '<option value="">All Users</option>';
+            
+            if (data.users) {
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.userID;
+                    option.textContent = `${user.username} (${user.firstName} ${user.lastName})`;
+                    userSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading users:', error));
+}
+
+function loadAuditLogs() {
+    const formData = new FormData(document.getElementById('auditFilterForm'));
+    const params = new URLSearchParams();
+    
+    // Add form data to params
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    // Add pagination and sorting
+    params.append('page', currentPage);
+    params.append('pageSize', pageSize);
+    params.append('sortBy', sortBy);
+    params.append('sortOrder', sortOrder);
+    
+    fetch(`/api/security/audit?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Audit logs response:', JSON.stringify(data, null, 2));
+            if (data.auditLogs) {
+                auditData = data.auditLogs || [];
+                console.log('Audit data loaded:', auditData.length, 'entries');
+                if (auditData.length > 0) {
+                    console.log('First audit entry:', JSON.stringify(auditData[0], null, 2));
+                }
+                renderAuditTable(auditData);
+                renderPagination(data.pagination ? data.pagination.total : 0);
+                updateRecordCount(data.pagination ? data.pagination.total : 0);
+            } else {
+                console.error('No auditLogs in response:', data);
+                // Show empty state
+                auditData = [];
+                renderAuditTable(auditData);
+                renderPagination(0);
+                updateRecordCount(0);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading audit logs:', error);
+            showError('Failed to load audit logs');
+        });
+}
+
+function renderAuditTable(logs) {
+    console.log('renderAuditTable called with', logs.length, 'logs');
+    const tbody = document.getElementById('auditTableBody');
+    
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: var(--space-2xl);">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
+                    <p style="margin-top: var(--space-md); color: var(--text-secondary);">No audit logs found</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = logs.map(log => {
+        const auditID = log.auditID || 0;
+        const timestamp = log.timestamp || '';
+        const username = (log.user && log.user.username) || 'System';
+        const action = log.action || 'unknown';
+        const entityType = log.entityType || '-';
+        const entityID = log.entityID || '';
+        const ipAddress = log.ipAddress || '-';
+        const severity = log.severity || 'info';
+        
+        console.log('Rendering row for audit ID:', auditID);
+        
+        return `
+        <tr class="audit-row" data-audit-id="${auditID}">
+            <td>
+                <div class="rc-text-sm">${formatTimestamp(timestamp)}</div>
+            </td>
+            <td>
+                <div class="rc-text-sm">${escapeHtml(username)}</div>
+            </td>
+            <td>
+                <span class="rc-action-badge rc-action-${action}">${escapeHtml(action)}</span>
+            </td>
+            <td>
+                <div class="rc-text-sm">
+                    <strong>${escapeHtml(entityType)}</strong>
+                    ${entityID ? `<br><small>#${entityID}</small>` : ''}
+                </div>
+            </td>
+            <td>
+                <span class="rc-ip-badge">${escapeHtml(ipAddress)}</span>
+            </td>
+            <td>
+                <span class="rc-severity-badge rc-severity-${severity}">${escapeHtml(severity)}</span>
+            </td>
+            <td>
+                <div class="rc-table-actions">
+                    <button class="rc-table-action-btn audit-detail-btn" data-audit-id="${auditID}" title="View Details">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <button class="rc-table-action-btn audit-export-btn" data-audit-id="${auditID}" title="Export">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function renderPagination(totalCount) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const pagination = document.getElementById('auditPagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        paginationHTML += `<button class="rc-pagination-btn" onclick="changePage(${currentPage - 1})">
+            <i class="bi bi-chevron-left"></i>
+        </button>`;
+    }
+    
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        paginationHTML += `<button class="rc-pagination-btn" onclick="changePage(1)">1</button>`;
+        if (startPage > 2) {
+            paginationHTML += `<span class="rc-pagination-ellipsis">...</span>`;
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `<button class="rc-pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHTML += `<span class="rc-pagination-ellipsis">...</span>`;
+        }
+        paginationHTML += `<button class="rc-pagination-btn" onclick="changePage(${totalPages})">${totalPages}</button>`;
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        paginationHTML += `<button class="rc-pagination-btn" onclick="changePage(${currentPage + 1})">
+            <i class="bi bi-chevron-right"></i>
+        </button>`;
+    }
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadAuditLogs();
+}
+
+function updateRecordCount(totalCount) {
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalCount);
+    document.getElementById('recordCount').textContent = `${start}-${end} of ${totalCount}`;
+}
+
+function updateSortIndicators() {
+    document.querySelectorAll('.rc-table-sort').forEach(button => {
+        button.classList.remove('active');
+        const icon = button.querySelector('i');
+        icon.className = 'bi bi-chevron-expand';
+    });
+    
+    const activeSort = document.querySelector(`[data-sort="${sortBy}"]`);
+    if (activeSort) {
+        activeSort.classList.add('active');
+        const icon = activeSort.querySelector('i');
+        icon.className = sortOrder === 'asc' ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+    }
+}
+
+function toggleFilters() {
+    const panel = document.getElementById('filterPanel');
+    const icon = document.getElementById('filterToggleIcon');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        icon.className = 'bi bi-chevron-up';
+    } else {
+        panel.style.display = 'none';
+        icon.className = 'bi bi-chevron-down';
+    }
+}
+
+function clearFilters() {
+    document.getElementById('auditFilterForm').reset();
+    currentPage = 1;
+    loadAuditLogs();
+}
+
+function showAuditDetail(logId) {
+    console.log('*** MODAL DISABLED - showAuditDetail called with logId:', logId);
+    console.trace('Call stack:');
+    
+    // COMPLETELY DISABLE MODAL - DO NOT OPEN UNDER ANY CIRCUMSTANCES
+    alert('Modal disabled for debugging. LogId: ' + logId);
+    return;
+    
+    if (!isPageLoaded) {
+        console.log('Page not fully loaded yet, ignoring showAuditDetail call');
+        return;
+    }
+    
+    if (!logId || logId === 'undefined' || logId === 'null') {
+        console.error('Invalid logId provided:', logId);
+        showError('Invalid audit log ID');
+        return;
+    }
+    
+    fetch(`/api/security/audit/${logId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Audit detail response:', data);
+            if (data.auditLog) {
+                console.log('Showing modal for audit log:', data.auditLog);
+                renderAuditDetail(data.auditLog);
+                document.getElementById('auditDetailModal').classList.add('show');
+            } else if (data.error) {
+                console.error('Audit detail error:', data.error);
+                showError(data.error);
+            } else {
+                console.error('No audit log data received:', data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading audit detail:', error);
+            showError('Failed to load audit details');
+        });
+}
+
+function renderAuditDetail(log) {
+    const content = document.getElementById('auditDetailContent');
+    content.innerHTML = `
+        <div class="rc-audit-section">
+            <h4>Basic Information</h4>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Timestamp:</span>
+                <span class="rc-audit-property-value">${formatTimestamp(log.timestamp)}</span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">User:</span>
+                <span class="rc-audit-property-value">${escapeHtml((log.user && log.user.username) || 'System')}</span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Action:</span>
+                <span class="rc-audit-property-value">
+                    <span class="rc-action-badge rc-action-${log.action}">${escapeHtml(log.action)}</span>
+                </span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Severity:</span>
+                <span class="rc-audit-property-value">
+                    <span class="rc-severity-badge rc-severity-${log.severity || 'info'}">${escapeHtml(log.severity || 'info')}</span>
+                </span>
+            </div>
+        </div>
+        
+        <div class="rc-audit-section">
+            <h4>Entity Information</h4>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Entity Type:</span>
+                <span class="rc-audit-property-value">${escapeHtml(log.entityType || '-')}</span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Entity ID:</span>
+                <span class="rc-audit-property-value">${escapeHtml(log.entityID || '-')}</span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Description:</span>
+                <span class="rc-audit-property-value">${escapeHtml(log.description || '-')}</span>
+            </div>
+        </div>
+        
+        <div class="rc-audit-section">
+            <h4>Technical Details</h4>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">IP Address:</span>
+                <span class="rc-audit-property-value">
+                    <span class="rc-ip-badge">${escapeHtml(log.ipAddress || '-')}</span>
+                </span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">User Agent:</span>
+                <span class="rc-audit-property-value">${escapeHtml(log.userAgent || '-')}</span>
+            </div>
+            <div class="rc-audit-property">
+                <span class="rc-audit-property-label">Session ID:</span>
+                <span class="rc-audit-property-value">${escapeHtml(log.sessionID || '-')}</span>
+            </div>
+        </div>
+        
+        ${(log.oldValues || log.newValues) ? `
+        <div class="rc-audit-section">
+            <h4>Change Details</h4>
+            ${log.oldValues ? `
+                <div class="rc-audit-property">
+                    <span class="rc-audit-property-label">Old Values:</span>
+                    <div class="rc-audit-property-value">
+                        <pre style="background: var(--surface-0); padding: var(--space-md); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.875rem; overflow-x: auto;">${JSON.stringify(JSON.parse(log.oldValues), null, 2)}</pre>
+                    </div>
+                </div>
+            ` : ''}
+            ${log.newValues ? `
+                <div class="rc-audit-property">
+                    <span class="rc-audit-property-label">New Values:</span>
+                    <div class="rc-audit-property-value">
+                        <pre style="background: var(--surface-0); padding: var(--space-md); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.875rem; overflow-x: auto;">${JSON.stringify(JSON.parse(log.newValues), null, 2)}</pre>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+        ` : ''}
+    `;
+}
+
+function closeAuditModal() {
+    console.log('*** closeAuditModal DISABLED - called from:');
+    console.trace();
+    // COMPLETELY DISABLED - DO NOT TOUCH MODAL
+    return;
+}
+
+function setupRealTime() {
+    if (!realTimeEnabled) return;
+    
+    // Simulate real-time updates (replace with WebSocket in production)
+    setInterval(() => {
+        if (realTimeEnabled && currentPage === 1) {
+            loadAuditLogs();
+        }
+    }, 30000); // Refresh every 30 seconds
+    
+    // Update connection status
+    document.getElementById('connectionStatus').className = 'rc-status-indicator rc-status-online';
+}
+
+function refreshAuditLogs() {
+    loadAuditLogs();
+    loadAuditStats();
+}
+
+function exportAuditLogs() {
+    const formData = new FormData(document.getElementById('auditFilterForm'));
+    const params = new URLSearchParams();
+    
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    params.append('format', 'csv');
+    
+    window.open(`/api/security/audit/export?${params}`, '_blank');
+}
+
+function exportSingleLog(logId) {
+    window.open(`/api/security/audit/${logId}/export`, '_blank');
+}
+
+function saveFilterPreset() {
+    // Implementation for saving filter presets
+    showSuccess('Filter preset saved successfully');
+}
+
+// Utility functions
+function formatTimestamp(timestamp) {
+    return new Date(timestamp).toLocaleString();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function exportSingleLog(logId) {
+    console.log('exportSingleLog called with logId:', logId);
+    // Redirect to export endpoint for single log
+    window.open(`/api/security/audit/export?format=csv&auditId=${logId}`, '_blank');
+}
+
+function showError(message) {
+    // Implementation for showing error messages
+    console.error(message);
+}
+
+function showSuccess(message) {
+    // Implementation for showing success messages
+    console.log(message);
+}
+</script>
+{{end}}

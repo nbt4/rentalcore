@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container" style="padding: var(--space-xl) 0; min-height: calc(100vh - 80px);">
+        <div style="max-width: 800px; margin: 0 auto;">
+            <!-- Header Section -->
+            <div style="background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md);">
+                    <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-person-circle"></i>
+                        User Details
+                    </h1>
+                    <div style="display: flex; gap: var(--space-sm);">
+                        <a href="/user-management/{{.viewUser.UserID}}/edit" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a href="/users" class="rc-btn rc-btn-ghost rc-btn-sm">
+                            <i class="bi bi-list"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Details Card -->
+            <div style="background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: var(--radius-lg); overflow: hidden;">
+                <!-- User Avatar & Basic Info -->
+                <div style="background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%); padding: var(--space-xl); color: white; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; right: 0; width: 150px; height: 150px; background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 70%); border-radius: 50%; transform: translate(50%, -50%);"></div>
+                    <div style="position: relative; z-index: 2; display: flex; align-items: center; gap: var(--space-lg);">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-500), var(--accent-electric)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 2rem; border: 3px solid rgba(255,255,255,0.2);">
+                            {{if .viewUser.FirstName}}{{index .viewUser.FirstName 0}}{{end}}{{if .viewUser.LastName}}{{index .viewUser.LastName 0}}{{end}}
+                        </div>
+                        <div>
+                            <h2 style="font-size: 1.75rem; font-weight: 800; margin: 0 0 var(--space-xs); display: flex; align-items: center; gap: var(--space-sm);">
+                                {{.viewUser.FirstName}} {{.viewUser.LastName}}
+                                {{if .viewUser.IsActive}}
+                                    <span style="display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); background: rgba(34, 197, 94, 0.2); color: white; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(34, 197, 94, 0.3);">
+                                        <i class="bi bi-check-circle"></i> Active
+                                    </span>
+                                {{else}}
+                                    <span style="display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); background: rgba(107, 114, 128, 0.2); color: rgba(255,255,255,0.7); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(107, 114, 128, 0.3);">
+                                        <i class="bi bi-x-circle"></i> Inactive
+                                    </span>
+                                {{end}}
+                            </h2>
+                            <p style="font-family: var(--font-mono); font-size: 1rem; opacity: 0.9; margin: 0;">@{{.viewUser.Username}}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Information Grid -->
+                <div style="padding: var(--space-xl);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-xl);">
+                        <!-- Personal Information -->
+                        <div>
+                            <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
+                                <i class="bi bi-person"></i>
+                                Personal Information
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">User ID:</span>
+                                    <span style="font-family: var(--font-mono); color: var(--text-primary);">{{.viewUser.UserID}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Username:</span>
+                                    <span style="font-weight: 600; color: var(--text-primary);">{{.viewUser.Username}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Email:</span>
+                                    <span style="color: var(--text-primary);">{{.viewUser.Email}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">First Name:</span>
+                                    <span style="color: var(--text-primary);">{{.viewUser.FirstName}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0;">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Last Name:</span>
+                                    <span style="color: var(--text-primary);">{{.viewUser.LastName}}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Information -->
+                        <div>
+                            <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
+                                <i class="bi bi-gear"></i>
+                                System Information
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Status:</span>
+                                    <span>
+                                        {{if .viewUser.IsActive}}
+                                            <span style="display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); background: rgba(34, 197, 94, 0.15); color: var(--success); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(34, 197, 94, 0.3);">
+                                                <i class="bi bi-check-circle"></i> Active
+                                            </span>
+                                        {{else}}
+                                            <span style="display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); background: rgba(107, 114, 128, 0.15); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--surface-3);">
+                                                <i class="bi bi-x-circle"></i> Inactive
+                                            </span>
+                                        {{end}}
+                                    </span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Created:</span>
+                                    <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">{{.viewUser.CreatedAt.Format "Jan 2, 2006 15:04"}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--surface-3);">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Updated:</span>
+                                    <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">{{.viewUser.UpdatedAt.Format "Jan 2, 2006 15:04"}}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0;">
+                                    <span style="font-weight: 500; color: var(--text-secondary);">Last Login:</span>
+                                    <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 0.875rem;">
+                                        {{if .viewUser.LastLogin}}
+                                            {{.viewUser.LastLogin.Format "Jan 2, 2006 15:04"}}
+                                        {{else}}
+                                            <span style="color: var(--text-muted); font-style: italic;">Never logged in</span>
+                                        {{end}}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

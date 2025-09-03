@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">
+                    <i class="bi bi-people"></i> Customers
+                </h1>
+                <p class="rc-text">Manage your customer database</p>
+            </div>
+            <button onclick="showNewCustomerModal()" class="rc-btn rc-btn-primary">
+                <i class="bi bi-plus-lg"></i> New Customer
+            </button>
+        </div>
+
+        <!-- Search Card -->
+        <div class="rc-card rc-mb-lg">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-search"></i> Search Customers
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                <form method="GET" action="/customers">
+                    <div class="rc-flex rc-flex-gap-sm" style="align-items: stretch;">
+                        <input type="text" class="rc-input" name="search" placeholder="Search customers..." value="{{.params.SearchTerm}}" style="max-width: 300px;">
+                        <button type="submit" class="rc-btn rc-btn-primary" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        {{if .params.SearchTerm}}
+                        <a href="/customers" class="rc-btn rc-btn-outline" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {{end}}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customers Table -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-table"></i> Customer Directory
+                </h3>
+                <div class="rc-text-sm">
+                    {{if .customers}}{{len .customers}} customers found{{else}}No customers{{end}}
+                </div>
+            </div>
+            <div class="rc-card-body" style="padding: 0;">
+                {{if .customers}}
+                <div class="rc-table-container">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <span class="rc-text-mono">#</span>
+                                </th>
+                                <th>Customer</th>
+                                <th>Contact</th>
+                                <th>Location</th>
+                                <th>Type</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .customers}}
+                            <tr>
+                                <td>
+                                    <span class="rc-text-mono rc-badge rc-badge-primary">{{.CustomerID}}</span>
+                                </td>
+                                <td>
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text-primary);">
+                                            {{if .CompanyName}}
+                                                {{.CompanyName}}
+                                            {{else}}
+                                                {{.FirstName}} {{.LastName}}
+                                            {{end}}
+                                        </div>
+                                        {{if .CompanyName}}
+                                        <div class="rc-text-sm">{{.FirstName}} {{.LastName}}</div>
+                                        {{end}}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        {{if .Email}}
+                                        <div class="rc-text-sm">
+                                            <i class="bi bi-envelope"></i> {{.Email}}
+                                        </div>
+                                        {{end}}
+                                        {{if .PhoneNumber}}
+                                        <div class="rc-text-sm">
+                                            <i class="bi bi-telephone"></i> {{.PhoneNumber}}
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="rc-text-sm">
+                                        {{if .City}}
+                                        <i class="bi bi-geo-alt"></i> {{.City}}
+                                        {{end}}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="rc-badge rc-badge-primary">{{.CustomerType}}</span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <div class="rc-flex rc-flex-center" style="gap: var(--space-xs);">
+                                        <button onclick="showCustomerDetails({{.CustomerID}})" class="rc-btn rc-btn-ghost rc-btn-sm" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button onclick="showEditCustomer({{.CustomerID}})" class="rc-btn rc-btn-secondary rc-btn-sm" title="Edit Customer">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="deleteCustomer({{.CustomerID}})" title="Delete" style="color: var(--error);">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="rc-text-center" style="padding: var(--space-3xl);">
+                    <div style="font-size: 4rem; color: var(--text-muted); margin-bottom: var(--space-lg);">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <h3 style="color: var(--text-secondary); margin-bottom: var(--space-md);">No customers found</h3>
+                    <p class="rc-text-sm" style="margin-bottom: var(--space-lg);">
+                        {{if .params.SearchTerm}}
+                        Try adjusting your search terms or 
+                        <a href="/customers" style="color: var(--accent-electric);">view all customers</a>
+                        {{else}}
+                        Add your first customer to get started with rental management.
+                        {{end}}
+                    </p>
+                    <button onclick="showNewCustomerModal()" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add First Customer
+                    </button>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </main>
+
+    <!-- Customer Details Modal -->
+    <div id="customerDetailsModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeCustomerModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-person-circle"></i> Customer Details
+                </h3>
+                <button class="rc-modal-close" onclick="closeCustomerModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="customerDetailsContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading customer details...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Edit Modal -->
+    <div id="customerEditModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeEditModal()"></div>
+        <div class="rc-modal-content" style="max-width: 600px;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-pencil"></i> Edit Customer
+                </h3>
+                <button class="rc-modal-close" onclick="closeEditModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="customerEditContent">
+                <div class="rc-text-center rc-py-xl">
+                    <div class="rc-spinner"></div>
+                    <p class="rc-text-muted rc-mt-md">Loading customer form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Customer Modal -->
+    <div id="newCustomerModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeNewCustomerModal()"></div>
+        <div class="rc-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">
+                    <i class="bi bi-person-plus"></i> Add New Customer
+                </h3>
+                <button class="rc-modal-close" onclick="closeNewCustomerModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="newCustomerForm">
+                    <!-- Company or Personal -->
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Company Name</label>
+                            <input type="text" class="rc-input" name="companyname" placeholder="Leave empty for personal customers">
+                            <small class="rc-text-muted">Optional - leave blank for individual customers</small>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Customer Type *</label>
+                            <select class="rc-select" name="customertype" required>
+                                <option value="Kunde">Kunde</option>
+                                <option value="Lieferant">Lieferant</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Personal Details -->
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">First Name *</label>
+                            <input type="text" class="rc-input" name="firstname" required>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Last Name *</label>
+                            <input type="text" class="rc-input" name="lastname" required>
+                        </div>
+                    </div>
+
+                    <!-- Contact Details -->
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Email</label>
+                            <input type="email" class="rc-input" name="email">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Phone Number</label>
+                            <input type="tel" class="rc-input" name="phonenumber">
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-3 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group rc-grid-span-2">
+                            <label class="rc-label">Street</label>
+                            <input type="text" class="rc-input" name="street">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">House Number</label>
+                            <input type="text" class="rc-input" name="housenumber">
+                        </div>
+                    </div>
+
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-3 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">ZIP Code</label>
+                            <input type="text" class="rc-input" name="ZIP">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">City</label>
+                            <input type="text" class="rc-input" name="city">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Federal State</label>
+                            <input type="text" class="rc-input" name="federalstate">
+                        </div>
+                    </div>
+
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Country</label>
+                            <input type="text" class="rc-input" name="country" placeholder="DE">
+                        </div>
+                    </div>
+                    
+                    <div class="rc-form-group rc-mb-lg">
+                        <label class="rc-label">Notes</label>
+                        <textarea class="rc-textarea" name="notes" rows="3" placeholder="Additional notes about this customer..."></textarea>
+                    </div>
+                    
+                    <div class="rc-flex rc-flex-between">
+                        <button type="button" onclick="closeNewCustomerModal()" class="rc-btn rc-btn-secondary">
+                            <i class="bi bi-x-lg"></i> Cancel
+                        </button>
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-check-lg"></i> Create Customer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Customer Details Modal
+    function showCustomerDetails(customerID) {
+        const modal = document.getElementById('customerDetailsModal');
+        const content = document.getElementById('customerDetailsContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading customer details...</p>
+            </div>
+        `;
+        
+        // Fetch customer details
+        fetch('/api/v1/customers/' + customerID)
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.log('Error response body:', text);
+                        throw new Error(`HTTP ${response.status}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(customer => {
+                console.log('Customer data received:', customer);
+                content.innerHTML = `
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-lg">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Customer ID</label>
+                            <div class="rc-badge rc-badge-primary">${customer.customerID}</div>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Type</label>
+                            <div class="rc-badge rc-badge-outline">${customer.customertype || 'Unknown'}</div>
+                        </div>
+                        ${customer.companyname ? `
+                        <div class="rc-form-group">
+                            <label class="rc-label">Company</label>
+                            <div class="rc-text-lg">${customer.companyname}</div>
+                        </div>
+                        ` : ''}
+                        <div class="rc-form-group">
+                            <label class="rc-label">Contact Person</label>
+                            <div>${customer.firstname || ''} ${customer.lastname || ''}</div>
+                        </div>
+                        ${customer.email ? `
+                        <div class="rc-form-group">
+                            <label class="rc-label">Email</label>
+                            <div><i class="bi bi-envelope"></i> <a href="mailto:${customer.email}">${customer.email}</a></div>
+                        </div>
+                        ` : ''}
+                        ${customer.phonenumber ? `
+                        <div class="rc-form-group">
+                            <label class="rc-label">Phone</label>
+                            <div><i class="bi bi-telephone"></i> <a href="tel:${customer.phonenumber}">${customer.phonenumber}</a></div>
+                        </div>
+                        ` : ''}
+                        ${customer.street || customer.city || customer.ZIP ? `
+                        <div class="rc-form-group rc-grid-span-2">
+                            <label class="rc-label">Address</label>
+                            <div>
+                                <i class="bi bi-geo-alt"></i>
+                                ${customer.street || ''} ${customer.housenumber || ''}<br>
+                                ${customer.ZIP || ''} ${customer.city || ''}<br>
+                                ${customer.country || ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="rc-flex rc-flex-end rc-mt-lg">
+                        <button onclick="showEditCustomer(${customer.customerID})" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-pencil"></i> Edit Customer
+                        </button>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading customer details: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeCustomerModal() {
+        document.getElementById('customerDetailsModal').style.display = 'none';
+    }
+
+    // Customer Edit Modal
+    function showEditCustomer(customerID) {
+        // Close details modal if open
+        closeCustomerModal();
+        
+        const modal = document.getElementById('customerEditModal');
+        const content = document.getElementById('customerEditContent');
+        
+        // Show modal with loading state
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading customer form...</p>
+            </div>
+        `;
+        
+        // Fetch customer data for editing
+        fetch('/api/v1/customers/' + customerID)
+            .then(response => response.json())
+            .then(customer => {
+                console.log('Customer data received:', customer);
+                content.innerHTML = `
+                    <form id="editCustomerForm">
+                        <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md rc-mb-lg">
+                            <div class="rc-form-group">
+                                <label class="rc-label">First Name *</label>
+                                <input type="text" class="rc-input" name="firstname" value="${customer.firstname || ''}" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Last Name *</label>
+                                <input type="text" class="rc-input" name="lastname" value="${customer.lastname || ''}" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Company Name</label>
+                                <input type="text" class="rc-input" name="companyname" value="${customer.companyname || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Customer Type</label>
+                                <select class="rc-select" name="customertype">
+                                    <option value="individual" ${customer.customertype === 'individual' ? 'selected' : ''}>Individual</option>
+                                    <option value="business" ${customer.customertype === 'business' ? 'selected' : ''}>Business</option>
+                                </select>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Email</label>
+                                <input type="email" class="rc-input" name="email" value="${customer.email || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Phone</label>
+                                <input type="tel" class="rc-input" name="phonenumber" value="${customer.phonenumber || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Street</label>
+                                <input type="text" class="rc-input" name="street" value="${customer.street || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">House Number</label>
+                                <input type="text" class="rc-input" name="housenumber" value="${customer.housenumber || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Postal Code</label>
+                                <input type="text" class="rc-input" name="ZIP" value="${customer.ZIP || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">City</label>
+                                <input type="text" class="rc-input" name="city" value="${customer.city || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Country</label>
+                                <input type="text" class="rc-input" name="country" value="${customer.country || ''}">
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Notes</label>
+                                <textarea class="rc-textarea" name="notes" rows="3">${customer.notes || ''}</textarea>
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-between">
+                            <button type="button" onclick="closeEditModal()" class="rc-btn rc-btn-secondary">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-check-lg"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                `;
+                
+                // Handle form submission
+                document.getElementById('editCustomerForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveCustomer(customerID, new FormData(this));
+                });
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading customer form: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function closeEditModal() {
+        document.getElementById('customerEditModal').style.display = 'none';
+    }
+
+    function saveCustomer(customerID, formData) {
+        const submitBtn = document.querySelector('#editCustomerForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        // Convert FormData to JSON
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        fetch('/api/v1/customers/' + customerID, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Success - close modal and reload page
+            closeEditModal();
+            window.location.reload();
+        })
+        .catch(error => {
+            // Restore button and show error
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            alert('Error saving customer: ' + error.message);
+        });
+    }
+
+    function deleteCustomer(customerID) {
+        if (confirm('Are you sure you want to delete this customer?')) {
+            fetch('/api/v1/customers/' + customerID, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                window.location.reload();
+            })
+            .catch(error => {
+                alert('Error deleting customer: ' + error.message);
+            });
+        }
+    }
+
+    // New Customer Modal
+    function showNewCustomerModal() {
+        const modal = document.getElementById('newCustomerModal');
+        modal.style.display = 'flex';
+        
+        // Reset form
+        document.getElementById('newCustomerForm').reset();
+        
+        // Focus on first input
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input');
+            if (firstInput) firstInput.focus();
+        }, 100);
+    }
+
+    function closeNewCustomerModal() {
+        document.getElementById('newCustomerModal').style.display = 'none';
+    }
+
+    function createNewCustomer(formData) {
+        const submitBtn = document.querySelector('#newCustomerForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+        submitBtn.disabled = true;
+        
+        // Convert FormData to JSON
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value || null; // Convert empty strings to null
+        }
+        
+        fetch('/api/v1/customers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Success - close modal and reload page
+            closeNewCustomerModal();
+            
+            // Show success message
+            showSuccessMessage('Customer created successfully!');
+            
+            // Reload page to show new customer
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        })
+        .catch(error => {
+            // Restore button and show error
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            
+            showErrorMessage('Error creating customer: ' + error.message);
+        });
+    }
+
+    // Helper functions for notifications
+    function showSuccessMessage(message) {
+        const notification = document.createElement('div');
+        notification.className = 'rc-alert rc-alert-success';
+        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;';
+        notification.innerHTML = `
+            <i class="bi bi-check-circle"></i> ${message}
+            <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; color: inherit;">&times;</button>
+        `;
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    function showErrorMessage(message) {
+        const notification = document.createElement('div');
+        notification.className = 'rc-alert rc-alert-error';
+        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; max-width: 400px;';
+        notification.innerHTML = `
+            <i class="bi bi-exclamation-triangle"></i> ${message}
+            <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; color: inherit;">&times;</button>
+        `;
+        document.body.appendChild(notification);
+        
+        // Auto remove after 8 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 8000);
+    }
+
+    // Handle new customer form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('newCustomerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            createNewCustomer(new FormData(this));
+        });
+    });
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeCustomerModal();
+            closeEditModal();
+            closeNewCustomerModal();
+        }
+    });
+    </script>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment Packages - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">
+                    <i class="bi bi-box-seam"></i> Equipment Packages
+                </h1>
+                <p class="rc-text">Manage pre-configured equipment collections for efficient rental processing</p>
+            </div>
+            <div class="rc-flex rc-gap-md">
+                <button class="rc-btn rc-btn-secondary" onclick="showBulkActions()">
+                    <i class="bi bi-list-check"></i> Bulk Actions
+                </button>
+                <a href="/workflow/packages/new" class="rc-btn rc-btn-primary">
+                    <i class="bi bi-plus-lg"></i> Create Package
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="rc-grid rc-grid-4 rc-mb-xl">
+            <div class="rc-card rc-card-glow">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-center">
+                        <div>
+                            <h3 class="rc-heading-3 rc-text-primary">{{.totalCount}}</h3>
+                            <p class="rc-text-sm">Total Packages</p>
+                        </div>
+                        <div class="rc-icon-large rc-text-primary">
+                            <i class="bi bi-boxes"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="rc-card rc-card-glow">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-center">
+                        <div>
+                            <h3 class="rc-heading-3 rc-text-success">{{len .popularPackages}}</h3>
+                            <p class="rc-text-sm">Popular Packages</p>
+                        </div>
+                        <div class="rc-icon-large rc-text-success">
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="rc-card rc-card-glow">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-center">
+                        <div>
+                            <h3 class="rc-heading-3 rc-text-info">12</h3>
+                            <p class="rc-text-sm">Categories</p>
+                        </div>
+                        <div class="rc-icon-large rc-text-info">
+                            <i class="bi bi-tags-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="rc-card rc-card-glow">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-center">
+                        <div>
+                            <h3 class="rc-heading-3 rc-text-warning">€24,580</h3>
+                            <p class="rc-text-sm">Total Value</p>
+                        </div>
+                        <div class="rc-icon-large rc-text-warning">
+                            <i class="bi bi-currency-euro"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="rc-card rc-mb-lg">
+            <div class="rc-card-header">
+                <h3 class="rc-heading-4">
+                    <i class="bi bi-funnel"></i> Filters & Search
+                </h3>
+            </div>
+            <div class="rc-card-body">
+                <form id="filterForm" class="rc-grid rc-grid-6 rc-gap-md">
+                    <div class="rc-grid-span-2">
+                        <label class="rc-label">Search Packages</label>
+                        <div class="rc-input-group">
+                            <input type="text" class="rc-input" id="searchInput" name="search" 
+                                   placeholder="Search by name, description, or tags..." 
+                                   value="{{.filters.SearchTerm}}">
+                            <button class="rc-btn rc-btn-ghost" type="button" onclick="clearSearch()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="rc-label">Category</label>
+                        <select class="rc-select" name="category" id="categoryFilter">
+                            <option value="">All Categories</option>
+                            <option value="active" {{if eq .filters.Category "active"}}selected{{end}}>Active Only</option>
+                            <option value="inactive" {{if eq .filters.Category "inactive"}}selected{{end}}>Inactive Only</option>
+                            <option value="Audio/Video Equipment">Audio/Video Equipment</option>
+                            <option value="Lighting Equipment">Lighting Equipment</option>
+                            <option value="Sound Systems">Sound Systems</option>
+                            <option value="Stage Equipment">Stage Equipment</option>
+                            <option value="DJ Equipment">DJ Equipment</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="rc-label">Sort By</label>
+                        <select class="rc-select" name="sort_by" id="sortBy">
+                            <option value="created_at">Date Created</option>
+                            <option value="name">Name</option>
+                            <option value="usage_count">Popularity</option>
+                            <option value="total_revenue">Revenue</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="rc-label">Order</label>
+                        <select class="rc-select" name="sort_order" id="sortOrder">
+                            <option value="desc">Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </div>
+                    <div class="rc-flex rc-flex-center">
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Packages Table -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <div class="rc-flex rc-flex-between rc-flex-center">
+                    <h3 class="rc-heading-4">Equipment Packages</h3>
+                    <div class="rc-flex rc-gap-sm">
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="toggleView('grid')">
+                            <i class="bi bi-grid-3x3-gap"></i> Grid
+                        </button>
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost active" onclick="toggleView('table')">
+                            <i class="bi bi-table"></i> Table
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="rc-card-body rc-p-0">
+                <!-- Table View -->
+                <div id="tableView" class="rc-table-container">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" class="rc-checkbox" id="selectAll">
+                                </th>
+                                <th>Package</th>
+                                <th>Category</th>
+                                <th class="rc-text-center">Devices</th>
+                                <th class="rc-text-right">Price</th>
+                                <th class="rc-text-center">Usage</th>
+                                <th class="rc-text-center">Status</th>
+                                <th class="rc-text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .packages}}
+                            <tr data-package-id="{{.PackageID}}">
+                                <td>
+                                    <input type="checkbox" class="rc-checkbox package-checkbox" value="{{.PackageID}}">
+                                </td>
+                                <td>
+                                    <div class="rc-flex rc-gap-md rc-flex-center">
+                                        <div class="rc-avatar rc-avatar-sm rc-bg-primary">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div>
+                                            <div class="rc-text-bold">{{.Name}}</div>
+                                            <div class="rc-text-sm rc-text-muted">{{substr .Description 0 60}}{{if gt (len .Description) 60}}...{{end}}</div>
+                                            {{if .Tags}}
+                                            <div class="rc-mt-xs">
+                                                {{range $tag := (split .Tags ",")}}
+                                                <span class="rc-badge rc-badge-sm">{{trim $tag}}</span>
+                                                {{end}}
+                                            </div>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {{if .Category}}
+                                    <span class="rc-badge rc-badge-secondary">{{.Category}}</span>
+                                    {{else}}
+                                    <span class="rc-text-muted">Uncategorized</span>
+                                    {{end}}
+                                </td>
+                                <td class="rc-text-center">
+                                    <span class="rc-badge rc-badge-info">{{.DeviceCount}} devices</span>
+                                </td>
+                                <td class="rc-text-right">
+                                    <div class="rc-text-bold">€{{printf "%.2f" .CalculatedPrice}}</div>
+                                    {{if .DiscountPercent}}
+                                    <div class="rc-text-sm rc-text-success">{{printf "%.1f" .DiscountPercent}}% discount</div>
+                                    {{end}}
+                                </td>
+                                <td class="rc-text-center">
+                                    <div class="rc-flex rc-flex-column rc-gap-xs">
+                                        <span class="rc-badge rc-badge-success">{{.UsageCount}}x used</span>
+                                        {{if .LastUsedAt}}
+                                        <span class="rc-text-xs rc-text-muted">{{formatDate .LastUsedAt}}</span>
+                                        {{end}}
+                                    </div>
+                                </td>
+                                <td class="rc-text-center">
+                                    {{if .IsActive}}
+                                    <span class="rc-badge rc-badge-success">Active</span>
+                                    {{else}}
+                                    <span class="rc-badge rc-badge-secondary">Inactive</span>
+                                    {{end}}
+                                </td>
+                                <td class="rc-text-center">
+                                    <div class="rc-flex rc-gap-sm rc-flex-center">
+                                        <button class="rc-btn rc-btn-xs rc-btn-ghost" onclick="viewPackage({{.PackageID}})" 
+                                                title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="rc-btn rc-btn-xs rc-btn-ghost" onclick="editPackage({{.PackageID}})"
+                                                title="Edit Package">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="rc-btn rc-btn-xs rc-btn-ghost" onclick="clonePackage({{.PackageID}})"
+                                                title="Clone Package">
+                                            <i class="bi bi-files"></i>
+                                        </button>
+                                        <button class="rc-btn rc-btn-xs rc-btn-danger" onclick="confirmDelete({{.PackageID}})"
+                                                title="Delete Package">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="8" class="rc-text-center rc-py-2xl">
+                                    <div class="rc-text-muted">
+                                        <i class="bi bi-inbox rc-icon-large rc-mb-md"></i>
+                                        <p>No equipment packages found</p>
+                                        <a href="/workflow/packages/new" class="rc-btn rc-btn-primary">
+                                            <i class="bi bi-plus-lg"></i> Create Your First Package
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Grid View (Initially Hidden) -->
+                <div id="gridView" class="rc-grid rc-grid-3 rc-gap-lg rc-p-lg" style="display: none;">
+                    {{range .packages}}
+                    <div class="rc-card rc-card-hover">
+                        <div class="rc-card-body">
+                            <div class="rc-flex rc-flex-between rc-flex-start rc-mb-md">
+                                <h4 class="rc-heading-5">{{.Name}}</h4>
+                                {{if .IsActive}}
+                                <span class="rc-badge rc-badge-success">Active</span>
+                                {{else}}
+                                <span class="rc-badge rc-badge-secondary">Inactive</span>
+                                {{end}}
+                            </div>
+                            <p class="rc-text-sm rc-text-muted rc-mb-md">{{substr .Description 0 100}}{{if gt (len .Description) 100}}...{{end}}</p>
+                            <div class="rc-grid rc-grid-2 rc-gap-md rc-mb-md">
+                                <div>
+                                    <div class="rc-text-xs rc-text-muted">Devices</div>
+                                    <div class="rc-text-bold">{{.DeviceCount}}</div>
+                                </div>
+                                <div>
+                                    <div class="rc-text-xs rc-text-muted">Price</div>
+                                    <div class="rc-text-bold">€{{printf "%.2f" .CalculatedPrice}}</div>
+                                </div>
+                            </div>
+                            <div class="rc-flex rc-flex-between rc-flex-center">
+                                <span class="rc-text-xs rc-text-muted">Used {{.UsageCount}} times</span>
+                                <div class="rc-flex rc-gap-xs">
+                                    <button class="rc-btn rc-btn-xs rc-btn-ghost" onclick="viewPackage({{.PackageID}})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="rc-btn rc-btn-xs rc-btn-ghost" onclick="editPackage({{.PackageID}})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Package Detail Modal -->
+    <div class="rc-modal" id="packageDetailModal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="closeModal()"></div>
+        <div class="rc-modal-content rc-modal-xl" style="max-width: 90vw; width: 1200px;">
+            <div class="rc-modal-header">
+                <h3 class="rc-heading-4">Package Details</h3>
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="closeModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="packageDetailContent">
+                <div class="rc-text-center rc-py-2xl">
+                    <div class="rc-spinner rc-spinner-lg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="rc-modal" id="deleteConfirmModal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="closeModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3 class="rc-heading-4">Confirm Deletion</h3>
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="closeModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <div class="rc-alert rc-alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Are you sure you want to delete this equipment package? This action cannot be undone.
+                </div>
+            </div>
+            <div class="rc-modal-footer">
+                <button class="rc-btn rc-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="rc-btn rc-btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete Package
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Package Modal -->
+    <div class="rc-modal" id="editPackageModal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="closeModal()"></div>
+        <div class="rc-modal-content rc-modal-xl" style="max-width: 95vw; width: 1400px;">
+            <div class="rc-modal-header">
+                <h3 class="rc-heading-4">Edit Package</h3>
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="closeModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body" id="editPackageContent">
+                <div class="rc-text-center rc-py-2xl">
+                    <div class="rc-spinner rc-spinner-lg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Modal -->
+    <div class="rc-modal" id="bulkActionsModal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="closeModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3 class="rc-heading-4">Bulk Actions</h3>
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="closeModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="bulkActionForm">
+                    <div class="rc-mb-md">
+                        <label class="rc-label">Action</label>
+                        <select class="rc-select" id="bulkAction" required>
+                            <option value="">Select an action...</option>
+                            <option value="activate">Activate Packages</option>
+                            <option value="deactivate">Deactivate Packages</option>
+                            <option value="updateCategory">Update Category</option>
+                            <option value="updateDiscount">Update Discount</option>
+                        </select>
+                    </div>
+                    <div id="bulkActionOptions" style="display: none;">
+                        <!-- Dynamic options based on selected action -->
+                    </div>
+                    <div class="rc-alert rc-alert-info">
+                        <span id="selectedCount">0</span> packages selected
+                    </div>
+                </form>
+            </div>
+            <div class="rc-modal-footer">
+                <button class="rc-btn rc-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="rc-btn rc-btn-primary" onclick="executeBulkAction()">Execute Action</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="rc-toast-container"></div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    
+    <script>
+        // Global variables
+        let packageToDelete = null;
+        let selectedPackages = [];
+
+        // Filter form submission
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const params = new URLSearchParams(formData);
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+
+        // Real-time search
+        document.getElementById('searchInput').addEventListener('input', debounce(function() {
+            document.getElementById('filterForm').dispatchEvent(new Event('submit'));
+        }, 500));
+
+        // Select all checkbox
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.package-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateSelectedPackages();
+        });
+
+        // Individual checkboxes
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('package-checkbox')) {
+                updateSelectedPackages();
+            }
+        });
+
+        // View toggle
+        function toggleView(viewType) {
+            const tableView = document.getElementById('tableView');
+            const gridView = document.getElementById('gridView');
+            const buttons = document.querySelectorAll('[onclick^="toggleView"]');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (viewType === 'grid') {
+                tableView.style.display = 'none';
+                gridView.style.display = 'block';
+            } else {
+                tableView.style.display = 'block';
+                gridView.style.display = 'none';
+            }
+        }
+
+        // Package detail modal
+        async function viewPackage(packageId) {
+            console.log('viewPackage called with packageId:', packageId);
+            showModal('packageDetailModal');
+            const content = document.getElementById('packageDetailContent');
+            
+            try {
+                const url = `/api/v1/workflow/packages/${packageId}`;
+                console.log('Fetching URL:', url);
+                const response = await fetch(url, {
+                    credentials: 'include'
+                });
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`Failed to fetch package details: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                const pkg = data.package;
+                
+                let devicesHtml = '';
+                if (pkg.packageDevices && pkg.packageDevices.length > 0) {
+                    devicesHtml = pkg.packageDevices.map(item => {
+                        const productName = item.device?.product?.name || 'Unknown Device';
+                        const customPrice = item.customPrice ? `€${item.customPrice.toFixed(2)}` : 'Default Price';
+                        return `
+                            <tr>
+                                <td>${productName}</td>
+                                <td class="rc-text-center">${item.quantity}</td>
+                                <td class="rc-text-right">${customPrice}</td>
+                                <td class="rc-text-center">${item.isRequired ? '<span class="rc-badge rc-badge-warning">Required</span>' : '<span class="rc-badge rc-badge-secondary">Optional</span>'}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                content.innerHTML = `
+                    <div class="rc-grid rc-grid-3 rc-gap-lg">
+                        <div class="rc-grid-span-2">
+                            <h4 class="rc-heading-4">${pkg.name}</h4>
+                            <p class="rc-text-muted rc-mb-lg">${pkg.description || 'No description available'}</p>
+                            
+                            <h5 class="rc-heading-5 rc-mb-md">Package Devices</h5>
+                            <div class="rc-table-container">
+                                <table class="rc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Device</th>
+                                            <th class="rc-text-center">Quantity</th>
+                                            <th class="rc-text-right">Price</th>
+                                            <th class="rc-text-center">Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${devicesHtml || '<tr><td colspan="4" class="rc-text-center rc-text-muted">No devices in this package</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="rc-card">
+                                <div class="rc-card-header">
+                                    <h6 class="rc-heading-6">Package Information</h6>
+                                </div>
+                                <div class="rc-card-body">
+                                    <div class="rc-mb-md">
+                                        <div class="rc-text-xs rc-text-muted">Category</div>
+                                        <div>${pkg.category || 'Uncategorized'}</div>
+                                    </div>
+                                    <div class="rc-mb-md">
+                                        <div class="rc-text-xs rc-text-muted">Total Price</div>
+                                        <div class="rc-heading-5 rc-text-primary">€${pkg.calculatedPrice?.toFixed(2) || '0.00'}</div>
+                                    </div>
+                                    <div class="rc-mb-md">
+                                        <div class="rc-text-xs rc-text-muted">Rental Period</div>
+                                        <div>${pkg.minRentalDays} - ${pkg.maxRentalDays || '∞'} days</div>
+                                    </div>
+                                    <div class="rc-mb-md">
+                                        <div class="rc-text-xs rc-text-muted">Usage Count</div>
+                                        <div>${pkg.usageCount} times</div>
+                                    </div>
+                                    <div class="rc-mb-md">
+                                        <div class="rc-text-xs rc-text-muted">Status</div>
+                                        <div>${pkg.isActive ? '<span class="rc-badge rc-badge-success">Active</span>' : '<span class="rc-badge rc-badge-secondary">Inactive</span>'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Failed to load package details: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Delete confirmation
+        function confirmDelete(packageId) {
+            console.log('confirmDelete called with packageId:', packageId);
+            packageToDelete = packageId;
+            showModal('deleteConfirmModal');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+            if (!packageToDelete) return;
+            
+            console.log('Attempting to delete package:', packageToDelete);
+            
+            try {
+                const response = await fetch(`/api/v1/workflow/packages/${packageToDelete}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                console.log('Delete response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Delete error response:', errorText);
+                    throw new Error(`Failed to delete package: ${response.status} - ${errorText}`);
+                }
+                
+                showToast('Package deleted successfully', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('Failed to delete package: ' + error.message, 'error');
+            }
+            
+            closeModal();
+        });
+
+        // Clone package
+        async function clonePackage(packageId) {
+            try {
+                const response = await fetch(`/api/v1/workflow/packages/${packageId}/clone`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) throw new Error('Failed to clone package');
+                
+                showToast('Package cloned successfully', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                showToast('Failed to clone package: ' + error.message, 'error');
+            }
+        }
+
+        // Edit package
+        async function editPackage(packageId) {
+            showModal('editPackageModal');
+            const content = document.getElementById('editPackageContent');
+            
+            try {
+                const response = await fetch(`/api/v1/workflow/packages/${packageId}`, {
+                    credentials: 'include'
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch package details: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                const pkg = data.package;
+                
+                // Build device options
+                let deviceOptions = '';
+                const availableDevices = await getAvailableDevices();
+                availableDevices.forEach(device => {
+                    deviceOptions += `<option value="${device.deviceID}">${device.product?.name || 'Unknown Device'}</option>`;
+                });
+                
+                let packageDevicesHtml = '';
+                if (pkg.packageDevices && pkg.packageDevices.length > 0) {
+                    pkg.packageDevices.forEach(item => {
+                        packageDevicesHtml += `
+                            <div class="rc-grid rc-grid-5 rc-gap-md rc-mb-md package-device-item">
+                                <div>
+                                    <select class="rc-select device-select" name="deviceID" required>
+                                        <option value="">Select Device</option>
+                                        ${deviceOptions}
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="number" class="rc-input" name="quantity" min="1" value="${item.quantity}" required>
+                                </div>
+                                <div>
+                                    <input type="number" class="rc-input" name="customPrice" step="0.01" value="${item.customPrice || ''}" placeholder="Default price">
+                                </div>
+                                <div>
+                                    <select class="rc-select" name="isRequired">
+                                        <option value="true" ${item.isRequired ? 'selected' : ''}>Required</option>
+                                        <option value="false" ${!item.isRequired ? 'selected' : ''}>Optional</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <button type="button" class="rc-btn rc-btn-sm rc-btn-ghost rc-text-error" onclick="removePackageDevice(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                content.innerHTML = `
+                    <form id="editPackageForm">
+                        <div class="rc-grid rc-grid-2 rc-gap-lg">
+                            <div>
+                                <div class="rc-mb-md">
+                                    <label class="rc-label">Package Name</label>
+                                    <input type="text" class="rc-input" name="name" value="${pkg.name}" required>
+                                </div>
+                                <div class="rc-mb-md">
+                                    <label class="rc-label">Description</label>
+                                    <textarea class="rc-input" name="description" rows="3">${pkg.description || ''}</textarea>
+                                </div>
+                                <div class="rc-grid rc-grid-2 rc-gap-md rc-mb-md">
+                                    <div>
+                                        <label class="rc-label">Category</label>
+                                        <select class="rc-select" name="category">
+                                            <option value="">Select Category</option>
+                                            <option value="Audio/Video Equipment" ${pkg.category === 'Audio/Video Equipment' ? 'selected' : ''}>Audio/Video Equipment</option>
+                                            <option value="Lighting Equipment" ${pkg.category === 'Lighting Equipment' ? 'selected' : ''}>Lighting Equipment</option>
+                                            <option value="Sound Systems" ${pkg.category === 'Sound Systems' ? 'selected' : ''}>Sound Systems</option>
+                                            <option value="Stage Equipment" ${pkg.category === 'Stage Equipment' ? 'selected' : ''}>Stage Equipment</option>
+                                            <option value="DJ Equipment" ${pkg.category === 'DJ Equipment' ? 'selected' : ''}>DJ Equipment</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="rc-label">Tags</label>
+                                        <input type="text" class="rc-input" name="tags" value="${pkg.tags || ''}" placeholder="tag1, tag2, tag3">
+                                    </div>
+                                </div>
+                                <div class="rc-grid rc-grid-2 rc-gap-md rc-mb-md">
+                                    <div>
+                                        <label class="rc-label">Base Price (€)</label>
+                                        <input type="number" class="rc-input" name="packagePrice" step="0.01" value="${pkg.packagePrice || ''}" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label class="rc-label">Discount (%)</label>
+                                        <input type="number" class="rc-input" name="discountPercent" step="0.1" min="0" max="100" value="${pkg.discountPercent || ''}" placeholder="0">
+                                    </div>
+                                </div>
+                                <div class="rc-grid rc-grid-2 rc-gap-md rc-mb-md">
+                                    <div>
+                                        <label class="rc-label">Min Rental Days</label>
+                                        <input type="number" class="rc-input" name="minRentalDays" min="1" value="${pkg.minRentalDays || 1}">
+                                    </div>
+                                    <div>
+                                        <label class="rc-label">Max Rental Days</label>
+                                        <input type="number" class="rc-input" name="maxRentalDays" min="1" value="${pkg.maxRentalDays || ''}" placeholder="No limit">
+                                    </div>
+                                </div>
+                                <div class="rc-mb-md">
+                                    <label class="rc-checkbox-label">
+                                        <input type="checkbox" name="isActive" ${pkg.isActive ? 'checked' : ''}>
+                                        <span class="rc-checkbox-custom"></span>
+                                        Package is active
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="rc-mb-md">
+                                    <div class="rc-flex rc-flex-between rc-flex-center rc-mb-sm">
+                                        <label class="rc-label">Package Devices</label>
+                                        <button type="button" class="rc-btn rc-btn-sm rc-btn-ghost" onclick="addPackageDevice()">
+                                            <i class="bi bi-plus"></i> Add Device
+                                        </button>
+                                    </div>
+                                    <div id="packageDevicesContainer">
+                                        <div class="rc-grid rc-grid-5 rc-gap-md rc-mb-sm rc-text-sm rc-text-muted">
+                                            <div>Device</div>
+                                            <div>Quantity</div>
+                                            <div>Custom Price</div>
+                                            <div>Type</div>
+                                            <div>Actions</div>
+                                        </div>
+                                        ${packageDevicesHtml}
+                                    </div>
+                                </div>
+                                <div class="rc-card rc-card-glow">
+                                    <div class="rc-card-header">
+                                        <h6 class="rc-heading-6">Package Summary</h6>
+                                    </div>
+                                    <div class="rc-card-body">
+                                        <div class="rc-mb-md">
+                                            <div class="rc-text-xs rc-text-muted">Calculated Price</div>
+                                            <div class="rc-heading-4 rc-text-primary" id="calculatedPrice">€${pkg.calculatedPrice?.toFixed(2) || '0.00'}</div>
+                                        </div>
+                                        <div class="rc-mb-md">
+                                            <div class="rc-text-xs rc-text-muted">Total Devices</div>
+                                            <div id="totalDevices">${pkg.packageDevices?.length || 0}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rc-modal-footer">
+                            <button type="button" class="rc-btn rc-btn-secondary" onclick="closeModal()">Cancel</button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-save"></i> Save Package
+                            </button>
+                        </div>
+                    </form>
+                `;
+                
+                // Set selected devices
+                const deviceSelects = content.querySelectorAll('.device-select');
+                if (pkg.packageDevices) {
+                    pkg.packageDevices.forEach((item, index) => {
+                        if (deviceSelects[index]) {
+                            deviceSelects[index].value = item.deviceID;
+                        }
+                    });
+                }
+                
+                // Add form submit handler
+                document.getElementById('editPackageForm').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    await savePackage(packageId);
+                });
+                
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Failed to load package details: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Get available devices for dropdown
+        async function getAvailableDevices() {
+            try {
+                const response = await fetch('/api/v1/workflow/packages/available-devices', {
+                    credentials: 'include'
+                });
+                if (!response.ok) throw new Error('Failed to fetch available devices');
+                const data = await response.json();
+                return data.devices || [];
+            } catch (error) {
+                console.error('Error fetching available devices:', error);
+                return [];
+            }
+        }
+
+        // Add device to package
+        async function addPackageDevice() {
+            const container = document.getElementById('packageDevicesContainer');
+            
+            // Get fresh device options
+            const availableDevices = await getAvailableDevices();
+            let deviceOptions = '<option value="">Select Device</option>';
+            availableDevices.forEach(device => {
+                deviceOptions += `<option value="${device.deviceID}">${device.product?.name || 'Unknown Device'}</option>`;
+            });
+            
+            const deviceItem = document.createElement('div');
+            deviceItem.className = 'rc-grid rc-grid-5 rc-gap-md rc-mb-md package-device-item';
+            deviceItem.innerHTML = `
+                <div>
+                    <select class="rc-select device-select" name="deviceID" required>
+                        ${deviceOptions}
+                    </select>
+                </div>
+                <div>
+                    <input type="number" class="rc-input" name="quantity" min="1" value="1" required>
+                </div>
+                <div>
+                    <input type="number" class="rc-input" name="customPrice" step="0.01" placeholder="Default price">
+                </div>
+                <div>
+                    <select class="rc-select" name="isRequired">
+                        <option value="true">Required</option>
+                        <option value="false">Optional</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="button" class="rc-btn rc-btn-sm rc-btn-ghost rc-text-error" onclick="removePackageDevice(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(deviceItem);
+        }
+
+        // Remove device from package
+        function removePackageDevice(button) {
+            button.closest('.package-device-item').remove();
+        }
+
+        // Save package
+        async function savePackage(packageId) {
+            console.log('savePackage called with packageId:', packageId);
+            const form = document.getElementById('editPackageForm');
+            const formData = new FormData(form);
+            
+            // Collect package devices
+            const deviceItems = form.querySelectorAll('.package-device-item');
+            const devices = [];
+            
+            deviceItems.forEach(item => {
+                const deviceID = item.querySelector('[name="deviceID"]').value;
+                const quantity = item.querySelector('[name="quantity"]').value;
+                const customPrice = item.querySelector('[name="customPrice"]').value;
+                const isRequired = item.querySelector('[name="isRequired"]').value === 'true';
+                
+                if (deviceID && quantity) {
+                    devices.push({
+                        deviceID: deviceID.toString(),
+                        quantity: parseInt(quantity),
+                        customPrice: customPrice ? parseFloat(customPrice) : null,
+                        isRequired: isRequired,
+                        notes: "",
+                        sortOrder: null
+                    });
+                }
+            });
+            
+            const packageName = formData.get('name');
+            if (!packageName || packageName.trim().length < 3) {
+                showToast('Package name must be at least 3 characters long', 'error');
+                return;
+            }
+
+            const packageData = {
+                name: packageName.trim(),
+                description: formData.get('description') || '',
+                category: formData.get('category') || '',
+                tags: formData.get('tags') || '',
+                packagePrice: formData.get('packagePrice') ? parseFloat(formData.get('packagePrice')) : null,
+                discountPercent: formData.get('discountPercent') ? parseFloat(formData.get('discountPercent')) : 0,
+                minRentalDays: parseInt(formData.get('minRentalDays')) || 1,
+                maxRentalDays: formData.get('maxRentalDays') ? parseInt(formData.get('maxRentalDays')) : null,
+                isActive: formData.get('isActive') === 'on',
+                devices: devices
+            };
+            
+            try {
+                console.log('Sending package data:', packageData);
+                const response = await fetch(`/api/v1/workflow/packages/${packageId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(packageData)
+                });
+                
+                console.log('Save response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Save error response:', errorText);
+                    throw new Error(`Failed to save package: ${response.status} - ${errorText}`);
+                }
+                
+                showToast('Package updated successfully', 'success');
+                closeModal();
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Failed to save package: ' + error.message, 'error');
+            }
+        }
+
+        // Bulk actions
+        function showBulkActions() {
+            updateSelectedPackages();
+            if (selectedPackages.length === 0) {
+                showToast('Please select at least one package', 'warning');
+                return;
+            }
+            
+            showModal('bulkActionsModal');
+        }
+
+        function updateSelectedPackages() {
+            selectedPackages = Array.from(document.querySelectorAll('.package-checkbox:checked')).map(cb => parseInt(cb.value));
+            document.getElementById('selectedCount').textContent = selectedPackages.length;
+        }
+
+        function executeBulkAction() {
+            // Implement bulk action logic here
+            showToast('Bulk action executed', 'info');
+            closeModal();
+        }
+
+        // Modal functions
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.rc-modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+
+        // Toast function
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `rc-toast rc-toast-${type}`;
+            toast.innerHTML = `
+                <div class="rc-toast-content">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+                <button class="rc-toast-close" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        // Utility functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterForm').dispatchEvent(new Event('submit'));
+        }
+
+        // Initialize tooltips and other components
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize RentalCore components if needed
+            if (typeof RentalCoreDesign !== 'undefined') {
+                new RentalCoreDesign();
+            }
+        });
+    </script>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    <script>
+        // Ensure RentalCore is initialized after script loads
+        if (typeof RentalCoreDesign !== 'undefined') {
+            new RentalCoreDesign();
+        }
+    </script>
+</body>
+</html>

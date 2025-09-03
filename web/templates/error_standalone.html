@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - RentalCore</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- User Info -->
+                {{if .user}}
+                <div class="rc-navbar-user">
+                    <span class="rc-text-sm">{{.user.Username}}</span>
+                </div>
+                {{end}}
+                
+                <!-- Theme Toggle -->
+                <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                    <i class="bi bi-moon-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-xl">
+        <div class="rc-flex rc-flex-center rc-min-h-screen">
+            <div class="rc-card rc-card-lg rc-text-center">
+                <div class="rc-card-body">
+                    <div class="rc-mb-lg">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 4rem; color: var(--color-danger);"></i>
+                    </div>
+                    
+                    <h1 class="rc-heading-2 rc-mb-md">{{if .title}}{{.title}}{{else}}Error{{end}}</h1>
+                    
+                    <p class="rc-text-lg rc-mb-xl">{{if .error}}{{.error}}{{else}}Page not found{{end}}</p>
+                    
+                    <div class="rc-flex rc-flex-center rc-gap-md">
+                        <button onclick="history.back()" class="rc-btn rc-btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Go Back
+                        </button>
+                        <a href="/" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-house"></i> Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-text-center rc-text-sm" style="color: var(--text-muted);">
+                <i class="bi bi-gear-wide-connected"></i>
+                RentalCore - Advanced Equipment Management System
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

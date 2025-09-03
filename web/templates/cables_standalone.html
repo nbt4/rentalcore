@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <h1 class="rc-heading-2">Cable Management</h1>
+                <p class="rc-text">Manage your audio, lighting, and power cables</p>
+            </div>
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/cables?view=list" class="rc-btn rc-btn-outline rc-btn-sm {{if eq .viewType "list"}}rc-btn-active{{end}}">
+                    <i class="bi bi-list-ul"></i> List
+                </a>
+                <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="openAddCableModal()">
+                    <i class="bi bi-plus-lg"></i> New Cable
+                </button>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="rc-card rc-mb-lg">
+            <div class="rc-card-body">
+                <form method="GET" action="/cables">
+                    <input type="hidden" name="view" value="{{.viewType}}">
+                    <div class="rc-flex rc-flex-gap-sm rc-flex-wrap" style="align-items: stretch;">
+                        <input type="text" class="rc-input" name="search" placeholder="Search cables..." value="{{.params.SearchTerm}}" style="max-width: 300px;">
+                        <button type="submit" class="rc-btn rc-btn-primary" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        {{if .params.SearchTerm}}
+                        <a href="/cables?view={{.viewType}}" class="rc-btn rc-btn-outline" style="padding: 0 var(--space-md); min-width: 50px;">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {{end}}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cable Content -->
+        <div class="rc-card">
+            <div class="rc-card-body">
+                {{if .cableGroups}}
+                <div class="rc-table-responsive">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Connectors</th>
+                                <th>Length</th>
+                                <th>Cross Section</th>
+                                <th>Anzahl</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .cableGroups}}
+                            <tr>
+                                <td><strong>{{if .Name}}{{.Name}}{{else}}Cable Group{{end}}</strong></td>
+                                <td><span class="rc-badge rc-badge-secondary">{{if .TypeInfo}}{{.TypeInfo.Name}}{{else}}Unknown{{end}}</span></td>
+                                <td>
+                                    <div class="cable-connectors">
+                                        <span class="connector">{{if .Connector1Info}}{{.Connector1Info.Name}}{{else}}Conn1{{end}}</span>
+                                        <i class="bi bi-arrow-right"></i>
+                                        <span class="connector">{{if .Connector2Info}}{{.Connector2Info.Name}}{{else}}Conn2{{end}}</span>
+                                    </div>
+                                </td>
+                                <td><span class="cable-length">{{printf "%.2f" .Length}} m</span></td>
+                                <td><span class="cable-cross-section">{{.GetMM2Display}}</span></td>
+                                <td><span class="rc-badge rc-badge-primary">{{.Count}}</span></td>
+                                <td>
+                                    <div class="rc-flex rc-flex-gap-xs">
+                                        <button onclick="viewCableGroup({{.CableIDs}})" class="rc-btn rc-btn-outline rc-btn-sm" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button onclick="editCableGroup({{.Type}}, {{.Connector1}}, {{.Connector2}}, {{.Length}}, {{.MM2}}, '{{.Name}}')" class="rc-btn rc-btn-outline rc-btn-sm" title="Edit All">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button onclick="deleteCableGroup({{.CableIDs}})" class="rc-btn rc-btn-outline rc-btn-sm" title="Delete All">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <div class="rc-empty-state">
+                    <i class="bi bi-lightning-charge rc-empty-icon"></i>
+                    <h3 class="rc-heading-3">No cables found</h3>
+                    <p class="rc-text">Add your first cable to get started.</p>
+                    <button onclick="openAddCableModal()" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add Cable
+                    </button>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="rc-flex rc-flex-center rc-mt-xl" style="gap: var(--space-md);">
+            <a href="javascript:void(0)" onclick="previousPage()" class="rc-btn rc-btn-outline rc-btn-sm">
+                <i class="bi bi-chevron-left"></i> Previous
+            </a>
+            
+            <span class="rc-text" style="padding: 0 var(--space-md);">Page {{if .pageNumber}}{{.pageNumber}}{{else}}1{{end}} of {{if .totalPages}}{{.totalPages}}{{else}}1{{end}}</span>
+            
+            <a href="javascript:void(0)" onclick="nextPage()" class="rc-btn rc-btn-outline rc-btn-sm">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+        
+        <script>
+        let currentPage = {{if .pageNumber}}{{.pageNumber}}{{else}}1{{end}};
+        const totalPages = {{if .totalPages}}{{.totalPages}}{{else}}1{{end}};
+        
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                const url = new URL(window.location);
+                url.searchParams.set('page', currentPage);
+                window.location.href = url.toString();
+            }
+        }
+        
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                const url = new URL(window.location);
+                url.searchParams.set('page', currentPage);
+                window.location.href = url.toString();
+            }
+        }
+        
+        // Update button states based on current page
+        function updateButtonStates() {
+            const prevBtn = document.querySelector('a[onclick="previousPage()"]');
+            const nextBtn = document.querySelector('a[onclick="nextPage()"]');
+            
+            if (currentPage <= 1) {
+                prevBtn.style.opacity = '0.5';
+                prevBtn.style.pointerEvents = 'none';
+            } else {
+                prevBtn.style.opacity = '1';
+                prevBtn.style.pointerEvents = 'auto';
+            }
+            
+            if (currentPage >= totalPages) {
+                nextBtn.style.opacity = '0.5';
+                nextBtn.style.pointerEvents = 'none';
+            } else {
+                nextBtn.style.opacity = '1';
+                nextBtn.style.pointerEvents = 'auto';
+            }
+        }
+        
+        // Update page display and button states on load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.rc-flex span').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            updateButtonStates();
+        });
+        </script>
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: var(--space-3xl); padding: var(--space-xl) 0; border-top: 1px solid var(--surface-3);">
+        <div class="rc-container">
+            <div class="rc-flex rc-flex-between" style="align-items: center;">
+                <div class="rc-text-sm" style="color: var(--text-muted);">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore - Advanced Equipment Management System
+                </div>
+                <div class="rc-flex" style="gap: var(--space-lg);">
+                    <a href="/help" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-question-circle"></i> Help
+                    </a>
+                    <a href="/about" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                    <a href="/contact" class="rc-text-sm" style="color: var(--text-muted); text-decoration: none;">
+                        <i class="bi bi-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    
+    <style>
+    .cable-connectors {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        font-size: 0.85rem;
+    }
+    
+    .connector {
+        background: var(--surface-2);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+    }
+    
+    .cable-length, .cable-cross-section {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 500;
+    }
+    
+    /* Enhanced Cable View Modal Styles */
+    .cable-detail-view {
+        padding: var(--space-md) 0;
+    }
+    
+    .cable-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-xl);
+        padding-bottom: var(--space-md);
+        border-bottom: 1px solid var(--surface-3);
+    }
+    
+    .cable-id-badge {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+    
+    .cable-type-badge .rc-badge-accent {
+        background: var(--accent-electric);
+        color: var(--surface-0);
+        font-weight: 600;
+    }
+    
+    .cable-visual {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: var(--space-xl) 0;
+        padding: var(--space-lg);
+        background: var(--surface-2);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--surface-3);
+    }
+    
+    .connector-visual {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 120px;
+    }
+    
+    .connector-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-xs);
+    }
+    
+    .connector-info i {
+        font-size: 1.5rem;
+        color: var(--accent-electric);
+        margin-bottom: var(--space-xs);
+    }
+    
+    .connector-details {
+        text-align: center;
+    }
+    
+    .connector-name {
+        display: block;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 2px;
+    }
+    
+    .connector-abbr {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+    }
+    
+    .cable-line {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 var(--space-lg);
+        position: relative;
+    }
+    
+    .cable-specs {
+        display: flex;
+        gap: var(--space-md);
+        margin-bottom: var(--space-sm);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    
+    .cable-specs span {
+        padding: 2px 8px;
+        background: var(--surface-3);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-weight: 600;
+    }
+    
+    .cable-wire {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, 
+            var(--accent-electric) 0%, 
+            var(--accent-neon) 50%, 
+            var(--accent-electric) 100%);
+        border-radius: 4px;
+        position: relative;
+        box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+        animation: cable-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes cable-pulse {
+        0%, 100% { 
+            box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+            transform: scale(1); 
+        }
+        50% { 
+            box-shadow: 0 0 15px rgba(0, 245, 255, 0.5);
+            transform: scale(1.02); 
+        }
+    }
+    
+    .cable-wire:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 4px;
+        height: 4px;
+        background: var(--text-primary);
+        border-radius: 50%;
+        box-shadow: 
+            -20px 0 var(--text-primary),
+            -40px 0 var(--text-primary),
+            20px 0 var(--text-primary),
+            40px 0 var(--text-primary);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .cable-visual {
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+        
+        .cable-line {
+            margin: 0;
+            width: 100%;
+        }
+        
+        .cable-wire {
+            height: 6px;
+            width: 80%;
+        }
+        
+        .connector-visual {
+            min-width: auto;
+        }
+    }
+    </style>
+    
+    <!-- Add Cable Modal -->
+    <div id="addCableModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeAddCableModal()"></div>
+        <div class="rc-modal-content rc-modal-content-large">
+            <div class="rc-modal-header">
+                <h2 class="rc-modal-title">
+                    <i class="bi bi-plus-lg"></i> Add New Cable
+                </h2>
+                <button class="rc-modal-close" onclick="closeAddCableModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="addCableForm">
+                    <div class="rc-form-grid rc-form-grid-2">
+                        <div class="rc-form-group">
+                            <label for="cableType" class="rc-label">Cable Type *</label>
+                            <select id="cableType" name="type" class="rc-select" required>
+                                <option value="">Select cable type</option>
+                                <!-- Types will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableLength" class="rc-label">Length (meters) *</label>
+                            <input type="number" id="cableLength" name="length" class="rc-input" step="0.01" min="0" required placeholder="e.g., 5.00">
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableConnector1" class="rc-label">Connector 1 *</label>
+                            <select id="cableConnector1" name="connector1" class="rc-select" required>
+                                <option value="">Select connector 1</option>
+                                <!-- Connectors will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableConnector2" class="rc-label">Connector 2 *</label>
+                            <select id="cableConnector2" name="connector2" class="rc-select" required>
+                                <option value="">Select connector 2</option>
+                                <!-- Connectors will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableMM2" class="rc-label">Cross Section (mm²)</label>
+                            <input type="number" id="cableMM2" name="mm2" class="rc-input" step="0.01" min="0" placeholder="e.g., 2.5">
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableName" class="rc-label">Custom Name</label>
+                            <input type="text" id="cableName" name="name" class="rc-input" placeholder="Optional custom name">
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="cableAmount" class="rc-label">Amount *</label>
+                            <input type="number" id="cableAmount" name="amount" class="rc-input" min="1" value="1" required placeholder="e.g., 20">
+                            <small class="rc-text-sm rc-text-muted">Number of identical cables to create</small>
+                        </div>
+                    </div>
+                    <div class="rc-form-actions rc-mt-xl">
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-check-lg"></i> Create Cable
+                        </button>
+                        <button type="button" onclick="closeAddCableModal()" class="rc-btn rc-btn-outline">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Cable Modal -->
+    <div id="viewCableModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeViewCableModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h2 class="rc-modal-title">
+                    <i class="bi bi-lightning-charge"></i> <span id="viewCableTitle">Cable Details</span>
+                </h2>
+                <button class="rc-modal-close" onclick="closeViewCableModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <div id="viewCableContent">
+                    <!-- Cable details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Cable Modal -->
+    <div id="editCableModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeEditCableModal()"></div>
+        <div class="rc-modal-content rc-modal-content-large">
+            <div class="rc-modal-header">
+                <h2 class="rc-modal-title">
+                    <i class="bi bi-pencil"></i> Edit Cable
+                </h2>
+                <button class="rc-modal-close" onclick="closeEditCableModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="editCableForm">
+                    <input type="hidden" id="editCableId" name="cableID">
+                    <div class="rc-form-grid rc-form-grid-2">
+                        <div class="rc-form-group">
+                            <label for="editCableType" class="rc-label">Cable Type *</label>
+                            <select id="editCableType" name="type" class="rc-select" required>
+                                <option value="">Select cable type</option>
+                                <!-- Types will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="editCableLength" class="rc-label">Length (meters) *</label>
+                            <input type="number" id="editCableLength" name="length" class="rc-input" step="0.01" min="0" required>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="editCableConnector1" class="rc-label">Connector 1 *</label>
+                            <select id="editCableConnector1" name="connector1" class="rc-select" required>
+                                <option value="">Select connector 1</option>
+                                <!-- Connectors will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="editCableConnector2" class="rc-label">Connector 2 *</label>
+                            <select id="editCableConnector2" name="connector2" class="rc-select" required>
+                                <option value="">Select connector 2</option>
+                                <!-- Connectors will be loaded via AJAX -->
+                            </select>
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="editCableMM2" class="rc-label">Cross Section (mm²)</label>
+                            <input type="number" id="editCableMM2" name="mm2" class="rc-input" step="0.01" min="0">
+                        </div>
+                        <div class="rc-form-group">
+                            <label for="editCableName" class="rc-label">Custom Name</label>
+                            <input type="text" id="editCableName" name="name" class="rc-input">
+                        </div>
+                    </div>
+                    <div class="rc-form-actions rc-mt-xl">
+                        <button type="submit" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-check-lg"></i> Update Cable
+                        </button>
+                        <button type="button" onclick="closeEditCableModal()" class="rc-btn rc-btn-outline">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selective Delete Modal -->
+    <div id="selectiveDeleteModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeSelectiveDeleteModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h2 class="rc-modal-title">
+                    <i class="bi bi-trash"></i> Select Cables to Delete
+                </h2>
+                <button class="rc-modal-close" onclick="closeSelectiveDeleteModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <div class="rc-mb-lg">
+                    <p class="rc-text">Select which cables you want to delete from this group:</p>
+                    <div class="cable-group-info rc-mb-md" id="deleteGroupInfo">
+                        <!-- Group info will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="cable-selection-list" id="cableSelectionList">
+                    <!-- Cable checkboxes will be populated here -->
+                </div>
+                
+                <div class="rc-flex rc-flex-between rc-flex-center rc-mt-lg">
+                    <div class="selection-summary">
+                        <span id="selectionCount">0</span> of <span id="totalCount">0</span> cables selected
+                    </div>
+                    <div class="rc-flex rc-flex-gap-sm">
+                        <button type="button" onclick="selectAllCables()" class="rc-btn rc-btn-outline rc-btn-sm">
+                            Select All
+                        </button>
+                        <button type="button" onclick="deselectAllCables()" class="rc-btn rc-btn-outline rc-btn-sm">
+                            Deselect All
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="rc-form-actions rc-mt-xl">
+                    <button type="button" onclick="confirmSelectiveDeletion()" class="rc-btn rc-btn-danger" id="deleteSelectedBtn" disabled>
+                        <i class="bi bi-trash"></i> Delete Selected Cables
+                    </button>
+                    <button type="button" onclick="closeSelectiveDeleteModal()" class="rc-btn rc-btn-outline">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .cable-group-info {
+        background: var(--surface-2);
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--surface-3);
+    }
+    
+    .cable-selection-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--surface-3);
+        border-radius: var(--radius-md);
+        background: var(--surface-1);
+    }
+    
+    .cable-selection-item {
+        display: flex;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        border-bottom: 1px solid var(--surface-3);
+        transition: background-color 0.2s ease;
+    }
+    
+    .cable-selection-item:last-child {
+        border-bottom: none;
+    }
+    
+    .cable-selection-item:hover {
+        background: var(--surface-2);
+    }
+    
+    .cable-selection-item input[type="checkbox"] {
+        margin-right: var(--space-sm);
+        transform: scale(1.2);
+    }
+    
+    .cable-info {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+    
+    .cable-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: var(--text-primary);
+        min-width: 60px;
+    }
+    
+    .cable-specs {
+        display: flex;
+        gap: var(--space-sm);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    
+    .cable-spec {
+        background: var(--surface-3);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .selection-summary {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    
+    .rc-btn-danger {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
+    }
+    
+    .rc-btn-danger:hover:not(:disabled) {
+        background: var(--danger-hover);
+        border-color: var(--danger-hover);
+    }
+    
+    .rc-btn-danger:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    </style>
+
+    <script>
+    // Modal Management Functions
+    function openAddCableModal() {
+        console.log('Opening add cable modal');
+        loadCableTypes('cableType');
+        loadConnectors('cableConnector1');
+        loadConnectors('cableConnector2');
+        document.getElementById('addCableModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddCableModal() {
+        document.getElementById('addCableModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('addCableForm').reset();
+    }
+
+    function viewCable(cableId) {
+        console.log('View cable:', cableId);
+        fetch(`/api/v1/cables/${cableId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.cable) {
+                    const cable = data.cable;
+                    document.getElementById('viewCableTitle').textContent = cable.name || `Cable ${cable.cableID}`;
+                    document.getElementById('viewCableContent').innerHTML = `
+                        <div class="cable-detail-view">
+                            <!-- Cable Header -->
+                            <div class="cable-header">
+                                <div class="cable-id-badge">
+                                    <i class="bi bi-lightning-charge"></i>
+                                    <span class="rc-text-mono">ID: ${cable.cableID}</span>
+                                </div>
+                                <div class="cable-type-badge">
+                                    <span class="rc-badge rc-badge-accent">
+                                        ${cable.type_info ? cable.type_info.name : 'Unknown Type'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Cable Visual -->
+                            <div class="cable-visual">
+                                <div class="connector-visual left">
+                                    <div class="connector-info">
+                                        <i class="bi bi-plug"></i>
+                                        <div class="connector-details">
+                                            <span class="connector-name">${cable.connector1_info ? cable.connector1_info.name : 'Unknown'}</span>
+                                            <span class="connector-abbr">${cable.connector1_info && cable.connector1_info.abbreviation ? cable.connector1_info.abbreviation : ''}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="cable-line">
+                                    <div class="cable-specs">
+                                        <span class="cable-length">${cable.length}m</span>
+                                        <span class="cable-cross-section">${cable.mm2 ? cable.mm2 + 'mm²' : '-'}</span>
+                                    </div>
+                                    <div class="cable-wire"></div>
+                                </div>
+                                
+                                <div class="connector-visual right">
+                                    <div class="connector-info">
+                                        <i class="bi bi-plug-fill"></i>
+                                        <div class="connector-details">
+                                            <span class="connector-name">${cable.connector2_info ? cable.connector2_info.name : 'Unknown'}</span>
+                                            <span class="connector-abbr">${cable.connector2_info && cable.connector2_info.abbreviation ? cable.connector2_info.abbreviation : ''}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cable Details Grid -->
+                            <div class="rc-details-grid">
+                                <div class="rc-detail-item">
+                                    <label class="rc-label">Cable Name</label>
+                                    <span>${cable.name || 'Auto-generated name'}</span>
+                                </div>
+                                <div class="rc-detail-item">
+                                    <label class="rc-label">Length</label>
+                                    <span class="cable-length">${cable.length} meters</span>
+                                </div>
+                                <div class="rc-detail-item">
+                                    <label class="rc-label">Cross Section</label>
+                                    <span class="cable-cross-section">${cable.mm2 ? cable.mm2 + ' mm²' : '-'}</span>
+                                </div>
+                                <div class="rc-detail-item">
+                                    <label class="rc-label">Usage</label>
+                                    <span>${cable.type_info ? cable.type_info.name : 'General purpose'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('viewCableModal').style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cable:', error);
+                alert('Error loading cable details');
+            });
+    }
+
+    function closeViewCableModal() {
+        document.getElementById('viewCableModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function editCable(cableId) {
+        console.log('Edit cable:', cableId);
+        fetch(`/api/v1/cables/${cableId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.cable) {
+                    const cable = data.cable;
+                    console.log('=== CABLE EDIT DEBUG ===');
+                    console.log('Full cable data from API:', JSON.stringify(cable, null, 2));
+                    console.log('Cable type (typ):', cable.typ, typeof cable.typ);
+                    console.log('Cable connector1:', cable.connector1, typeof cable.connector1);
+                    console.log('Cable connector2:', cable.connector2, typeof cable.connector2);
+                    console.log('========================');
+                    
+                    document.getElementById('editCableId').value = cable.cableID;
+                    document.getElementById('editCableLength').value = cable.length;
+                    document.getElementById('editCableMM2').value = cable.mm2;
+                    document.getElementById('editCableName').value = cable.name || '';
+                    
+                    // Load all dropdown data concurrently and wait for completion
+                    // Note: Cable.Type is mapped to JSON field "typ"
+                    Promise.all([
+                        loadCableTypes('editCableType', cable.typ),
+                        loadConnectors('editCableConnector1', cable.connector1),
+                        loadConnectors('editCableConnector2', cable.connector2)
+                    ]).then(() => {
+                        // Only show modal after all data is loaded and selections are made
+                        document.getElementById('editCableModal').style.display = 'flex';
+                        document.body.style.overflow = 'hidden';
+                    }).catch(error => {
+                        console.error('Error loading cable dropdown data:', error);
+                        alert('Error loading cable form data');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cable:', error);
+                alert('Error loading cable details');
+            });
+    }
+
+    function closeEditCableModal() {
+        document.getElementById('editCableModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('editCableForm').reset();
+    }
+
+    function viewCableGroup(cableIds) {
+        console.log('View cable group:', cableIds);
+        if (cableIds.length > 0) {
+            // Just view the first cable as representative
+            viewCable(cableIds[0]);
+        }
+    }
+
+    function editCableGroup(type, connector1, connector2, length, mm2, name) {
+        console.log('Edit cable group:', {type, connector1, connector2, length, mm2, name});
+        alert('Bulk editing not implemented yet. Please edit individual cables.');
+    }
+
+    function deleteCableGroup(cableIds) {
+        console.log('Opening selective delete modal for cables:', cableIds);
+        openSelectiveDeleteModal(cableIds);
+    }
+
+    let currentCableIds = [];
+    let groupInfo = {};
+
+    function openSelectiveDeleteModal(cableIds) {
+        currentCableIds = cableIds;
+        
+        // Load detailed cable information
+        Promise.all(cableIds.map(id => 
+            fetch(`/api/v1/cables/${id}`).then(r => r.json())
+        )).then(responses => {
+            const cables = responses.map(r => r.cable).filter(c => c);
+            
+            if (cables.length === 0) {
+                alert('Error loading cable information');
+                return;
+            }
+            
+            // Store group info from first cable
+            const firstCable = cables[0];
+            groupInfo = {
+                type: firstCable.type_info?.name || 'Unknown',
+                connector1: firstCable.connector1_info?.name || 'Unknown',
+                connector2: firstCable.connector2_info?.name || 'Unknown',
+                length: firstCable.length,
+                mm2: firstCable.mm2,
+                name: firstCable.name
+            };
+            
+            // Populate group info
+            document.getElementById('deleteGroupInfo').innerHTML = `
+                <div class="rc-flex rc-flex-between rc-flex-center">
+                    <div>
+                        <strong>${groupInfo.name || 'Cable Group'}</strong>
+                        <div class="rc-text-sm rc-text-muted">
+                            ${groupInfo.type} • ${groupInfo.connector1} → ${groupInfo.connector2} • ${groupInfo.length}m • ${groupInfo.mm2 ? groupInfo.mm2 + 'mm²' : '-'}
+                        </div>
+                    </div>
+                    <span class="rc-badge rc-badge-secondary">${cables.length} cables</span>
+                </div>
+            `;
+            
+            // Populate cable list
+            const listHtml = cables.map(cable => `
+                <div class="cable-selection-item">
+                    <input type="checkbox" id="cable_${cable.cableID}" value="${cable.cableID}" onchange="updateSelectionCount()">
+                    <div class="cable-info">
+                        <div class="cable-id">ID: ${cable.cableID}</div>
+                        <div class="cable-specs">
+                            <span class="cable-spec">${cable.length}m</span>
+                            <span class="cable-spec">${cable.mm2 ? cable.mm2 + 'mm²' : '-'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('cableSelectionList').innerHTML = listHtml;
+            document.getElementById('totalCount').textContent = cables.length;
+            document.getElementById('selectionCount').textContent = '0';
+            document.getElementById('deleteSelectedBtn').disabled = true;
+            
+            // Show modal
+            document.getElementById('selectiveDeleteModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }).catch(error => {
+            console.error('Error loading cable details:', error);
+            alert('Error loading cable information');
+        });
+    }
+
+    function closeSelectiveDeleteModal() {
+        document.getElementById('selectiveDeleteModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        currentCableIds = [];
+        groupInfo = {};
+    }
+
+    function selectAllCables() {
+        const checkboxes = document.querySelectorAll('#cableSelectionList input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = true);
+        updateSelectionCount();
+    }
+
+    function deselectAllCables() {
+        const checkboxes = document.querySelectorAll('#cableSelectionList input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateSelectionCount();
+    }
+
+    function updateSelectionCount() {
+        const checkboxes = document.querySelectorAll('#cableSelectionList input[type="checkbox"]');
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        
+        document.getElementById('selectionCount').textContent = selectedCount;
+        document.getElementById('deleteSelectedBtn').disabled = selectedCount === 0;
+    }
+
+    function confirmSelectiveDeletion() {
+        const checkboxes = document.querySelectorAll('#cableSelectionList input[type="checkbox"]:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        if (selectedIds.length === 0) {
+            alert('Please select at least one cable to delete');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected cable(s)? This action cannot be undone.`)) {
+            return;
+        }
+        
+        // Delete selected cables
+        let deletePromises = selectedIds.map(cableId => 
+            fetch(`/api/v1/cables/${cableId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+        );
+        
+        Promise.all(deletePromises)
+            .then(responses => {
+                let failedDeletes = responses.filter(r => !r.ok);
+                if (failedDeletes.length === 0) {
+                    alert(`Successfully deleted ${selectedIds.length} cable(s)`);
+                    closeSelectiveDeleteModal();
+                    window.location.reload();
+                } else {
+                    alert(`Deleted ${responses.length - failedDeletes.length} of ${responses.length} cables. Some deletions failed.`);
+                    closeSelectiveDeleteModal();
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting selected cables:', error);
+                alert('Error deleting cables');
+            });
+    }
+
+    function deleteCable(cableId) {
+        if (!confirm('Are you sure you want to delete this cable? This action cannot be undone.')) {
+            return;
+        }
+        
+        fetch(`/api/v1/cables/${cableId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Cable deleted successfully');
+                window.location.reload();
+            } else {
+                throw new Error('Failed to delete cable');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting cable:', error);
+            alert('Error deleting cable');
+        });
+    }
+
+    // Utility Functions
+    function loadCableTypes(selectId, selectedId = null) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Loading cable types...</option>';
+        
+        console.log(`loadCableTypes called: selectId=${selectId}, selectedId=${selectedId} (${typeof selectedId})`);
+        
+        return fetch('/api/v1/cables/types')
+            .then(response => response.json())
+            .then(data => {
+                if (data.types) {
+                    console.log(`Got ${data.types.length} cable types:`, data.types);
+                    select.innerHTML = '<option value="">Select cable type</option>';
+                    data.types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.cable_typesID;
+                        option.textContent = type.name;
+                        console.log(`Comparing selectedId=${selectedId} (${typeof selectedId}) with type.cable_typesID=${type.cable_typesID} (${typeof type.cable_typesID})`);
+                        if (selectedId !== null && selectedId !== undefined && selectedId == type.cable_typesID) {
+                            console.log(`✓ MATCH! Selected cable type: ${type.name} (ID: ${type.cable_typesID})`);
+                            option.selected = true;
+                        } else {
+                            console.log(`✗ No match for type ${type.name} (ID: ${type.cable_typesID})`);
+                        }
+                        select.appendChild(option);
+                    });
+                    return true;
+                } else {
+                    select.innerHTML = '<option value="">Error loading types</option>';
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cable types:', error);
+                select.innerHTML = '<option value="">Error loading types</option>';
+                return false;
+            });
+    }
+
+    function loadConnectors(selectId, selectedId = null) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Loading connectors...</option>';
+        
+        console.log(`loadConnectors called: selectId=${selectId}, selectedId=${selectedId} (${typeof selectedId})`);
+        
+        return fetch('/api/v1/cables/connectors')
+            .then(response => response.json())
+            .then(data => {
+                if (data.connectors) {
+                    console.log(`Got ${data.connectors.length} connectors:`, data.connectors);
+                    select.innerHTML = '<option value="">Select connector</option>';
+                    data.connectors.forEach(connector => {
+                        const option = document.createElement('option');
+                        option.value = connector.cable_connectorsID;
+                        option.textContent = connector.name + 
+                            (connector.abbreviation ? ' (' + connector.abbreviation + ')' : '') +
+                            (connector.gender ? ' - ' + connector.gender : '');
+                        console.log(`Comparing selectedId=${selectedId} (${typeof selectedId}) with connector.cable_connectorsID=${connector.cable_connectorsID} (${typeof connector.cable_connectorsID})`);
+                        if (selectedId !== null && selectedId !== undefined && selectedId == connector.cable_connectorsID) {
+                            console.log(`✓ MATCH! Selected connector: ${connector.name} (ID: ${connector.cable_connectorsID})`);
+                            option.selected = true;
+                        } else {
+                            console.log(`✗ No match for connector ${connector.name} (ID: ${connector.cable_connectorsID})`);
+                        }
+                        select.appendChild(option);
+                    });
+                    return true;
+                } else {
+                    select.innerHTML = '<option value="">Error loading connectors</option>';
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading connectors:', error);
+                select.innerHTML = '<option value="">Error loading connectors</option>';
+                return false;
+            });
+    }
+
+    // Form Submission Handlers
+    document.getElementById('addCableForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        // Use the web endpoint that supports bulk creation
+        fetch('/cables', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok || response.redirected) {
+                const amount = formData.get('amount') || 1;
+                alert(`${amount} cable(s) created successfully`);
+                closeAddCableModal();
+                window.location.reload();
+            } else {
+                throw new Error('Failed to create cable(s)');
+            }
+        })
+        .catch(error => {
+            console.error('Error creating cable(s):', error);
+            alert('Error creating cable(s)');
+        });
+    });
+
+    document.getElementById('editCableForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        const cableId = data.cableID;
+        
+        fetch(`/api/v1/cables/${cableId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Cable updated successfully');
+                closeEditCableModal();
+                window.location.reload();
+            } else {
+                throw new Error('Failed to update cable');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating cable:', error);
+            alert('Error updating cable');
+        });
+    });
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAddCableModal();
+            closeViewCableModal();
+            closeEditCableModal();
+            closeSelectiveDeleteModal();
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/images/icon-180.png">
+    <link rel="shortcut icon" type="image/png" href="/static/images/icon-180.png">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 245, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 107, 107, 0.05) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+        }
+
+        .login-card {
+            background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-xl);
+            padding: var(--space-3xl);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-electric), var(--accent-purple), var(--accent-coral));
+        }
+
+        .login-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(0, 245, 255, 0.03), transparent);
+            transform: rotate(45deg);
+            pointer-events: none;
+        }
+
+        .login-brand {
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+
+        .login-brand h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+        }
+
+        .login-brand p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .login-form {
+            position: relative;
+            z-index: 1;
+        }
+
+        .floating-label {
+            position: relative;
+            margin-bottom: var(--space-xl);
+        }
+
+        .floating-input {
+            width: 100%;
+            padding: var(--space-lg) var(--space-md);
+            background: var(--surface-2);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition-normal);
+            font-family: inherit;
+        }
+
+        .floating-input::placeholder {
+            color: transparent;
+        }
+
+        .floating-input:focus {
+            outline: none;
+            border-color: var(--accent-electric);
+            background: var(--surface-1);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+        }
+
+        .floating-input:focus + .floating-label-text,
+        .floating-input:not(:placeholder-shown) + .floating-label-text {
+            top: -8px;
+            left: 12px;
+            font-size: 0.75rem;
+            color: var(--accent-electric);
+            background: var(--surface-1);
+            padding: 0 var(--space-xs);
+        }
+
+        .floating-label-text {
+            position: absolute;
+            top: 50%;
+            left: var(--space-md);
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-normal);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+
+        .login-submit {
+            width: 100%;
+            padding: var(--space-lg);
+            background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
+            color: var(--text-inverse);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+            margin-bottom: var(--space-lg);
+        }
+
+        .login-submit::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: var(--transition-normal);
+        }
+
+        .login-submit:hover::before {
+            left: 100%;
+        }
+
+        .login-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .login-submit:active {
+            transform: translateY(0);
+        }
+
+        .login-footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-xs);
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: var(--space-xl);
+                margin: var(--space-md);
+            }
+
+            .login-brand h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body class="login-page rc-animate-fade-in">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <h1>
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </h1>
+                <p>The future of rental management</p>
+            </div>
+            
+            {{if .error}}
+            <div class="rc-alert rc-alert-error">
+                <i class="bi bi-exclamation-triangle"></i>
+                {{.error}}
+            </div>
+            {{end}}
+            
+            <form method="POST" action="/login" class="login-form">
+                <div class="floating-label">
+                    <input type="text" class="floating-input" id="username" name="username" placeholder="Username" required autofocus>
+                    <label for="username" class="floating-label-text">
+                        <i class="bi bi-person"></i>
+                        Username
+                    </label>
+                </div>
+                
+                <div class="floating-label">
+                    <input type="password" class="floating-input" id="password" name="password" placeholder="Password" required>
+                    <label for="password" class="floating-label-text">
+                        <i class="bi bi-lock"></i>
+                        Password
+                    </label>
+                </div>
+                
+                <button type="submit" class="login-submit">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign In
+                </button>
+            </form>
+            
+            
+            <div class="login-footer">
+                <i class="bi bi-shield-check"></i>
+                Secure login with encrypted passwords & passkeys
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Check for available passkeys and auto-prompt
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Auto-focus on username field
+            document.getElementById('username').focus();
+            
+            // Check if WebAuthn is supported and if passkeys are available
+            if (window.PublicKeyCredential) {
+                try {
+                    // Check if conditional UI is supported (allows automatic passkey prompts)
+                    const conditionalMediationSupported = await PublicKeyCredential.isConditionalMediationAvailable();
+                    
+                    if (conditionalMediationSupported) {
+                        console.log('Conditional mediation supported - attempting automatic passkey prompt');
+                        // Automatically trigger passkey authentication
+                        setTimeout(() => loginWithPasskey(true), 500); // Small delay to ensure page is fully loaded
+                    } else {
+                        console.log('Conditional mediation not supported - manual passkey login only');
+                    }
+                } catch (error) {
+                    console.log('Error checking conditional mediation:', error);
+                }
+            }
+        });
+        
+        // Handle form submission
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('.login-submit');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Signing in...';
+            submitBtn.disabled = true;
+            
+            // Re-enable if form submission fails (page reload doesn't happen)
+            setTimeout(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }, 5000);
+        });
+        
+        // Add loading animation to button on click
+        document.querySelector('.login-submit').addEventListener('click', function() {
+            this.classList.add('rc-animate-glow');
+        });
+        
+        // Passkey login function
+        async function loginWithPasskey(isAutomatic = false) {
+            try {
+                // Check if WebAuthn is supported
+                if (!window.PublicKeyCredential) {
+                    if (!isAutomatic) {
+                        alert('Passkeys are not supported in this browser');
+                    }
+                    return;
+                }
+                
+                console.log('Starting passkey authentication...', isAutomatic ? '(automatic)' : '(manual)');
+                
+                // Start authentication
+                const response = await fetch('/auth/passkey/start-authentication', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    if (!isAutomatic) {
+                        alert('Error starting authentication: ' + data.error);
+                    }
+                    return;
+                }
+                
+                console.log('Authentication options received:', data.options);
+                
+                // Convert base64url strings to Uint8Array for WebAuthn API
+                const options = {
+                    ...data.options,
+                    challenge: Uint8Array.from(atob(data.options.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+                };
+                
+                // If there are allowCredentials, convert them too
+                if (options.allowCredentials) {
+                    options.allowCredentials = options.allowCredentials.map(cred => ({
+                        ...cred,
+                        id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+                    }));
+                }
+                
+                // Check if there are any passkeys available
+                if (!options.allowCredentials || options.allowCredentials.length === 0) {
+                    if (!isAutomatic) {
+                        alert('No passkeys found for this application. Please register a passkey first.');
+                    }
+                    return;
+                }
+                
+                console.log('Converted options:', options);
+                
+                // Use WebAuthn API to get credential
+                const credential = await navigator.credentials.get({
+                    publicKey: options
+                });
+                
+                console.log('Credential received:', credential);
+                
+                // Complete authentication
+                const authResponse = await fetch('/auth/passkey/complete-authentication', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: data.sessionId,
+                        credentialId: credential.id,
+                        authenticatorData: btoa(String.fromCharCode(...new Uint8Array(credential.response.authenticatorData))),
+                        clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+                        signature: btoa(String.fromCharCode(...new Uint8Array(credential.response.signature)))
+                    })
+                });
+                
+                const authResult = await authResponse.json();
+                if (authResult.error) {
+                    if (!isAutomatic) {
+                        alert('Authentication failed: ' + authResult.error);
+                    }
+                    return;
+                }
+                
+                console.log('Authentication successful!');
+                
+                // Redirect to dashboard
+                window.location.href = '/dashboard';
+                
+            } catch (error) {
+                console.error('Passkey authentication error:', error);
+                // Only show error if it's not automatic or if it's a non-user-cancellation error
+                if (!isAutomatic || error.name !== 'NotAllowedError') {
+                    alert('Failed to authenticate with passkey: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

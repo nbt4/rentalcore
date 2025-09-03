@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+/* Role Management Specific Styles */
+.role-management {
+    min-height: calc(100vh - 80px);
+    background: var(--surface-1);
+    padding: var(--space-xl) 0;
+}
+
+/* Header Section */
+.role-header {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.role-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(50%, -50%);
+}
+
+.role-header-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+}
+
+.role-header-info h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.role-header-info p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+    font-weight: 400;
+}
+
+.role-stats {
+    display: flex;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+}
+
+.role-stat {
+    text-align: center;
+    min-width: 80px;
+}
+
+.role-stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+}
+
+.role-stat-label {
+    display: block;
+    font-size: 0.875rem;
+    opacity: 0.8;
+    margin-top: var(--space-xs);
+}
+
+/* Role Card Grid */
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.role-card {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.role-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-300);
+}
+
+.role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-500), var(--accent-electric));
+}
+
+.role-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--accent-electric));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: var(--space-md);
+}
+
+.role-info h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-xs);
+    color: var(--text-primary);
+}
+
+.role-info .role-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-sm);
+    line-height: 1.5;
+}
+
+.role-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin: var(--space-md) 0;
+}
+
+.role-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.role-meta-item i {
+    width: 16px;
+    color: var(--primary-400);
+}
+
+.role-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--surface-3);
+}
+
+/* Search and Filter Bar */
+.role-controls {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    flex: 0 1 450px;
+    min-width: 300px;
+    max-width: 600px;
+    position: relative;
+}
+
+.search-input input {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md) var(--space-sm) calc(var(--space-md) + 24px);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+}
+
+.search-input input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(54, 64, 105, 0.2);
+}
+
+.search-input i {
+    position: absolute;
+    left: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.filter-group {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.filter-select {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-width: 120px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-3xl);
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+.empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-lg);
+}
+
+/* Button Styles */
+.rc-btn.add-role-btn {
+    padding: 12px 32px !important;
+    min-width: 140px !important;
+    height: auto !important;
+    min-height: auto !important;
+    line-height: 1.3 !important;
+    font-size: 15px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.rc-btn.add-role-btn i {
+    font-size: 16px !important;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .role-header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .role-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        min-width: auto;
+    }
+    
+    .filter-group {
+        justify-content: space-between;
+    }
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    min-width: 400px;
+    max-width: 500px;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--space-xs);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+    margin-top: var(--space-lg);
+}
+
+/* Permission Grid */
+.permission-category {
+    margin-bottom: var(--space-lg);
+}
+
+.permission-category-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid var(--surface-3);
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-sm);
+}
+
+.permission-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    transition: background-color 0.2s ease;
+}
+
+.permission-item:hover {
+    background: var(--surface-3);
+}
+
+.permission-item input[type="checkbox"] {
+    margin-top: 2px;
+}
+
+.permission-info h4 {
+    margin: 0 0 var(--space-xs);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.permission-info p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-badge.active {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.inactive {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--surface-3);
+}
+
+/* User Item Styles (for role user management) */
+.user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    transition: all 0.2s ease;
+}
+
+.user-item:hover {
+    border-color: var(--primary-300);
+    background: var(--surface-2);
+}
+
+.user-item-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex: 1;
+}
+
+.user-item-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--accent-electric));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.user-item-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-item-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.user-item-username {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.user-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+}
+
+.user-item-actions {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.empty-users {
+    text-align: center;
+    padding: var(--space-xl);
+    color: var(--text-muted);
+    font-style: italic;
+}
+    </style>
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="role-management">
+        <div class="rc-container">
+            <!-- Header Section -->
+            <div class="role-header fade-in">
+                <div class="role-header-content">
+                    <div class="role-header-info">
+                        <h1>
+                            <i class="bi bi-shield-lock"></i>
+                            Security & Role Management
+                        </h1>
+                        <p>Manage user roles and permissions for system security</p>
+                    </div>
+                    <div class="role-stats">
+                        <div class="role-stat">
+                            <span class="role-stat-number" id="totalRoles">0</span>
+                            <span class="role-stat-label">Total Roles</span>
+                        </div>
+                        <div class="role-stat">
+                            <span class="role-stat-number" id="activeUsers">0</span>
+                            <span class="role-stat-label">Active Users</span>
+                        </div>
+                        <div class="role-stat">
+                            <span class="role-stat-number" id="permissions">0</span>
+                            <span class="role-stat-label">Permissions</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="role-controls fade-in">
+                <div class="search-input">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="roleSearch" placeholder="Search roles by name or description...">
+                </div>
+                <div class="filter-group">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <button class="rc-btn rc-btn-primary add-role-btn" onclick="showCreateRoleModal()">
+                        <i class="bi bi-plus-circle"></i> Add Role
+                    </button>
+                </div>
+            </div>
+
+            <!-- Roles Grid -->
+            <div class="roles-grid fade-in" id="rolesGrid">
+                <!-- Roles will be populated by JavaScript -->
+                <div class="empty-state">
+                    <div class="rc-text-center rc-py-xl">
+                        <div class="rc-spinner"></div>
+                        <p class="rc-text-muted rc-mt-md">Loading roles...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create/Edit Role Modal -->
+    <div class="modal" id="roleModal">
+        <div class="modal-content" style="min-width: 600px; max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="roleModalTitle">Create Role</h3>
+                <button class="modal-close" onclick="closeRoleModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <form id="roleForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Role Name</label>
+                        <input type="text" id="roleName" name="name" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Display Name</label>
+                        <input type="text" id="roleDisplayName" name="displayName" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    </div>
+                </div>
+                <div style="margin-bottom: var(--space-lg);">
+                    <label style="display: block; font-weight: 500; color: var(--text-secondary); margin-bottom: var(--space-xs);">Description</label>
+                    <textarea id="roleDescription" name="description" rows="3" style="width: 100%; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary); resize: vertical;"></textarea>
+                </div>
+                <div style="margin-bottom: var(--space-lg);">
+                    <label style="display: flex; align-items: center; gap: var(--space-sm); cursor: pointer;">
+                        <input type="checkbox" id="roleIsActive" name="isActive" checked style="width: 18px; height: 18px;">
+                        <span style="font-weight: 500; color: var(--text-secondary);">Role is active</span>
+                    </label>
+                </div>
+            </form>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeRoleModal()">Cancel</button>
+                <button class="rc-btn rc-btn-primary" id="roleSubmitBtn" onclick="submitRole()">Create Role</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Details Modal -->
+    <div class="modal" id="roleDetailsModal">
+        <div class="modal-content" style="min-width: 700px; max-width: 800px;">
+            <div class="modal-header">
+                <h3>Role Details</h3>
+                <button class="modal-close" onclick="closeRoleDetailsModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="roleDetailsContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeRoleDetailsModal()">Close</button>
+                <button class="rc-btn rc-btn-primary" id="editFromDetailsBtn">
+                    <i class="bi bi-pencil"></i> Edit Role
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions Management Modal -->
+    <div class="modal" id="permissionsModal">
+        <div class="modal-content" style="min-width: 800px; max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="permissionsModalTitle">Manage Permissions</h3>
+                <button class="modal-close" onclick="closePermissionsModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div style="margin-bottom: var(--space-lg);">
+                <div style="display: flex; gap: var(--space-md); align-items: center; margin-bottom: var(--space-md);">
+                    <input type="text" id="permissionSearch" placeholder="Search permissions..." style="flex: 1; padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                    <select id="permissionCategoryFilter" style="padding: var(--space-sm); border: 1px solid var(--surface-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary);">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div id="permissionsContainer" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--surface-3); border-radius: var(--radius-md); padding: var(--space-md);">
+                    <!-- Permissions will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closePermissionsModal()">Cancel</button>
+                <button class="rc-btn rc-btn-primary" onclick="savePermissions()">Save Permissions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Users Management Modal -->
+    <div class="modal" id="roleUsersModal">
+        <div class="modal-content" style="min-width: 700px; max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="roleUsersModalTitle">Manage Role Users</h3>
+                <button class="modal-close" onclick="closeRoleUsersModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div style="margin-bottom: var(--space-lg);">
+                <!-- Current Users Section -->
+                <div style="margin-bottom: var(--space-lg);">
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-people"></i> Users with this Role
+                    </h4>
+                    <div id="currentUsersList" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <!-- Current users will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Available Users Section -->
+                <div>
+                    <h4 style="color: var(--text-primary); margin: 0 0 var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-person-plus"></i> Assign Role to Users
+                    </h4>
+                    <div id="availableUsersList" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                        <!-- Available users will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeRoleUsersModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirmModalTitle">Confirm Action</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div id="confirmModalMessage">Are you sure you want to perform this action?</div>
+            <div class="modal-actions">
+                <button class="rc-btn rc-btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+                <button class="rc-btn rc-btn-outline" style="--button-color: var(--error);" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+    <script src="/static/js/security-roles.js"></script>
+</body>
+</html>

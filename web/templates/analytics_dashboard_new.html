@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Analytics-specific styles using RentalCore design tokens */
+        .analytics-metric-card {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .analytics-metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--accent-electric);
+        }
+        
+        .analytics-metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-electric), var(--accent-cyan), var(--accent-electric));
+            background-size: 200% 100%;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+        
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-icon {
+            color: var(--accent-electric);
+            font-size: 1.5rem;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .analytics-chart-container {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+        
+        .chart-title {
+            color: var(--text-primary);
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .analytics-header {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .analytics-controls {
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .analytics-table {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+        
+        .analytics-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .analytics-table th {
+            background: var(--surface-2);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: var(--space-md);
+            text-align: left;
+            border-bottom: 1px solid var(--surface-3);
+        }
+        
+        .analytics-table td {
+            padding: var(--space-md);
+            border-bottom: 1px solid var(--surface-3);
+            color: var(--text-primary);
+        }
+        
+        .analytics-table tbody tr:hover {
+            background: var(--surface-2);
+        }
+        
+        /* Status badges */
+        .status-badge {
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-high { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .status-medium { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .status-good { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+        .status-info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        
+        /* Progress bars */
+        .progress-bar {
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: var(--radius-sm);
+            transition: width 0.3s ease;
+        }
+        
+        .progress-high { background: #ef4444; }
+        .progress-medium { background: #f59e0b; }
+        .progress-good { background: #22c55e; }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .analytics-chart-card {
+            background: var(--surface-1);
+            border: 1px solid var(--surface-3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .analytics-chart-card h3 {
+            color: var(--text-primary);
+            margin: 0 0 var(--space-md) 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .analytics-chart-card canvas {
+            height: 300px !important;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .analytics-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .metric-value {
+                font-size: 1.5rem;
+            }
+            
+            .analytics-metric-card {
+                padding: var(--space-md);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <main class="rc-container" style="padding-top: var(--space-xl); padding-bottom: var(--space-xl);">
+        <!-- Header with controls -->
+        <div class="analytics-header">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: var(--space-lg); align-items: center;">
+                <div>
+                    <h1 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-xs); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-graph-up" style="color: var(--accent-electric);"></i> 
+                        Analytics Dashboard
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0;">Performance insights and business metrics</p>
+                </div>
+                <div class="analytics-controls">
+                    <div class="rc-dropdown">
+                        <button class="rc-btn rc-btn-secondary rc-dropdown-toggle" id="periodDropdown">
+                            <i class="bi bi-calendar"></i>
+                            <span id="currentPeriod">{{if eq .period "7days"}}Last 7 Days{{else if eq .period "30days"}}Last 30 Days{{else if eq .period "90days"}}Last 90 Days{{else if eq .period "1year"}}Last Year{{else}}Last 30 Days{{end}}</span>
+                        </button>
+                        <div class="rc-dropdown-menu">
+                            <a class="rc-dropdown-item period-option" data-period="7days">
+                                <i class="bi bi-calendar-week"></i>Last 7 Days
+                            </a>
+                            <a class="rc-dropdown-item period-option" data-period="30days">
+                                <i class="bi bi-calendar-month"></i>Last 30 Days
+                            </a>
+                            <a class="rc-dropdown-item period-option" data-period="90days">
+                                <i class="bi bi-calendar3"></i>Last 90 Days
+                            </a>
+                            <a class="rc-dropdown-item period-option" data-period="1year">
+                                <i class="bi bi-calendar-year"></i>Last Year
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="rc-dropdown">
+                        <button class="rc-btn rc-btn-secondary rc-dropdown-toggle" id="exportDropdown">
+                            <i class="bi bi-download"></i> Export
+                        </button>
+                        <div class="rc-dropdown-menu">
+                            <a class="rc-dropdown-item export-option" data-format="csv" onclick="showExportFeedback('CSV')">
+                                <i class="bi bi-file-earmark-csv"></i>Export CSV
+                            </a>
+                            <a class="rc-dropdown-item export-option" data-format="pdf" onclick="showExportFeedback('PDF')">
+                                <i class="bi bi-file-earmark-pdf"></i>Export PDF
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <button class="rc-btn rc-btn-primary" id="refreshBtn" onclick="refreshDashboard()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="analyticsLoading" style="display: none; text-align: center; padding: 4rem; color: var(--text-secondary);">
+            <i class="bi bi-arrow-clockwise" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
+            <p style="margin-top: 1rem;">Loading analytics data...</p>
+        </div>
+
+        <!-- Analytics Content -->
+        <div id="analyticsContent">
+            <!-- Key Metrics Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div class="analytics-metric-card">
+                    <div class="metric-icon">
+                        <i class="bi bi-currency-euro"></i>
+                    </div>
+                    <div class="metric-value">€<span id="totalRevenue">{{printf "%.0f" .analytics.revenue.totalRevenue}}</span></div>
+                    <div class="metric-label">Total Revenue</div>
+                    {{if .analytics.revenue.revenueGrowth}}
+                    <div style="margin-top: var(--space-sm); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius); font-size: 0.75rem; font-weight: 600; {{if gt .analytics.revenue.revenueGrowth 0.0}}background: rgba(34, 197, 94, 0.1); color: #22c55e;{{else}}background: rgba(239, 68, 68, 0.1); color: #ef4444;{{end}}">
+                        <i class="bi bi-{{if gt .analytics.revenue.revenueGrowth 0.0}}arrow-up{{else}}arrow-down{{end}}"></i>
+                        <span id="revenueGrowth">{{printf "%.1f" .analytics.revenue.revenueGrowth}}%</span> vs previous period
+                    </div>
+                    {{end}}
+                </div>
+                
+                <div class="analytics-metric-card">
+                    <div class="metric-icon">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <div class="metric-value"><span id="utilizationRate">{{if .analytics.equipment.utilizationRate}}{{printf "%.1f" .analytics.equipment.utilizationRate}}{{else}}0.0{{end}}</span>%</div>
+                    <div class="metric-label">Equipment Utilization</div>
+                    <div style="margin-top: var(--space-sm); color: var(--text-secondary); font-size: 0.75rem;">
+                        <span id="activeDevicesText">{{.analytics.equipment.activeDevices}} of {{.analytics.equipment.totalDevices}} devices active</span>
+                    </div>
+                </div>
+                
+                <div class="analytics-metric-card">
+                    <div class="metric-icon">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="metric-value"><span id="activeCustomers">{{.analytics.customers.activeCustomers}}</span></div>
+                    <div class="metric-label">Active Customers</div>
+                    <div style="margin-top: var(--space-sm); color: var(--text-secondary); font-size: 0.75rem;">
+                        <span id="retentionText">{{.analytics.customers.retentionRate}}% retention rate</span>
+                    </div>
+                </div>
+                
+                <div class="analytics-metric-card">
+                    <div class="metric-icon">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="metric-value"><span id="completedJobs">{{.analytics.jobs.completedJobs}}</span></div>
+                    <div class="metric-label">Completed Jobs</div>
+                    <div style="margin-top: var(--space-sm); color: var(--text-secondary); font-size: 0.75rem;">
+                        <span id="avgDurationText">{{printf "%.1f" .analytics.jobs.avgJobDuration}} days average duration</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div class="analytics-chart-container">
+                    <div class="chart-title">
+                        <i class="bi bi-graph-up"></i> Revenue Trend
+                    </div>
+                    <canvas id="revenueChart" style="height: 300px; max-height: 300px;"></canvas>
+                </div>
+                <div class="analytics-chart-container">
+                    <div class="chart-title">
+                        <i class="bi bi-pie-chart"></i> Equipment Status
+                    </div>
+                    <canvas id="equipmentChart" style="height: 300px; max-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Performers -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div class="analytics-table">
+                    <div style="padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--surface-3); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                            <i class="bi bi-trophy" style="color: var(--accent-electric);"></i> Top Equipment
+                        </div>
+                        <button class="rc-btn rc-btn-sm rc-btn-secondary" onclick="toggleAllDevicesView()">
+                            <i class="bi bi-list"></i> View All
+                        </button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Product</th>
+                                <th>Rentals</th>
+                                <th>Revenue</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .analytics.topEquipment}}
+                            <tr>
+                                <td><strong>{{.deviceID}}</strong></td>
+                                <td>{{.productName}}</td>
+                                <td><span class="status-badge status-info">{{.rentalCount}}</span></td>
+                                <td><strong>€{{printf "%.0f" .totalRevenue}}</strong></td>
+                                <td>
+                                    <button class="rc-btn rc-btn-sm rc-btn-accent" onclick="openDeviceAnalytics('{{.deviceID}}')" title="Detailed Analytics">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-secondary);">No data available</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="analytics-table">
+                    <div style="padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--surface-3); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i class="bi bi-people" style="color: var(--accent-electric);"></i> Top Customers
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Jobs</th>
+                                <th>Avg Value</th>
+                                <th>Total Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .analytics.topCustomers}}
+                            <tr>
+                                <td><strong>{{.customerName}}</strong></td>
+                                <td><span class="status-badge status-info">{{.jobCount}}</span></td>
+                                <td>€{{printf "%.0f" .avgRevenue}}</td>
+                                <td><strong>€{{printf "%.0f" .totalRevenue}}</strong></td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-secondary);">No data available</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Equipment Utilization -->
+            <div class="analytics-table" style="margin-bottom: var(--space-xl);">
+                <div style="padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--surface-3); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-sm);">
+                    <i class="bi bi-speedometer2" style="color: var(--accent-electric);"></i> Equipment Utilization by Category
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Category</th>
+                            <th>Total Devices</th>
+                            <th>Active Devices</th>
+                            <th>Utilization Rate</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .analytics.utilization.categories}}
+                        <tr>
+                            <td><strong>{{.productName}}</strong></td>
+                            <td>{{.totalDevices}}</td>
+                            <td>{{.activeDevices}}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                                    <div class="progress-bar" style="flex: 1;">
+                                        <div class="progress-fill progress-{{if and .utilizationRate (ge .utilizationRate 80)}}high{{else if and .utilizationRate (ge .utilizationRate 60)}}medium{{else}}good{{end}}" 
+                                             style="width: {{if .utilizationRate}}{{.utilizationRate}}{{else}}0{{end}}%"></div>
+                                    </div>
+                                    <span style="font-size: 0.875rem; font-weight: 500;">{{if .utilizationRate}}{{printf "%.1f" .utilizationRate}}{{else}}0.0{{end}}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                {{if and .utilizationRate (ge .utilizationRate 80)}}
+                                    <span class="status-badge status-high">High</span>
+                                {{else if and .utilizationRate (ge .utilizationRate 60)}}
+                                    <span class="status-badge status-medium">Medium</span>
+                                {{else}}
+                                    <span class="status-badge status-good">Good</span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        {{else}}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-secondary);">No equipment data available</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- All Devices Modal -->
+            <div id="allDevicesModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 1000; backdrop-filter: blur(5px);">
+                <div style="position: relative; width: 90%; max-width: 1200px; margin: 2rem auto; max-height: 90vh; overflow: hidden; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--surface-3);">
+                    <!-- Modal Header -->
+                    <div style="padding: var(--space-lg); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; justify-content: space-between; background: var(--surface-2);">
+                        <div>
+                            <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm);">
+                                <i class="bi bi-list" style="color: var(--accent-electric);"></i> All Device Revenues
+                            </h2>
+                            <p style="color: var(--text-secondary); margin: var(--space-xs) 0 0 0; font-size: 0.875rem;">Complete device revenue breakdown for the selected period</p>
+                        </div>
+                        <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="closeAllDevicesModal()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Modal Content -->
+                    <div style="max-height: calc(90vh - 120px); overflow-y: auto; padding: var(--space-lg);">
+                        <div id="allDevicesLoading" style="text-align: center; padding: var(--space-xl); color: var(--text-secondary);">
+                            <i class="bi bi-arrow-clockwise" style="font-size: 2rem; animation: spin 1s linear infinite; margin-bottom: var(--space-md);"></i>
+                            <p>Loading device revenues...</p>
+                        </div>
+                        
+                        <div id="allDevicesContent" style="display: none;">
+                            <div class="analytics-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Device ID</th>
+                                            <th>Product</th>
+                                            <th>Rentals</th>
+                                            <th>Revenue</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="allDevicesTableBody">
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div id="allDevicesError" style="display: none; text-align: center; padding: var(--space-xl); color: var(--text-secondary);">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: var(--space-md); color: #f59e0b;"></i>
+                            <p>Failed to load device revenues. Please try again.</p>
+                            <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="loadAllDevices()">Retry</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Analytics Modal -->
+        <div id="deviceAnalyticsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 1000; backdrop-filter: blur(5px);">
+            <div style="position: relative; width: 95%; max-width: 1400px; margin: 1rem auto; max-height: 95vh; overflow: hidden; background: var(--surface-1); border-radius: var(--radius-lg); border: 1px solid var(--surface-3);">
+                <!-- Modal Header -->
+                <div style="padding: var(--space-lg); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; justify-content: space-between; background: var(--surface-2);">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm);">
+                            <i class="bi bi-bar-chart" style="color: var(--accent-electric);"></i> 
+                            <span id="deviceAnalyticsTitle">Device Analytics</span>
+                        </h2>
+                        <p style="color: var(--text-secondary); margin: var(--space-xs) 0 0 0; font-size: 0.875rem;" id="deviceAnalyticsSubtitle">Comprehensive performance analysis</p>
+                    </div>
+                    <button class="rc-btn rc-btn-sm rc-btn-ghost" onclick="closeDeviceAnalyticsModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Content -->
+                <div style="max-height: calc(95vh - 120px); overflow-y: auto; padding: var(--space-lg);">
+                    <!-- Loading State -->
+                    <div id="deviceAnalyticsLoading" style="text-align: center; padding: var(--space-xl); color: var(--text-secondary);">
+                        <i class="bi bi-arrow-clockwise" style="font-size: 2rem; animation: spin 1s linear infinite; margin-bottom: var(--space-md);"></i>
+                        <p>Loading device analytics...</p>
+                    </div>
+                    
+                    <!-- Analytics Content -->
+                    <div id="deviceAnalyticsContent" style="display: none;">
+                        <!-- Device Info Header -->
+                        <div class="analytics-header" style="margin-bottom: var(--space-lg);">
+                            <div style="display: grid; grid-template-columns: 1fr auto; gap: var(--space-lg); align-items: center;">
+                                <div>
+                                    <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs); display: flex; align-items: center; gap: var(--space-sm);" id="deviceInfoTitle">
+                                        <i class="bi bi-cpu"></i> Device Information
+                                    </h3>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-top: var(--space-md);">
+                                        <div>
+                                            <span style="color: var(--text-secondary); font-size: 0.875rem;">Product:</span>
+                                            <p style="margin: 0; font-weight: 600;" id="deviceProduct">-</p>
+                                        </div>
+                                        <div>
+                                            <span style="color: var(--text-secondary); font-size: 0.875rem;">Serial Number:</span>
+                                            <p style="margin: 0; font-weight: 600;" id="deviceSerial">-</p>
+                                        </div>
+                                        <div>
+                                            <span style="color: var(--text-secondary); font-size: 0.875rem;">Category:</span>
+                                            <p style="margin: 0; font-weight: 600;" id="deviceCategory">-</p>
+                                        </div>
+                                        <div>
+                                            <span style="color: var(--text-secondary); font-size: 0.875rem;">Current Status:</span>
+                                            <p style="margin: 0; font-weight: 600;" id="deviceStatus">-</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="analytics-controls">
+                                    <div class="rc-dropdown">
+                                        <button class="rc-btn rc-btn-secondary rc-dropdown-toggle" id="devicePeriodDropdown">
+                                            <i class="bi bi-calendar"></i>
+                                            <span id="deviceCurrentPeriod">Last Year</span>
+                                        </button>
+                                        <div class="rc-dropdown-menu">
+                                            <a class="rc-dropdown-item device-period-option" data-period="30days">
+                                                <i class="bi bi-calendar-month"></i>Last 30 Days
+                                            </a>
+                                            <a class="rc-dropdown-item device-period-option" data-period="90days">
+                                                <i class="bi bi-calendar3"></i>Last 90 Days
+                                            </a>
+                                            <a class="rc-dropdown-item device-period-option" data-period="1year">
+                                                <i class="bi bi-calendar-year"></i>Last Year
+                                            </a>
+                                            <a class="rc-dropdown-item device-period-option" data-period="all">
+                                                <i class="bi bi-infinity"></i>All Time
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Metrics Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                            <div class="analytics-metric-card">
+                                <div class="metric-icon"><i class="bi bi-currency-euro"></i></div>
+                                <div class="metric-value">EUR <span id="deviceTotalRevenue">0</span></div>
+                                <div class="metric-label">Total Revenue</div>
+                            </div>
+                            <div class="analytics-metric-card">
+                                <div class="metric-icon"><i class="bi bi-calendar-check"></i></div>
+                                <div class="metric-value"><span id="deviceBookingCount">0</span></div>
+                                <div class="metric-label">Total Bookings</div>
+                            </div>
+                            <div class="analytics-metric-card">
+                                <div class="metric-icon"><i class="bi bi-clock-history"></i></div>
+                                <div class="metric-value"><span id="deviceAvgDuration">0</span> days</div>
+                                <div class="metric-label">Avg Rental Duration</div>
+                            </div>
+                            <div class="analytics-metric-card">
+                                <div class="metric-icon"><i class="bi bi-star"></i></div>
+                                <div class="metric-value">EUR <span id="deviceAvgValue">0</span></div>
+                                <div class="metric-label">Avg Booking Value</div>
+                            </div>
+                            <div class="analytics-metric-card">
+                                <div class="metric-icon"><i class="bi bi-speedometer2"></i></div>
+                                <div class="metric-value"><span id="deviceUtilization">0</span>%</div>
+                                <div class="metric-label">Utilization Rate</div>
+                            </div>
+                        </div>
+
+                        <!-- Charts -->
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                            <div class="analytics-chart-container">
+                                <div class="chart-title">
+                                    <i class="bi bi-graph-up"></i> Revenue Over Time
+                                </div>
+                                <canvas id="deviceRevenueChart" style="height: 300px; max-height: 300px;"></canvas>
+                            </div>
+                            <div class="analytics-chart-container">
+                                <div class="chart-title">
+                                    <i class="bi bi-pie-chart"></i> Booking Status Distribution
+                                </div>
+                                <canvas id="deviceStatusChart" style="height: 300px; max-height: 300px;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recent Bookings Table -->
+                        <div class="analytics-table" style="margin-bottom: var(--space-xl);">
+                            <div style="padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--surface-3); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-sm);">
+                                <i class="bi bi-clock-history" style="color: var(--accent-electric);"></i> Recent Bookings
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Job ID</th>
+                                        <th>Customer</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Duration</th>
+                                        <th>Revenue</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deviceBookingsTable">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: var(--space-lg);">Loading bookings...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Error State -->
+                    <div id="deviceAnalyticsError" style="display: none; text-align: center; padding: var(--space-xl); color: var(--text-secondary);">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: var(--space-md); color: #f59e0b;"></i>
+                        <p>Failed to load device analytics. Please try again.</p>
+                        <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="loadDeviceAnalytics(currentDeviceId)">Retry</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="rc-footer">
+        <div class="rc-container">
+            <div class="rc-footer-content">
+                <p>&copy; 2025 RentalCore. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SINGLE UNIFIED SCRIPT SYSTEM -->
+    <script>
+        // Analytics Dashboard - Unified Script System
+        class AnalyticsDashboard {
+            constructor() {
+                this.currentPeriod = '{{.period}}';
+                this.analyticsData = {
+                    revenue: {{if .analytics.revenue}}{{.analytics.revenue}}{{else}}{}{{end}},
+                    equipment: {{if .analytics.equipment}}{{.analytics.equipment}}{{else}}{}{{end}},
+                    customers: {{if .analytics.customers}}{{.analytics.customers}}{{else}}{}{{end}},
+                    trends: {{if .analytics.trends}}{{.analytics.trends}}{{else}}{"revenue": []}{{end}}
+                };
+                this.charts = {};
+                this.allDevicesData = [];
+                this.init();
+            }
+
+            init() {
+                console.log('Initializing Analytics Dashboard...');
+                this.initializeDropdowns();
+                this.initializeCharts();
+                this.initializeEvents();
+                this.initializeKeyboardShortcuts();
+                console.log('Analytics Dashboard ready!');
+            }
+
+            // Dropdown System
+            initializeDropdowns() {
+                console.log('Initializing dropdowns...');
+                
+                // Find all dropdown toggles
+                const toggles = document.querySelectorAll('.rc-dropdown-toggle');
+                console.log('Found dropdown toggles:', toggles.length);
+                
+                toggles.forEach(toggle => {
+                    toggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.toggleDropdown(toggle);
+                    });
+                });
+
+                // Close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.rc-dropdown')) {
+                        this.closeAllDropdowns();
+                    }
+                });
+
+                // Period selection handlers
+                document.querySelectorAll('.period-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const period = e.target.closest('.period-option').dataset.period;
+                        this.changePeriod(period);
+                    });
+                });
+
+                // Export handlers
+                document.querySelectorAll('.export-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const format = e.target.closest('.export-option').dataset.format;
+                        this.exportData(format);
+                    });
+                });
+            }
+
+            toggleDropdown(toggle) {
+                const dropdown = toggle.closest('.rc-dropdown');
+                const isOpen = dropdown.classList.contains('show');
+                
+                // Close all other dropdowns first
+                this.closeAllDropdowns();
+                
+                // Toggle this dropdown
+                if (!isOpen) {
+                    dropdown.classList.add('show');
+                    console.log('Dropdown opened');
+                }
+            }
+
+            closeAllDropdowns() {
+                document.querySelectorAll('.rc-dropdown.show').forEach(dropdown => {
+                    dropdown.classList.remove('show');
+                });
+            }
+
+            // Period Management
+            changePeriod(newPeriod) {
+                if (newPeriod === this.currentPeriod) return;
+                
+                console.log('Changing period to:', newPeriod);
+                this.showLoading();
+                
+                // Update URL and reload
+                const url = new URL(window.location);
+                url.searchParams.set('period', newPeriod);
+                window.location.href = url.toString();
+            }
+
+            showLoading() {
+                document.getElementById('analyticsLoading').style.display = 'block';
+                document.getElementById('analyticsContent').style.opacity = '0.5';
+            }
+
+            // Chart Initialization
+            initializeCharts() {
+                console.log('Initializing charts...');
+                this.createRevenueChart();
+                this.createEquipmentChart();
+            }
+
+            createRevenueChart() {
+                const ctx = document.getElementById('revenueChart');
+                if (!ctx) return;
+
+                const data = this.analyticsData.trends.revenue || [];
+                
+                this.charts.revenue = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.length > 0 ? data.map(item => new Date(item.date).toLocaleDateString()) : ['No Data'],
+                        datasets: [{
+                            label: 'Revenue',
+                            data: data.length > 0 ? data.map(item => item.revenue) : [0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }, {
+                            label: 'Jobs',
+                            data: data.length > 0 ? data.map(item => item.jobs || 0) : [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            yAxisID: 'y1',
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(107, 114, 128, 0.1)'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Revenue (€)'
+                                },
+                                grid: {
+                                    color: 'rgba(107, 114, 128, 0.1)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Number of Jobs'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                            }
+                        }
+                    }
+                });
+            }
+
+            createEquipmentChart() {
+                const ctx = document.getElementById('equipmentChart');
+                if (!ctx) return;
+
+                const equipment = this.analyticsData.equipment;
+                
+                this.charts.equipment = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Active', 'Available', 'Maintenance'],
+                        datasets: [{
+                            data: [
+                                equipment.activeDevices || 0,
+                                equipment.availableDevices || 0,
+                                equipment.maintenanceDevices || 0
+                            ],
+                            backgroundColor: ['#10b981', '#6b7280', '#f59e0b'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Event Handlers
+            initializeEvents() {
+                // Refresh button
+                const refreshBtn = document.getElementById('refreshBtn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', () => {
+                        this.refresh();
+                    });
+                }
+            }
+
+            initializeKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch(e.key) {
+                            case 'r':
+                                e.preventDefault();
+                                this.refresh();
+                                break;
+                            case 'e':
+                                e.preventDefault();
+                                this.exportData('csv');
+                                break;
+                        }
+                    }
+                });
+            }
+
+            refresh() {
+                window.location.reload();
+            }
+
+            exportData(format) {
+                const url = `/analytics/export?format=${format}&period=${this.currentPeriod}`;
+                window.open(url, '_blank');
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            new AnalyticsDashboard();
+        });
+
+        // Additional JavaScript functions for compatibility
+        let isLoading = false;
+        let allDevicesData = [];
+
+        function refreshDashboard() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            const refreshBtn = document.querySelector('[onclick="refreshDashboard()"]');
+            if (refreshBtn) {
+                const originalText = refreshBtn.innerHTML;
+                
+                // Show loading state
+                refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Refreshing...';
+                refreshBtn.disabled = true;
+                
+                // Add fade animation
+                document.body.style.opacity = '0.8';
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else {
+                location.reload();
+            }
+        }
+
+        function showExportFeedback(format) {
+            const notification = document.createElement('div');
+            notification.style.cssText = 'position: fixed; top: 1rem; right: 1rem; z-index: 1000; padding: 1rem; background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: var(--radius); color: var(--text-primary);';
+            notification.innerHTML = `
+                <i class="bi bi-download"></i> 
+                Preparing ${format} export... This may take a moment.
+                <button onclick="this.parentElement.remove();" style="margin-left: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;">&times;</button>
+            `;
+            document.body.appendChild(notification);
+            
+            // Auto remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        function toggleAllDevicesView() {
+            const modal = document.getElementById('allDevicesModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                loadAllDevices();
+            }
+        }
+
+        function closeAllDevicesModal() {
+            const modal = document.getElementById('allDevicesModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function loadAllDevices() {
+            // Show loading state
+            document.getElementById('allDevicesLoading').style.display = 'block';
+            document.getElementById('allDevicesContent').style.display = 'none';
+            document.getElementById('allDevicesError').style.display = 'none';
+            
+            // Get current period from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const period = urlParams.get('period') || '1year';
+            
+            // Fetch all device revenues
+            fetch(`/analytics/devices/all?period=${period}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    allDevicesData = data.devices || [];
+                    renderAllDevicesTable();
+                    
+                    // Hide loading, show content
+                    document.getElementById('allDevicesLoading').style.display = 'none';
+                    document.getElementById('allDevicesContent').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading device revenues:', error);
+                    
+                    // Hide loading, show error
+                    document.getElementById('allDevicesLoading').style.display = 'none';
+                    document.getElementById('allDevicesError').style.display = 'block';
+                });
+        }
+
+        function renderAllDevicesTable() {
+            const tbody = document.getElementById('allDevicesTableBody');
+            if (!tbody) return;
+            
+            // Clear table
+            tbody.innerHTML = '';
+            
+            if (allDevicesData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: var(--space-xl);">
+                            <i class="bi bi-inbox" style="font-size: 2rem; margin-bottom: var(--space-sm); display: block;"></i>
+                            No device revenue data available for the selected period.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Populate table rows (show first 50 devices)
+            const displayData = allDevicesData.slice(0, 50);
+            displayData.forEach(device => {
+                const row = document.createElement('tr');
+                
+                // Determine status based on revenue
+                let statusClass = 'status-good';
+                let statusText = 'Active';
+                
+                if (device.totalRevenue === 0) {
+                    statusClass = 'status-medium';
+                    statusText = 'Inactive';
+                } else if (device.totalRevenue < 50) {
+                    statusClass = 'status-info';
+                    statusText = 'Low Use';
+                } else if (device.totalRevenue > 500) {
+                    statusClass = 'status-high';
+                    statusText = 'High Performer';
+                }
+                
+                row.innerHTML = `
+                    <td><strong>${device.deviceID || 'N/A'}</strong></td>
+                    <td>${device.productName || 'Unknown Product'}</td>
+                    <td><span class="status-badge status-info">${device.rentalCount || 0}</span></td>
+                    <td><strong>€${Number(device.totalRevenue || 0).toFixed(0)}</strong></td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>
+                        <button class="rc-btn rc-btn-sm rc-btn-accent" onclick="openDeviceAnalytics('${device.deviceID || ''}')" title="Detailed Analytics">
+                            <i class="bi bi-bar-chart"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        let currentDeviceId = null;
+        let currentDevicePeriod = '1year';
+        let deviceCharts = {};
+
+        function openDeviceAnalytics(deviceId) {
+            currentDeviceId = deviceId;
+            currentDevicePeriod = '1year';
+            
+            // Show modal
+            const modal = document.getElementById('deviceAnalyticsModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.getElementById('deviceAnalyticsTitle').textContent = `Device Analytics - ${deviceId}`;
+                document.getElementById('deviceAnalyticsSubtitle').textContent = `Comprehensive performance analysis for ${deviceId}`;
+                
+                // Load analytics data
+                loadDeviceAnalytics(deviceId);
+            }
+        }
+
+        function closeDeviceAnalyticsModal() {
+            const modal = document.getElementById('deviceAnalyticsModal');
+            if (modal) {
+                modal.style.display = 'none';
+                
+                // Destroy existing charts
+                Object.values(deviceCharts).forEach(chart => {
+                    if (chart) chart.destroy();
+                });
+                deviceCharts = {};
+            }
+        }
+
+        function loadDeviceAnalytics(deviceId) {
+            console.log(`Loading analytics for device ${deviceId} with period ${currentDevicePeriod}`);
+            
+            // Show loading state
+            document.getElementById('deviceAnalyticsLoading').style.display = 'block';
+            document.getElementById('deviceAnalyticsContent').style.display = 'none';
+            document.getElementById('deviceAnalyticsError').style.display = 'none';
+            
+            // Update period display
+            const periodText = {
+                '30days': 'Last 30 Days',
+                '90days': 'Last 90 Days', 
+                '1year': 'Last Year',
+                'all': 'All Time'
+            };
+            document.getElementById('deviceCurrentPeriod').textContent = periodText[currentDevicePeriod] || 'Last Year';
+            
+            // Fetch device analytics data
+            fetch(`/analytics/devices/${deviceId}?period=${currentDevicePeriod}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Device analytics data received:', data);
+                    renderDeviceAnalytics(data);
+                    
+                    // Hide loading, show content
+                    document.getElementById('deviceAnalyticsLoading').style.display = 'none';
+                    document.getElementById('deviceAnalyticsContent').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading device analytics:', error);
+                    
+                    // Hide loading, show error
+                    document.getElementById('deviceAnalyticsLoading').style.display = 'none';
+                    document.getElementById('deviceAnalyticsError').style.display = 'block';
+                });
+        }
+
+        function renderDeviceAnalytics(data) {
+            // Render device information
+            if (data.device) {
+                document.getElementById('deviceProduct').textContent = data.device.productName || 'Unknown Product';
+                document.getElementById('deviceSerial').textContent = data.device.serialNumber || 'N/A';
+                document.getElementById('deviceCategory').textContent = data.device.categoryName || 'Unknown Category';
+                
+                const status = data.device.status || 'Unknown';
+                const statusElement = document.getElementById('deviceStatus');
+                statusElement.textContent = status;
+                
+                // Add status styling
+                statusElement.className = '';
+                if (status.toLowerCase() === 'available') {
+                    statusElement.style.color = '#22c55e';
+                } else if (status.toLowerCase() === 'checked out') {
+                    statusElement.style.color = '#f59e0b';
+                } else if (status.toLowerCase() === 'maintenance') {
+                    statusElement.style.color = '#ef4444';
+                }
+            }
+
+            // Render key metrics
+            if (data.revenue) {
+                document.getElementById('deviceTotalRevenue').textContent = Number(data.revenue.totalRevenue || 0).toFixed(0);
+                document.getElementById('deviceBookingCount').textContent = data.revenue.bookingCount || 0;
+                document.getElementById('deviceAvgDuration').textContent = Number(data.revenue.avgDuration || 0).toFixed(1);
+                document.getElementById('deviceAvgValue').textContent = Number(data.revenue.avgBookingValue || 0).toFixed(0);
+                document.getElementById('deviceUtilization').textContent = Number(data.revenue.utilizationRate || 0).toFixed(1);
+            }
+
+            // Render charts
+            renderDeviceCharts(data);
+
+            // Render recent bookings table
+            renderDeviceBookings(data.bookings || []);
+        }
+
+        function renderDeviceCharts(data) {
+            // Destroy existing charts
+            Object.values(deviceCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            deviceCharts = {};
+
+            // Revenue Over Time Chart
+            const revenueCtx = document.getElementById('deviceRevenueChart');
+            if (revenueCtx && data.trends && data.trends.revenue) {
+                const revenueData = data.trends.revenue;
+                
+                deviceCharts.revenue = new Chart(revenueCtx, {
+                    type: 'line',
+                    data: {
+                        labels: revenueData.length > 0 ? revenueData.map(item => new Date(item.date).toLocaleDateString()) : ['No Data'],
+                        datasets: [{
+                            label: 'Revenue',
+                            data: revenueData.length > 0 ? revenueData.map(item => item.revenue || 0) : [0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(107, 114, 128, 0.1)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Revenue (EUR)'
+                                },
+                                grid: {
+                                    color: 'rgba(107, 114, 128, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Status Distribution Chart
+            const statusCtx = document.getElementById('deviceStatusChart');
+            if (statusCtx && data.statusDistribution) {
+                const statusData = data.statusDistribution;
+                
+                deviceCharts.status = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: statusData.labels || ['Completed', 'Active', 'Cancelled'],
+                        datasets: [{
+                            data: statusData.data || [70, 25, 5],
+                            backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderDeviceBookings(bookings) {
+            const tbody = document.getElementById('deviceBookingsTable');
+            if (!tbody) return;
+            
+            // Clear table
+            tbody.innerHTML = '';
+            
+            if (bookings.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: var(--space-lg);">
+                            <i class="bi bi-inbox" style="font-size: 1.5rem; margin-bottom: var(--space-sm); display: block;"></i>
+                            No bookings found for this device in the selected period.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Show first 10 bookings
+            const displayBookings = bookings.slice(0, 10);
+            displayBookings.forEach(booking => {
+                const row = document.createElement('tr');
+                
+                // Calculate duration
+                const startDate = new Date(booking.startDate);
+                const endDate = new Date(booking.endDate);
+                const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                
+                // Determine status styling
+                let statusClass = 'status-info';
+                const status = booking.status?.toLowerCase() || '';
+                if (status.includes('completed')) statusClass = 'status-good';
+                else if (status.includes('cancelled')) statusClass = 'status-medium';
+                else if (status.includes('active')) statusClass = 'status-high';
+                
+                row.innerHTML = `
+                    <td><strong>${booking.jobID || 'N/A'}</strong></td>
+                    <td>${booking.customerName || 'Unknown Customer'}</td>
+                    <td>${startDate.toLocaleDateString()}</td>
+                    <td>${endDate.toLocaleDateString()}</td>
+                    <td>${duration} days</td>
+                    <td><strong>EUR ${Number(booking.revenue || 0).toFixed(0)}</strong></td>
+                    <td><span class="status-badge ${statusClass}">${booking.status || 'Unknown'}</span></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Device period selection handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.device-period-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const period = e.target.closest('.device-period-option').dataset.period;
+                    if (period !== currentDevicePeriod && currentDeviceId) {
+                        currentDevicePeriod = period;
+                        loadDeviceAnalytics(currentDeviceId);
+                    }
+                });
+            });
+        });
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function(e) {
+            const allDevicesModal = document.getElementById('allDevicesModal');
+            const deviceAnalyticsModal = document.getElementById('deviceAnalyticsModal');
+            
+            if (e.target === allDevicesModal) {
+                closeAllDevicesModal();
+            }
+            if (e.target === deviceAnalyticsModal) {
+                closeDeviceAnalyticsModal();
+            }
+        });
+
+        // Close modals with escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAllDevicesModal();
+                closeDeviceAnalyticsModal();
+            }
+        });
+    </script>
+</body>
+</html>

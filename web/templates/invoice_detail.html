@@ -1,0 +1,590 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Invoice {{.invoice.InvoiceNumber}}</h3>
+                    <div class="btn-group" role="group">
+                        <a href="/invoices" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                        {{if eq .invoice.Status "draft"}}
+                        <a href="/invoices/{{.invoice.InvoiceID}}/edit" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        {{end}}
+                        <button class="btn btn-info" onclick="window.print()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button class="btn btn-success" onclick="downloadPDF()">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button class="btn btn-warning" onclick="emailInvoice()">
+                            <i class="fas fa-envelope"></i> Email
+                        </button>
+                        {{if ne .invoice.Status "sent"}}
+                        <button class="btn btn-outline-info" onclick="updateStatus('sent')">
+                            <i class="fas fa-paper-plane"></i> Mark as Sent
+                        </button>
+                        {{end}}
+                        {{if ne .invoice.Status "paid"}}
+                        <button class="btn btn-outline-success" onclick="updateStatus('paid')">
+                            <i class="fas fa-check"></i> Mark as Paid
+                        </button>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <div class="card-body" id="invoiceContent">
+                    <!-- Invoice Header -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {{if .company.LogoPath}}
+                            <img src="{{.company.LogoPath}}" alt="{{.company.CompanyName}}" class="img-fluid mb-3" style="max-height: 100px;">
+                            {{end}}
+                            <h4>{{.company.CompanyName}}</h4>
+                            {{if .company.AddressLine1}}<p class="mb-1">{{.company.AddressLine1}}</p>{{end}}
+                            {{if .company.AddressLine2}}<p class="mb-1">{{.company.AddressLine2}}</p>{{end}}
+                            {{if or .company.City .company.PostalCode}}
+                            <p class="mb-1">
+                                {{if .company.PostalCode}}{{.company.PostalCode}} {{end}}{{.company.City}}
+                                {{if .company.State}}, {{.company.State}}{{end}}
+                            </p>
+                            {{end}}
+                            {{if .company.Country}}<p class="mb-1">{{.company.Country}}</p>{{end}}
+                            {{if .company.Phone}}<p class="mb-1"><strong>Phone:</strong> {{.company.Phone}}</p>{{end}}
+                            {{if .company.Email}}<p class="mb-1"><strong>Email:</strong> {{.company.Email}}</p>{{end}}
+                            {{if .company.Website}}<p class="mb-1"><strong>Website:</strong> {{.company.Website}}</p>{{end}}
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <h2 class="text-primary">INVOICE</h2>
+                            <table class="table table-sm table-borderless ml-auto" style="width: auto;">
+                                <tr>
+                                    <td><strong>Invoice #:</strong></td>
+                                    <td>{{.invoice.InvoiceNumber}}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Issue Date:</strong></td>
+                                    <td>{{.invoice.IssueDate.Format "02.01.2006"}}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Due Date:</strong></td>
+                                    <td>{{.invoice.DueDate.Format "02.01.2006"}}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span class="badge 
+                                            {{if eq .invoice.Status "draft"}}badge-secondary{{end}}
+                                            {{if eq .invoice.Status "sent"}}badge-info{{end}}
+                                            {{if eq .invoice.Status "paid"}}badge-success{{end}}
+                                            {{if eq .invoice.Status "overdue"}}badge-danger{{end}}
+                                            {{if eq .invoice.Status "cancelled"}}badge-dark{{end}}">
+                                            {{.invoice.Status | title}}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {{if .invoice.IsOverdue}}
+                                <tr>
+                                    <td colspan="2" class="text-danger">
+                                        <strong><i class="fas fa-exclamation-triangle"></i> OVERDUE</strong>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Bill To Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Bill To:</h5>
+                            {{if .invoice.Customer}}
+                            <div class="border p-3">
+                                <strong>{{.invoice.Customer.GetDisplayName}}</strong><br>
+                                {{if .invoice.Customer.Email}}{{.invoice.Customer.Email}}<br>{{end}}
+                                {{if .invoice.Customer.Phone}}{{.invoice.Customer.Phone}}<br>{{end}}
+                                {{if .invoice.Customer.Address}}{{.invoice.Customer.Address}}<br>{{end}}
+                                {{if .invoice.Customer.ZipCode}}{{.invoice.Customer.ZipCode}} {{end}}{{.invoice.Customer.City}}
+                            </div>
+                            {{else}}
+                            <div class="border p-3 text-muted">
+                                Customer information not available
+                            </div>
+                            {{end}}
+                        </div>
+                        <div class="col-md-6">
+                            {{if .invoice.Job}}
+                            <h5>Job Reference:</h5>
+                            <div class="border p-3">
+                                <strong>{{.invoice.Job.Description}}</strong><br>
+                                {{if .invoice.Job.StartDate}}<small>Start: {{.invoice.Job.StartDate.Format "02.01.2006"}}</small><br>{{end}}
+                                {{if .invoice.Job.EndDate}}<small>End: {{.invoice.Job.EndDate.Format "02.01.2006"}}</small>{{end}}
+                            </div>
+                            {{end}}
+                            
+                            {{if .invoice.PaymentTerms}}
+                            <h5 class="mt-3">Payment Terms:</h5>
+                            <div class="border p-3">
+                                {{.invoice.PaymentTerms}}
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Line Items -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5>Invoice Items</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Description</th>
+                                            <th width="10%">Quantity</th>
+                                            <th width="12%">Unit Price</th>
+                                            <th width="12%">Rental Period</th>
+                                            <th width="12%" class="text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{range .invoice.LineItems}}
+                                        <tr>
+                                            <td>
+                                                <strong>{{.Description}}</strong>
+                                                {{if eq .ItemType "device"}}
+                                                    {{if .Device}}
+                                                    <br><small class="text-muted">Device: {{.Device.Brand}} {{.Device.Model}} ({{.Device.DeviceID}})</small>
+                                                    {{end}}
+                                                {{else if eq .ItemType "package"}}
+                                                    {{if .Package}}
+                                                    <br><small class="text-muted">Package: {{.Package.PackageName}}</small>
+                                                    {{end}}
+                                                {{else if eq .ItemType "service"}}
+                                                    <br><small class="text-muted">Service</small>
+                                                {{end}}
+                                            </td>
+                                            <td>{{printf "%.2f" .Quantity}}</td>
+                                            <td>{{$.settings.CurrencySymbol}}{{printf "%.2f" .UnitPrice}}</td>
+                                            <td>
+                                                {{if and .RentalStartDate .RentalEndDate}}
+                                                {{.RentalStartDate.Format "02.01"}} - {{.RentalEndDate.Format "02.01.2006"}}
+                                                {{if .RentalDays}}<br><small>({{.RentalDays}} days)</small>{{end}}
+                                                {{else}}
+                                                -
+                                                {{end}}
+                                            </td>
+                                            <td class="text-right">{{$.settings.CurrencySymbol}}{{printf "%.2f" .TotalPrice}}</td>
+                                        </tr>
+                                        {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Totals -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{if .invoice.Notes}}
+                            <h5>Notes:</h5>
+                            <div class="border p-3">
+                                {{.invoice.Notes}}
+                            </div>
+                            {{end}}
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Subtotal:</strong></td>
+                                    <td class="text-right">{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.Subtotal}}</td>
+                                </tr>
+                                {{if gt .invoice.DiscountAmount 0}}
+                                <tr>
+                                    <td><strong>Discount:</strong></td>
+                                    <td class="text-right">-{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.DiscountAmount}}</td>
+                                </tr>
+                                {{end}}
+                                {{if gt .invoice.TaxRate 0}}
+                                <tr>
+                                    <td><strong>Tax ({{printf "%.1f" .invoice.TaxRate}}%):</strong></td>
+                                    <td class="text-right">{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.TaxAmount}}</td>
+                                </tr>
+                                {{end}}
+                                <tr class="table-primary">
+                                    <td><strong>Total Amount:</strong></td>
+                                    <td class="text-right"><strong>{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.TotalAmount}}</strong></td>
+                                </tr>
+                                {{if gt .invoice.PaidAmount 0}}
+                                <tr class="table-success">
+                                    <td><strong>Paid Amount:</strong></td>
+                                    <td class="text-right">{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.PaidAmount}}</td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td><strong>Balance Due:</strong></td>
+                                    <td class="text-right"><strong>{{.settings.CurrencySymbol}}{{printf "%.2f" .invoice.BalanceDue}}</strong></td>
+                                </tr>
+                                {{end}}
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Terms and Conditions -->
+                    {{if .invoice.TermsConditions}}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Terms & Conditions:</h5>
+                            <div class="border p-3 small">
+                                {{.invoice.TermsConditions}}
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+
+                    <!-- Company Footer Info -->
+                    <div class="row mt-4 pt-3 border-top">
+                        <div class="col-12 text-center small text-muted">
+                            {{if .company.TaxNumber}}<strong>Tax Number:</strong> {{.company.TaxNumber}} | {{end}}
+                            {{if .company.VATNumber}}<strong>VAT Number:</strong> {{.company.VATNumber}} | {{end}}
+                            {{if .company.Email}}{{.company.Email}} | {{end}}
+                            {{if .company.Website}}{{.company.Website}}{{end}}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment History -->
+                {{if .invoice.Payments}}
+                <div class="card-footer">
+                    <h5>Payment History</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .invoice.Payments}}
+                                <tr>
+                                    <td>{{.PaymentDate.Format "02.01.2006"}}</td>
+                                    <td>{{$.settings.CurrencySymbol}}{{printf "%.2f" .Amount}}</td>
+                                    <td>{{if .PaymentMethod}}{{.PaymentMethod}}{{else}}-{{end}}</td>
+                                    <td>{{if .ReferenceNumber}}{{.ReferenceNumber}}{{else}}-{{end}}</td>
+                                    <td>{{if .Notes}}{{.Notes}}{{else}}-{{end}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Invoice Status</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to mark this invoice as <span id="statusText"></span>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusUpdate">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Payment</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <div class="form-group">
+                        <label for="paymentAmount">Amount *</label>
+                        <input type="number" id="paymentAmount" class="form-control" step="0.01" min="0.01" 
+                               max="{{.invoice.BalanceDue}}" value="{{.invoice.BalanceDue}}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentDate">Payment Date *</label>
+                        <input type="date" id="paymentDate" class="form-control" value="{{.now.Format "2006-01-02"}}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentMethod">Payment Method</label>
+                        <select id="paymentMethod" class="form-control">
+                            <option value="">Select Method</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Check">Check</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="referenceNumber">Reference Number</label>
+                        <input type="text" id="referenceNumber" class="form-control" placeholder="Transaction ID, Check number, etc.">
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentNotes">Notes</label>
+                        <textarea id="paymentNotes" class="form-control" rows="2" placeholder="Additional payment notes"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitPayment()">Add Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Invoice Modal -->
+<div class="modal fade" id="emailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Email Invoice</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="emailForm">
+                    <div class="form-group">
+                        <label for="emailTo">Send to *</label>
+                        <input type="email" id="emailTo" class="form-control" 
+                               value="{{if .invoice.Customer}}{{.invoice.Customer.Email}}{{end}}" required>
+                        <small class="form-text text-muted">Customer's email address</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="emailSubject">Subject</label>
+                        <input type="text" id="emailSubject" class="form-control" 
+                               value="Invoice {{.invoice.InvoiceNumber}} from {{.company.CompanyName}}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="emailMessage">Additional Message (Optional)</label>
+                        <textarea id="emailMessage" class="form-control" rows="4" 
+                                  placeholder="Add any additional notes or message for the customer..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" id="includePDF" class="form-check-input" checked>
+                            <label class="form-check-label" for="includePDF">
+                                Include PDF attachment
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" id="markAsSent" class="form-check-input" 
+                                   {{if eq .invoice.Status "draft"}}checked{{end}}>
+                            <label class="form-check-label" for="markAsSent">
+                                Mark invoice as sent after sending email
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Preview:</strong> The email will include invoice details, payment information, and your company branding.
+                        {{if not .invoice.Customer.Email}}
+                        <br><strong>Note:</strong> No customer email on file - please enter one above.
+                        {{end}}
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendEmail()">
+                    <i class="fas fa-paper-plane"></i> Send Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .card-header, .btn-group, .card-footer {
+        display: none !important;
+    }
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .container-fluid {
+        padding: 0 !important;
+    }
+}
+</style>
+
+<script>
+let currentStatus = null;
+
+function updateStatus(status) {
+    currentStatus = status;
+    document.getElementById('statusText').textContent = status;
+    $('#statusModal').modal('show');
+}
+
+document.getElementById('confirmStatusUpdate').addEventListener('click', function() {
+    if (currentStatus) {
+        fetch(`/api/invoices/{{.invoice.InvoiceID}}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: currentStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to update status');
+        });
+    }
+    $('#statusModal').modal('hide');
+});
+
+function downloadPDF() {
+    window.open(`/invoices/{{.invoice.InvoiceID}}/pdf`, '_blank');
+}
+
+function emailInvoice() {
+    $('#emailModal').modal('show');
+}
+
+function sendEmail() {
+    const emailData = {
+        toEmail: document.getElementById('emailTo').value,
+        subject: document.getElementById('emailSubject').value,
+        message: document.getElementById('emailMessage').value,
+        includePdf: document.getElementById('includePDF').checked,
+        markAsSent: document.getElementById('markAsSent').checked
+    };
+    
+    if (!emailData.toEmail) {
+        alert('Please enter an email address');
+        return;
+    }
+    
+    // Show loading state
+    const sendButton = document.querySelector('#emailModal .btn-primary');
+    const originalText = sendButton.innerHTML;
+    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    sendButton.disabled = true;
+    
+    fetch(`/invoices/{{.invoice.InvoiceID}}/email`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error sending email: ' + data.error);
+        } else {
+            alert('Invoice sent successfully to ' + data.sentTo);
+            $('#emailModal').modal('hide');
+            if (emailData.markAsSent) {
+                location.reload(); // Reload to show updated status
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to send email');
+    })
+    .finally(() => {
+        // Restore button state
+        sendButton.innerHTML = originalText;
+        sendButton.disabled = false;
+    });
+}
+
+function addPayment() {
+    $('#paymentModal').modal('show');
+}
+
+function submitPayment() {
+    const payment = {
+        invoiceId: {{.invoice.InvoiceID}},
+        amount: parseFloat(document.getElementById('paymentAmount').value),
+        paymentDate: document.getElementById('paymentDate').value,
+        paymentMethod: document.getElementById('paymentMethod').value || null,
+        referenceNumber: document.getElementById('referenceNumber').value || null,
+        notes: document.getElementById('paymentNotes').value || null
+    };
+    
+    fetch('/api/invoice-payments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payment)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            alert('Payment added successfully!');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to add payment');
+    });
+    
+    $('#paymentModal').modal('hide');
+}
+
+// Add payment button if balance due > 0
+{{if gt .invoice.BalanceDue 0}}
+document.addEventListener('DOMContentLoaded', function() {
+    const btnGroup = document.querySelector('.card-header .btn-group');
+    const paymentBtn = document.createElement('button');
+    paymentBtn.className = 'btn btn-warning';
+    paymentBtn.innerHTML = '<i class="fas fa-dollar-sign"></i> Add Payment';
+    paymentBtn.onclick = addPayment;
+    btnGroup.appendChild(paymentBtn);
+});
+{{end}}
+</script>
+{{end}}

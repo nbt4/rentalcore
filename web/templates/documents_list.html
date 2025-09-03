@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/devices">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers">Customers</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Documents
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/documents">All Documents</a></li>
+                            <li><a class="dropdown-item" href="/documents/upload">Upload Document</a></li>
+                            <li><a class="dropdown-item" href="/documents/signatures">Digital Signatures</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="fas fa-file-alt text-primary me-2"></i>Documents
+                        </h1>
+                        <p class="text-muted mb-0">
+                            {{if .entityType}}
+                                Documents for {{.entityType}} #{{.entityID}}
+                            {{else}}
+                                All system documents
+                            {{end}}
+                        </p>
+                    </div>
+                    <div>
+                        <a href="/documents/upload?entityType={{.entityType}}&entityID={{.entityID}}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload Document
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Filters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-filter me-2"></i>Filters
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="typeFilter" class="form-label">Document Type</label>
+                        <select class="form-select" id="typeFilter" onchange="filterDocuments()">
+                            <option value="">All Types</option>
+                            <option value="contract">Contract</option>
+                            <option value="manual">Manual</option>
+                            <option value="photo">Photo</option>
+                            <option value="invoice">Invoice</option>
+                            <option value="receipt">Receipt</option>
+                            <option value="signature">Signature</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dateFilter" class="form-label">Upload Date</label>
+                        <select class="form-select" id="dateFilter" onchange="filterDocuments()">
+                            <option value="">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="signatureFilter" class="form-label">Signature Status</label>
+                        <select class="form-select" id="signatureFilter" onchange="filterDocuments()">
+                            <option value="">All Documents</option>
+                            <option value="signed">Signed</option>
+                            <option value="unsigned">Unsigned</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="searchFilter" class="form-label">Search</label>
+                        <input type="text" class="rc-input" id="searchFilter" placeholder="Search documents..." onkeyup="filterDocuments()" style="max-width: 300px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents Grid -->
+        <div class="row" id="documentsContainer">
+            {{if .documents}}
+                {{range .documents}}
+                <div class="col-md-6 col-lg-4 mb-4 document-item" data-type="{{.DocumentType}}" data-name="{{.OriginalFilename}}" data-date="{{.UploadedAt.Format "2006-01-02"}}">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="{{if eq .DocumentType "photo"}}fas fa-image text-success{{else if eq .DocumentType "contract"}}fas fa-file-contract text-primary{{else if eq .DocumentType "invoice"}}fas fa-file-invoice text-warning{{else if eq .DocumentType "manual"}}fas fa-book text-info{{else}}fas fa-file-alt text-secondary{{end}} me-2"></i>
+                                <span class="fw-bold">{{.DocumentType | title}}</span>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/documents/{{.DocumentID}}/view" target="_blank">
+                                        <i class="fas fa-eye me-2"></i>View
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/documents/{{.DocumentID}}/download">
+                                        <i class="fas fa-download me-2"></i>Download
+                                    </a></li>
+                                    {{if or (eq .DocumentType "contract") (eq .DocumentType "invoice")}}
+                                    <li><a class="dropdown-item" href="/documents/{{.DocumentID}}/sign">
+                                        <i class="fas fa-signature me-2"></i>Sign Document
+                                    </a></li>
+                                    {{end}}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteDocument({{.DocumentID}})">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title">{{.OriginalFilename}}</h6>
+                            {{if .Description}}
+                            <p class="card-text text-muted small">{{.Description}}</p>
+                            {{end}}
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-light rounded">
+                                        <div class="fw-bold text-primary">{{.FileSize | humanizeBytes}}</div>
+                                        <small class="text-muted">File Size</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-2 bg-light rounded">
+                                        <div class="fw-bold text-success">v{{.Version}}</div>
+                                        <small class="text-muted">Version</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {{if .Signatures}}
+                            <div class="mb-2">
+                                <span class="badge bg-success">
+                                    <i class="fas fa-signature me-1"></i>{{len .Signatures}} Signature{{if ne (len .Signatures) 1}}s{{end}}
+                                </span>
+                            </div>
+                            {{end}}
+                            
+                            {{if .IsPublic}}
+                            <div class="mb-2">
+                                <span class="badge bg-info">
+                                    <i class="fas fa-globe me-1"></i>Public
+                                </span>
+                            </div>
+                            {{end}}
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    {{if .Uploader}}by {{.Uploader.Username}}{{end}}
+                                </small>
+                                <small class="text-muted">
+                                    {{.UploadedAt.Format "Jan 2, 2006"}}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+            {{else}}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Documents Found</h4>
+                        <p class="text-muted mb-4">
+                            {{if .entityType}}
+                                No documents have been uploaded for this {{.entityType}} yet.
+                            {{else}}
+                                No documents have been uploaded to the system yet.
+                            {{end}}
+                        </p>
+                        <a href="/documents/upload?entityType={{.entityType}}&entityID={{.entityID}}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload First Document
+                        </a>
+                    </div>
+                </div>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this document? This action cannot be undone and will remove the file permanently.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">Delete Document</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let deleteDocumentId = null;
+        
+        function deleteDocument(documentId) {
+            deleteDocumentId = documentId;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+        
+        document.getElementById('confirmDelete').addEventListener('click', function() {
+            if (deleteDocumentId) {
+                fetch(`/documents/${deleteDocumentId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete document');
+                });
+            }
+        });
+        
+        function filterDocuments() {
+            const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
+            const dateFilter = document.getElementById('dateFilter').value;
+            const signatureFilter = document.getElementById('signatureFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+            
+            const documents = document.querySelectorAll('.document-item');
+            
+            documents.forEach(doc => {
+                let show = true;
+                
+                // Type filter
+                if (typeFilter && doc.dataset.type !== typeFilter) {
+                    show = false;
+                }
+                
+                // Search filter
+                if (searchFilter && !doc.dataset.name.toLowerCase().includes(searchFilter)) {
+                    show = false;
+                }
+                
+                // Date filter
+                if (dateFilter) {
+                    const docDate = new Date(doc.dataset.date);
+                    const now = new Date();
+                    let cutoff;
+                    
+                    switch (dateFilter) {
+                        case 'today':
+                            cutoff = new Date(now.setHours(0, 0, 0, 0));
+                            break;
+                        case 'week':
+                            cutoff = new Date(now.setDate(now.getDate() - 7));
+                            break;
+                        case 'month':
+                            cutoff = new Date(now.setMonth(now.getMonth() - 1));
+                            break;
+                        case 'year':
+                            cutoff = new Date(now.setFullYear(now.getFullYear() - 1));
+                            break;
+                    }
+                    
+                    if (cutoff && docDate < cutoff) {
+                        show = false;
+                    }
+                }
+                
+                doc.style.display = show ? 'block' : 'none';
+            });
+        }
+        
+        // Add helper function for file size formatting
+        function humanizeBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

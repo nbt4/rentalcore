@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{.title}} - RentalCore</title>
+    <!-- Cache buster for debugging -->
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JobScanner">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#6c757d">
+    <meta name="msapplication-TileColor" content="#6c757d">
+    
+    <!-- CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+    
+    <style>
+        /* Scanner Styles */
+        .scanner-container {
+            position: relative;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 0 auto;
+            max-width: 400px;
+            height: 300px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .scanner-video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+            background: #000;
+        }
+        
+        .scanner-container video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: black !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 1 !important;
+        }
+        
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .scanner-ready {
+            border: 4px solid #28a745;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .scanner-status-area {
+            margin: 12px 0;
+        }
+        
+        .scanner-status {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .scanner-status.code-detected {
+            background: rgba(111, 66, 193, 0.1);
+            border-color: #6f42c1;
+            color: #6f42c1;
+            animation: pulse-ready 2s infinite;
+        }
+        
+        @keyframes pulse-ready {
+            0% { 
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 0 rgba(111, 66, 193, 0.7);
+            }
+            70% {
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 10px rgba(111, 66, 193, 0);
+            }
+            100% {
+                border-color: #6f42c1;
+                box-shadow: 0 0 0 0 rgba(111, 66, 193, 0);
+            }
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+            position: relative;
+            padding-bottom: 40px;
+        }
+        
+        .camera-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .camera-btn.start {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        
+        .camera-btn.stop {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            animation: pulse-red 2s infinite;
+        }
+        
+        .camera-btn.trigger {
+            background: linear-gradient(135deg, #6f42c1, #563d7c);
+            color: white;
+            animation: pulse-trigger 3s infinite;
+        }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4); }
+            100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+        }
+        
+        @keyframes pulse-trigger {
+            0% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+            50% { box-shadow: 0 4px 20px rgba(111, 66, 193, 0.4); }
+            100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
+        }
+        
+        .camera-status-bar {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin: 16px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #28a745;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0% { 
+                background: #28a745;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            70% {
+                background: #28a745;
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% {
+                background: #28a745;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+        
+        .manual-input-section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .device-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .device-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .device-item:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .device-id {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--accent-color);
+        }
+        
+        .device-name {
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .case-header {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .case-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .case-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            color: var(--text-muted);
+        }
+        
+        .case-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .scan-result {
+            background: var(--bg-secondary);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        .scan-result.error {
+            border-color: var(--danger-color);
+            background: rgba(220, 53, 69, 0.1);
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--bg-tertiary);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="/jobs">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a>
+                    <a class="nav-link" href="/devices">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a>
+                    <a class="nav-link" href="/customers">
+                        <i class="bi bi-people"></i> Customers
+                    </a>
+                    <a class="nav-link active" href="/cases">
+                        <i class="bi bi-box"></i> Cases
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Case Header -->
+        <div class="case-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="case-title">{{.case.Name}}</h1>
+                    <div class="case-meta">
+                        <div class="case-meta-item">
+                            <i class="bi bi-box"></i>
+                            <span>Case ID: {{.case.CaseID}}</span>
+                        </div>
+                        <div class="case-meta-item">
+                            <i class="bi bi-info-circle"></i>
+                            <span>{{if .case.Status}}{{.case.Status}}{{else}}Free{{end}}</span>
+                        </div>
+                        <div class="case-meta-item">
+                            <i class="bi bi-cpu"></i>
+                            <span>{{len .deviceCases}} devices in case</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    <div class="btn-group">
+                        <a href="/cases/{{.case.CaseID}}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-eye"></i> View Case
+                        </a>
+                        <a href="/cases" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-left"></i> Back to Cases
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Scanner Column -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="bi bi-camera"></i> Device Scanner</h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- Camera Scanner Container -->
+                        <div class="scanner-container">
+                            <div class="loading active" id="camera-loading">
+                                <div class="spinner"></div>
+                                <p>Click camera button to start scanning devices</p>
+                                <small style="color: #666; margin-top: 10px; display: block;">
+                                    📱 Camera requires HTTPS or localhost access
+                                </small>
+                            </div>
+                            <video id="scanner-video" class="scanner-video" autoplay muted playsinline style="display: none;"></video>
+                            <div class="scanner-overlay" id="scanner-overlay" style="display: none;">
+                                <!-- Overlay content for targeting box, etc. -->
+                            </div>
+                        </div>
+                        
+                        <!-- Camera Status Indicator -->
+                        <div class="camera-status-bar" id="camera-status-bar" style="display: none;">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="status-dot"></div>
+                                <span class="ms-2">Camera On - Scanning for Device Barcodes</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Scanner Status -->
+                        <div class="scanner-status-area text-center" id="scanner-status-area">
+                            <div class="scanner-status" id="scanner-status">Ready to scan device barcodes</div>
+                        </div>
+                        
+                        <!-- Camera Controls -->
+                        <div class="camera-controls">
+                            <button class="camera-btn start" id="start-btn" onclick="toggleCamera()">
+                                <i class="bi bi-camera"></i>
+                            </button>
+                            <button class="camera-btn stop" id="stop-btn" onclick="toggleCamera()" style="display: none;">
+                                <i class="bi bi-stop"></i>
+                            </button>
+                            <button class="camera-btn trigger" id="trigger-btn" onclick="triggerScan()" style="display: none;">
+                                <i class="bi bi-bullseye"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Manual Input -->
+                        <div class="manual-input-section">
+                            <h6><i class="bi bi-keyboard"></i> Manual Input</h6>
+                            <div class="alert alert-info" style="margin-bottom: 15px; font-size: 14px;">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>Camera not working?</strong> Use manual input below or try:
+                                <br>• Access via <code>https://</code> URL
+                                <br>• Access via <code>localhost:9000</code> instead of IP
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="manual-input" class="form-control" 
+                                       placeholder="Type device ID manually (e.g. SUB1001, MIC1002)" autocomplete="off">
+                                <button class="btn btn-primary" onclick="processManualInput()">
+                                    <i class="bi bi-plus-lg"></i> Add to Case
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Devices Column -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6><i class="bi bi-cpu"></i> Available Devices</h6>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-secondary btn-sm" id="listViewBtn" onclick="switchView('list')">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="treeViewBtn" onclick="switchView('tree')">
+                                    <i class="bi bi-diagram-3"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="addSelectedBtn" style="display: none;" onclick="addSelectedDevices()">
+                            <i class="bi bi-plus-lg"></i> <span id="addButtonText">Add Selected</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="deviceSearch" placeholder="Search devices..." onkeyup="filterDevices()">
+                        </div>
+                        
+                        <!-- List View -->
+                        <div class="device-list" id="available-devices-list" style="max-height: 400px; overflow-y: auto;">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading available devices...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Tree View -->
+                        <div class="tree-container" id="tree-view-container" style="max-height: 400px; overflow-y: auto; display: none;">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading tree structure...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Devices in Case Column -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6><i class="bi bi-list-check"></i> Devices in Case</h6>
+                        <span class="badge bg-primary">{{len .deviceCases}} devices</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="device-list" id="device-list">
+                            {{if .deviceCases}}
+                            {{range .deviceCases}}
+                            <div class="device-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="device-id">{{.DeviceID}}</div>
+                                        <div class="device-name">
+                                            {{if .Device.Product}}
+                                                {{.Device.Product.Name}}
+                                            {{else}}
+                                                Unknown Product
+                                            {{end}}
+                                        </div>
+                                        <div class="text-muted mt-1">
+                                            Status: 
+                                            {{if eq .Device.Status "free"}}
+                                                <span class="badge bg-success">Free</span>
+                                            {{else if eq .Device.Status "rented"}}
+                                                <span class="badge bg-warning">Rented</span>
+                                            {{else if eq .Device.Status "maintenance"}}
+                                                <span class="badge bg-danger">Maintenance</span>
+                                            {{else}}
+                                                <span class="badge bg-secondary">{{.Device.Status}}</span>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="removeDeviceFromCase('{{.DeviceID}}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {{end}}
+                            {{else}}
+                            <div class="text-center py-5" id="empty-state">
+                                <i class="bi bi-qr-code display-4 text-muted"></i>
+                                <h5 class="mt-3 text-muted">No devices in case yet</h5>
+                                <p class="text-muted">Start scanning to add devices to this case</p>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    
+    <script>
+        // Global variables
+        let isScanning = false;
+        let lastDetectedCode = null;
+        let triggerCooldown = false;
+        let currentView = 'list';
+        let treeData = null;
+        let availableDevices = [];
+        let selectedDevices = [];
+
+        // Tree View Functions
+        function switchView(view) {
+            currentView = view;
+            
+            const listViewBtn = document.getElementById('listViewBtn');
+            const treeViewBtn = document.getElementById('treeViewBtn');
+            const listContainer = document.getElementById('available-devices-list');
+            const treeContainer = document.getElementById('tree-view-container');
+            
+            if (view === 'list') {
+                listViewBtn.classList.add('active');
+                treeViewBtn.classList.remove('active');
+                listContainer.style.display = 'block';
+                treeContainer.style.display = 'none';
+                
+                if (!availableDevices || availableDevices.length === 0) {
+                    loadAvailableDevices();
+                }
+            } else if (view === 'tree') {
+                listViewBtn.classList.remove('active');
+                treeViewBtn.classList.add('active');
+                listContainer.style.display = 'none';
+                treeContainer.style.display = 'block';
+                
+                if (!treeData) {
+                    loadTreeData();
+                }
+            }
+        }
+
+        async function loadTreeData() {
+            try {
+                const response = await fetch('/api/v1/cases/devices/tree');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+                
+                const data = await response.json();
+                treeData = data.treeData;
+                renderTreeView(treeData);
+            } catch (error) {
+                console.error('Error loading tree data:', error);
+                document.getElementById('tree-view-container').innerHTML = `
+                    <div class="text-center py-3 text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <p class="mt-2">Error loading tree structure: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderTreeView(categories) {
+            const container = document.getElementById('tree-view-container');
+            
+            if (!categories || categories.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-diagram-3 display-6"></i>
+                        <p class="mt-2">No devices found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            categories.forEach(category => {
+                html += renderTreeCategory(category);
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function renderTreeCategory(category) {
+            let html = `
+                <div class="tree-category">
+                    <div class="tree-category-header" onclick="toggleTreeNode('category-${category.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-category-${category.id}"></i>
+                        <i class="bi bi-folder2 tree-icon category-icon"></i>
+                        <span class="tree-title">${category.name}</span>
+                        <span class="tree-count">${category.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="category-${category.id}" style="display: none;">
+            `;
+
+            // Direct devices in category
+            if (category.direct_devices && category.direct_devices.length > 0) {
+                category.direct_devices.forEach(device => {
+                    html += renderTreeDevice(device);
+                });
+            }
+
+            // Subcategories
+            if (category.subcategories && category.subcategories.length > 0) {
+                category.subcategories.forEach(subcategory => {
+                    html += renderTreeSubcategory(subcategory);
+                });
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function renderTreeSubcategory(subcategory) {
+            let html = `
+                <div class="tree-subcategory">
+                    <div class="tree-subcategory-header" onclick="toggleTreeNode('subcategory-${subcategory.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-subcategory-${subcategory.id}"></i>
+                        <i class="bi bi-folder tree-icon subcategory-icon"></i>
+                        <span class="tree-title">${subcategory.name}</span>
+                        <span class="tree-count">${subcategory.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="subcategory-${subcategory.id}" style="display: none;">
+            `;
+
+            // Direct devices in subcategory
+            if (subcategory.direct_devices && subcategory.direct_devices.length > 0) {
+                subcategory.direct_devices.forEach(device => {
+                    html += renderTreeDevice(device);
+                });
+            }
+
+            // Subbiercategories
+            if (subcategory.subbiercategories && subcategory.subbiercategories.length > 0) {
+                subcategory.subbiercategories.forEach(subbiercategory => {
+                    html += renderTreeSubbiercategory(subbiercategory);
+                });
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function renderTreeSubbiercategory(subbiercategory) {
+            let html = `
+                <div class="tree-subbiercategory">
+                    <div class="tree-subbiercategory-header" onclick="toggleTreeNode('subbiercategory-${subbiercategory.id}')">
+                        <i class="bi bi-chevron-right tree-chevron" id="chevron-subbiercategory-${subbiercategory.id}"></i>
+                        <i class="bi bi-folder-fill tree-icon subbiercategory-icon"></i>
+                        <span class="tree-title">${subbiercategory.name}</span>
+                        <span class="tree-count">${subbiercategory.device_count} devices</span>
+                    </div>
+                    <div class="tree-content" id="subbiercategory-${subbiercategory.id}" style="display: none;">
+            `;
+
+            if (subbiercategory.devices && subbiercategory.devices.length > 0) {
+                subbiercategory.devices.forEach(device => {
+                    html += renderTreeDevice(device);
+                });
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function renderTreeDevice(device) {
+            const isSelected = selectedDevices.includes(device.deviceID);
+            const isUnavailable = !device.available;
+            
+            let statusBadge = '';
+            if (device.status === 'free') {
+                statusBadge = '<span class="device-status device-status-free">Free</span>';
+            } else if (device.status === 'rented') {
+                statusBadge = '<span class="device-status device-status-rented">Rented</span>';
+            } else if (device.status === 'maintenance') {
+                statusBadge = '<span class="device-status device-status-maintenance">Maintenance</span>';
+            }
+
+            let caseInfo = '';
+            if (isUnavailable && device.caseName) {
+                caseInfo = `<span class="case-info">In ${device.caseName}</span>`;
+            }
+
+            const deviceClasses = `tree-device ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}`;
+            
+            return `
+                <div class="${deviceClasses}" onclick="${isUnavailable ? '' : `toggleTreeDeviceSelection('${device.deviceID}')`}">
+                    ${isUnavailable ? '' : `<input type="checkbox" class="form-check-input tree-device-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleTreeDeviceSelection('${device.deviceID}')" onclick="event.stopPropagation()">`}
+                    <div class="device-info">
+                        <div class="device-name">${device.productName}</div>
+                        <div class="device-details">
+                            <span class="device-id">${device.deviceID}</span>
+                            ${device.serialNumber ? `<span class="device-serial">• ${device.serialNumber}</span>` : ''}
+                            ${statusBadge}
+                            ${caseInfo}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleTreeNode(nodeId) {
+            const content = document.getElementById(nodeId);
+            const chevron = document.getElementById('chevron-' + nodeId);
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                chevron.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                chevron.classList.remove('expanded');
+            }
+        }
+
+        function toggleTreeDeviceSelection(deviceID) {
+            const index = selectedDevices.indexOf(deviceID);
+            if (index > -1) {
+                selectedDevices.splice(index, 1);
+            } else {
+                selectedDevices.push(deviceID);
+            }
+            
+            // Update tree view selection
+            if (currentView === 'tree' && treeData) {
+                renderTreeView(treeData);
+            }
+            updateAddButton();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Case device mapping page loaded');
+            initializeScanner();
+            setupEventListeners();
+            
+            // Set default view to list
+            switchView('list');
+        });
+
+        function initializeScanner() {
+            console.log('Scanner initialized, ready to start');
+        }
+
+        async function loadAvailableDevices() {
+            try {
+                const response = await fetch('/api/v1/devices?available=true');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+                
+                const data = await response.json();
+                console.log('API response data:', data);
+                availableDevices = data.devices || data || [];
+                console.log('Available devices loaded:', availableDevices.length);
+                renderAvailableDevices();
+            } catch (error) {
+                console.error('Error loading available devices:', error);
+                document.getElementById('available-devices-list').innerHTML = `
+                    <div class="text-center py-3 text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <p class="mt-2">Error loading devices: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderAvailableDevices() {
+            console.log('Rendering available devices, count:', availableDevices.length);
+            const container = document.getElementById('available-devices-list');
+            
+            if (!availableDevices || availableDevices.length === 0) {
+                console.log('No devices to render');
+                container.innerHTML = `
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-cpu display-6"></i>
+                        <p class="mt-2">No available devices</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            availableDevices.forEach(device => {
+                const isSelected = selectedDevices.includes(device.deviceID);
+                html += `
+                    <div class="device-item" style="cursor: pointer; border: 1px solid ${isSelected ? '#6f42c1' : 'var(--bg-tertiary)'}; background: ${isSelected ? 'rgba(111, 66, 193, 0.1)' : 'var(--bg-secondary)'};" onclick="toggleDeviceSelection('${device.deviceID}')">
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" class="form-check-input me-3" ${isSelected ? 'checked' : ''} onchange="toggleDeviceSelection('${device.deviceID}')" onclick="event.stopPropagation()">
+                            <div class="flex-grow-1">
+                                <div class="device-id">${device.deviceID}</div>
+                                <div class="device-name">
+                                    ${device.product ? device.product.name : 'Unknown Product'}
+                                </div>
+                                <div class="text-muted mt-1">
+                                    <span class="badge bg-success">Free</span>
+                                    ${(device.serialnumber || device.serialNumber) ? `• SN: ${device.serialnumber || device.serialNumber}` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            updateAddButton();
+        }
+
+        function toggleDeviceSelection(deviceID) {
+            const index = selectedDevices.indexOf(deviceID);
+            if (index > -1) {
+                selectedDevices.splice(index, 1);
+            } else {
+                selectedDevices.push(deviceID);
+            }
+            
+            renderAvailableDevices();
+            // Update tree view selection if in tree mode
+            if (currentView === 'tree' && treeData) {
+                renderTreeView(treeData);
+            }
+            updateAddButton();
+        }
+
+        function updateAddButton() {
+            const addBtn = document.getElementById('addSelectedBtn');
+            const addBtnText = document.getElementById('addButtonText');
+            
+            if (selectedDevices.length === 0) {
+                addBtn.style.display = 'none';
+                return;
+            }
+            
+            addBtn.style.display = 'block';
+            addBtnText.textContent = `Add ${selectedDevices.length} Device${selectedDevices.length > 1 ? 's' : ''}`;
+        }
+
+        function setupEventListeners() {
+            // Manual input Enter key
+            document.getElementById('manual-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    processManualInput();
+                }
+            });
+            
+            // Trigger scan with spacebar
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && isScanning) {
+                    e.preventDefault();
+                    triggerScan();
+                }
+            });
+        }
+
+        async function startScanner() {
+            if (isScanning) return;
+
+            console.log('Starting case device scanner...');
+            
+            if (typeof Quagga === 'undefined') {
+                updateStatus('QuaggaJS library not loaded', 'error');
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('Camera not available - HTTPS required or browser incompatible');
+                updateStatus('Camera requires HTTPS or secure connection', 'error');
+                
+                document.getElementById('start-btn').style.display = 'block';
+                document.getElementById('stop-btn').style.display = 'none';
+                return;
+            }
+
+            const loadingDiv = document.getElementById('camera-loading');
+            const loadingText = loadingDiv.querySelector('p');
+            loadingText.textContent = 'Getting camera stream...';
+            loadingDiv.classList.add('active');
+            
+            const video = document.getElementById('scanner-video');
+            
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'block';
+            
+            updateStatus('Starting camera...', 'info');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: "environment"
+                    }
+                });
+                
+                console.log('Got camera stream:', stream);
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                video.style.visibility = 'visible';
+                video.style.opacity = '1';
+                
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = resolve;
+                });
+                
+                await video.play();
+                console.log('Video is playing');
+                
+                document.getElementById('camera-loading').classList.remove('active');
+                document.getElementById('scanner-overlay').style.display = 'block';
+                document.getElementById('camera-status-bar').style.display = 'block';
+                document.getElementById('trigger-btn').style.display = 'block';
+                
+                const scannerContainer = document.querySelector('.scanner-container');
+                scannerContainer.classList.add('scanner-ready');
+                
+                updateStatus('Camera working! Initializing device scanner...', 'success');
+                
+            } catch (error) {
+                console.error('Camera failed:', error);
+                updateStatus('Camera failed: ' + error.message, 'error');
+                
+                document.getElementById('camera-loading').classList.add('active');
+                video.style.display = 'none';
+                document.getElementById('scanner-overlay').style.display = 'none';
+                document.getElementById('camera-status-bar').style.display = 'none';
+                document.getElementById('trigger-btn').style.display = 'none';
+                document.getElementById('start-btn').style.display = 'block';
+                document.getElementById('stop-btn').style.display = 'none';
+                return;
+            }
+
+            const config = {
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: video
+                },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: true
+                },
+                numOfWorkers: 1,
+                frequency: 10,
+                decoder: {
+                    readers: [
+                        "code_128_reader",
+                        "ean_reader", 
+                        "code_39_reader"
+                    ]
+                },
+                locate: true
+            };
+
+            console.log('Initializing QuaggaJS for case device scanning...');
+            
+            Quagga.offDetected();
+            
+            Quagga.onDetected(function(result) {
+                if (result && result.codeResult && result.codeResult.code) {
+                    const code = result.codeResult.code.trim();
+                    console.log('Device barcode detected:', code);
+                    if (code && code.length > 3) {
+                        lastDetectedCode = code;
+                        updateStatus(`Device detected: ${code} - Press trigger to add to case`, 'info');
+                        document.getElementById('scanner-status').classList.add('code-detected');
+                    }
+                }
+            });
+            
+            Quagga.init(config, function(err) {
+                if (err) {
+                    console.error('QuaggaJS init failed:', err);
+                    updateStatus('Scanner initialization failed, but camera is working for manual input', 'warning');
+                    return;
+                }
+                
+                console.log('QuaggaJS initialized successfully');
+                Quagga.start();
+                isScanning = true;
+                updateStatus('Point camera at device barcode', 'success');
+            });
+        }
+
+        function toggleCamera() {
+            if (isScanning) {
+                stopScanner();
+            } else {
+                startScanner();
+            }
+        }
+
+        function stopScanner() {
+            console.log('Stopping scanner...');
+            
+            if (isScanning) {
+                try {
+                    Quagga.offDetected();
+                    Quagga.stop();
+                    console.log('QuaggaJS stopped');
+                } catch (error) {
+                    console.error('Error stopping QuaggaJS:', error);
+                }
+                isScanning = false;
+            }
+            
+            const video = document.getElementById('scanner-video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Camera track stopped:', track.label);
+                });
+                video.srcObject = null;
+            }
+            
+            video.style.display = 'none';
+            document.getElementById('scanner-overlay').style.display = 'none';
+            document.getElementById('camera-status-bar').style.display = 'none';
+            document.getElementById('trigger-btn').style.display = 'none';
+            
+            const scannerContainer = document.querySelector('.scanner-container');
+            scannerContainer.classList.remove('scanner-ready');
+            
+            const loadingDiv = document.getElementById('camera-loading');
+            const loadingText = loadingDiv.querySelector('p');
+            loadingText.textContent = 'Click camera button to start scanning devices';
+            loadingDiv.classList.add('active');
+            
+            document.getElementById('start-btn').style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'none';
+            
+            updateStatus('Camera stopped', 'info');
+        }
+
+        function triggerScan() {
+            if (triggerCooldown) {
+                updateStatus('Please wait...', 'warning');
+                return;
+            }
+            
+            if (!lastDetectedCode) {
+                updateStatus('No device barcode detected - point camera at device barcode first', 'warning');
+                return;
+            }
+            
+            triggerCooldown = true;
+            const triggerBtn = document.getElementById('trigger-btn');
+            triggerBtn.classList.add('active');
+            
+            processScannedCode(lastDetectedCode);
+            
+            setTimeout(() => {
+                lastDetectedCode = null;
+                triggerCooldown = false;
+                triggerBtn.classList.remove('active');
+                document.getElementById('scanner-status').classList.remove('code-detected');
+                updateStatus('Point camera at device barcode', 'success');
+            }, 2000);
+        }
+
+        async function processScannedCode(code) {
+            updateStatus('Checking device...', 'info');
+            
+            const device = await validateDevice(code);
+            if (!device) {
+                updateStatus('Device not found: ' + code, 'error');
+                addScanResult(code, 'error', 'Device not found');
+                return;
+            }
+            
+            // Check if device is already in a case
+            const isInCase = await checkDeviceInCase(code);
+            if (isInCase) {
+                updateStatus('Device is already in a case: ' + code, 'error');
+                addScanResult(code, 'error', 'Device already in a case');
+                return;
+            }
+            
+            // Add device to this case
+            await addDeviceToCase(code);
+        }
+
+        async function validateDevice(deviceId) {
+            try {
+                const response = await fetch(`/api/v1/devices/${deviceId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.device || null;
+                }
+                return null;
+            } catch (error) {
+                console.error('Error validating device:', error);
+                return null;
+            }
+        }
+
+        async function checkDeviceInCase(deviceId) {
+            try {
+                // This would need to be implemented in the backend API
+                // For now, we'll just return false and let the backend handle the check
+                return false;
+            } catch (error) {
+                console.error('Error checking device case status:', error);
+                return false;
+            }
+        }
+
+        async function addDeviceToCase(deviceId) {
+            try {
+                const response = await fetch('/cases/{{.case.CaseID}}/devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        device_id: deviceId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addScanResult(deviceId, 'success', 'Device added to case successfully');
+                    updateStatus('Added successfully', 'success');
+                    // Reload page to show updated device list
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    addScanResult(deviceId, 'error', result.error || 'Failed to add device to case');
+                    updateStatus('Failed to add device', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding device to case:', error);
+                addScanResult(deviceId, 'error', 'Network error');
+                updateStatus('Network error', 'error');
+            }
+        }
+
+        function processManualInput() {
+            const input = document.getElementById('manual-input');
+            const code = input.value.trim();
+            
+            if (code) {
+                processScannedCode(code);
+                input.value = '';
+            }
+        }
+
+        async function removeDeviceFromCase(deviceId) {
+            if (!confirm('Remove this device from the case?')) return;
+            
+            try {
+                const response = await fetch('/cases/{{.case.CaseID}}/devices/' + deviceId, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to remove device from case');
+                }
+            } catch (error) {
+                alert('Network error');
+            }
+        }
+
+        function addScanResult(deviceId, type, message) {
+            const deviceList = document.getElementById('device-list');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `scan-result ${type}`;
+            resultDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="device-id">${deviceId}</div>
+                        <div class="device-name">${message}</div>
+                    </div>
+                    ${type === 'success' ? 
+                        `<button class="btn btn-outline-danger btn-sm" onclick="removeDeviceFromCase('${deviceId}')">
+                            <i class="bi bi-trash"></i>
+                        </button>` : ''
+                    }
+                </div>
+            `;
+            
+            deviceList.insertBefore(resultDiv, deviceList.firstChild);
+            
+            if (type === 'error') {
+                setTimeout(() => {
+                    if (resultDiv.parentNode) {
+                        resultDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('scanner-status');
+            if (statusElement) {
+                statusElement.textContent = message;
+                
+                statusElement.classList.remove('text-success', 'text-danger', 'text-warning', 'text-info');
+                
+                if (type === 'success') statusElement.classList.add('text-success');
+                else if (type === 'error') statusElement.classList.add('text-danger');
+                else if (type === 'warning') statusElement.classList.add('text-warning');
+                else if (type === 'info') statusElement.classList.add('text-info');
+            }
+        }
+
+        window.addEventListener('beforeunload', function() {
+            stopScanner();
+        });
+
+        // Tree view styles (similar to devices page)
+        const treeStyles = `
+            .tree-container {
+                font-family: Inter, -apple-system, sans-serif;
+            }
+            
+            .tree-category, .tree-subcategory, .tree-subbiercategory {
+                margin-bottom: 4px;
+            }
+            
+            .tree-category-header, .tree-subcategory-header, .tree-subbiercategory-header {
+                display: flex;
+                align-items: center;
+                padding: 8px 12px;
+                background: var(--bg-secondary);
+                border: 1px solid var(--bg-tertiary);
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            
+            .tree-category-header:hover, .tree-subcategory-header:hover, .tree-subbiercategory-header:hover {
+                background: var(--bg-tertiary);
+                border-color: var(--accent-color);
+            }
+            
+            .tree-chevron {
+                color: var(--text-muted);
+                margin-right: 8px;
+                font-size: 12px;
+                transition: transform 0.2s ease;
+            }
+            
+            .tree-chevron.expanded {
+                transform: rotate(90deg);
+            }
+            
+            .tree-icon {
+                margin-right: 8px;
+                font-size: 16px;
+            }
+            
+            .category-icon { color: #f59e0b; }
+            .subcategory-icon { color: #3b82f6; }
+            .subbiercategory-icon { color: #10b981; }
+            
+            .tree-title {
+                flex: 1;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+            
+            .tree-count {
+                font-size: 12px;
+                color: var(--text-muted);
+                background: var(--bg-tertiary);
+                padding: 2px 8px;
+                border-radius: 12px;
+            }
+            
+            .tree-content {
+                padding-left: 24px;
+                margin-top: 4px;
+            }
+            
+            .tree-device {
+                display: flex;
+                align-items: center;
+                padding: 8px 12px;
+                margin: 2px 0;
+                background: var(--bg-secondary);
+                border: 1px solid var(--bg-tertiary);
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            
+            .tree-device:hover {
+                border-color: var(--accent-color);
+                transform: translateX(2px);
+            }
+            
+            .tree-device.selected {
+                border-color: #6f42c1;
+                background: rgba(111, 66, 193, 0.1);
+            }
+            
+            .tree-device.unavailable {
+                background: rgba(220, 53, 69, 0.1);
+                border-color: rgba(220, 53, 69, 0.3);
+                opacity: 0.7;
+                cursor: not-allowed;
+            }
+            
+            .tree-device.unavailable:hover {
+                transform: none;
+            }
+            
+            .device-info {
+                flex: 1;
+            }
+            
+            .device-name {
+                font-weight: 500;
+                color: var(--text-primary);
+                font-size: 14px;
+            }
+            
+            .device-details {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                color: var(--text-muted);
+                margin-top: 2px;
+            }
+            
+            .device-id {
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 600;
+                color: var(--accent-color);
+            }
+            
+            .device-serial {
+                color: var(--text-muted);
+            }
+            
+            .device-status {
+                padding: 2px 6px;
+                border-radius: 10px;
+                font-size: 10px;
+                font-weight: 500;
+                text-transform: uppercase;
+            }
+            
+            .device-status-free { background: rgba(16, 185, 129, 0.2); color: #059669; }
+            .device-status-rented { background: rgba(245, 158, 11, 0.2); color: #d97706; }
+            .device-status-maintenance { background: rgba(239, 68, 68, 0.2); color: #dc2626; }
+            
+            .case-info {
+                font-size: 11px;
+                color: #dc2626;
+                font-weight: 500;
+            }
+            
+            .tree-device-checkbox {
+                margin-right: 8px;
+            }
+        `;
+        
+        // Add styles to page
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = treeStyles;
+        document.head.appendChild(styleSheet);
+    </script>
+</body>
+</html>

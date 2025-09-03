@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoices - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/jobs">Jobs</a>
+                <a class="nav-link" href="/devices">Devices</a>
+                <a class="nav-link" href="/customers">Customers</a>
+                <a class="nav-link" href="/invoices">Invoices</a>
+                <a class="nav-link" href="/invoice-templates">Templates</a>
+                {{if .user}}
+                <a class="nav-link" href="/logout">Logout ({{.user.Username}})</a>
+                {{end}}
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Rechnungen</h3>
+                <div>
+                    <a href="/invoices/new" class="btn btn-primary btn-new" aria-label="Neue Rechnung erstellen">
+                        <i class="bi bi-plus-lg"></i> Neue Rechnung
+                    </a>
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                            data-bs-toggle="dropdown" aria-expanded="false" aria-label="Weitere Aktionen">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/invoices/export">
+                            <i class="bi bi-download"></i> Export CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="/settings/company">
+                            <i class="bi bi-building"></i> Firmeneinstellungen
+                        </a></li>
+                            <i class="bi bi-envelope-gear"></i> E-Mail Vorlagen
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Issue Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .invoices}}
+                                {{range .invoices}}
+                                <tr data-invoice-id="{{.InvoiceID}}" data-invoice-number="{{.InvoiceNumber}}">
+                                    <td>
+                                        <strong>{{.InvoiceNumber}}</strong>
+                                        {{if eq .Status "overdue"}}
+                                            <span class="badge bg-danger ms-2">Overdue</span>
+                                        {{end}}
+                                    </td>
+                                    <td>
+                                        {{if .Customer}}
+                                            {{.Customer.GetDisplayName}}
+                                        {{else}}
+                                            No Customer
+                                        {{end}}
+                                    </td>
+                                    <td>€{{printf "%.2f" .TotalAmount}}</td>
+                                    <td>
+                                        {{if eq .Status "draft"}}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {{else if eq .Status "sent"}}
+                                            <span class="badge bg-info">Sent</span>
+                                        {{else if eq .Status "paid"}}
+                                            <span class="badge bg-success">Paid</span>
+                                        {{else if eq .Status "overdue"}}
+                                            <span class="badge bg-danger">Overdue</span>
+                                        {{else if eq .Status "cancelled"}}
+                                            <span class="badge bg-dark">Cancelled</span>
+                                        {{else}}
+                                            <span class="badge bg-light text-dark">{{.Status}}</span>
+                                        {{end}}
+                                    </td>
+                                    <td>{{.IssueDate.Format "2006-01-02"}}</td>
+                                    <td>
+                                        <div class="btn-group" role="group" aria-label="Rechnungsaktionen">
+                                            <!-- View Details -->
+                                            <a href="/invoices/{{.InvoiceID}}" class="btn btn-sm btn-outline-info" 
+                                               aria-label="Details von Rechnung {{.InvoiceNumber}} anzeigen">
+                                                <i class="bi bi-file-text"></i>
+                                            </a>
+                                            
+                                            <!-- HTML Preview -->
+                                            <a href="/invoices/{{.InvoiceID}}/preview" target="_blank" class="btn btn-sm btn-outline-success" 
+                                               aria-label="Vorschau von Rechnung {{.InvoiceNumber}} (öffnet in neuem Tab)">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            
+                                            <!-- Download PDF -->
+                                            <a href="/invoices/{{.InvoiceID}}/pdf" class="btn btn-sm btn-outline-primary" 
+                                               aria-label="Rechnung {{.InvoiceNumber}} als PDF herunterladen">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            
+                                            <!-- Email -->
+                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                    onclick="emailInvoice({{.InvoiceID}}, '{{.InvoiceNumber}}')" 
+                                                    aria-label="Rechnung {{.InvoiceNumber}} per E-Mail versenden">
+                                                <i class="bi bi-envelope"></i>
+                                            </button>
+                                            
+                                            <!-- Edit (only for draft) -->
+                                            {{if eq .Status "draft"}}
+                                            <a href="/invoices/{{.InvoiceID}}/edit" class="btn btn-sm btn-outline-warning" 
+                                               aria-label="Rechnung {{.InvoiceNumber}} bearbeiten">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            {{end}}
+                                            
+                                            <!-- Delete (only for draft) -->
+                                            {{if eq .Status "draft"}}
+                                            <button class="btn btn-sm btn-outline-danger btn-confirm" 
+                                                    data-confirm="Möchten Sie die Rechnung {{.InvoiceNumber}} wirklich löschen?"
+                                                    onclick="deleteInvoice({{.InvoiceID}}, '{{.InvoiceNumber}}')" 
+                                                    aria-label="Rechnung {{.InvoiceNumber}} löschen">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {{end}}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-receipt display-4 text-muted mb-3"></i><br>
+                                        <h5>No invoices found</h5>
+                                        <p>Create your first invoice to get started.</p>
+                                        <a href="/invoices/new" class="btn btn-primary">
+                                            <i class="bi bi-plus-lg"></i> Create Invoice
+                                        </a>
+                                        <br><br>
+                                        <small class="text-muted">Debug: If you're seeing this message instead of invoice preview, there might be an authentication or routing issue.</small>
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/rental-core-design.js"></script>
+    
+    <script>
+        // Simple preview function (kept for any remaining JS buttons)
+        function previewInvoice(invoiceId) {
+            if (!invoiceId) {
+                alert('Invalid invoice ID');
+                return;
+            }
+            window.open(`/invoices/${invoiceId}/preview`, '_blank');
+        }
+        
+        // Enhanced email invoice functionality
+        function emailInvoice(invoiceId, invoiceNumber) {
+            showEmailModal(invoiceId, invoiceNumber);
+        }
+
+        function showEmailModal(invoiceId, invoiceNumber) {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Rechnung ${invoiceNumber} versenden</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="emailForm">
+                                <div class="mb-3">
+                                    <label for="recipientEmail" class="form-label required">E-Mail-Adresse</label>
+                                    <input type="email" id="recipientEmail" class="form-control" required 
+                                           placeholder="kunde@example.com" aria-describedby="emailHelp">
+                                    <div id="emailHelp" class="form-text">
+                                        Die Rechnung wird als PDF-Anhang versendet
+                                    </div>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="emailSubject" class="form-label">Betreff</label>
+                                    <input type="text" id="emailSubject" class="form-control" 
+                                           value="Rechnung ${invoiceNumber}" aria-describedby="subjectHelp">
+                                    <div id="subjectHelp" class="form-text">
+                                        Standardbetreff kann angepasst werden
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="emailMessage" class="form-label">Nachricht (Optional)</label>
+                                    <textarea id="emailMessage" class="form-control" rows="3" 
+                                              placeholder="Persönliche Nachricht hinzufügen..."></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="bi bi-x-lg"></i> Abbrechen
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="sendInvoiceEmail(${invoiceId}, '${invoiceNumber}')">
+                                <i class="bi bi-envelope btn-icon"></i>
+                                <span class="btn-text">E-Mail senden</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Focus on email input
+            modal.addEventListener('shown.bs.modal', () => {
+                modal.querySelector('#recipientEmail').focus();
+            });
+
+            // Clean up on close
+            modal.addEventListener('hidden.bs.modal', () => {
+                modal.remove();
+            });
+        }
+
+        function sendInvoiceEmail(invoiceId, invoiceNumber) {
+            const form = document.getElementById('emailForm');
+            const email = form.querySelector('#recipientEmail').value.trim();
+            const subject = form.querySelector('#emailSubject').value.trim();
+            const message = form.querySelector('#emailMessage').value.trim();
+            const button = event.target.closest('button');
+
+            if (!email) {
+                if (window.uiEnhancements) {
+                    window.uiEnhancements.setFieldError(form.querySelector('#recipientEmail'), 'E-Mail-Adresse ist erforderlich');
+                }
+                return;
+            }
+
+            if (window.uiEnhancements && !window.uiEnhancements.validateEmail(form.querySelector('#recipientEmail'))) {
+                return;
+            }
+
+            // Set loading state
+            if (window.setButtonLoading) {
+                window.setButtonLoading(button, true);
+            }
+
+            fetch(`/invoices/${invoiceId}/email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    toEmail: email,
+                    subject: subject,
+                    message: message,
+                    includePdf: true,
+                    markAsSent: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (window.showToast) {
+                        window.showToast(`Rechnung ${invoiceNumber} wurde erfolgreich an ${email} gesendet`, 'success');
+                    } else {
+                        alert(`Rechnung ${invoiceNumber} wurde erfolgreich an ${email} gesendet`);
+                    }
+                    bootstrap.Modal.getInstance(document.querySelector('.modal.show')).hide();
+                } else {
+                    if (window.showToast) {
+                        window.showToast('Fehler beim Versenden der E-Mail: ' + (data.error || 'Unbekannter Fehler'), 'danger');
+                    } else {
+                        alert('Fehler beim Versenden der E-Mail: ' + (data.error || 'Unbekannter Fehler'));
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (window.showToast) {
+                    window.showToast('Fehler beim Versenden der E-Mail', 'danger');
+                } else {
+                    alert('Fehler beim Versenden der E-Mail');
+                }
+            })
+            .finally(() => {
+                if (window.setButtonLoading) {
+                    window.setButtonLoading(button, false);
+                }
+            });
+        }
+        
+        // Enhanced delete invoice functionality
+        function deleteInvoice(invoiceId, invoiceNumber) {
+            const confirmationPromise = window.showConfirmation ? 
+                window.showConfirmation(`Möchten Sie die Rechnung ${invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, true) :
+                Promise.resolve(confirm(`Möchten Sie die Rechnung ${invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`));
+
+            confirmationPromise.then(confirmed => {
+                if (confirmed) {
+                    fetch(`/invoices/${invoiceId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (window.showToast) {
+                                window.showToast(`Rechnung ${invoiceNumber} wurde erfolgreich gelöscht`, 'success');
+                            } else {
+                                alert(`Rechnung ${invoiceNumber} wurde erfolgreich gelöscht`);
+                            }
+                            // Refresh the page to show updated list
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            if (window.showToast) {
+                                window.showToast('Fehler beim Löschen der Rechnung: ' + (data.error || 'Unbekannter Fehler'), 'danger');
+                            } else {
+                                alert('Fehler beim Löschen der Rechnung: ' + (data.error || 'Unbekannter Fehler'));
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting invoice:', error);
+                        if (window.showToast) {
+                            window.showToast('Fehler beim Löschen der Rechnung', 'danger');
+                        } else {
+                            alert('Fehler beim Löschen der Rechnung');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    <!-- Navigation -->
+    <nav class="rc-navbar">
+        <div class="rc-container">
+            <div class="rc-navbar-content">
+                <a href="/" class="rc-navbar-brand">
+                    <i class="bi bi-gear-wide-connected"></i>
+                    RentalCore
+                </a>
+                
+                <!-- Mobile toggle -->
+                <button class="rc-navbar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <!-- Main navigation -->
+                <ul class="rc-navbar-nav">
+                    <li><a href="/jobs" class="rc-nav-link active">
+                        <i class="bi bi-briefcase"></i> Jobs
+                    </a></li>
+                    <li><a href="/devices" class="rc-nav-link">
+                        <i class="bi bi-cpu"></i> Devices
+                    </a></li>
+                    <li><a href="/customers" class="rc-nav-link">
+                        <i class="bi bi-people"></i> Customers
+                    </a></li>
+                    <li><a href="/cases" class="rc-nav-link">
+                        <i class="bi bi-box"></i> Cases
+                    </a></li>
+                    
+                    <!-- Tools Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-tools"></i> Tools
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-folder"></i> Management
+                            </div>
+                            </a>
+                            <a href="/workflow/packages" class="rc-dropdown-item">
+                                <i class="bi bi-box-seam"></i> Equipment Packages
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Business
+                            </div>
+                            <a href="/invoices" class="rc-dropdown-item">
+                                <i class="bi bi-file-text"></i> Invoices
+                            </a>
+                            <a href="/analytics" class="rc-dropdown-item">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a>
+                            <a href="/financial" class="rc-dropdown-item">
+                                <i class="bi bi-calculator"></i> Financial
+                            </a>
+                        </div>
+                    </li>
+                    
+                    <!-- User Dropdown -->
+                    {{if .user}}
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-person-circle"></i> {{.user.Username}}
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-person"></i> {{.user.FirstName}} {{.user.LastName}}
+                            </div>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Personal</div>
+                            <a href="/profile/settings" class="rc-dropdown-item">
+                                <i class="bi bi-person-gear"></i> Profile Settings
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">Company</div>
+                            <a href="/settings/company" class="rc-dropdown-item">
+                                <i class="bi bi-building-gear"></i> Company Settings
+                            </a>
+                                <i class="bi bi-envelope-gear"></i> E-Mail Templates
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">System</div>
+                            <a href="/users" class="rc-dropdown-item">
+                                <i class="bi bi-people-fill"></i> User Management
+                            </a>
+                            <a href="/security" class="rc-dropdown-item">
+                                <i class="bi bi-shield-check"></i> Security & Audit
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <a href="/logout" class="rc-dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </li>
+                    {{else}}
+                    <li>
+                        <a href="/login" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {{end}}
+                    
+                    <!-- Theme Toggle -->
+                    <li>
+                        <button class="rc-btn rc-btn-ghost rc-btn-sm" data-theme-toggle title="Toggle theme">
+                            <i class="bi bi-moon-fill"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="rc-container rc-mt-lg">
+        <!-- Job Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
+            <div>
+                <!-- Breadcrumb -->
+                <nav class="rc-breadcrumb rc-mb-md">
+                    <a href="/jobs" class="rc-breadcrumb-item">Jobs</a>
+                    <span class="rc-breadcrumb-separator"><i class="bi bi-chevron-right"></i></span>
+                    <span class="rc-breadcrumb-item rc-breadcrumb-current">Job #{{.job.JobID}}</span>
+                </nav>
+                
+                <h1 class="rc-heading-1 rc-mb-sm">{{.job.Description}}</h1>
+                <div class="rc-flex rc-flex-gap-md" style="align-items: center;">
+                    <span class="rc-text-secondary">
+                        <i class="bi bi-person"></i> {{.job.Customer.GetDisplayName}}
+                    </span>
+                    <span class="rc-badge {{if eq .job.Status.Status "open"}}rc-badge-warning{{else if eq .job.Status.Status "in progress"}}rc-badge-info{{else if eq .job.Status.Status "paid"}}rc-badge-success{{else}}rc-badge-secondary{{end}}">
+                        {{.job.Status.Status}}
+                    </span>
+                </div>
+            </div>
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/jobs/{{.job.JobID}}/edit" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <a href="/scan/{{.job.JobID}}" class="rc-btn rc-btn-primary rc-btn-sm">
+                    <i class="bi bi-qr-code-scan"></i> Scan Devices
+                </a>
+            </div>
+        </div>
+
+        <div class="rc-grid rc-grid-cols-1 rc-grid-cols-lg-4 rc-grid-gap-lg">
+            <!-- Job Information -->
+            <div class="rc-grid-span-1">
+                <div class="rc-card rc-mb-lg">
+                    <div class="rc-card-header">
+                        <h3 class="rc-card-title"><i class="bi bi-info-circle"></i> Job Details</h3>
+                    </div>
+                    <div class="rc-card-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Start Date</label>
+                                <span>{{if .job.StartDate}}{{.job.StartDate.Format "02.01.2006"}}{{else}}-{{end}}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>End Date</label>
+                                <span>{{if .job.EndDate}}{{.job.EndDate.Format "02.01.2006"}}{{else}}-{{end}}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Revenue</label>
+                                <span class="rc-text-accent">€{{printf "%.2f" .job.Revenue}}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Total Devices</label>
+                                <span>{{.totalDevices}}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Equipment Value</label>
+                                <span class="rc-text-accent">€{{printf "%.2f" .totalValue}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipment Groups -->
+            <div class="rc-grid-span-3">
+                <div class="rc-card">
+                    <div class="rc-card-header">
+                        <h3 class="rc-card-title"><i class="bi bi-box-seam"></i> Equipment</h3>
+                        <a href="/scan/{{.job.JobID}}" class="rc-btn rc-btn-primary rc-btn-sm">
+                            <i class="bi bi-plus-lg"></i> Add Devices
+                        </a>
+                    </div>
+                    <div class="rc-card-body">
+                        {{if .productGroups}}
+                        <div class="equipment-groups">
+                            {{range $productName, $group := .productGroups}}
+                            <div class="equipment-group">
+                                <div class="equipment-header" onclick="toggleEquipmentGroup(this)">
+                                    <div class="equipment-info">
+                                        <h4>{{$productName}}</h4>
+                                        <span class="rc-text-secondary">{{$group.Count}} devices • €{{printf "%.2f" $group.TotalValue}}</span>
+                                    </div>
+                                    <div class="equipment-actions">
+                                        <i class="bi bi-chevron-down toggle-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="equipment-devices" style="display: block;">
+                                    {{range $group.Devices}}
+                                    <div class="equipment-device rc-flex rc-flex-between rc-mb-sm">
+                                        <div class="device-info">
+                                            <strong>{{if .Device.SerialNumber}}{{derefString .Device.SerialNumber}}{{else}}{{.Device.DeviceID}}{{end}}</strong>
+                                            <div class="rc-text-sm rc-text-secondary">
+                                                {{if .Device.Product}}{{.Device.Product.Name}}{{else}}No Product{{end}}
+                                            </div>
+                                        </div>
+                                        <div class="device-actions rc-flex rc-flex-gap-xs">
+                                            <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="showDeviceDetails({{.Device.DeviceID}})" title="Details">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="removeDeviceFromJob({{$.job.JobID}}, {{.Device.DeviceID}})" title="Remove">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{else}}
+                        <div class="rc-text-center rc-p-xl">
+                            <i class="bi bi-box" style="font-size: 3rem; color: var(--text-muted);"></i>
+                            <h4 class="rc-text-muted">No Equipment Assigned</h4>
+                            <p class="rc-text-secondary">Start by scanning devices or adding them manually.</p>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // Equipment group toggle
+    function toggleEquipmentGroup(header) {
+        const devices = header.nextElementSibling;
+        const icon = header.querySelector('.toggle-icon');
+        
+        if (devices.style.display === 'none') {
+            devices.style.display = 'block';
+            icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+        } else {
+            devices.style.display = 'none';
+            icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+        }
+    }
+
+    // Remove device from job
+    function removeDeviceFromJob(jobId, deviceId) {
+        if (confirm('Remove this device from the job?')) {
+            fetch(`/scan/${jobId}/devices/${deviceId}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to remove device');
+                }
+            });
+        }
+    }
+
+
+    // Device details modal (reuse from devices page)
+    function showDeviceDetails(deviceID) {
+        // This function can be imported from the devices page if needed
+        window.open('/devices/' + deviceID, '_blank');
+    }
+    </script>
+
+    <!-- JavaScript -->
+    <script src="/static/js/rental-core-design.js"></script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/devices">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers">Customers</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Financial
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/financial">Dashboard</a></li>
+                            <li><a class="dropdown-item" href="/financial/transactions">Transactions</a></li>
+                            <li><a class="dropdown-item" href="/financial/reports">Reports</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="fas fa-plus-circle text-primary me-2"></i>{{.title}}
+                        </h1>
+                        <p class="text-muted mb-0">Create a new financial transaction record</p>
+                    </div>
+                    <div>
+                        <a href="/financial/transactions" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Transaction Details
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="transactionForm">
+                    <div class="row">
+                        <!-- Transaction Type -->
+                        <div class="col-md-6 mb-3">
+                            <label for="type" class="form-label">Transaction Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="">Select Transaction Type</option>
+                                <option value="rental">Rental Payment</option>
+                                <option value="payment">Customer Payment</option>
+                                <option value="fee">Service Fee</option>
+                                <option value="expense">Business Expense</option>
+                                <option value="refund">Refund</option>
+                                <option value="deposit">Security Deposit</option>
+                            </select>
+                            <div class="form-text">Choose the type of financial transaction</div>
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="col-md-6 mb-3">
+                            <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select class="form-select" id="currency" name="currency" style="max-width: 100px;">
+                                    <option value="EUR" selected>EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="GBP">GBP</option>
+                                </select>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       step="0.01" min="0" required placeholder="0.00">
+                            </div>
+                            <div class="form-text">Enter the transaction amount</div>
+                        </div>
+
+                        <!-- Customer -->
+                        <div class="col-md-6 mb-3">
+                            <label for="customerID" class="form-label">Customer</label>
+                            <select class="form-select" id="customerID" name="customerID">
+                                <option value="">Select Customer (Optional)</option>
+                                {{range .customers}}
+                                <option value="{{.CustomerID}}">{{.GetDisplayName}}</option>
+                                {{end}}
+                            </select>
+                            <div class="form-text">Link this transaction to a customer</div>
+                        </div>
+
+                        <!-- Job -->
+                        <div class="col-md-6 mb-3">
+                            <label for="jobID" class="form-label">Related Job</label>
+                            <select class="form-select" id="jobID" name="jobID">
+                                <option value="">Select Job (Optional)</option>
+                                {{range .jobs}}
+                                <option value="{{.JobID}}">Job #{{.JobID}}{{if .Description}} - {{derefString .Description}}{{end}}</option>
+                                {{end}}
+                            </select>
+                            <div class="form-text">Link this transaction to a specific job</div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="col-md-6 mb-3">
+                            <label for="paymentMethod" class="form-label">Payment Method</label>
+                            <select class="form-select" id="paymentMethod" name="paymentMethod">
+                                <option value="">Select Payment Method</option>
+                                <option value="cash">Cash</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="credit_card">Credit Card</option>
+                                <option value="debit_card">Debit Card</option>
+                                <option value="paypal">PayPal</option>
+                                <option value="check">Check</option>
+                                <option value="wire_transfer">Wire Transfer</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div class="form-text">How was this transaction processed?</div>
+                        </div>
+
+                        <!-- Due Date -->
+                        <div class="col-md-6 mb-3">
+                            <label for="dueDate" class="form-label">Due Date</label>
+                            <input type="date" class="form-control" id="dueDate" name="dueDate">
+                            <div class="form-text">When is this payment due? (Leave empty for immediate transactions)</div>
+                        </div>
+
+                        <!-- Reference Number -->
+                        <div class="col-md-6 mb-3">
+                            <label for="referenceNumber" class="form-label">Reference Number</label>
+                            <input type="text" class="form-control" id="referenceNumber" name="referenceNumber" 
+                                   placeholder="INV-202501-001">
+                            <div class="form-text">Invoice number, receipt ID, or other reference</div>
+                        </div>
+
+                        <!-- Generate Reference Button -->
+                        <div class="col-md-6 mb-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-secondary" onclick="generateReference()">
+                                <i class="fas fa-magic me-2"></i>Generate Reference
+                            </button>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="col-12 mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Additional notes about this transaction..."></textarea>
+                            <div class="form-text">Any additional information about this transaction</div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                        <i class="fas fa-undo me-2"></i>Reset Form
+                                    </button>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="/financial/transactions" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Create Transaction
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Templates -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Templates
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" onclick="applyTemplate('rental')">
+                            <i class="fas fa-home me-2"></i>Rental Payment
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-success w-100" onclick="applyTemplate('deposit')">
+                            <i class="fas fa-shield-alt me-2"></i>Security Deposit
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-info w-100" onclick="applyTemplate('fee')">
+                            <i class="fas fa-cog me-2"></i>Service Fee
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-warning w-100" onclick="applyTemplate('expense')">
+                            <i class="fas fa-receipt me-2"></i>Business Expense
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('transactionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                type: document.getElementById('type').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                currency: document.getElementById('currency').value,
+                customerID: document.getElementById('customerID').value || null,
+                jobID: document.getElementById('jobID').value || null,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                dueDate: document.getElementById('dueDate').value,
+                referenceNumber: document.getElementById('referenceNumber').value,
+                notes: document.getElementById('notes').value
+            };
+
+            // Convert empty strings to null for optional fields
+            ['customerID', 'jobID'].forEach(field => {
+                if (formData[field] === '') {
+                    formData[field] = null;
+                }
+            });
+
+            fetch('/financial/transactions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    window.location.href = '/financial/transactions';
+                } else {
+                    alert('Error creating transaction: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error creating transaction');
+            });
+        });
+
+        function generateReference() {
+            const type = document.getElementById('type').value;
+            const date = new Date();
+            const timestamp = date.getFullYear().toString() + 
+                             (date.getMonth() + 1).toString().padStart(2, '0');
+            
+            let prefix = 'TXN';
+            switch(type) {
+                case 'rental': prefix = 'RNT'; break;
+                case 'payment': prefix = 'PAY'; break;
+                case 'fee': prefix = 'FEE'; break;
+                case 'expense': prefix = 'EXP'; break;
+                case 'refund': prefix = 'REF'; break;
+                case 'deposit': prefix = 'DEP'; break;
+            }
+            
+            const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            const reference = `${prefix}-${timestamp}-${randomNum}`;
+            
+            document.getElementById('referenceNumber').value = reference;
+        }
+
+        function applyTemplate(templateType) {
+            switch(templateType) {
+                case 'rental':
+                    document.getElementById('type').value = 'rental';
+                    document.getElementById('paymentMethod').value = 'bank_transfer';
+                    document.getElementById('notes').value = 'Equipment rental payment';
+                    break;
+                case 'deposit':
+                    document.getElementById('type').value = 'deposit';
+                    document.getElementById('paymentMethod').value = 'bank_transfer';
+                    document.getElementById('amount').value = '500.00';
+                    document.getElementById('notes').value = 'Security deposit for equipment rental';
+                    break;
+                case 'fee':
+                    document.getElementById('type').value = 'fee';
+                    document.getElementById('paymentMethod').value = 'credit_card';
+                    document.getElementById('notes').value = 'Service fee';
+                    break;
+                case 'expense':
+                    document.getElementById('type').value = 'expense';
+                    document.getElementById('paymentMethod').value = 'cash';
+                    document.getElementById('notes').value = 'Business expense';
+                    break;
+            }
+            generateReference();
+        }
+
+        function resetForm() {
+            if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
+                document.getElementById('transactionForm').reset();
+            }
+        }
+
+        // Auto-generate reference when type changes
+        document.getElementById('type').addEventListener('change', function() {
+            if (this.value && !document.getElementById('referenceNumber').value) {
+                generateReference();
+            }
+        });
+
+        // Set default due date to 30 days from now for certain transaction types
+        document.getElementById('type').addEventListener('change', function() {
+            const dueTypes = ['rental', 'fee'];
+            if (dueTypes.includes(this.value) && !document.getElementById('dueDate').value) {
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30);
+                document.getElementById('dueDate').value = futureDate.toISOString().split('T')[0];
+            }
+        });
+    </script>
+</body>
+</html>

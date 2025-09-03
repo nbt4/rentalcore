@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+    <style>
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .designer-container {
+            min-height: 100vh;
+            background: var(--gradient-primary);
+        }
+
+        .template-selection {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-primary);
+            box-shadow: var(--shadow-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .template-option {
+            border: 2px solid var(--border-primary);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            background: var(--bg-glass);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .template-option:hover {
+            border-color: var(--accent-color);
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-accent);
+        }
+
+        .template-option.selected {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.1);
+            box-shadow: var(--shadow-md);
+        }
+
+        .template-preview-mini {
+            width: 80px;
+            height: 100px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .template-info {
+            flex: 1;
+        }
+
+        .template-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .template-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .template-features {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .feature-tag {
+            background: var(--accent-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .preview-container {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-primary);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        .a4-preview {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            color: #000;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-2xl);
+            position: relative;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            transform: scale(0.3);
+            transform-origin: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .simple-form {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-primary);
+            box-shadow: var(--shadow-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-secondary) !important;
+            border: 1px solid var(--border-primary) !important;
+            color: var(--text-primary) !important;
+            border-radius: var(--radius-sm);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-hover) !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: var(--shadow-glow) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .btn-primary {
+            background: var(--gradient-accent);
+            border-color: var(--accent-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            border-color: var(--success-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--border-primary);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .step.active .step-number {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .step.completed .step-number {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .step-connector {
+            width: 50px;
+            height: 2px;
+            background: var(--border-primary);
+            margin: 0 var(--spacing-md);
+        }
+
+        .step.completed .step-connector {
+            background: var(--success-color);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <div class="navbar-nav ms-auto">
+                <button class="btn btn-outline-light me-2" onclick="saveTemplate()">
+                    <i class="bi bi-save"></i> Template speichern
+                </button>
+                <button class="btn btn-outline-light" onclick="navigateToTemplates()">
+                    <i class="bi bi-arrow-left"></i> Zurück
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid p-4">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step completed">
+                <div class="step-number">1</div>
+                <span>Vorlage wählen</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step active">
+                <div class="step-number">2</div>
+                <span>Anpassen</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <span>Speichern</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column: Simple Settings -->
+            <div class="col-md-4">
+                <!-- Basic Info -->
+                <div class="simple-form">
+                    <h5 class="mb-3"><i class="bi bi-info-circle"></i> Template Informationen</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Template Name</label>
+                        <input type="text" id="templateName" class="form-control" 
+                               value="{{.template.Name}}" placeholder="z.B. Meine Rechnung">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Beschreibung (optional)</label>
+                        <textarea id="templateDescription" class="form-control" rows="2" 
+                                  placeholder="Kurze Beschreibung für das Template">{{if .template.Description}}{{.template.Description}}{{end}}</textarea>
+                    </div>
+                </div>
+
+                <!-- Template Selection -->
+                <div class="simple-form">
+                    <h5 class="mb-3"><i class="bi bi-palette"></i> Design wählen</h5>
+                    
+                    <div class="template-option selected" onclick="selectTemplate('german-standard')">
+                        <div class="template-preview-mini">
+                            <div style="font-size: 6px; padding: 2px; line-height: 1;">
+                                <div style="text-align: right; margin-bottom: 2px; font-weight: bold;">Firma</div>
+                                <div style="border-bottom: 1px solid #000; margin-bottom: 2px;"></div>
+                                <div style="margin-bottom: 2px;">Kunde</div>
+                                <div style="font-weight: bold; margin-bottom: 2px;">RECHNUNG</div>
+                                <div style="border: 1px solid #000; height: 20px; margin-bottom: 2px;"></div>
+                                <div style="text-align: right; border-top: 1px solid #000; padding-top: 1px;">Total</div>
+                            </div>
+                        </div>
+                        <div class="template-info">
+                            <div class="template-title">Standard Deutsch</div>
+                            <div class="template-description">Klassisches deutsches Rechnungslayout nach DIN 5008</div>
+                            <div class="template-features">
+                                <span class="feature-tag">DIN 5008</span>
+                                <span class="feature-tag">Professionell</span>
+                                <span class="feature-tag">Empfohlen</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-option" onclick="selectTemplate('modern-clean')">
+                        <div class="template-preview-mini">
+                            <div style="font-size: 6px; padding: 2px; line-height: 1;">
+                                <div style="color: #007bff; font-weight: bold; margin-bottom: 2px;">RECHNUNG</div>
+                                <div style="background: #f8f9fa; padding: 1px; margin-bottom: 2px;">Kunde</div>
+                                <div style="height: 20px; margin-bottom: 2px; border: 1px solid #ddd;"></div>
+                                <div style="background: #007bff; color: white; padding: 1px; text-align: center;">Total</div>
+                            </div>
+                        </div>
+                        <div class="template-info">
+                            <div class="template-title">Modern & Sauber</div>
+                            <div class="template-description">Zeitgemäßes Design mit klaren Linien</div>
+                            <div class="template-features">
+                                <span class="feature-tag">Modern</span>
+                                <span class="feature-tag">Übersichtlich</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-option" onclick="selectTemplate('minimal')">
+                        <div class="template-preview-mini">
+                            <div style="font-size: 6px; padding: 2px; line-height: 1;">
+                                <div style="margin-bottom: 2px;">Firma</div>
+                                <div style="text-align: right; font-size: 8px; margin-bottom: 2px;">Rechnung</div>
+                                <div style="height: 25px; margin: 2px 0; border-bottom: 1px solid #eee;"></div>
+                                <div style="text-align: right; font-weight: bold;">€ Total</div>
+                            </div>
+                        </div>
+                        <div class="template-info">
+                            <div class="template-title">Minimal</div>
+                            <div class="template-description">Einfach und elegant, weniger ist mehr</div>
+                            <div class="template-features">
+                                <span class="feature-tag">Minimal</span>
+                                <span class="feature-tag">Elegant</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simple Customization -->
+                <div class="simple-form">
+                    <h5 class="mb-3"><i class="bi bi-gear"></i> Einfache Anpassungen</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Firmenname</label>
+                        <input type="text" id="companyName" class="form-control" 
+                               placeholder="Ihr Firmenname" value="Musterfirma GmbH">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Hauptfarbe</label>
+                        <div class="row">
+                            <div class="col-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="colorScheme" value="blue" checked>
+                                    <label class="form-check-label">
+                                        <span style="display: inline-block; width: 20px; height: 20px; background: #007bff; border-radius: 3px; margin-right: 5px;"></span>Blau
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="colorScheme" value="green">
+                                    <label class="form-check-label">
+                                        <span style="display: inline-block; width: 20px; height: 20px; background: #28a745; border-radius: 3px; margin-right: 5px;"></span>Grün
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="colorScheme" value="red">
+                                    <label class="form-check-label">
+                                        <span style="display: inline-block; width: 20px; height: 20px; background: #dc3545; border-radius: 3px; margin-right: 5px;"></span>Rot
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Schriftgröße</label>
+                        <select class="form-select" id="fontSize">
+                            <option value="small">Klein (11px)</option>
+                            <option value="medium" selected>Normal (12px)</option>
+                            <option value="large">Groß (14px)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showLogo">
+                            <label class="form-check-label" for="showLogo">
+                                Logo anzeigen (wird später hochgeladen)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Live Preview -->
+            <div class="col-md-8">
+                <div class="preview-container">
+                    <div class="a4-preview" id="invoicePreview">
+                        <div id="templateContent">
+                            <!-- Default German Template -->
+                            <div style="padding: 20mm; font-family: Arial, sans-serif; font-size: 12px;">
+                                <!-- Company Header -->
+                                <div style="text-align: right; margin-bottom: 30px;">
+                                    <div style="font-weight: bold; font-size: 16px;" id="previewCompanyName">[Your Company Name]</div>
+                                    <div>[Company Address]</div>
+                                    <div>[ZIP City]</div>
+                                    <div>Tel: [Phone Number]</div>
+                                    <div>E-Mail: [Email Address]</div>
+                                </div>
+
+                                <!-- Sender Line -->
+                                <div style="font-size: 8px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px;">
+                                    [Your Company Name], [Company Address], [ZIP City]
+                                </div>
+
+                                <!-- Customer Address -->
+                                <div style="margin-bottom: 30px;">
+                                    <div style="font-weight: bold;">[Customer Name]</div>
+                                    <div>[Customer Address]</div>
+                                    <div>[Customer ZIP City]</div>
+                                </div>
+
+                                <!-- Invoice Header -->
+                                <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px;">RECHNUNG</h1>
+
+                                <!-- Invoice Details -->
+                                <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="width: 30%; padding: 5px 0;">Rechnungsnummer:</td>
+                                        <td style="font-weight: bold;">RE-2024-001</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 0;">Rechnungsdatum:</td>
+                                        <td>19.06.2024</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 0;">Fälligkeitsdatum:</td>
+                                        <td>03.07.2024</td>
+                                    </tr>
+                                </table>
+
+                                <!-- Line Items -->
+                                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr style="background: #f5f5f5;">
+                                            <th style="border: 1px solid #000; padding: 8px; text-align: left;">Beschreibung</th>
+                                            <th style="border: 1px solid #000; padding: 8px; text-align: center;">Menge</th>
+                                            <th style="border: 1px solid #000; padding: 8px; text-align: right;">Einzelpreis</th>
+                                            <th style="border: 1px solid #000; padding: 8px; text-align: right;">Gesamtpreis</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="border: 1px solid #000; padding: 8px;">Beispiel Produkt</td>
+                                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">1</td>
+                                            <td style="border: 1px solid #000; padding: 8px; text-align: right;">100,00 €</td>
+                                            <td style="border: 1px solid #000; padding: 8px; text-align: right;">100,00 €</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Totals -->
+                                <div style="text-align: right; margin-bottom: 30px;">
+                                    <table style="width: 200px; margin-left: auto; border-collapse: collapse;">
+                                        <tr>
+                                            <td style="padding: 5px 10px; border-bottom: 1px solid #ddd;">Nettobetrag:</td>
+                                            <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #ddd;">100,00 €</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 5px 10px; border-bottom: 1px solid #ddd;">MwSt. (19%):</td>
+                                            <td style="text-align: right; padding: 5px 10px; border-bottom: 1px solid #ddd;">19,00 €</td>
+                                        </tr>
+                                        <tr style="font-weight: bold; border-top: 2px solid #000;">
+                                            <td style="padding: 8px 10px;">Gesamtbetrag:</td>
+                                            <td style="text-align: right; padding: 8px 10px;">119,00 €</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <!-- Footer -->
+                                <div style="font-size: 10px; margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center;">
+                                    Vielen Dank für Ihr Vertrauen!
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        const templateID = {{if .template.TemplateID}}{{.template.TemplateID}}{{else}}0{{end}};
+        const isEdit = {{.isEdit}};
+        let selectedTemplate = 'german-standard';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updatePreview();
+        });
+
+        function setupEventListeners() {
+            // Company name input
+            document.getElementById('companyName').addEventListener('input', updatePreview);
+            
+            // Color scheme selection
+            document.querySelectorAll('input[name="colorScheme"]').forEach(radio => {
+                radio.addEventListener('change', updatePreview);
+            });
+            
+            // Font size selection
+            document.getElementById('fontSize').addEventListener('change', updatePreview);
+            
+            // Logo checkbox
+            document.getElementById('showLogo').addEventListener('change', updatePreview);
+        }
+
+        function selectTemplate(templateType) {
+            selectedTemplate = templateType;
+            
+            // Update UI
+            document.querySelectorAll('.template-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const companyName = document.getElementById('companyName').value || 'Musterfirma GmbH';
+            const colorScheme = document.querySelector('input[name="colorScheme"]:checked').value;
+            const fontSize = document.getElementById('fontSize').value;
+            const showLogo = document.getElementById('showLogo').checked;
+            
+            // Update company name in preview
+            document.getElementById('previewCompanyName').textContent = companyName;
+            
+            // Apply color scheme
+            const preview = document.getElementById('templateContent');
+            let primaryColor = '#000';
+            switch(colorScheme) {
+                case 'blue': primaryColor = '#007bff'; break;
+                case 'green': primaryColor = '#28a745'; break;
+                case 'red': primaryColor = '#dc3545'; break;
+            }
+            
+            // Apply font size
+            let baseFontSize = '12px';
+            switch(fontSize) {
+                case 'small': baseFontSize = '11px'; break;
+                case 'medium': baseFontSize = '12px'; break;
+                case 'large': baseFontSize = '14px'; break;
+            }
+            
+            preview.style.fontSize = baseFontSize;
+            
+            // Update colors
+            const headers = preview.querySelectorAll('h1');
+            headers.forEach(h => h.style.color = primaryColor);
+        }
+
+        function saveTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            const description = document.getElementById('templateDescription').value.trim();
+            const companyName = document.getElementById('companyName').value || 'Musterfirma GmbH';
+            const colorScheme = document.querySelector('input[name="colorScheme"]:checked').value;
+            const fontSize = document.getElementById('fontSize').value;
+            
+            if (!name) {
+                alert('Bitte geben Sie einen Template-Namen ein.');
+                return;
+            }
+            
+            const content = document.getElementById('templateContent').innerHTML;
+            
+            const templateData = {
+                name: name,
+                description: description || '',
+                htmlTemplate: content,
+                cssStyles: JSON.stringify({
+                    templateType: selectedTemplate,
+                    companyName: companyName,
+                    colorScheme: colorScheme,
+                    fontSize: fontSize
+                }),
+                isDefault: false,
+                isActive: true
+            };
+            
+            const url = isEdit ? '/invoice-templates/' + templateID : '/invoice-templates';
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            const saveBtn = event.target;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Speichere...';
+            saveBtn.disabled = true;
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(templateData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success || data.message || data.templateId) {
+                    alert('Template erfolgreich gespeichert!');
+                    setTimeout(() => {
+                        window.location.href = '/invoice-templates';
+                    }, 500);
+                } else {
+                    alert(data.error || 'Fehler beim Speichern des Templates');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fehler beim Speichern des Templates: ' + error.message);
+            })
+            .finally(() => {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+
+        function navigateToTemplates() {
+            window.location.href = '/invoice-templates';
+        }
+    </script>
+</body>
+</html>

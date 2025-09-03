@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/devices">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers">Customers</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Financial
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/financial">Dashboard</a></li>
+                            <li><a class="dropdown-item" href="/financial/transactions">Transactions</a></li>
+                            <li><a class="dropdown-item" href="/financial/reports">Reports</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="fas fa-receipt text-primary me-2"></i>Transaction #{{.transaction.TransactionID}}
+                        </h1>
+                        <p class="text-muted mb-0">
+                            {{.transaction.Type | title}} transaction created on {{.transaction.CreatedAt.Format "January 2, 2006"}}
+                        </p>
+                    </div>
+                    <div>
+                        <a href="/financial/transactions" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Transaction Details -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Transaction Details
+                            </h6>
+                            <span class="badge bg-{{getStatusColor .transaction.Status}} fs-6">
+                                {{.transaction.Status | title}}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Basic Information -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Transaction Type</label>
+                                <div class="form-control-plaintext">
+                                    <span class="badge bg-secondary">{{.transaction.Type | title}}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Amount</label>
+                                <div class="form-control-plaintext fs-4 fw-bold text-primary">
+                                    {{.transaction.Currency}} {{printf "%.2f" .transaction.Amount}}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Transaction Date</label>
+                                <div class="form-control-plaintext">
+                                    {{.transaction.TransactionDate.Format "January 2, 2006 at 3:04 PM"}}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Due Date</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.DueDate}}
+                                        {{.transaction.DueDate.Format "January 2, 2006"}}
+                                        {{if .transaction.DueDate.Before now}}
+                                            <span class="badge bg-danger ms-2">Overdue</span>
+                                        {{end}}
+                                    {{else}}
+                                        <span class="text-muted">Not specified</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <!-- Payment Information -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Payment Method</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.PaymentMethod}}
+                                        {{.transaction.PaymentMethod | title}}
+                                    {{else}}
+                                        <span class="text-muted">Not specified</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Reference Number</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.ReferenceNumber}}
+                                        <code>{{.transaction.ReferenceNumber}}</code>
+                                    {{else}}
+                                        <span class="text-muted">Not specified</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <!-- Related Records -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Customer</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.Customer}}
+                                        <a href="/customers/{{.transaction.Customer.CustomerID}}" class="text-decoration-none">
+                                            <i class="fas fa-building me-2"></i>{{.transaction.Customer.GetDisplayName}}
+                                        </a>
+                                    {{else}}
+                                        <span class="text-muted">No customer linked</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Related Job</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.Job}}
+                                        <a href="/jobs/{{.transaction.Job.JobID}}" class="text-decoration-none">
+                                            <i class="fas fa-briefcase me-2"></i>Job #{{.transaction.Job.JobID}}
+                                        </a>
+                                        {{if .transaction.Job.Description}}
+                                            <div class="text-muted small">{{.transaction.Job.Description}}</div>
+                                        {{end}}
+                                    {{else}}
+                                        <span class="text-muted">No job linked</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            {{if .transaction.Notes}}
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-bold">Notes</label>
+                                <div class="form-control-plaintext">
+                                    <div class="border rounded p-3 bg-light">
+                                        {{.transaction.Notes}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+
+                            <!-- Metadata -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Created By</label>
+                                <div class="form-control-plaintext">
+                                    {{if .transaction.Creator}}
+                                        <i class="fas fa-user me-2"></i>{{.transaction.Creator.Username}}
+                                    {{else}}
+                                        <span class="text-muted">System</span>
+                                    {{end}}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Last Updated</label>
+                                <div class="form-control-plaintext">
+                                    {{.transaction.UpdatedAt.Format "January 2, 2006 at 3:04 PM"}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status History (Placeholder) -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-history me-2"></i>Status History
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Transaction Created</h6>
+                                    <p class="timeline-text">Transaction was created with status: pending</p>
+                                    <small class="text-muted">{{.transaction.CreatedAt.Format "January 2, 2006 at 3:04 PM"}}</small>
+                                </div>
+                            </div>
+                            {{if ne .transaction.Status "pending"}}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-{{getStatusColor .transaction.Status}}"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">Status Updated</h6>
+                                    <p class="timeline-text">Transaction status changed to: {{.transaction.Status}}</p>
+                                    <small class="text-muted">{{.transaction.UpdatedAt.Format "January 2, 2006 at 3:04 PM"}}</small>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Sidebar -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-cogs me-2"></i>Transaction Actions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            {{if eq .transaction.Status "pending"}}
+                            <button class="btn btn-success" onclick="updateStatus('completed')">
+                                <i class="fas fa-check me-2"></i>Mark as Completed
+                            </button>
+                            <button class="btn btn-warning" onclick="updateStatus('failed')">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Mark as Failed
+                            </button>
+                            <button class="btn btn-secondary" onclick="updateStatus('cancelled')">
+                                <i class="fas fa-times me-2"></i>Cancel Transaction
+                            </button>
+                            {{else if eq .transaction.Status "failed"}}
+                            <button class="btn btn-success" onclick="updateStatus('completed')">
+                                <i class="fas fa-redo me-2"></i>Mark as Completed
+                            </button>
+                            <button class="btn btn-secondary" onclick="updateStatus('cancelled')">
+                                <i class="fas fa-times me-2"></i>Cancel Transaction
+                            </button>
+                            {{else if eq .transaction.Status "cancelled"}}
+                            <button class="btn btn-warning" onclick="updateStatus('pending')">
+                                <i class="fas fa-undo me-2"></i>Restore to Pending
+                            </button>
+                            {{else}}
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>Transaction is completed
+                            </div>
+                            {{end}}
+                            
+                            <hr>
+                            
+                            <button class="btn btn-outline-primary" onclick="printTransaction()">
+                                <i class="fas fa-print me-2"></i>Print Receipt
+                            </button>
+                            <button class="btn btn-outline-info" onclick="emailTransaction()">
+                                <i class="fas fa-envelope me-2"></i>Email Receipt
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="duplicateTransaction()">
+                                <i class="fas fa-copy me-2"></i>Duplicate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Info -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-info me-2"></i>Quick Info
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-12 mb-3">
+                                <div class="fs-6 text-muted">Days Since Created</div>
+                                <div class="fs-4 fw-bold text-primary">
+                                    {{daysAgo .transaction.CreatedAt}}
+                                </div>
+                            </div>
+                            {{if .transaction.DueDate}}
+                            <div class="col-12 mb-3">
+                                <div class="fs-6 text-muted">Days Until Due</div>
+                                <div class="fs-4 fw-bold {{if .transaction.DueDate.Before now}}text-danger{{else}}text-success{{end}}">
+                                    {{daysUntil .transaction.DueDate}}
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function getStatusColor(status) {
+            switch(status) {
+                case 'completed': return 'success';
+                case 'pending': return 'warning';
+                case 'failed': return 'danger';
+                case 'cancelled': return 'secondary';
+                default: return 'secondary';
+            }
+        }
+
+        function updateStatus(status) {
+            const transactionId = {{.transaction.TransactionID}};
+            const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            if (!confirm(`Are you sure you want to mark this transaction as ${statusTitle}?`)) {
+                return;
+            }
+
+            fetch(`/financial/transactions/${transactionId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Error updating transaction status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating transaction status');
+            });
+        }
+
+        function printTransaction() {
+            window.print();
+        }
+
+        function emailTransaction() {
+            const transactionId = {{.transaction.TransactionID}};
+            alert('Email receipt feature - coming soon!');
+        }
+
+        function duplicateTransaction() {
+            const transactionId = {{.transaction.TransactionID}};
+            if (confirm('Create a duplicate of this transaction?')) {
+                alert('Duplicate transaction feature - coming soon!');
+            }
+        }
+
+        // Helper function for days calculations (would need to be implemented in template functions)
+        function daysAgo(date) {
+            const now = new Date();
+            const created = new Date(date);
+            const diffTime = Math.abs(now - created);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        function daysUntil(date) {
+            const now = new Date();
+            const due = new Date(date);
+            const diffTime = due - now;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+    </script>
+
+    <style>
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -35px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #dee2e6;
+        }
+
+        .timeline-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .timeline-text {
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+    </style>
+</body>
+</html>

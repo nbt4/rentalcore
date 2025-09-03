@@ -1,0 +1,135 @@
+{
+  "name": "RentalCore - Professional Equipment Management",
+  "short_name": "RentalCore",
+  "description": "The core of your rental business - comprehensive equipment and operations management with professional theme",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities", "finance"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/static/images/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Analytics Dashboard",
+      "short_name": "Analytics",
+      "description": "View business analytics",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "/static/images/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Start Scanning",
+      "short_name": "Scan",
+      "description": "Start barcode scanning",
+      "url": "/scan/select",
+      "icons": [
+        {
+          "src": "/static/images/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Enhanced Scanner",
+      "short_name": "Enhanced Scan",
+      "description": "Advanced mobile scanner with vibration, zoom, and focus",
+      "url": "/scan/select",
+      "icons": [
+        {
+          "src": "/static/images/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Search Everything",
+      "short_name": "Search",
+      "description": "Search across all entities",
+      "url": "/search/global",
+      "icons": [
+        {
+          "src": "/static/images/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "View Jobs",
+      "short_name": "Jobs",
+      "description": "View all jobs",
+      "url": "/jobs",
+      "icons": [
+        {
+          "src": "/static/images/icon-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/images/screenshot-narrow.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/static/images/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+services:
+  go-barcode-webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rentalcore
+    hostname: rentalcore
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      # Database Configuration
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # Server Configuration
+      - SERVER_HOST=${SERVER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      
+      # Application Mode
+      - GIN_MODE=${GIN_MODE:-release}
+      
+      # Security Configuration
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-3600}
+      
+      # Email Configuration (optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@rentalcore.com}
+      - FROM_NAME=${FROM_NAME:-RentalCore}
+      - USE_TLS=${USE_TLS:-true}
+      
+      # Invoice Configuration
+      - DEFAULT_TAX_RATE=${DEFAULT_TAX_RATE:-19.0}
+      - DEFAULT_PAYMENT_TERMS=${DEFAULT_PAYMENT_TERMS:-30}
+      - CURRENCY_SYMBOL=${CURRENCY_SYMBOL:-€}
+      - CURRENCY_CODE=${CURRENCY_CODE:-EUR}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-logs/app.log}
+    
+    volumes:
+      # Persistent data volumes
+      - uploads:/app/uploads
+      - logs:/app/logs
+      - archives:/app/archives
+      
+    depends_on:
+      - db-health-check
+    
+    networks:
+      - rental-network
+      - proxy
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Database health check service (since we're using external DB)
+  db-health-check:
+    image: mysql:8.0
+    container_name: db-health-check
+    command: >
+      sh -c "
+        echo 'Checking database connectivity...' &&
+        mysql -h$$DB_HOST -P$$DB_PORT -u$$DB_USERNAME -p$$DB_PASSWORD -e 'SELECT 1;' $$DB_NAME &&
+        echo 'Database is accessible!'
+      "
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - rental-network
+    restart: "no"
+
+volumes:
+  uploads:
+    driver: local
+  logs:
+    driver: local
+  archives:
+    driver: local
+
+networks:
+  rental-network:
+    internal: true
+  proxy:
+    external: true

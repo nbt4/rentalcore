@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/jobs">Jobs</a>
+                <a class="nav-link" href="/devices">Devices</a>
+                <a class="nav-link" href="/customers">Customers</a>
+                <a class="nav-link" href="/invoices">Invoices</a>
+                <a class="nav-link" href="/invoice-templates">Templates</a>
+                <a class="nav-link" href="/logout">Logout ({{.user.Username}})</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">
+                    {{if eq .action "edit"}}Edit Invoice: {{.invoice.InvoiceNumber}}{{else}}Create New Invoice{{end}}
+                </h3>
+                <div>
+                    {{if eq .action "edit"}}
+                    <a href="/invoices/{{.invoice.InvoiceID}}/preview" target="_blank" class="btn btn-info">
+                        <i class="bi bi-eye"></i> Preview
+                    </a>
+                    {{end}}
+                    <a href="/invoices" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Invoices
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <!-- Loading indicator -->
+                <div id="loadingIndicator" class="d-none text-center py-3">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Processing invoice...</p>
+                </div>
+
+                <!-- Error display -->
+                <div id="errorAlert" class="alert alert-danger d-none" role="alert">
+                    <strong>Error:</strong> <span id="errorMessage"></span>
+                </div>
+
+                <!-- Success display -->
+                <div id="successAlert" class="alert alert-success d-none" role="alert">
+                    <strong>Success:</strong> <span id="successMessage"></span>
+                </div>
+
+                <form id="invoiceForm">
+                    <div class="row">
+                        <!-- Left Column -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="invoiceNumber" class="form-label required">Invoice Number</label>
+                                <input type="text" id="invoiceNumber" name="invoiceNumber" class="form-control" 
+                                       value="{{if eq .action "edit"}}{{.invoice.InvoiceNumber}}{{else}}{{.previewInvoiceNumber}}{{end}}" 
+                                       {{if eq .action "edit"}}readonly{{end}} required 
+                                       aria-describedby="invoiceNumberHelp">
+                                <div id="invoiceNumberHelp" class="form-text">
+                                    {{if eq .action "edit"}}Rechnungsnummer kann nicht geändert werden{{else}}Wird automatisch generiert{{end}}
+                                </div>
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="customerId" class="form-label required">Kunde</label>
+                                <div class="input-group">
+                                    <select id="customerId" name="customerId" class="form-select" required 
+                                            aria-describedby="customerHelp">
+                                        <option value="">Kunde auswählen...</option>
+                                        {{range .customers}}
+                                        <option value="{{.CustomerID}}"{{if and $.invoice (eq $.invoice.CustomerID .CustomerID)}} selected{{end}}>
+                                            {{if .CompanyName}}{{.CompanyName}}{{else}}{{if .FirstName}}{{.FirstName}} {{end}}{{if .LastName}}{{.LastName}}{{end}}{{end}}
+                                        </option>
+                                        {{end}}
+                                    </select>
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="window.open('/customers/new', '_blank')" 
+                                            aria-label="Neuen Kunden anlegen">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="customerHelp" class="form-text">
+                                    {{if eq .action "edit"}}Aktuelle Auswahl: Kunde ID {{.invoice.CustomerID}}{{else}}Kunde für diese Rechnung auswählen{{end}}
+                                </div>
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="jobId" class="form-label">Auftrag (Optional)</label>
+                                <div class="input-group">
+                                    <select id="jobId" name="jobId" class="form-select" 
+                                            aria-describedby="jobHelp">
+                                        <option value="">Kein Auftrag verknüpfen</option>
+                                        {{range .jobs}}
+                                        <option value="{{.JobID}}"{{if and $.invoice $.invoice.JobID (eq $.invoice.JobID .JobID)}} selected{{end}}>
+                                            {{.Description}}{{if .CustomerName}} - {{.CustomerName}}{{end}}
+                                        </option>
+                                        {{end}}
+                                    </select>
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="window.open('/jobs/new', '_blank')" 
+                                            aria-label="Neuen Auftrag anlegen">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="jobHelp" class="form-text">
+                                    Optionale Verknüpfung mit einem Auftrag
+                                </div>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="templateId" class="form-label">Invoice Template</label>
+                                <select id="templateId" name="templateId" class="form-control">
+                                    <option value="">Use Default Template</option>
+                                    {{range .templates}}
+                                    <option value="{{.TemplateID}}"{{if and $.invoice $.invoice.TemplateID (eq $.invoice.TemplateID .TemplateID)}} selected{{end}}>
+                                        {{.Name}}{{if .Description}} - {{.Description}}{{end}}
+                                    </option>
+                                    {{end}}
+                                </select>
+                                <div class="form-text">
+                                    <a href="/invoice-templates" target="_blank">Manage Templates</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="issueDate" class="form-label">Issue Date *</label>
+                                <input type="date" id="issueDate" name="issueDate" class="form-control" 
+                                       value="{{if eq .action "edit"}}{{.invoice.IssueDate.Format "2006-01-02"}}{{else}}{{.defaultIssueDate}}{{end}}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="dueDate" class="form-label">Due Date *</label>
+                                <input type="date" id="dueDate" name="dueDate" class="form-control" 
+                                       value="{{if eq .action "edit"}}{{.invoice.DueDate.Format "2006-01-02"}}{{else}}{{.defaultDueDate}}{{end}}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="paymentTerms" class="form-label">Payment Terms</label>
+                                <input type="text" id="paymentTerms" name="paymentTerms" class="form-control" 
+                                       value="{{if eq .action "edit"}}{{if .invoice.PaymentTerms}}{{.invoice.PaymentTerms}}{{end}}{{else}}Net 30{{end}}" 
+                                       placeholder="e.g., Net 30, Cash on Delivery">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select id="status" name="status" class="form-control">
+                                    <option value="draft"{{if ne .action "edit"}} selected{{else}}{{if eq .invoice.Status "draft"}} selected{{end}}{{end}}>Draft</option>
+                                    <option value="sent"{{if and (eq .action "edit") (eq .invoice.Status "sent")}} selected{{end}}>Sent</option>
+                                    <option value="paid"{{if and (eq .action "edit") (eq .invoice.Status "paid")}} selected{{end}}>Paid</option>
+                                    <option value="overdue"{{if and (eq .action "edit") (eq .invoice.Status "overdue")}} selected{{end}}>Overdue</option>
+                                    <option value="cancelled"{{if and (eq .action "edit") (eq .invoice.Status "cancelled")}} selected{{end}}>Cancelled</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notes</label>
+                                <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Internal notes about this invoice">{{if eq .action "edit"}}{{.invoice.Notes}}{{end}}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Line Items Section -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Invoice Items</h5>
+                            
+                            <!-- Product Selection -->
+                            <div class="mb-3">
+                                <label for="productSelect" class="form-label">Add Product</label>
+                                <select id="productSelect" class="form-control">
+                                    <option value="">Select a product to add...</option>
+                                    {{range .products}}
+                                    <option value="{{.ProductID}}">{{.Name}}{{if .ItemCostPerDay}} - €{{.ItemCostPerDay}}/day{{end}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            
+                            <div id="lineItemsContainer">
+                                {{if and (eq .action "edit") .invoice.LineItems}}
+                                    {{range $index, $item := .invoice.LineItems}}
+                                    <div class="line-item border p-3 mb-2" data-item-type="{{$item.ItemType}}">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Description *</label>
+                                                <input type="text" class="form-control item-description" value="{{$item.Description}}" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Quantity *</label>
+                                                <input type="number" class="form-control item-quantity" value="{{$item.Quantity}}" min="0" step="0.01" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Unit Price *</label>
+                                                <input type="number" class="form-control item-price" value="{{$item.UnitPrice}}" min="0" step="0.01" required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Total</label>
+                                                <input type="text" class="form-control item-total" readonly>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="removeLineItem(this)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <!-- Device selection area (hidden by default) -->
+                                        <div class="device-selection mt-2" style="display: none;">
+                                            <h6>Select Devices for this Product:</h6>
+                                            <div class="devices-grid"></div>
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                {{else}}
+                                <!-- Default empty line item -->
+                                <div class="line-item border p-3 mb-2" data-item-type="custom">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Description *</label>
+                                            <input type="text" class="form-control item-description" placeholder="Item description" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Quantity *</label>
+                                            <input type="number" class="form-control item-quantity" value="1" min="0" step="0.01" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Unit Price *</label>
+                                            <input type="number" class="form-control item-price" value="0.00" min="0" step="0.01" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Total</label>
+                                            <input type="text" class="form-control item-total" readonly>
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="removeLineItem(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                            
+                            <button type="button" class="btn btn-success btn-sm" onclick="addLineItem()">
+                                <i class="bi bi-plus"></i> Add Custom Item
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> 
+                                {{if eq .action "edit"}}Update Invoice{{else}}Create Invoice{{end}}
+                            </button>
+                            
+                            {{if eq .action "edit"}}
+                            <a href="/invoices/{{.invoice.InvoiceID}}/preview" target="_blank" class="btn btn-info btn-lg">
+                                <i class="bi bi-eye"></i> Preview
+                            </a>
+                            {{else}}
+                            <button type="button" class="btn btn-info btn-lg" onclick="previewInvoice()">
+                                <i class="bi bi-eye"></i> Preview
+                            </button>
+                            {{end}}
+                            
+                            <a href="/invoices" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-x"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/rental-core-design.js"></script>
+    <script>
+        // Initialize form
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('invoiceForm');
+            
+            // Handle form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitInvoice();
+            });
+
+            // Auto-calculate due date when issue date changes
+            document.getElementById('issueDate').addEventListener('change', function() {
+                const issueDate = new Date(this.value);
+                if (issueDate) {
+                    const dueDate = new Date(issueDate);
+                    dueDate.setDate(dueDate.getDate() + 30);
+                    document.getElementById('dueDate').value = dueDate.toISOString().split('T')[0];
+                }
+            });
+
+            // Handle product selection
+            document.getElementById('productSelect').addEventListener('change', function() {
+                const productId = this.value;
+                if (productId) {
+                    addProductToInvoice(productId);
+                    this.value = ''; // Reset selection
+                }
+            });
+
+            // Set up quantity/price change listeners for existing items
+            setupLineItemListeners();
+
+            console.log('Invoice form initialized');
+        });
+
+        function submitInvoice() {
+            showLoading(true);
+            hideAlerts();
+
+            // Collect form data
+            const formData = {
+                invoiceNumber: document.getElementById('invoiceNumber').value,
+                customerId: parseInt(document.getElementById('customerId').value) || 0,
+                jobId: parseInt(document.getElementById('jobId').value) || null,
+                templateId: parseInt(document.getElementById('templateId').value) || null,
+                issueDate: document.getElementById('issueDate').value + 'T00:00:00Z',
+                dueDate: document.getElementById('dueDate').value + 'T00:00:00Z',
+                paymentTerms: document.getElementById('paymentTerms').value || 'Net 30',
+                taxRate: 0.19, // Default 19%
+                discountAmount: 0,
+                notes: document.getElementById('notes').value || '',
+                termsConditions: '',
+                lineItems: collectLineItems()
+            };
+
+            console.log('Submitting invoice data:', formData);
+
+            // Validate required fields
+            if (!formData.customerId) {
+                showError('Please select a customer');
+                showLoading(false);
+                return;
+            }
+
+            if (!formData.invoiceNumber) {
+                showError('Invoice number is required');
+                showLoading(false);
+                return;
+            }
+
+            if (formData.lineItems.length === 0) {
+                showError('At least one line item is required');
+                showLoading(false);
+                return;
+            }
+
+            // Determine URL and method
+            const isEdit = {{if eq .action "edit"}}true{{else}}false{{end}};
+            const url = isEdit ? '/api/invoices/{{.invoice.InvoiceID}}' : '/api/invoices';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            // Submit form
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                
+                if (data.error) {
+                    showError(data.error + (data.details ? ': ' + data.details : ''));
+                } else if (data.success) {
+                    showSuccess(data.message || (isEdit ? 'Invoice updated successfully!' : 'Invoice created successfully!'));
+                    
+                    // Redirect after short delay
+                    setTimeout(() => {
+                        window.location.href = '/invoices';
+                    }, 1500);
+                } else {
+                    showError('Unexpected response from server');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                console.error('Error:', error);
+                showError('Network error: ' + error.message);
+            });
+        }
+
+        function collectLineItems() {
+            const items = [];
+            const lineItems = document.querySelectorAll('.line-item');
+            
+            lineItems.forEach((item, index) => {
+                const description = item.querySelector('.item-description').value;
+                const quantity = parseFloat(item.querySelector('.item-quantity').value) || 0;
+                const unitPrice = parseFloat(item.querySelector('.item-price').value) || 0;
+                
+                if (description && quantity > 0 && unitPrice >= 0) {
+                    items.push({
+                        itemType: 'custom',
+                        description: description,
+                        quantity: quantity,
+                        unitPrice: unitPrice,
+                        deviceId: null,
+                        packageId: null,
+                        rentalStartDate: null,
+                        rentalEndDate: null,
+                        rentalDays: null
+                    });
+                }
+            });
+            
+            return items;
+        }
+
+        async function addProductToInvoice(productId) {
+            try {
+                showLoading(true);
+                
+                // Fetch product details and associated devices
+                const response = await fetch(`/api/v1/invoices/products/${productId}`);
+                const data = await response.json();
+                
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Failed to fetch product details');
+                }
+                
+                const product = data.product;
+                const devices = data.devices;
+                
+                // Create new line item for this product
+                const container = document.getElementById('lineItemsContainer');
+                const newItem = document.createElement('div');
+                newItem.className = 'line-item border p-3 mb-2';
+                newItem.setAttribute('data-item-type', 'product');
+                newItem.setAttribute('data-product-id', productId);
+                
+                const unitPrice = product.itemcostperday || 0;
+                
+                newItem.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Description *</label>
+                            <input type="text" class="form-control item-description" value="${product.name}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Quantity *</label>
+                            <input type="number" class="form-control item-quantity" value="1" min="0" step="0.01" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Unit Price *</label>
+                            <input type="number" class="form-control item-price" value="${unitPrice.toFixed(2)}" min="0" step="0.01" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Total</label>
+                            <input type="text" class="form-control item-total" value="€${unitPrice.toFixed(2)}" readonly>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-1">
+                            <button type="button" class="btn btn-info btn-sm" onclick="toggleDeviceSelection(this)" title="Select devices">
+                                <i class="bi bi-cpu"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeLineItem(this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="device-selection mt-2" style="display: none;">
+                        <h6>Select Devices for ${product.name}:</h6>
+                        <div class="devices-grid">
+                            ${devices.map(device => `
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input device-checkbox" type="checkbox" 
+                                           value="${device.deviceID}" data-device-id="${device.deviceID}">
+                                    <label class="form-check-label">
+                                        ${device.deviceID}${device.serialnumber ? ' (' + device.serialnumber + ')' : ''}
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="mt-2 text-muted">
+                            Selected: <span class="selected-device-count">0</span> devices
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(newItem);
+                
+                // Set up event listeners for this new item
+                setupLineItemListeners(newItem);
+                
+                showLoading(false);
+                
+            } catch (error) {
+                showLoading(false);
+                showError('Error adding product: ' + error.message);
+            }
+        }
+
+        function toggleDeviceSelection(button) {
+            const lineItem = button.closest('.line-item');
+            const deviceSelection = lineItem.querySelector('.device-selection');
+            
+            if (deviceSelection.style.display === 'none') {
+                deviceSelection.style.display = 'block';
+                button.innerHTML = '<i class="bi bi-cpu-fill"></i>';
+                button.classList.remove('btn-info');
+                button.classList.add('btn-warning');
+            } else {
+                deviceSelection.style.display = 'none';
+                button.innerHTML = '<i class="bi bi-cpu"></i>';
+                button.classList.remove('btn-warning');
+                button.classList.add('btn-info');
+            }
+        }
+
+        function setupLineItemListeners(container = null) {
+            const items = container ? [container] : document.querySelectorAll('.line-item');
+            
+            items.forEach(item => {
+                const quantityInput = item.querySelector('.item-quantity');
+                const priceInput = item.querySelector('.item-price');
+                const totalInput = item.querySelector('.item-total');
+                const deviceCheckboxes = item.querySelectorAll('.device-checkbox');
+                const deviceCountSpan = item.querySelector('.selected-device-count');
+                
+                // Update total when quantity or price changes
+                function updateTotal() {
+                    const quantity = parseFloat(quantityInput.value) || 0;
+                    const price = parseFloat(priceInput.value) || 0;
+                    const total = quantity * price;
+                    if (totalInput) {
+                        totalInput.value = '€' + total.toFixed(2);
+                    }
+                }
+                
+                if (quantityInput) quantityInput.addEventListener('input', updateTotal);
+                if (priceInput) priceInput.addEventListener('input', updateTotal);
+                
+                // Update quantity when devices are selected/deselected
+                if (deviceCheckboxes.length > 0) {
+                    deviceCheckboxes.forEach(checkbox => {
+                        checkbox.addEventListener('change', function() {
+                            const selectedDevices = item.querySelectorAll('.device-checkbox:checked');
+                            const count = selectedDevices.length;
+                            
+                            // Update quantity to match selected device count
+                            if (quantityInput) {
+                                quantityInput.value = count;
+                                updateTotal();
+                            }
+                            
+                            // Update device count display
+                            if (deviceCountSpan) {
+                                deviceCountSpan.textContent = count;
+                            }
+                        });
+                    });
+                }
+                
+                // Initial total calculation
+                updateTotal();
+            });
+        }
+
+        function addLineItem() {
+            const container = document.getElementById('lineItemsContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'line-item border p-3 mb-2';
+            newItem.setAttribute('data-item-type', 'custom');
+            newItem.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">Description *</label>
+                        <input type="text" class="form-control item-description" placeholder="Item description" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quantity *</label>
+                        <input type="number" class="form-control item-quantity" value="1" min="0" step="0.01" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Unit Price *</label>
+                        <input type="number" class="form-control item-price" value="0.00" min="0" step="0.01" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Total</label>
+                        <input type="text" class="form-control item-total" readonly>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeLineItem(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(newItem);
+            setupLineItemListeners(newItem);
+        }
+
+        function removeLineItem(button) {
+            const lineItem = button.closest('.line-item');
+            const container = document.getElementById('lineItemsContainer');
+            
+            // Don't remove the last item
+            if (container.children.length > 1) {
+                lineItem.remove();
+            } else {
+                // Clear the last item instead of removing it
+                lineItem.querySelector('.item-description').value = '';
+                lineItem.querySelector('.item-quantity').value = '1';
+                lineItem.querySelector('.item-price').value = '0.00';
+                if (lineItem.querySelector('.item-total')) {
+                    lineItem.querySelector('.item-total').value = '€0.00';
+                }
+                
+                // Reset item type and hide device selection
+                lineItem.setAttribute('data-item-type', 'custom');
+                lineItem.removeAttribute('data-product-id');
+                const deviceSelection = lineItem.querySelector('.device-selection');
+                if (deviceSelection) {
+                    deviceSelection.style.display = 'none';
+                    // Uncheck all devices
+                    lineItem.querySelectorAll('.device-checkbox').forEach(cb => cb.checked = false);
+                }
+                
+                // Reset device button if exists
+                const deviceButton = lineItem.querySelector('.btn-info, .btn-warning');
+                if (deviceButton && deviceButton.querySelector('.bi-cpu, .bi-cpu-fill')) {
+                    deviceButton.style.display = 'none';
+                }
+            }
+        }
+
+        function previewInvoice() {
+            // For new invoices, we'd need to save as draft first or show a preview modal
+            showError('Please save the invoice first to preview it');
+        }
+
+        function showLoading(show) {
+            const indicator = document.getElementById('loadingIndicator');
+            const form = document.getElementById('invoiceForm');
+            
+            if (show) {
+                indicator.classList.remove('d-none');
+                form.style.opacity = '0.5';
+            } else {
+                indicator.classList.add('d-none');
+                form.style.opacity = '1';
+            }
+        }
+
+        function showError(message) {
+            const alert = document.getElementById('errorAlert');
+            const messageSpan = document.getElementById('errorMessage');
+            
+            messageSpan.textContent = message;
+            alert.classList.remove('d-none');
+            
+            // Scroll to top to show error
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function showSuccess(message) {
+            const alert = document.getElementById('successAlert');
+            const messageSpan = document.getElementById('successMessage');
+            
+            messageSpan.textContent = message;
+            alert.classList.remove('d-none');
+            
+            // Scroll to top to show success
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function hideAlerts() {
+            document.getElementById('errorAlert').classList.add('d-none');
+            document.getElementById('successAlert').classList.add('d-none');
+        }
+    </script>
+</body>
+</html>

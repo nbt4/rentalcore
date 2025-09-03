@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - RentalCore</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-gear-wide-connected"></i> RentalCore
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/jobs">Jobs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/devices">Devices</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/customers">Customers</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
+                            Financial
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/financial">Dashboard</a></li>
+                            <li><a class="dropdown-item" href="/financial/transactions">Transactions</a></li>
+                            <li><a class="dropdown-item" href="/financial/reports">Reports</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i class="fas fa-chart-bar text-primary me-2"></i>Financial Reports
+                        </h1>
+                        <p class="text-muted mb-0">Comprehensive financial analysis and reporting</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="showExportModal()">
+                            <i class="fas fa-download me-2"></i>Export Reports
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Filters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-filter me-2"></i>Report Filters
+                </h6>
+            </div>
+            <div class="card-body">
+                <form id="reportFilters">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="reportType" class="form-label">Report Type</label>
+                            <select class="form-select" id="reportType" name="reportType">
+                                <option value="revenue">Revenue Analysis</option>
+                                <option value="payment">Payment Status</option>
+                                <option value="customer">Customer Analysis</option>
+                                <option value="job">Job Profitability</option>
+                                <option value="tax">Tax Report</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="period" class="form-label">Time Period</label>
+                            <select class="form-select" id="period" name="period">
+                                <option value="daily">Daily</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="startDate" name="startDate">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate" name="endDate">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary" onclick="generateReport()">
+                                <i class="fas fa-chart-line me-2"></i>Generate Report
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
+                                <i class="fas fa-undo me-2"></i>Reset Filters
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Report Content -->
+        <div id="reportContent">
+            <!-- Revenue Analysis Chart -->
+            <div class="card mb-4" id="revenueChart">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Revenue Trend Analysis
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueCanvas" height="100"></canvas>
+                </div>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-table me-2"></i>Detailed Report Data
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="reportTable">
+                                    <thead>
+                                        <tr id="reportTableHeader">
+                                            <!-- Headers will be populated by JavaScript -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reportTableBody">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">
+                                                <i class="fas fa-spinner fa-spin me-2"></i>Click "Generate Report" to load data
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-calculator me-2"></i>Summary Statistics
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="summaryStats">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-chart-pie fa-3x mb-3 d-block"></i>
+                                    Generate a report to see summary statistics
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Charts -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>Transaction Types Distribution
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="transactionTypesChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Top Customers by Revenue
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="topCustomersChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predefined Reports -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-file-alt me-2"></i>Predefined Reports
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-euro-sign fa-2x text-success mb-3"></i>
+                                <h6>Monthly Revenue Report</h6>
+                                <p class="text-muted small">Comprehensive monthly revenue breakdown</p>
+                                <button class="btn btn-success btn-sm" onclick="generatePredefinedReport('monthly-revenue')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-users fa-2x text-primary mb-3"></i>
+                                <h6>Customer Analysis</h6>
+                                <p class="text-muted small">Customer payment patterns and history</p>
+                                <button class="btn btn-primary btn-sm" onclick="generatePredefinedReport('customer-analysis')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-calculator fa-2x text-info mb-3"></i>
+                                <h6>Tax Summary</h6>
+                                <p class="text-muted small">Tax-ready financial summary</p>
+                                <button class="btn btn-info btn-sm" onclick="generatePredefinedReport('tax-summary')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                                <h6>Overdue Payments</h6>
+                                <p class="text-muted small">Payments past due date</p>
+                                <button class="btn btn-warning btn-sm" onclick="generatePredefinedReport('overdue-payments')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-briefcase fa-2x text-secondary mb-3"></i>
+                                <h6>Job Profitability</h6>
+                                <p class="text-muted small">Revenue per job analysis</p>
+                                <button class="btn btn-secondary btn-sm" onclick="generatePredefinedReport('job-profitability')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <i class="fas fa-chart-line fa-2x text-danger mb-3"></i>
+                                <h6>Expense Tracking</h6>
+                                <p class="text-muted small">Business expense analysis</p>
+                                <button class="btn btn-danger btn-sm" onclick="generatePredefinedReport('expense-tracking')">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Export Financial Reports</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="exportFormat" class="form-label">Export Format</label>
+                        <select class="form-select" id="exportFormat">
+                            <option value="csv">CSV (Excel Compatible)</option>
+                            <option value="pdf">PDF Report</option>
+                            <option value="xlsx">Excel Spreadsheet</option>
+                            <option value="json">JSON Data</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="exportRange" class="form-label">Date Range</label>
+                        <select class="form-select" id="exportRange">
+                            <option value="current">Current Report Data</option>
+                            <option value="last-month">Last Month</option>
+                            <option value="last-quarter">Last Quarter</option>
+                            <option value="last-year">Last Year</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeCharts">
+                        <label class="form-check-label" for="includeCharts">
+                            Include charts and visualizations
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="performExport()">
+                        <i class="fas fa-download me-2"></i>Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let revenueChart, transactionTypesChart, topCustomersChart;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            setDefaultDates();
+        });
+
+        function setDefaultDates() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+        }
+
+        function initializeCharts() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueCanvas').getContext('2d');
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Expenses',
+                        data: [],
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Transaction Types Chart
+            const typesCtx = document.getElementById('transactionTypesChart').getContext('2d');
+            transactionTypesChart = new Chart(typesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Top Customers Chart
+            const customersCtx = document.getElementById('topCustomersChart').getContext('2d');
+            topCustomersChart = new Chart(customersCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [],
+                        backgroundColor: 'rgba(13, 110, 253, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateReport() {
+            const reportType = document.getElementById('reportType').value;
+            const period = document.getElementById('period').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // Update table headers based on report type
+            updateTableHeaders(reportType);
+
+            // Fetch report data
+            fetchReportData(reportType, period, startDate, endDate);
+        }
+
+        function updateTableHeaders(reportType) {
+            const header = document.getElementById('reportTableHeader');
+            let headers = [];
+
+            switch(reportType) {
+                case 'revenue':
+                    headers = ['Period', 'Revenue', 'Expenses', 'Net Profit', 'Transactions'];
+                    break;
+                case 'payment':
+                    headers = ['Status', 'Count', 'Total Amount', 'Average Amount', 'Percentage'];
+                    break;
+                case 'customer':
+                    headers = ['Customer', 'Total Revenue', 'Transactions', 'Average', 'Last Payment'];
+                    break;
+                case 'job':
+                    headers = ['Job', 'Customer', 'Revenue', 'Expenses', 'Profit Margin'];
+                    break;
+                case 'tax':
+                    headers = ['Period', 'Gross Revenue', 'Tax Base', 'VAT Amount', 'Net Amount'];
+                    break;
+            }
+
+            header.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+        }
+
+        function fetchReportData(reportType, period, startDate, endDate) {
+            const params = new URLSearchParams({
+                period: period,
+                startDate: startDate,
+                endDate: endDate
+            });
+
+            fetch(`/financial/api/reports/${reportType}?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateReportDisplay(data, reportType);
+                })
+                .catch(error => {
+                    console.error('Error fetching report data:', error);
+                    // Show error message to user
+                    updateReportDisplay({ tableData: [], chartData: null, summary: null }, reportType);
+                });
+        }
+
+        function updateReportDisplay(data, reportType) {
+            // Update table
+            updateReportTable(data.tableData || [], reportType);
+            
+            // Update charts
+            if (data.chartData) {
+                updateCharts(data.chartData);
+            }
+            
+            // Update summary
+            if (data.summary) {
+                updateSummaryStats(data.summary);
+            }
+        }
+
+        function updateReportTable(data, reportType) {
+            const tbody = document.getElementById('reportTableBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No data found for the selected criteria</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map(row => {
+                return `<tr>${Object.values(row).map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+            }).join('');
+        }
+
+        function updateCharts(chartData) {
+            if (chartData.revenue) {
+                revenueChart.data.labels = chartData.revenue.labels;
+                revenueChart.data.datasets[0].data = chartData.revenue.revenue;
+                revenueChart.data.datasets[1].data = chartData.revenue.expenses;
+                revenueChart.update();
+            }
+
+            if (chartData.transactionTypes) {
+                transactionTypesChart.data.labels = chartData.transactionTypes.labels;
+                transactionTypesChart.data.datasets[0].data = chartData.transactionTypes.data;
+                transactionTypesChart.update();
+            }
+
+            if (chartData.topCustomers) {
+                topCustomersChart.data.labels = chartData.topCustomers.labels;
+                topCustomersChart.data.datasets[0].data = chartData.topCustomers.data;
+                topCustomersChart.update();
+            }
+        }
+
+        function updateSummaryStats(summary) {
+            const container = document.getElementById('summaryStats');
+            container.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <div class="fs-6 text-muted">Total Revenue</div>
+                        <div class="fs-3 fw-bold text-success">€${summary.totalRevenue.toLocaleString()}</div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <div class="fs-6 text-muted">Total Transactions</div>
+                        <div class="fs-4 fw-bold text-primary">${summary.totalTransactions}</div>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <div class="fs-6 text-muted">Average Transaction</div>
+                        <div class="fs-4 fw-bold text-info">€${summary.averageTransaction.toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        function generatePredefinedReport(reportType) {
+            alert(`Generating ${reportType} report - feature coming soon!`);
+        }
+
+        function showExportModal() {
+            new bootstrap.Modal(document.getElementById('exportModal')).show();
+        }
+
+        function performExport() {
+            const format = document.getElementById('exportFormat').value;
+            const range = document.getElementById('exportRange').value;
+            const includeCharts = document.getElementById('includeCharts').checked;
+            
+            alert(`Exporting report as ${format} with range ${range} - feature coming soon!`);
+            bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+        }
+
+        function resetFilters() {
+            document.getElementById('reportFilters').reset();
+            setDefaultDates();
+        }
+
+        // Handle period change
+        document.getElementById('period').addEventListener('change', function() {
+            const customFields = ['startDate', 'endDate'];
+            const isCustom = this.value === 'custom';
+            
+            customFields.forEach(field => {
+                const element = document.getElementById(field);
+                element.disabled = !isCustom;
+                element.required = isCustom;
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+{
+  "database": {
+    "host": "your-database-host.example.com",
+    "port": 3306,
+    "database": "your_database_name",
+    "username": "your_db_username",
+    "password": "your_secure_database_password",
+    "pool_size": 50
+  },
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0"
+  },
+  "ui": {
+    "theme_dark": "professional-dark",
+    "theme_light": "professional-light",
+    "current_theme": "dark",
+    "colors": {
+      "primary": "#3b82f6",
+      "primary_light": "#60a5fa",
+      "primary_dark": "#1d4ed8",
+      "secondary": "#64748b",
+      "accent": "#3b82f6",
+      "success": "#10b981",
+      "danger": "#ef4444",
+      "warning": "#f59e0b",
+      "info": "#06b6d4",
+      "background_dark": "#0f172a",
+      "background_secondary": "#1e293b",
+      "background_tertiary": "#334155",
+      "text_primary": "#f8fafc",
+      "text_secondary": "#cbd5e1",
+      "text_muted": "#94a3b8",
+      "border_primary": "#334155",
+      "border_secondary": "#475569"
+    },
+    "features": {
+      "auto_enhance_buttons": true,
+      "auto_enhance_badges": true,
+      "auto_enhance_cards": true,
+      "enhanced_animations": true,
+      "performance_monitoring": true,
+      "auto_navigation_state": true,
+      "smart_theme_switching": true
+    },
+    "performance": {
+      "lazy_load_images": true,
+      "virtual_scrolling_threshold": 50,
+      "debounce_search": 300,
+      "cache_api_responses": true,
+      "preload_critical_pages": true
+    },
+    "auto_save": true,
+    "auto_save_interval": 300,
+    "cache_timeout": 300,
+    "window_width": 1400,
+    "window_height": 800
+  },
+  "email": {
+    "smtp_host": "your-smtp-server.example.com",
+    "smtp_port": 587,
+    "smtp_username": "your_email@example.com",
+    "smtp_password": "your_secure_email_password",
+    "from_email": "noreply@yourcompany.com",
+    "from_name": "Your Company RentalCore",
+    "use_tls": true
+  },
+  "invoice": {
+    "default_tax_rate": 19.0,
+    "default_payment_terms": 30,
+    "auto_calculate_rental_days": true,
+    "show_logo_on_invoice": true,
+    "invoice_number_prefix": "INV-",
+    "invoice_number_format": "{prefix}{year}{month}{sequence:4}",
+    "currency_symbol": "€",
+    "currency_code": "EUR",
+    "date_format": "DD.MM.YYYY"
+  },
+  "pdf": {
+    "generator": "auto",
+    "paper_size": "A4",
+    "margins": {
+      "top": "1cm",
+      "bottom": "1cm",
+      "left": "1cm",
+      "right": "1cm"
+    }
+  },
+  "security": {
+    "session_timeout": 3600,
+    "password_min_length": 8,
+    "max_login_attempts": 5,
+    "lockout_duration": 900,
+    "encryption_key": "CHANGE-THIS-TO-A-SECURE-256BIT-KEY-FOR-PRODUCTION"
+  },
+  "logging": {
+    "level": "info",
+    "file": "logs/app.log",
+    "max_size": 100,
+    "max_backups": 5,
+    "max_age": 30
+  },
+  "backup": {
+    "enabled": true,
+    "interval": 86400,
+    "retention_days": 30,
+    "path": "backups/"
+  }
+}
