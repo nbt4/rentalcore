@@ -527,7 +527,7 @@ body {
     top: 0;
     width: 0;
     height: 100%;
-    background: linear-gradient(90deg, rgba(0, 245, 255, 0.1), rgba(0, 245, 255, 0.05));
+    background: linear-gradient(90deg, var(--surface-2), var(--surface-1));
     transition: width var(--transition-fast) ease;
     z-index: -1;
 }
