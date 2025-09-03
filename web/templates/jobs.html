@@ -1024,9 +1024,17 @@
         }
         
         .tree-device.selected {
-            background: var(--accent-electric);
-            border-color: var(--accent-electric);
-            color: white;
+            background: #f0f0f0;
+            border-color: #dc3545;
+            opacity: 0.7;
+            color: #6c757d;
+        }
+        
+        [data-theme="dark"] .tree-device.selected {
+            background: #2a2a2a;
+            border-color: #dc3545;
+            opacity: 0.8;
+            color: #9ca3af;
         }
         
         .device-info {
@@ -1040,7 +1048,11 @@
         }
         
         .tree-device.selected .device-name {
-            color: white;
+            color: #6c757d;
+        }
+        
+        [data-theme="dark"] .tree-device.selected .device-name {
+            color: #9ca3af;
         }
         
         .device-details {
@@ -1059,8 +1071,9 @@
         }
         
         .tree-device.selected .device-id {
-            background: rgba(255,255,255,0.2);
-            color: rgba(255,255,255,0.9);
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid #dc3545;
         }
         
         .device-status {
