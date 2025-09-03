@@ -86,6 +86,19 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 }
 
 func (h *JobHandler) NewJobForm(c *gin.Context) {
+	// Only allow AJAX requests (from modal), block direct browser access
+	if c.GetHeader("X-Requested-With") != "XMLHttpRequest" && c.GetHeader("Accept") != "application/json" {
+		// Check if this is a fetch request (which doesn't set X-Requested-With)
+		acceptHeader := c.GetHeader("Accept")
+		if !strings.Contains(acceptHeader, "text/html") || strings.Contains(c.GetHeader("User-Agent"), "fetch") {
+			// This looks like a fetch request from the modal, allow it
+		} else {
+			// Direct browser access - redirect to jobs list
+			c.Redirect(http.StatusFound, "/jobs")
+			return
+		}
+	}
+	
 	user, _ := GetCurrentUser(c)
 	
 	customers, err := h.customerRepo.List(&models.FilterParams{})

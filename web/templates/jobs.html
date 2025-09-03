@@ -568,6 +568,31 @@
         }
     }
 
+    // Live end date calculation function
+    function setupLiveEndDateCalculation(startInput, endInput) {
+        if (!startInput || !endInput) return;
+        
+        startInput.addEventListener('change', function() {
+            const startDate = new Date(this.value);
+            if (isNaN(startDate.getTime())) return; // Invalid date
+            
+            // Calculate next day
+            const nextDay = new Date(startDate);
+            nextDay.setDate(startDate.getDate() + 1);
+            
+            // Format as YYYY-MM-DD
+            const year = nextDay.getFullYear();
+            const month = String(nextDay.getMonth() + 1).padStart(2, '0');
+            const day = String(nextDay.getDate()).padStart(2, '0');
+            const nextDayString = `${year}-${month}-${day}`;
+            
+            // Set end date
+            endInput.value = nextDayString;
+            
+            console.log('DEBUG: Live calculation - Start date changed to:', this.value, '→ End date set to:', nextDayString);
+        });
+    }
+
     // New Job Modal
     function showNewJob() {
         const modal = document.getElementById('newJobModal');
@@ -620,7 +645,12 @@
                                 endValue: endInput?.value
                             });
                             
-                            if (startInput && endInput && !startInput.value && !endInput.value) {
+                            if (startInput && endInput) {
+                                // Always set up live calculation
+                                setupLiveEndDateCalculation(startInput, endInput);
+                                
+                                // Only set default dates if both fields are empty
+                                if (!startInput.value && !endInput.value) {
                                 const today = new Date();
                                 const currentYear = today.getFullYear();
                                 const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -639,6 +669,7 @@
                                 endInput.value = tomorrowString;
                                 
                                 console.log('DEBUG: Modal - Set default dates:', todayString, 'to', tomorrowString);
+                                }
                             }
                         }, 100);
                     }
