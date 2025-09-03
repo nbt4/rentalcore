@@ -608,10 +608,39 @@
                         });
                         
                         // Initialize default dates for the modal form
-                        if (window.initializeJobFormDates) {
-                            console.log('DEBUG: Calling initializeJobFormDates for modal form');
-                            window.initializeJobFormDates();
-                        }
+                        console.log('DEBUG: Setting up auto dates for modal form');
+                        setTimeout(function() {
+                            const startInput = document.querySelector('#newJobModal input[name="start_date"]');
+                            const endInput = document.querySelector('#newJobModal input[name="end_date"]');
+                            
+                            console.log('DEBUG: Modal date inputs found:', {
+                                startInput: !!startInput,
+                                endInput: !!endInput,
+                                startValue: startInput?.value,
+                                endValue: endInput?.value
+                            });
+                            
+                            if (startInput && endInput && !startInput.value && !endInput.value) {
+                                const today = new Date();
+                                const currentYear = today.getFullYear();
+                                const month = String(today.getMonth() + 1).padStart(2, '0');
+                                const day = String(today.getDate()).padStart(2, '0');
+                                
+                                // Set start date to today
+                                const todayString = `${currentYear}-${month}-${day}`;
+                                startInput.value = todayString;
+                                
+                                // Set end date to tomorrow
+                                const tomorrow = new Date(today);
+                                tomorrow.setDate(today.getDate() + 1);
+                                const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
+                                const tomorrowString = `${tomorrow.getFullYear()}-${tomorrowMonth}-${tomorrowDay}`;
+                                endInput.value = tomorrowString;
+                                
+                                console.log('DEBUG: Modal - Set default dates:', todayString, 'to', tomorrowString);
+                            }
+                        }, 100);
                     }
                 } else {
                     content.innerHTML = `
