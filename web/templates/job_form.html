@@ -572,7 +572,30 @@
             const startDateInput = document.querySelector('input[name="start_date"]');
             const endDateInput = document.querySelector('input[name="end_date"]');
             
+            // Set current year dates for new jobs (if no existing values)
             if (startDateInput && endDateInput) {
+                // Only set default dates if both fields are empty (new job)
+                if (!startDateInput.value && !endDateInput.value) {
+                    const today = new Date();
+                    const currentYear = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+                    
+                    // Set start date to today
+                    const todayString = `${currentYear}-${month}-${day}`;
+                    startDateInput.value = todayString;
+                    
+                    // Set end date to tomorrow
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                    const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
+                    const tomorrowString = `${tomorrow.getFullYear()}-${tomorrowMonth}-${tomorrowDay}`;
+                    endDateInput.value = tomorrowString;
+                    
+                    console.log('DEBUG: Set default dates for new job:', todayString, 'to', tomorrowString);
+                }
+                
                 startDateInput.addEventListener('change', loadDeviceTree);
                 endDateInput.addEventListener('change', loadDeviceTree);
             }
