@@ -98,7 +98,11 @@
                                     <td><span class="rc-text-sm">{{if .StartDate}}{{.StartDate.Format "02.01.2006"}}{{else}}-{{end}}</span></td>
                                     <td><span class="rc-text-sm">{{if .EndDate}}{{.EndDate.Format "02.01.2006"}}{{else}}-{{end}}</span></td>
                                     <td><span class="rc-badge rc-badge-secondary">{{.StatusName}}</span></td>
-                                    <td><span class="rc-badge rc-badge-info">{{.DeviceCount}} devices</span></td>
+                                    <td>
+                                        <button type="button" class="rc-badge rc-badge-info device-count-button" onclick="redirectToScan('{{.JobID}}')" title="Click to scan devices for this job">
+                                            <i class="bi bi-qr-code-scan"></i> {{.DeviceCount}} devices
+                                        </button>
+                                    </td>
                                     <td><span class="rc-text-mono">€{{printf "%.2f" .TotalRevenue}}</span></td>
                                     <td>
                                         <div class="rc-flex rc-flex-gap-xs">
@@ -593,6 +597,11 @@
         });
     }
 
+    // Redirect to scan page for specific job
+    function redirectToScan(jobID) {
+        window.location.href = `/scan/${jobID}`;
+    }
+
     // New Job Modal
     function showNewJob() {
         const modal = document.getElementById('newJobModal');
@@ -1006,6 +1015,34 @@
     
     <!-- Device Tree Styles for Edit Modal -->
     <style>
+        /* Device Count Button Styling */
+        .device-count-button {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            background: var(--info) !important;
+            color: white !important;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .device-count-button:hover {
+            background: var(--primary) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .device-count-button:active {
+            transform: translateY(0);
+        }
+        
+        .device-count-button i {
+            font-size: 0.8rem;
+        }
         .device-tree-container {
             font-family: 'Inter', sans-serif;
         }
