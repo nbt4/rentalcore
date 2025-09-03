@@ -2,6 +2,21 @@
 
 A comprehensive, enterprise-grade equipment rental management system built with Go, featuring advanced analytics, device tracking, and customer management. Designed for exclusive Docker deployment with professional theming and modern web interface.
 
+## 📑 Table of Contents
+
+- [✨ Key Features](#-key-features)
+- [🚀 Quick Start](#-quick-start-docker-deployment)
+- [🏗️ Project Architecture](#️-project-architecture)
+- [🔧 Configuration](#-configuration-management)
+- [📊 API Documentation](#-api-documentation)
+- [🔐 Security](#-security-features)
+- [🚀 Deployment](#-production-deployment)
+- [📈 Performance](#-performance--scaling)
+- [🛠️ Development](#️-development)
+- [📝 Documentation](#-documentation)
+- [🏷️ Version History](#️-version-history)
+- [📧 Support](#-support--contact)
+
 ## ✨ Key Features
 
 ### 📊 **Advanced Analytics Dashboard**
@@ -281,10 +296,25 @@ docker-compose up -d --build
 
 ## 📝 Documentation
 
-- **[Docker Deployment Guide](DOCKER_DEPLOYMENT.md)** - Comprehensive deployment instructions
-- **[Docker Quick Start](DOCKER_QUICK_START.md)** - Rapid deployment guide
-- **[API Documentation](docs/api.md)** - Complete API reference
-- **[Security Guide](docs/security.md)** - Security best practices
+All documentation is organized in the `docs/` folder for easy access:
+
+### Core Documentation
+- **[Database Setup Guide](docs/DATABASE_SETUP.md)** - Complete database installation and configuration guide
+
+### Deployment Guides
+- **[Docker Deployment](docs/DOCKER_DEPLOYMENT.md)** - Comprehensive deployment instructions
+- **[Quick Start Guide](docs/DOCKER_QUICK_START.md)** - Rapid deployment guide
+- **[Configuration Examples](docs/CONFIGURATION.md)** - Environment and config examples
+
+### Technical Documentation
+- **[API Reference](docs/API.md)** - Complete API documentation
+- **[Security Guide](docs/SECURITY.md)** - Security best practices and features
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System architecture and design patterns
+
+### User Guides
+- **[User Manual](docs/USER_GUIDE.md)** - Complete user documentation
+- **[Admin Guide](docs/ADMIN_GUIDE.md)** - Administrator documentation
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## 🏷️ Version History
 
@@ -312,7 +342,16 @@ docker-compose up -d --build
 
 ## 📄 License
 
-This project is a professional equipment rental management system designed for enterprise use. All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+The MIT License allows you to:
+- ✅ Use the software for any purpose (commercial or non-commercial)
+- ✅ Modify and distribute the software
+- ✅ Create derivative works
+- ✅ Use in private projects
+- ✅ Sell copies or services based on the software
+
+**No warranty is provided - use at your own risk.**
 
 ---
 
