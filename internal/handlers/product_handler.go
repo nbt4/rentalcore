@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
@@ -109,6 +110,22 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 }
 
 func (h *ProductHandler) NewProductForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/products")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/products")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	// Get categories for the form

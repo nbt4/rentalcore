@@ -69,6 +69,22 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 
 
 func (h *CaseHandler) NewCaseForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	// Get available devices for new case
@@ -142,6 +158,22 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 }
 
 func (h *CaseHandler) GetCase(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	caseIDStr := c.Param("id")
@@ -164,6 +196,22 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 }
 
 func (h *CaseHandler) EditCaseForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/cases")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	caseIDStr := c.Param("id")

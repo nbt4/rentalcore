@@ -52,6 +52,22 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 }
 
 func (h *CustomerHandler) NewCustomerForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	c.HTML(http.StatusOK, "customer_form.html", gin.H{
@@ -136,6 +152,22 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 }
 
 func (h *CustomerHandler) GetCustomer(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -157,6 +189,22 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 }
 
 func (h *CustomerHandler) EditCustomerForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/customers")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)

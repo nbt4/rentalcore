@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 	"sync"
 
@@ -229,6 +230,22 @@ func (h *DeviceHandler) ListDevices(c *gin.Context) {
 }
 
 func (h *DeviceHandler) NewDeviceForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	products, err := h.productRepo.List(&models.FilterParams{})
@@ -357,6 +374,22 @@ func (h *DeviceHandler) CreateDevice(c *gin.Context) {
 }
 
 func (h *DeviceHandler) GetDevice(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	deviceID := c.Param("id")
@@ -374,6 +407,22 @@ func (h *DeviceHandler) GetDevice(c *gin.Context) {
 }
 
 func (h *DeviceHandler) EditDeviceForm(c *gin.Context) {
+	// Only allow fetch requests from modals, block direct browser access
+	acceptHeader := c.GetHeader("Accept")
+	xRequestedWith := c.GetHeader("X-Requested-With")
+	
+	// Block direct browser access - only allow modal/fetch requests
+	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+	
+	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
+	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
+		c.Redirect(http.StatusFound, "/devices")
+		return
+	}
+
 	user, _ := GetCurrentUser(c)
 	
 	deviceID := c.Param("id")

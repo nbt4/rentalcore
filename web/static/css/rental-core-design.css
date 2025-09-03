@@ -412,32 +412,32 @@ body {
 }
 
 .rc-nav-link.active {
-    color: var(--accent-electric);
-    background: rgba(0, 245, 255, 0.1);
-    border-color: rgba(0, 245, 255, 0.3);
-    box-shadow: 0 2px 8px rgba(0, 245, 255, 0.15);
+    color: white;
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Active dropdown styles */
 .rc-dropdown-toggle.active {
-    color: var(--accent-electric);
-    background: rgba(0, 245, 255, 0.1);
-    border-color: rgba(0, 245, 255, 0.3);
+    color: white;
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
 .rc-dropdown-item.active {
-    color: var(--accent-electric);
-    background: rgba(0, 245, 255, 0.1);
+    color: white;
+    background: var(--primary);
     transform: translateX(4px);
 }
 
 .rc-dropdown-item.active::before {
     width: 100%;
-    background: var(--accent-electric);
+    background: var(--primary);
 }
 
 .rc-dropdown-item.active i {
-    color: var(--accent-electric);
+    color: white;
 }
 
 /* Dropdown System */
@@ -2227,17 +2227,18 @@ label,
 
 /* Active Navigation Link */
 .rc-nav-link-active {
-    color: var(--accent-electric) !important;
-    background: rgba(0, 245, 255, 0.1) !important;
-    border-color: var(--accent-electric) !important;
+    color: white !important;
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
 }
 
 .rc-nav-link-active::before {
     width: 100% !important;
+    background: var(--primary) !important;
 }
 
 .rc-nav-link-active i {
-    color: var(--accent-electric) !important;
+    color: white !important;
 }
 
 /* User Navigation */
