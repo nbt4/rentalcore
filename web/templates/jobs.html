@@ -606,6 +606,12 @@
                             e.preventDefault();
                             submitNewJobForm(new FormData(this));
                         });
+                        
+                        // Initialize default dates for the modal form
+                        if (window.initializeJobFormDates) {
+                            console.log('DEBUG: Calling initializeJobFormDates for modal form');
+                            window.initializeJobFormDates();
+                        }
                     }
                 } else {
                     content.innerHTML = `

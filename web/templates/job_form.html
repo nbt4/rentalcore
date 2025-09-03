@@ -573,28 +573,57 @@
             const endDateInput = document.querySelector('input[name="end_date"]');
             
             // Set current year dates for new jobs (if no existing values)
-            if (startDateInput && endDateInput) {
-                // Only set default dates if both fields are empty (new job)
-                if (!startDateInput.value && !endDateInput.value) {
-                    const today = new Date();
-                    const currentYear = today.getFullYear();
-                    const month = String(today.getMonth() + 1).padStart(2, '0');
-                    const day = String(today.getDate()).padStart(2, '0');
-                    
-                    // Set start date to today
-                    const todayString = `${currentYear}-${month}-${day}`;
-                    startDateInput.value = todayString;
-                    
-                    // Set end date to tomorrow
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(today.getDate() + 1);
-                    const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                    const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
-                    const tomorrowString = `${tomorrow.getFullYear()}-${tomorrowMonth}-${tomorrowDay}`;
-                    endDateInput.value = tomorrowString;
-                    
-                    console.log('DEBUG: Set default dates for new job:', todayString, 'to', tomorrowString);
+            function setDefaultDates() {
+                const startInput = document.querySelector('input[name="start_date"]');
+                const endInput = document.querySelector('input[name="end_date"]');
+                
+                console.log('DEBUG: Checking for date inputs...', {
+                    startInput: !!startInput,
+                    endInput: !!endInput,
+                    startValue: startInput?.value,
+                    endValue: endInput?.value
+                });
+                
+                if (startInput && endInput) {
+                    // Only set default dates if both fields are empty (new job)
+                    if (!startInput.value && !endInput.value) {
+                        const today = new Date();
+                        const currentYear = today.getFullYear();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        const day = String(today.getDate()).padStart(2, '0');
+                        
+                        // Set start date to today
+                        const todayString = `${currentYear}-${month}-${day}`;
+                        startInput.value = todayString;
+                        
+                        // Set end date to tomorrow
+                        const tomorrow = new Date(today);
+                        tomorrow.setDate(today.getDate() + 1);
+                        const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                        const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
+                        const tomorrowString = `${tomorrow.getFullYear()}-${tomorrowMonth}-${tomorrowDay}`;
+                        endInput.value = tomorrowString;
+                        
+                        console.log('DEBUG: Set default dates for new job:', todayString, 'to', tomorrowString);
+                        
+                        // Trigger change events to update device tree
+                        startInput.dispatchEvent(new Event('change'));
+                        endInput.dispatchEvent(new Event('change'));
+                    } else {
+                        console.log('DEBUG: Not setting default dates - fields have values:', {
+                            start: startInput.value,
+                            end: endInput.value
+                        });
+                    }
+                } else {
+                    console.log('DEBUG: Date inputs not found yet');
                 }
+            }
+            
+            // Try to set default dates immediately
+            setDefaultDates();
+            
+            if (startDateInput && endDateInput) {
                 
                 startDateInput.addEventListener('change', loadDeviceTree);
                 endDateInput.addEventListener('change', loadDeviceTree);
@@ -611,8 +640,11 @@
                 console.log('DEBUG: Not loading device tree - missing dates:', startDateInput.value, endDateInput.value);
             }
             
-            // Also try loading after a short delay in case of timing issues
+            // Also try setting default dates and loading after a short delay in case of timing issues
             setTimeout(function() {
+                // Try setting default dates again in case the form was loaded dynamically
+                setDefaultDates();
+                
                 const startDate = document.querySelector('input[name="start_date"]').value;
                 const endDate = document.querySelector('input[name="end_date"]').value;
                 if (startDate && endDate && (!deviceTreeData || deviceTreeData.length === 0)) {
@@ -621,6 +653,15 @@
                 }
             }, 500);
         });
+        
+        // Make setDefaultDates available globally for dynamic forms
+        window.initializeJobFormDates = function() {
+            // Wait a bit for form to be fully rendered
+            setTimeout(function() {
+                console.log('DEBUG: Global initializeJobFormDates called');
+                setDefaultDates();
+            }, 100);
+        };
         
         function loadDeviceTree() {
             const startDate = document.querySelector('input[name="start_date"]').value;
