@@ -14,6 +14,7 @@ A comprehensive, enterprise-grade equipment rental management system built with 
 - [📈 Performance](#-performance--scaling)
 - [🛠️ Development](#️-development)
 - [📝 Documentation](#-documentation)
+- [📷 Demo Images](#-demo-images)
 - [🏷️ Version History](#️-version-history)
 - [📧 Support](#-support--contact)
 
@@ -339,6 +340,61 @@ All documentation is organized in the `docs/` folder for easy access:
 - **Issues**: [GitHub Issues](https://github.com/nbt4/RentalCore/issues)
 - **Docker Hub**: [nbt4/rentalcore](https://hub.docker.com/r/nbt4/rentalcore)
 - **Documentation**: [GitHub Repository](https://github.com/nbt4/RentalCore)
+
+## 📷 Demo Images
+
+Get a visual overview of RentalCore's professional interface and features:
+
+### Login & Authentication
+<img src="img/login-page.png" alt="RentalCore Login Page" width="600">
+
+Professional login interface with secure authentication and modern design.
+
+### Main Dashboard
+<img src="img/dashboard-overview.png" alt="RentalCore Dashboard Overview" width="600">
+
+Comprehensive dashboard showing active customers, equipment items, jobs, and quick action buttons for daily operations.
+
+### Equipment Management
+<img src="img/devices-management.png" alt="Devices Management" width="600">
+
+Complete device inventory management with search, status tracking, and bulk operations.
+
+<img src="img/products-management.png" alt="Products Management" width="600">
+
+Product catalog management with categories, pricing, and detailed descriptions.
+
+<img src="img/device-tree-view.png" alt="Device Tree View" width="600">
+
+Hierarchical device organization by categories and types for easy navigation and management.
+
+### Cable & Case Management
+<img src="img/cables-management.png" alt="Cables Management" width="600">
+
+Specialized cable management with connector types, lengths, and cross-section specifications.
+
+<img src="img/cases-management.png" alt="Cases Management" width="600">
+
+Equipment case tracking with device capacity and availability status.
+
+<img src="img/case-devices-modal.png" alt="Case Devices Modal" width="600">
+
+Detailed view of devices within equipment cases for precise inventory control.
+
+### Job Management & Scanning
+<img src="img/job-selection-scanning.png" alt="Job Selection for Scanning" width="600">
+
+Job selection interface with overview of active jobs, available devices, and assignments.
+
+<img src="img/job-scanning-interface.png" alt="Job Scanning Interface" width="600">
+
+Advanced scanning interface with barcode/QR code scanning, manual input, and device selection.
+
+<img src="img/job-overview-barcode-scanner.png" alt="Job Overview with Barcode Scanner" width="600">
+
+Complete job overview with integrated barcode scanner and quick device scanning for case assignments.
+
+---
 
 ## 📄 License
 
