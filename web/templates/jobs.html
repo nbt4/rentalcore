@@ -394,21 +394,41 @@
             'Other': []
         };
 
-        // Group devices by category
+        // Group devices by category using categoryID and subcategoryID
         devices.forEach(device => {
             let category = 'Other';
-            if (device.device && device.device.product && device.device.product.category) {
-                const productCategory = device.device.product.category.toLowerCase();
-                if (productCategory.includes('sound') || productCategory.includes('audio')) {
+            if (device.device && device.device.product) {
+                const product = device.device.product;
+                const categoryID = product.categoryID;
+                const subcategoryID = product.subcategoryID;
+                
+                // Debug logging for categorization
+                console.log(`Device ${device.device.deviceID}: CategoryID=${categoryID}, SubcategoryID=${subcategoryID}`);
+                
+                // Categorize based on categoryID and subcategoryID patterns
+                if (categoryID === 1001) { // Sound category
                     category = 'Sound';
-                } else if (productCategory.includes('light') || productCategory.includes('licht')) {
+                } else if (categoryID === 1002) { // Light category  
                     category = 'Light';
-                } else if (productCategory.includes('effect')) {
-                    category = 'Effect';
-                } else if (productCategory.includes('stage') || productCategory.includes('bühne')) {
+                } else if (categoryID === 1003) { // Stage category
                     category = 'Stage';
+                } else if (categoryID === 1004) { // Effect category
+                    category = 'Effect';
+                } else if (subcategoryID) {
+                    // Fallback: categorize based on subcategory prefix
+                    const subcat = subcategoryID.toLowerCase();
+                    if (subcat.startsWith('snd') || subcat.includes('mic') || subcat.includes('mix') || subcat.includes('amp')) {
+                        category = 'Sound';
+                    } else if (subcat.startsWith('lgt') || subcat.includes('light') || subcat.includes('led')) {
+                        category = 'Light';
+                    } else if (subcat.startsWith('stg') || subcat.includes('stage') || subcat.includes('lift') || subcat.includes('lft')) {
+                        category = 'Stage';
+                    } else if (subcat.startsWith('efx') || subcat.includes('effect') || subcat.includes('fog') || subcat.includes('smoke')) {
+                        category = 'Effect';
+                    }
                 }
             }
+            console.log(`Device ${device.device?.deviceID} categorized as: ${category}`);
             categories[category].push(device);
         });
 
@@ -434,7 +454,7 @@
                     const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
                     
                     // Debug logging for price calculation
-                    console.log(`Device ${device.device?.deviceID}: custom_price=${customPrice}, itemCostPerDay=${productPrice}, effective_price=${price}`);
+                    console.log(`Device ${device.device?.deviceID}: custom_price=${customPrice}, itemCostPerDay=${productPrice}, effective_price=${price}`, device);
                     html += `
                         <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
                             <div>
@@ -1241,19 +1261,35 @@
             'Other': []
         };
 
-        // Group devices by category
+        // Group devices by category using categoryID and subcategoryID
         devices.forEach(device => {
             let category = 'Other';
-            if (device.device && device.device.product && device.device.product.category) {
-                const productCategory = device.device.product.category.toLowerCase();
-                if (productCategory.includes('sound') || productCategory.includes('audio')) {
+            if (device.device && device.device.product) {
+                const product = device.device.product;
+                const categoryID = product.categoryID;
+                const subcategoryID = product.subcategoryID;
+                
+                // Categorize based on categoryID and subcategoryID patterns
+                if (categoryID === 1001) { // Sound category
                     category = 'Sound';
-                } else if (productCategory.includes('light') || productCategory.includes('licht')) {
+                } else if (categoryID === 1002) { // Light category  
                     category = 'Light';
-                } else if (productCategory.includes('effect')) {
-                    category = 'Effect';
-                } else if (productCategory.includes('stage') || productCategory.includes('bühne')) {
+                } else if (categoryID === 1003) { // Stage category
                     category = 'Stage';
+                } else if (categoryID === 1004) { // Effect category
+                    category = 'Effect';
+                } else if (subcategoryID) {
+                    // Fallback: categorize based on subcategory prefix
+                    const subcat = subcategoryID.toLowerCase();
+                    if (subcat.startsWith('snd') || subcat.includes('mic') || subcat.includes('mix') || subcat.includes('amp')) {
+                        category = 'Sound';
+                    } else if (subcat.startsWith('lgt') || subcat.includes('light') || subcat.includes('led')) {
+                        category = 'Light';
+                    } else if (subcat.startsWith('stg') || subcat.includes('stage') || subcat.includes('lift') || subcat.includes('lft')) {
+                        category = 'Stage';
+                    } else if (subcat.startsWith('efx') || subcat.includes('effect') || subcat.includes('fog') || subcat.includes('smoke')) {
+                        category = 'Effect';
+                    }
                 }
             }
             categories[category].push(device);
