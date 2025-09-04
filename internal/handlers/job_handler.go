@@ -711,6 +711,12 @@ func (h *JobHandler) GetJobAPI(c *gin.Context) {
 		return
 	}
 
+	// Debug logging to check customer and status data
+	fmt.Printf("🔧 DEBUG GetJobAPI: Job %d - CustomerID: %d, StatusID: %d\n", job.JobID, job.CustomerID, job.StatusID)
+	fmt.Printf("🔧 DEBUG GetJobAPI: Customer loaded - ID: %d, CompanyName: %v, FirstName: %v, LastName: %v\n", 
+		job.Customer.CustomerID, job.Customer.CompanyName, job.Customer.FirstName, job.Customer.LastName)
+	fmt.Printf("🔧 DEBUG GetJobAPI: Status loaded - ID: %d, Status: %s\n", job.Status.StatusID, job.Status.Status)
+
 	c.JSON(http.StatusOK, job)
 }
 

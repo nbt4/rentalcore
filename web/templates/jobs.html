@@ -162,9 +162,9 @@
     <!-- Job Details Modal -->
     <div id="jobDetailsModal" class="rc-modal" style="display: none;">
         <div class="rc-modal-overlay" onclick="closeJobModal()"></div>
-        <div class="rc-modal-content">
+        <div class="rc-modal-content" id="jobDetailsModalContent">
             <div class="rc-modal-header">
-                <h3 class="rc-modal-title">
+                <h3 class="rc-modal-title" id="jobDetailsModalTitle">
                     <i class="bi bi-briefcase"></i> Job Details
                 </h3>
                 <button class="rc-modal-close" onclick="closeJobModal()">
@@ -175,6 +175,20 @@
                 <div class="rc-text-center rc-py-xl">
                     <div class="rc-spinner"></div>
                     <p class="rc-text-muted rc-mt-md">Loading job details...</p>
+                </div>
+            </div>
+            <div class="rc-modal-body" id="jobDevicesContent" style="display: none;">
+                <div class="rc-flex rc-flex-between rc-items-center rc-mb-lg">
+                    <button type="button" class="rc-btn rc-btn-secondary" onclick="returnToJobSummary()">
+                        <i class="bi bi-arrow-left"></i> Back to Job Summary
+                    </button>
+                    <h4 class="rc-text-lg rc-font-semibold">Device Overview</h4>
+                </div>
+                <div id="jobDevicesOverview">
+                    <div class="rc-text-center rc-py-xl">
+                        <div class="rc-spinner"></div>
+                        <p class="rc-text-muted rc-mt-md">Loading devices...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -268,7 +282,7 @@
                         </div>
                         <div class="rc-form-group">
                             <label class="rc-label">Customer</label>
-                            <div>${jobData.customer && jobData.customer.companyname ? jobData.customer.companyname : (jobData.customer && jobData.customer.firstname && jobData.customer.lastname ? jobData.customer.firstname + ' ' + jobData.customer.lastname : 'Unknown')}</div>
+                            <div>${jobData.customer ? (jobData.customer.companyname || (jobData.customer.firstname && jobData.customer.lastname ? jobData.customer.firstname + ' ' + jobData.customer.lastname : 'No Name')) : 'Unknown Customer'}</div>
                         </div>
                         <div class="rc-form-group">
                             <label class="rc-label">Revenue</label>
@@ -277,8 +291,8 @@
                         <div class="rc-form-group">
                             <label class="rc-label">Devices</label>
                             <div>
-                                <button type="button" class="job-device-count-button" onclick="showJobDevices(${jobData.jobID})" title="Click to view devices">
-                                    <i class="bi bi-cpu"></i> ${jobData.device_count || 0} devices
+                                <button type="button" class="job-device-count-button" onclick="expandToDeviceView(${jobData.jobID})" title="Click to view devices">
+                                    ${jobData.device_count || 0}
                                 </button>
                             </div>
                         </div>
@@ -306,6 +320,150 @@
 
     function closeJobModal() {
         document.getElementById('jobDetailsModal').style.display = 'none';
+        // Reset modal to job summary view
+        returnToJobSummary();
+    }
+
+    let currentJobID = null;
+
+    function expandToDeviceView(jobID) {
+        currentJobID = jobID;
+        
+        // Hide job summary, show device overview
+        document.getElementById('jobDetailsContent').style.display = 'none';
+        document.getElementById('jobDevicesContent').style.display = 'block';
+        
+        // Update modal title
+        document.getElementById('jobDetailsModalTitle').innerHTML = '<i class="bi bi-cpu"></i> Device Overview - Job #' + jobID;
+        
+        // Make modal larger for device overview
+        document.getElementById('jobDetailsModalContent').style.maxWidth = '1200px';
+        
+        // Load device data
+        loadJobDevices(jobID);
+    }
+
+    function returnToJobSummary() {
+        // Show job summary, hide device overview  
+        document.getElementById('jobDetailsContent').style.display = 'block';
+        document.getElementById('jobDevicesContent').style.display = 'none';
+        
+        // Reset modal title
+        document.getElementById('jobDetailsModalTitle').innerHTML = '<i class="bi bi-briefcase"></i> Job Details';
+        
+        // Reset modal size
+        document.getElementById('jobDetailsModalContent').style.maxWidth = '';
+    }
+
+    function loadJobDevices(jobID) {
+        const content = document.getElementById('jobDevicesOverview');
+        
+        // Show loading state
+        content.innerHTML = `
+            <div class="rc-text-center rc-py-xl">
+                <div class="rc-spinner"></div>
+                <p class="rc-text-muted rc-mt-md">Loading devices...</p>
+            </div>
+        `;
+        
+        // Fetch job devices
+        fetch('/api/v1/jobs/' + jobID + '/devices')
+            .then(response => response.json())
+            .then(devices => {
+                displayJobDevicesInModal(devices, jobID);
+            })
+            .catch(error => {
+                content.innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading devices: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function displayJobDevicesInModal(devices, jobID) {
+        const categories = {
+            'Sound': [],
+            'Light': [],
+            'Effect': [],
+            'Stage': [],
+            'Other': []
+        };
+
+        // Group devices by category
+        devices.forEach(device => {
+            let category = 'Other';
+            if (device.device && device.device.product && device.device.product.category) {
+                const productCategory = device.device.product.category.toLowerCase();
+                if (productCategory.includes('sound') || productCategory.includes('audio')) {
+                    category = 'Sound';
+                } else if (productCategory.includes('light') || productCategory.includes('licht')) {
+                    category = 'Light';
+                } else if (productCategory.includes('effect')) {
+                    category = 'Effect';
+                } else if (productCategory.includes('stage') || productCategory.includes('bühne')) {
+                    category = 'Stage';
+                }
+            }
+            categories[category].push(device);
+        });
+
+        let html = '';
+        Object.entries(categories).forEach(([categoryName, categoryDevices]) => {
+            if (categoryDevices.length > 0) {
+                html += `
+                    <div class="rc-card rc-mb-md">
+                        <div class="rc-card-header">
+                            <h4 class="rc-card-title">
+                                <i class="bi bi-${getCategoryIcon(categoryName)}"></i>
+                                ${categoryName} (${categoryDevices.length})
+                            </h4>
+                        </div>
+                        <div class="rc-card-body">
+                `;
+                
+                categoryDevices.forEach(device => {
+                    const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
+                    const price = device.price || 0;
+                    html += `
+                        <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
+                            <div>
+                                <strong>${deviceName}</strong>
+                                <br><small class="rc-text-muted">${device.device?.deviceID}</small>
+                            </div>
+                            <div class="rc-flex rc-flex-items-center rc-flex-gap-sm">
+                                <input type="number" 
+                                       value="${price.toFixed(2)}" 
+                                       class="device-price-input rc-input rc-input-sm" 
+                                       style="width: 100px;" 
+                                       step="0.01"
+                                       onchange="updateDevicePrice(${jobID}, '${device.device?.deviceID}', this.value)"
+                                       placeholder="0.00">
+                                <span class="rc-text-sm">€</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        if (html === '') {
+            html = `
+                <div class="rc-empty-state">
+                    <i class="bi bi-cpu rc-empty-icon"></i>
+                    <h3 class="rc-heading-3">No devices assigned</h3>
+                    <p class="rc-text">This job has no devices assigned yet.</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('jobDevicesOverview').innerHTML = html;
     }
 
     // Job Edit Modal
