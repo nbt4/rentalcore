@@ -450,11 +450,12 @@
                     const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
                     // Calculate effective price: custom_price if exists and > 0, otherwise product price
                     const customPrice = device.custom_price;
-                    const productPrice = device.device?.product?.itemCostPerDay || 0;
+                    // Fix: JSON field is "itemcostperday" not "itemCostPerDay"
+                    const productPrice = device.device?.product?.itemcostperday || device.device?.product?.itemCostPerDay || 0;
                     const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
                     
                     // Debug logging for price calculation
-                    console.log(`Device ${device.device?.deviceID}: custom_price=${customPrice}, itemCostPerDay=${productPrice}, effective_price=${price}`, device);
+                    console.log(`Device ${device.device?.deviceID}: custom_price=${customPrice}, itemcostperday=${productPrice}, effective_price=${price}`, device);
                     html += `
                         <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
                             <div>
@@ -1313,7 +1314,8 @@
                     const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
                     // Calculate effective price: custom_price if exists and > 0, otherwise product price
                     const customPrice = device.custom_price;
-                    const productPrice = device.device?.product?.itemCostPerDay || 0;
+                    // Fix: JSON field is "itemcostperday" not "itemCostPerDay"  
+                    const productPrice = device.device?.product?.itemcostperday || device.device?.product?.itemCostPerDay || 0;
                     const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
                     html += `
                         <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
