@@ -557,6 +557,19 @@ func (h *JobHandler) GetJobDevices(c *gin.Context) {
 		return
 	}
 
+	// Debug logging for device pricing
+	fmt.Printf("🔧 DEBUG GetJobDevices: Job %d has %d devices\n", id, len(jobDevices))
+	for i, device := range jobDevices {
+		fmt.Printf("🔧 DEBUG GetJobDevices[%d]: DeviceID=%s, CustomPrice=%v, ProductPrice=%v\n", 
+			i, device.DeviceID, device.CustomPrice, 
+			func() interface{} {
+				if device.Device.Product != nil {
+					return device.Device.Product.ItemCostPerDay
+				}
+				return nil
+			}())
+	}
+
 	c.JSON(http.StatusOK, gin.H{"devices": jobDevices})
 }
 

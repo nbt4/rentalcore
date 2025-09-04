@@ -385,6 +385,7 @@
     }
 
     function displayJobDevicesInModal(devices, jobID) {
+        console.log('displayJobDevicesInModal called with devices:', devices);
         const categories = {
             'Sound': [],
             'Light': [],
@@ -427,7 +428,13 @@
                 
                 categoryDevices.forEach(device => {
                     const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
-                    const price = device.price || 0;
+                    // Calculate effective price: custom_price if exists and > 0, otherwise product price
+                    const customPrice = device.custom_price;
+                    const productPrice = device.device?.product?.itemCostPerDay || 0;
+                    const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
+                    
+                    // Debug logging for price calculation
+                    console.log(`Device ${device.device?.deviceID}: custom_price=${customPrice}, itemCostPerDay=${productPrice}, effective_price=${price}`);
                     html += `
                         <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
                             <div>
@@ -1268,7 +1275,10 @@
                 
                 categoryDevices.forEach(device => {
                     const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
-                    const price = device.price || 0;
+                    // Calculate effective price: custom_price if exists and > 0, otherwise product price
+                    const customPrice = device.custom_price;
+                    const productPrice = device.device?.product?.itemCostPerDay || 0;
+                    const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
                     html += `
                         <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
                             <div>
