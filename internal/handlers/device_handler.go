@@ -1007,6 +1007,12 @@ func (h *DeviceHandler) buildTreeFromDevices(devices []models.Device) ([]TreeCat
 			continue
 		}
 		
+		// Debug logging for MIX1001 devices
+		if device.Product.Subbiercategory != nil && device.Product.Subbiercategory.SubbiercategoryID == "MIX1001" {
+			fmt.Printf("🔧 DEBUG MIX1001 Device: %s, Product: %s, SerialNumber: %v\n", 
+				device.DeviceID, device.Product.Name, device.SerialNumber)
+		}
+		
 		categoryID := device.Product.Category.CategoryID
 		
 		// Initialize category group if needed
@@ -1118,6 +1124,16 @@ func (h *DeviceHandler) buildTreeFromDevices(devices []models.Device) ([]TreeCat
 							Name:        subbiercategoryName,
 							DeviceCount: len(treeDevices),
 							Devices:     treeDevices,
+						}
+						
+						// Debug logging for MIX1001
+						if subbiercategoryID == "MIX1001" {
+							fmt.Printf("🔧 DEBUG Creating MIX1001 TreeSubbiercategory: Name='%s', DeviceCount=%d\n", 
+								subbiercategoryName, len(treeDevices))
+							for i, device := range treeDevices {
+								fmt.Printf("🔧 DEBUG MIX1001 TreeDevice[%d]: %s - %s\n", 
+									i, device.DeviceID, device.ProductName)
+							}
 						}
 						
 						treeSubcategory.Subbiercategories = append(treeSubcategory.Subbiercategories, treeSubbiercategory)
