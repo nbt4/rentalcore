@@ -96,6 +96,10 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 		return
 	}
 
+	// Debug logging for customer
+	fmt.Printf("🔧 DEBUG ScanJob: Customer loaded - ID: %d, Company: %v, FirstName: %v, LastName: %v\n", 
+		job.Customer.CustomerID, job.Customer.CompanyName, job.Customer.FirstName, job.Customer.LastName)
+
 	// Get assigned devices for this job
 	assignedDevices, err := h.jobRepo.GetJobDevices(uint(jobID))
 	if err != nil {
@@ -138,6 +142,7 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 		"assignedDevices": assignedDevices,
 		"productGroups":   productGroups,
 		"totalDevices":    totalDevices,
+		"DeviceCount":     totalDevices,  // Add DeviceCount for template compatibility
 		"cases":           cases,
 		"user":            user,
 	})
