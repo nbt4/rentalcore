@@ -961,26 +961,33 @@ func (h *JobHandler) BulkScanDevicesAPI(c *gin.Context) {
 func (h *JobHandler) UpdateDevicePriceAPI(c *gin.Context) {
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
+		fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: Invalid job ID: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
 	}
 
 	deviceID := c.Param("deviceId")
+	fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: JobID=%d, DeviceID=%s\n", jobID, deviceID)
 	
 	var request struct {
 		Price float64 `json:"price"`
 	}
 	
 	if err := c.ShouldBindJSON(&request); err != nil {
+		fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: JSON binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: Updating price to %.2f\n", request.Price)
+
 	// Update the device price in the job
 	if err := h.jobRepo.UpdateDevicePrice(uint(jobID), deviceID, request.Price); err != nil {
+		fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: Repository error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	fmt.Printf("🔧 DEBUG UpdateDevicePriceAPI: Success!\n")
 	c.JSON(http.StatusOK, gin.H{"message": "Device price updated successfully"})
 }

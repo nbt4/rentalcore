@@ -573,19 +573,34 @@ func (r *JobRepository) UpdateFinalRevenue(jobID uint) error {
 }
 
 func (r *JobRepository) UpdateDevicePrice(jobID uint, deviceID string, price float64) error {
+	fmt.Printf("🔧 DEBUG UpdateDevicePrice: JobID=%d, DeviceID=%s, Price=%.2f\n", jobID, deviceID, price)
+	
 	// Update the custom_price for the specific job-device relationship
+	// Fix: column name is 'deviceID' not 'device_id'
 	result := r.db.Model(&models.JobDevice{}).
-		Where("jobID = ? AND device_id = ?", jobID, deviceID).
+		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
 		Update("custom_price", price)
 	
+	fmt.Printf("🔧 DEBUG UpdateDevicePrice: SQL result - Error=%v, RowsAffected=%d\n", result.Error, result.RowsAffected)
+	
 	if result.Error != nil {
+		fmt.Printf("🔧 DEBUG UpdateDevicePrice: Database error: %v\n", result.Error)
 		return result.Error
 	}
 	
 	if result.RowsAffected == 0 {
+		fmt.Printf("🔧 DEBUG UpdateDevicePrice: No rows affected - device not found\n")
 		return fmt.Errorf("device %s not found in job %d", deviceID, jobID)
 	}
 	
 	// Recalculate job revenue after price update
-	return r.CalculateAndUpdateRevenue(jobID)
+	fmt.Printf("🔧 DEBUG UpdateDevicePrice: Recalculating revenue for job %d\n", jobID)
+	err := r.CalculateAndUpdateRevenue(jobID)
+	if err != nil {
+		fmt.Printf("🔧 DEBUG UpdateDevicePrice: Revenue calculation error: %v\n", err)
+		return err
+	}
+	
+	fmt.Printf("🔧 DEBUG UpdateDevicePrice: Success!\n")
+	return nil
 }
