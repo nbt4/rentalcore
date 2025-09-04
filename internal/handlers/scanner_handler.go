@@ -97,8 +97,23 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 	}
 
 	// Debug logging for customer
+	fmt.Printf("🔧 DEBUG ScanJob: Job %d has CustomerID: %d\n", jobID, job.CustomerID)
 	fmt.Printf("🔧 DEBUG ScanJob: Customer loaded - ID: %d, Company: %v, FirstName: %v, LastName: %v\n", 
 		job.Customer.CustomerID, job.Customer.CompanyName, job.Customer.FirstName, job.Customer.LastName)
+	fmt.Printf("🔧 DEBUG ScanJob: GetDisplayName returns: '%s'\n", job.Customer.GetDisplayName())
+	
+	// Try to manually load customer if the preloaded one is empty
+	if job.Customer.CustomerID == 0 && job.CustomerID > 0 {
+		fmt.Printf("🔧 DEBUG ScanJob: Customer not preloaded, trying manual load for CustomerID: %d\n", job.CustomerID)
+		customer, err := h.customerRepo.GetByID(job.CustomerID)
+		if err != nil {
+			fmt.Printf("🔧 DEBUG ScanJob: Failed to manually load customer: %v\n", err)
+		} else {
+			fmt.Printf("🔧 DEBUG ScanJob: Manually loaded customer - ID: %d, Company: %v, FirstName: %v, LastName: %v\n", 
+				customer.CustomerID, customer.CompanyName, customer.FirstName, customer.LastName)
+			job.Customer = *customer
+		}
+	}
 
 	// Get assigned devices for this job
 	assignedDevices, err := h.jobRepo.GetJobDevices(uint(jobID))
