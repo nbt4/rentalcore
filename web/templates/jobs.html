@@ -369,7 +369,9 @@
         // Fetch job devices
         fetch('/api/v1/jobs/' + jobID + '/devices')
             .then(response => response.json())
-            .then(devices => {
+            .then(data => {
+                console.log('Devices API response:', data);
+                const devices = data.devices || data || [];
                 displayJobDevicesInModal(devices, jobID);
             })
             .catch(error => {
@@ -1208,7 +1210,9 @@
         // Fetch job devices
         fetch('/api/v1/jobs/' + jobID + '/devices')
             .then(response => response.json())
-            .then(devices => {
+            .then(data => {
+                console.log('Devices API response:', data);
+                const devices = data.devices || data || [];
                 displayJobDevices(devices, jobID);
             })
             .catch(error => {

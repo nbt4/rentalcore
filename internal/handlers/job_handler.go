@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -716,6 +717,10 @@ func (h *JobHandler) GetJobAPI(c *gin.Context) {
 	fmt.Printf("🔧 DEBUG GetJobAPI: Customer loaded - ID: %d, CompanyName: %v, FirstName: %v, LastName: %v\n", 
 		job.Customer.CustomerID, job.Customer.CompanyName, job.Customer.FirstName, job.Customer.LastName)
 	fmt.Printf("🔧 DEBUG GetJobAPI: Status loaded - ID: %d, Status: %s\n", job.Status.StatusID, job.Status.Status)
+	
+	// Debug: Print full JSON being returned
+	jsonData, _ := json.MarshalIndent(job, "", "  ")
+	fmt.Printf("🔧 DEBUG GetJobAPI: Full JSON response:\n%s\n", string(jsonData))
 
 	c.JSON(http.StatusOK, job)
 }
