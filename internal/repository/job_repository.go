@@ -37,10 +37,41 @@ func (r *JobRepository) Create(job *models.Job) error {
 
 func (r *JobRepository) GetByID(id uint) (*models.Job, error) {
 	var job models.Job
-	err := r.db.Preload("Customer").Preload("Status").Preload("JobDevices.Device").First(&job, id).Error
+	err := r.db.Preload("JobDevices.Device").First(&job, id).Error
 	if err != nil {
 		fmt.Printf("🔧 DEBUG JobRepo.GetByID: Error loading job %d: %v\n", id, err)
 		return nil, err
+	}
+	
+	// Manually load Customer
+	if job.CustomerID > 0 {
+		var customer models.Customer
+		if err := r.db.Where("customerID = ?", job.CustomerID).First(&customer).Error; err != nil {
+			fmt.Printf("🔧 DEBUG JobRepo.GetByID: Failed to load customer %d: %v\n", job.CustomerID, err)
+		} else {
+			job.Customer = customer
+			fmt.Printf("🔧 DEBUG JobRepo.GetByID: Loaded customer %d: %s\n", customer.CustomerID, 
+				func() string {
+					if customer.CompanyName != nil && *customer.CompanyName != "" {
+						return *customer.CompanyName
+					}
+					if customer.FirstName != nil && customer.LastName != nil {
+						return *customer.FirstName + " " + *customer.LastName
+					}
+					return "No Name"
+				}())
+		}
+	}
+	
+	// Manually load Status
+	if job.StatusID > 0 {
+		var status models.Status
+		if err := r.db.Where("statusID = ?", job.StatusID).First(&status).Error; err != nil {
+			fmt.Printf("🔧 DEBUG JobRepo.GetByID: Failed to load status %d: %v\n", job.StatusID, err)
+		} else {
+			job.Status = status
+			fmt.Printf("🔧 DEBUG JobRepo.GetByID: Loaded status %d: %s\n", status.StatusID, status.Status)
+		}
 	}
 	
 	// Add device count
