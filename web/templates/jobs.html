@@ -91,7 +91,7 @@
                             </thead>
                             <tbody>
                                 {{range .jobs}}
-                                <tr>
+                                <tr data-job-id="{{.JobID}}">
                                     <td><span class="rc-text-mono">{{.JobID}}</span></td>
                                     <td>{{.Description}}</td>
                                     <td>{{.CustomerName}}</td>
@@ -243,6 +243,9 @@
     function showJobDetails(jobID) {
         const modal = document.getElementById('jobDetailsModal');
         const content = document.getElementById('jobDetailsContent');
+        
+        // Store current job ID in modal for revenue updates
+        modal.setAttribute('data-current-job-id', jobID);
         
         // Show modal with loading state
         modal.style.display = 'flex';
@@ -1386,11 +1389,44 @@
             }
             // Show success feedback
             showPriceUpdateFeedback(true);
+            
+            // Refresh the job data in the main jobs table
+            refreshJobRevenue(jobID);
         })
         .catch(error => {
             console.error('Error updating device price:', error);
             showPriceUpdateFeedback(false);
         });
+    }
+
+    function refreshJobRevenue(jobID) {
+        // Fetch updated job data
+        fetch('/api/v1/jobs/' + jobID)
+            .then(response => response.json())
+            .then(data => {
+                // Update revenue in the main jobs table
+                const jobRow = document.querySelector(`tr[data-job-id="${jobID}"]`);
+                if (jobRow) {
+                    const revenueCell = jobRow.querySelector('td:nth-child(8)'); // Revenue column
+                    if (revenueCell) {
+                        const newRevenue = data.finalRevenue || data.revenue || 0;
+                        revenueCell.innerHTML = `<span class="rc-text-mono">€${newRevenue.toFixed(2)}</span>`;
+                    }
+                }
+                
+                // Also update the revenue in the current modal if it's showing the same job
+                const currentModalJobID = document.getElementById('jobDetailsModal').getAttribute('data-current-job-id');
+                if (currentModalJobID == jobID) {
+                    const modalRevenue = document.querySelector('#jobDetailsContent .rc-text-lg');
+                    if (modalRevenue && modalRevenue.textContent.startsWith('€')) {
+                        const newRevenue = data.finalRevenue || data.revenue || 0;
+                        modalRevenue.textContent = `€${newRevenue.toFixed(2)}`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing job revenue:', error);
+            });
     }
 
     function showPriceUpdateFeedback(success) {
@@ -1422,8 +1458,9 @@
             cursor: pointer;
             transition: all 0.2s ease;
             border: none;
-            background: var(--info);
-            color: white;
+            background: rgba(0, 174, 199, 0.2);
+            color: var(--info);
+            border: 1px solid rgba(0, 174, 199, 0.3);
             padding: 6px 12px;
             border-radius: var(--radius-md);
             font-size: 0.9rem;
@@ -1434,9 +1471,10 @@
         }
         
         .job-device-count-button:hover {
-            background: var(--primary);
+            background: rgba(0, 174, 199, 0.3);
+            border-color: var(--info);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 174, 199, 0.2);
         }
         
         /* Toast Notifications */
