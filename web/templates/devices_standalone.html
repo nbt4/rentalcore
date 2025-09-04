@@ -440,11 +440,31 @@
         border: 1px solid var(--surface-2);
         border-radius: var(--radius-sm);
         transition: var(--transition-normal);
+        min-height: 44px; /* Ensure minimum height for visibility */
     }
     
     .tree-device:hover {
         background: var(--surface-2);
         border-color: var(--accent-electric);
+    }
+    
+    .tree-device .device-info {
+        flex: 1;
+        min-height: 1em;
+    }
+    
+    .tree-device .device-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: var(--space-xs);
+    }
+    
+    .tree-device .device-details {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+        display: flex;
+        gap: var(--space-xs);
+        flex-wrap: wrap;
     }
     
     .device-info {
