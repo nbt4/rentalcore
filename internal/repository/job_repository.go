@@ -540,3 +540,21 @@ func (r *JobRepository) UpdateFinalRevenue(jobID uint) error {
 	
 	return r.db.Save(&job).Error
 }
+
+func (r *JobRepository) UpdateDevicePrice(jobID uint, deviceID string, price float64) error {
+	// Update the custom_price for the specific job-device relationship
+	result := r.db.Model(&models.JobDevice{}).
+		Where("jobID = ? AND device_id = ?", jobID, deviceID).
+		Update("custom_price", price)
+	
+	if result.Error != nil {
+		return result.Error
+	}
+	
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("device %s not found in job %d", deviceID, jobID)
+	}
+	
+	// Recalculate job revenue after price update
+	return r.CalculateAndUpdateRevenue(jobID)
+}

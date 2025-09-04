@@ -274,6 +274,14 @@
                             <label class="rc-label">Revenue</label>
                             <div class="rc-text-lg">€${(jobData.revenue || 0).toFixed(2)}</div>
                         </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Devices</label>
+                            <div>
+                                <button type="button" class="job-device-count-button" onclick="showJobDevices(${jobData.jobID})" title="Click to view devices">
+                                    <i class="bi bi-cpu"></i> ${jobData.device_count || 0} devices
+                                </button>
+                            </div>
+                        </div>
                         ${jobData.startDate ? '<div class="rc-form-group"><label class="rc-label">Start Date</label><div><i class="bi bi-calendar"></i> ' + new Date(jobData.startDate).toLocaleDateString() + '</div></div>' : ''}
                         ${jobData.endDate ? '<div class="rc-form-group"><label class="rc-label">End Date</label><div><i class="bi bi-calendar"></i> ' + new Date(jobData.endDate).toLocaleDateString() + '</div></div>' : ''}
                         ${jobData.discount > 0 ? '<div class="rc-form-group"><label class="rc-label">Discount</label><div>' + jobData.discount + ' ' + (jobData.discount_type === 'percent' ? '%' : '€') + '</div></div>' : ''}
@@ -1011,10 +1019,251 @@
         
         return null;
     }
+
+    // Show job devices overview
+    function showJobDevices(jobID) {
+        // Create and show device overview modal
+        const modal = document.createElement('div');
+        modal.className = 'rc-modal-overlay';
+        modal.id = 'jobDevicesModal';
+        modal.innerHTML = `
+            <div class="rc-modal rc-modal-lg">
+                <div class="rc-modal-header">
+                    <h3 class="rc-modal-title">
+                        <i class="bi bi-cpu"></i> Job Devices - Job #${jobID}
+                    </h3>
+                    <button class="rc-modal-close" onclick="closeJobDevicesModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body" id="jobDevicesContent">
+                    <div class="rc-flex rc-flex-center rc-py-xl">
+                        <div class="rc-spinner"></div>
+                        <p class="rc-text-muted rc-ml-md">Loading devices...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+
+        // Fetch job devices
+        fetch('/api/v1/jobs/' + jobID + '/devices')
+            .then(response => response.json())
+            .then(devices => {
+                displayJobDevices(devices, jobID);
+            })
+            .catch(error => {
+                document.getElementById('jobDevicesContent').innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading devices: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function displayJobDevices(devices, jobID) {
+        const categories = {
+            'Sound': [],
+            'Light': [],
+            'Effect': [],
+            'Stage': [],
+            'Other': []
+        };
+
+        // Group devices by category
+        devices.forEach(device => {
+            let category = 'Other';
+            if (device.device && device.device.product && device.device.product.category) {
+                const productCategory = device.device.product.category.toLowerCase();
+                if (productCategory.includes('sound') || productCategory.includes('audio')) {
+                    category = 'Sound';
+                } else if (productCategory.includes('light') || productCategory.includes('licht')) {
+                    category = 'Light';
+                } else if (productCategory.includes('effect')) {
+                    category = 'Effect';
+                } else if (productCategory.includes('stage') || productCategory.includes('bühne')) {
+                    category = 'Stage';
+                }
+            }
+            categories[category].push(device);
+        });
+
+        let html = '';
+        Object.entries(categories).forEach(([categoryName, categoryDevices]) => {
+            if (categoryDevices.length > 0) {
+                html += `
+                    <div class="rc-card rc-mb-md">
+                        <div class="rc-card-header">
+                            <h4 class="rc-card-title">
+                                <i class="bi bi-${getCategoryIcon(categoryName)}"></i>
+                                ${categoryName} (${categoryDevices.length})
+                            </h4>
+                        </div>
+                        <div class="rc-card-body">
+                `;
+                
+                categoryDevices.forEach(device => {
+                    const deviceName = device.device?.product?.name || device.device?.deviceID || 'Unknown Device';
+                    const price = device.price || 0;
+                    html += `
+                        <div class="device-item rc-flex rc-flex-between rc-flex-items-center rc-p-sm rc-mb-xs" style="border: 1px solid var(--surface-3); border-radius: var(--radius-sm);">
+                            <div>
+                                <strong>${deviceName}</strong>
+                                <br><small class="rc-text-muted">${device.device?.deviceID}</small>
+                            </div>
+                            <div class="rc-flex rc-flex-items-center rc-flex-gap-sm">
+                                <input type="number" 
+                                       value="${price.toFixed(2)}" 
+                                       class="device-price-input rc-input rc-input-sm" 
+                                       style="width: 100px;" 
+                                       step="0.01"
+                                       onchange="updateDevicePrice(${jobID}, '${device.device?.deviceID}', this.value)"
+                                       placeholder="0.00">
+                                <span class="rc-text-sm">€</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        if (html === '') {
+            html = `
+                <div class="rc-empty-state">
+                    <i class="bi bi-cpu rc-empty-icon"></i>
+                    <h3 class="rc-heading-3">No devices assigned</h3>
+                    <p class="rc-text">This job has no devices assigned yet.</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('jobDevicesContent').innerHTML = html;
+    }
+
+    function getCategoryIcon(category) {
+        const icons = {
+            'Sound': 'volume-up',
+            'Light': 'lightbulb',
+            'Effect': 'stars',
+            'Stage': 'building',
+            'Other': 'gear'
+        };
+        return icons[category] || 'gear';
+    }
+
+    function updateDevicePrice(jobID, deviceID, newPrice) {
+        const price = parseFloat(newPrice) || 0;
+        
+        fetch('/api/v1/jobs/' + jobID + '/devices/' + deviceID, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                price: price
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to update price');
+            }
+            // Show success feedback
+            showPriceUpdateFeedback(true);
+        })
+        .catch(error => {
+            console.error('Error updating device price:', error);
+            showPriceUpdateFeedback(false);
+        });
+    }
+
+    function showPriceUpdateFeedback(success) {
+        const toast = document.createElement('div');
+        toast.className = `rc-toast ${success ? 'rc-toast-success' : 'rc-toast-error'}`;
+        toast.innerHTML = `
+            <i class="bi bi-${success ? 'check-circle' : 'exclamation-circle'}"></i>
+            ${success ? 'Price updated successfully' : 'Failed to update price'}
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    function closeJobDevicesModal() {
+        const modal = document.getElementById('jobDevicesModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
     </script>
     
     <!-- Device Tree Styles for Edit Modal -->
     <style>
+        /* Job Device Count Button in View Modal */
+        .job-device-count-button {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            background: var(--info);
+            color: white;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        
+        .job-device-count-button:hover {
+            background: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Toast Notifications */
+        .rc-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .rc-toast-success {
+            background: var(--success);
+        }
+        
+        .rc-toast-error {
+            background: var(--error);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         /* Device Count Button Styling - Regular text size with slight highlighting */
         .device-count-button {
             cursor: pointer;

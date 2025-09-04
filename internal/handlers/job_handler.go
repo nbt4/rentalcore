@@ -929,3 +929,30 @@ func (h *JobHandler) BulkScanDevicesAPI(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
+
+func (h *JobHandler) UpdateDevicePriceAPI(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
+		return
+	}
+
+	deviceID := c.Param("deviceId")
+	
+	var request struct {
+		Price float64 `json:"price"`
+	}
+	
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update the device price in the job
+	if err := h.jobRepo.UpdateDevicePrice(uint(jobID), deviceID, request.Price); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Device price updated successfully"})
+}
