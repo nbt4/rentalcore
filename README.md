@@ -39,7 +39,10 @@ A comprehensive, enterprise-grade equipment rental management system built with 
 ### 👥 **Customer & Job Management**
 - **Customer Database**: Comprehensive customer information with rental history
 - **Job Lifecycle**: Complete job management from creation to completion
+- **Enhanced Job Modals**: Revenue and device count display with detailed overview
 - **Device Assignment**: Bulk scanning and assignment to rental jobs
+- **Device Price Management**: Real-time price adjustment per job with API integration
+- **Categorized Device Overview**: Devices grouped by Sound, Light, Effect, Stage, Other
 - **Invoice Generation**: Professional invoice creation with customizable templates
 - **Status Tracking**: Real-time job status updates with audit trails
 
@@ -223,7 +226,7 @@ SMTP_PASSWORD=email_password
 docker pull nbt4/rentalcore:latest
 
 # Specific version
-docker pull nbt4/rentalcore:1.5.0
+docker pull nbt4/rentalcore:1.4
 ```
 
 ### **Reverse Proxy Integration**
@@ -319,18 +322,22 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v1.5.0** (Latest)
+### **v1.4** (Latest)
+- ✅ Enhanced job view modal with comprehensive device management
+- ✅ Revenue and device count display in job modals
+- ✅ Clickable device count for detailed device overview
+- ✅ Device overview grouped by 5 categories (Sound, Light, Effect, Stage, Other)
+- ✅ Real-time device price adjustment per job with API integration
+- ✅ Toast notifications for user feedback on price changes
+- ✅ Improved customer display and status handling in job modals
+
+### **v1.3.0**
 - ✅ Complete device analytics modal with detailed insights
 - ✅ Enhanced Docker deployment with configuration examples
 - ✅ Comprehensive .gitignore with credential protection
 - ✅ UTF-8 PDF export fixes for proper currency formatting
 
-### **v1.4.0**
-- ✅ Device analytics modal implementation
-- ✅ Enhanced analytics dashboard with working dropdowns
-- ✅ Complete analytics functionality restoration
-
-### **v1.3.0** 
+### **v1.1.0**
 - ✅ Analytics dashboard complete rewrite
 - ✅ Fixed dropdown functionality and data display issues
 - ✅ Professional RentalCore theming implementation
