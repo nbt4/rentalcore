@@ -765,22 +765,6 @@
     </style>
 
     <script>
-    function toggleTreeNode(element) {
-        const icon = element.querySelector('.tree-icon');
-        const children = element.nextElementSibling;
-        
-        if (children && children.classList.contains('tree-children')) {
-            const isVisible = children.style.display !== 'none';
-            
-            if (isVisible) {
-                children.style.display = 'none';
-                icon.classList.remove('expanded');
-            } else {
-                children.style.display = 'block';
-                icon.classList.add('expanded');
-            }
-        }
-    }
     
     function loadDevices(element, type, id) {
         const icon = element.querySelector('.tree-icon');
