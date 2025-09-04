@@ -100,7 +100,7 @@
                                     <td><span class="rc-badge rc-badge-secondary">{{.StatusName}}</span></td>
                                     <td>
                                         <button type="button" class="rc-badge rc-badge-info device-count-button" onclick="redirectToScan('{{.JobID}}')" title="Click to scan devices for this job">
-                                            <i class="bi bi-qr-code-scan"></i> {{.DeviceCount}} devices
+                                            {{.DeviceCount}} devices
                                         </button>
                                     </td>
                                     <td><span class="rc-text-mono">€{{printf "%.2f" .TotalRevenue}}</span></td>
@@ -1039,10 +1039,6 @@
         
         .device-count-button:active {
             transform: scale(0.98);
-        }
-        
-        .device-count-button i {
-            font-size: 0.8rem;
         }
         .device-tree-container {
             font-family: 'Inter', sans-serif;
