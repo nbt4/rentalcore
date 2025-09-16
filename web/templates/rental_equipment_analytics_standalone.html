@@ -232,7 +232,7 @@
                             <td class="text-right">€{{printf "%.2f" .TotalRevenue}}</td>
                             <td class="text-right">
                                 {{if gt .EquipmentCount 0}}
-                                €{{printf "%.2f" (div .TotalRevenue (float64 .EquipmentCount))}}
+                                €{{printf "%.2f" .AvgRevenuePerEquipment}}
                                 {{else}}
                                 €0.00
                                 {{end}}

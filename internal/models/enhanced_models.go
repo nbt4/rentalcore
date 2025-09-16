@@ -652,10 +652,11 @@ type TopRentalSupplier struct {
 }
 
 type RentalCategoryBreakdown struct {
-	Category       string  `json:"category"`
-	EquipmentCount int     `json:"equipmentCount"`
-	TotalRevenue   float64 `json:"totalRevenue"`
-	UsageCount     int     `json:"usageCount"`
+	Category                string  `json:"category"`
+	EquipmentCount          int     `json:"equipmentCount"`
+	TotalRevenue            float64 `json:"totalRevenue"`
+	UsageCount              int     `json:"usageCount"`
+	AvgRevenuePerEquipment  float64 `json:"avgRevenuePerEquipment"`
 }
 
 type MonthlyRentalRevenue struct {

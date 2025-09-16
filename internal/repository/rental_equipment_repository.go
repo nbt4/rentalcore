@@ -154,11 +154,41 @@ func (r *RentalEquipmentRepository) GetRentalEquipmentAnalytics() (*models.Renta
 	// Total rental revenue
 	r.db.Model(&models.JobRentalEquipment{}).Select("COALESCE(SUM(total_cost), 0)").Scan(&analytics.TotalRentalRevenue)
 
-	// Most used equipment - this would require raw SQL or complex GORM queries
-	// For simplicity, leaving empty arrays for now - these can be populated with raw queries if needed
+	// Basic category breakdown (simplified for now)
+	var categories []models.RentalCategoryBreakdown
+
+	// Get categories with equipment count
+	type CategorySummary struct {
+		Category       string
+		EquipmentCount int64
+		TotalRevenue   float64
+	}
+
+	var categorySummaries []CategorySummary
+	r.db.Model(&models.RentalEquipment{}).
+		Select("COALESCE(category, 'Uncategorized') as category, COUNT(*) as equipment_count").
+		Group("category").
+		Find(&categorySummaries)
+
+	for _, summary := range categorySummaries {
+		var avgRevenue float64
+		if summary.EquipmentCount > 0 {
+			avgRevenue = summary.TotalRevenue / float64(summary.EquipmentCount)
+		}
+
+		categories = append(categories, models.RentalCategoryBreakdown{
+			Category:               summary.Category,
+			EquipmentCount:         int(summary.EquipmentCount),
+			TotalRevenue:          summary.TotalRevenue,
+			UsageCount:            0, // Simplified for now
+			AvgRevenuePerEquipment: avgRevenue,
+		})
+	}
+
+	// For simplicity, using simplified data for now
 	analytics.MostUsedEquipment = []models.MostUsedRentalEquipment{}
 	analytics.TopSuppliers = []models.TopRentalSupplier{}
-	analytics.CategoryBreakdown = []models.RentalCategoryBreakdown{}
+	analytics.CategoryBreakdown = categories
 	analytics.MonthlyRentalRevenue = []models.MonthlyRentalRevenue{}
 
 	return analytics, nil
