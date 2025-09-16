@@ -154,13 +154,13 @@
                                         <!-- SUBBIERCATEGORY LEVEL -->
                                         {{range .Subbiercategories}}
                                         <div class="tree-subbiercategory">
-                                            <div class="tree-subbiercategory-header" onclick="toggleTreeNode('subbiercategory-{{.ID}}')">
-                                                <i class="bi bi-chevron-right tree-chevron" id="chevron-subbiercategory-{{.ID}}"></i>
+                                            <div class="tree-subbiercategory-header" onclick="toggleTreeNode('subbiercategory-{{$.ID}}-{{.ID}}');">
+                                                <i class="bi bi-chevron-right tree-chevron" id="chevron-subbiercategory-{{$.ID}}-{{.ID}}"></i>
                                                 <i class="bi bi-folder-fill tree-icon subbiercategory-icon"></i>
                                                 <span class="tree-title">{{.Name}}</span>
                                                 <span class="tree-count">{{.DeviceCount}} devices</span>
                                             </div>
-                                            <div class="tree-content" id="subbiercategory-{{.ID}}" style="display: none;">
+                                            <div class="tree-content" id="subbiercategory-{{$.ID}}-{{.ID}}" style="display: none;">
                                                 <!-- Devices in subbiercategory -->
                                                 {{range .Devices}}
                                                 <div class="tree-device">
