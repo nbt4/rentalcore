@@ -1308,7 +1308,11 @@
                     const productName = deviceObj.product?.name || 'Unknown Product';
                     const deviceID = deviceObj.deviceID;
                     const serialNumber = deviceObj.serialNumber || deviceObj.serialnumber;
-                    const price = device.customPrice || device.price || deviceObj.product?.itemCostPerDay || 0;
+
+                    // Calculate effective price: custom_price if exists and > 0, otherwise product price
+                    const customPrice = device.custom_price;
+                    const productPrice = deviceObj.product?.itemcostperday || deviceObj.product?.itemCostPerDay || 0;
+                    const price = (customPrice && customPrice > 0) ? customPrice : productPrice;
 
                     html += `
                         <div class="assigned-device-item rc-flex rc-flex-between rc-flex-center rc-p-sm rc-mb-xs" style="background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--surface-3);">
