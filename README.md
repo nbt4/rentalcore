@@ -35,6 +35,9 @@ A comprehensive, enterprise-grade equipment rental management system built with 
 - **Bulk Operations**: Mass device assignment and status updates
 - **Equipment Packages**: Predefined equipment bundles for common rentals
 - **Revenue Tracking**: Per-device revenue analytics and performance insights
+- **🆕 Rental Equipment System**: External equipment rental tracking with supplier management
+- **🆕 Manual Entry & Selection**: Add external rentals directly to jobs or select from catalog
+- **🆕 Rental Analytics**: Dedicated analytics for external equipment usage and costs
 
 ### 👥 **Customer & Job Management**
 - **Customer Database**: Comprehensive customer information with rental history
@@ -322,7 +325,17 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v1.4** (Latest)
+### **v2.4** (Latest) - Rental Equipment System
+- ✅ Complete rental equipment management system for external equipment
+- ✅ Rental equipment database tables with job integration
+- ✅ Dedicated rental equipment management page with CRUD operations
+- ✅ Rental equipment analytics dashboard with charts and statistics
+- ✅ Job integration with manual entry and existing equipment selection
+- ✅ Products navbar dropdown for Own Products vs Rental Equipment
+- ✅ Supplier management and category-based organization
+- ✅ Real-time cost calculation and usage tracking
+
+### **v1.4**
 - ✅ Enhanced job view modal with comprehensive device management
 - ✅ Revenue and device count display in job modals
 - ✅ Clickable device count for detailed device overview
