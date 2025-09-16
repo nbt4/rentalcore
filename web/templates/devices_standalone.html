@@ -905,25 +905,18 @@
     
     // Hierarchical Tree View Functions
     function toggleTreeNode(nodeId) {
-        // Fix duplicate IDs first (this was causing the issue)
-        const allSameId = document.querySelectorAll('#' + nodeId);
-        if (allSameId.length > 1) {
-            // Remove all but the first one
-            for (let i = 1; i < allSameId.length; i++) {
-                allSameId[i].remove();
-            }
-        }
-        
         const contentDiv = document.getElementById(nodeId);
         const chevron = document.getElementById('chevron-' + nodeId);
-        
+
         if (contentDiv && chevron) {
-            if (contentDiv.style.display === 'none') {
-                contentDiv.style.display = 'block';
-                chevron.classList.add('expanded');
-            } else {
+            const isVisible = contentDiv.style.display !== 'none';
+
+            if (isVisible) {
                 contentDiv.style.display = 'none';
                 chevron.classList.remove('expanded');
+            } else {
+                contentDiv.style.display = 'block';
+                chevron.classList.add('expanded');
             }
         }
     }
