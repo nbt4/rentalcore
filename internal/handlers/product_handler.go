@@ -243,7 +243,49 @@ func (h *ProductHandler) GetSubbiercategoriesAPI(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subbiercategories"})
 		return
 	}
-	
+
+	c.JSON(http.StatusOK, gin.H{"subbiercategories": subbiercategories})
+}
+
+// GetSubcategoriesByCategoryAPI returns subcategories filtered by category ID
+func (h *ProductHandler) GetSubcategoriesByCategoryAPI(c *gin.Context) {
+	categoryIDStr := c.Query("categoryID")
+	if categoryIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "categoryID parameter is required"})
+		return
+	}
+
+	categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid categoryID"})
+		return
+	}
+
+	var subcategories []models.Subcategory
+	if err := h.productRepo.GetSubcategoriesByCategory(uint(categoryID), &subcategories); err != nil {
+		log.Printf("❌ Error fetching subcategories for category %d: %v", categoryID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subcategories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"subcategories": subcategories})
+}
+
+// GetSubbiercategoriesBySubcategoryAPI returns subbiercategories filtered by subcategory ID
+func (h *ProductHandler) GetSubbiercategoriesBySubcategoryAPI(c *gin.Context) {
+	subcategoryIDStr := c.Query("subcategoryID")
+	if subcategoryIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "subcategoryID parameter is required"})
+		return
+	}
+
+	var subbiercategories []models.Subbiercategory
+	if err := h.productRepo.GetSubbiercategoriesBySubcategory(subcategoryIDStr, &subbiercategories); err != nil {
+		log.Printf("❌ Error fetching subbiercategories for subcategory %s: %v", subcategoryIDStr, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subbiercategories"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"subbiercategories": subbiercategories})
 }
 

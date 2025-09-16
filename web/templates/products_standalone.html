@@ -179,6 +179,40 @@
             }
         }
         
+        // Cascading dropdown functionality
+        function setupCascadingDropdowns(categorySelectId, subcategorySelectId, subbiercategorySelectId) {
+            const categorySelect = document.getElementById(categorySelectId);
+            const subcategorySelect = document.getElementById(subcategorySelectId);
+            const subbiercategorySelect = document.getElementById(subbiercategorySelectId);
+
+            // Category change event
+            categorySelect.addEventListener('change', function() {
+                const categoryID = this.value;
+
+                // Reset subcategory and subbiercategory
+                subcategorySelect.innerHTML = '<option value="">Select subcategory</option>';
+                subbiercategorySelect.innerHTML = '<option value="">Select sub-subcategory</option>';
+
+                if (categoryID) {
+                    // Load subcategories for selected category
+                    loadSubcategories(subcategorySelectId, null, categoryID);
+                }
+            });
+
+            // Subcategory change event
+            subcategorySelect.addEventListener('change', function() {
+                const subcategoryID = this.value;
+
+                // Reset subbiercategory
+                subbiercategorySelect.innerHTML = '<option value="">Select sub-subcategory</option>';
+
+                if (subcategoryID) {
+                    // Load subbiercategories for selected subcategory
+                    loadSubbiercategories(subbiercategorySelectId, null, subcategoryID);
+                }
+            });
+        }
+
         // Update page display and button states on load
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.rc-flex span').textContent = 'Page ' + currentPage + ' of ' + totalPages;
@@ -496,14 +530,15 @@
     function openAddProductModal() {
         console.log('Opening add product modal');
         
-        // Load all dropdown data
+        // Load all dropdown data with cascading
         Promise.all([
             loadCategories('productCategory'),
-            loadSubcategories('productSubcategory'),
-            loadSubbiercategories('productSubbiercategory'),
             loadBrands('productBrand'),
             loadManufacturers('productManufacturer')
         ]).then(() => {
+            // Set up cascading event listeners for new product modal
+            setupCascadingDropdowns('productCategory', 'productSubcategory', 'productSubbiercategory');
+
             document.getElementById('addProductModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }).catch(error => {
@@ -640,14 +675,17 @@
                     document.getElementById('editProductBrand').value = product.brandID || '';
                     document.getElementById('editProductManufacturer').value = product.manufacturerID || '';
                     
-                    // Load all dropdown data
+                    // Load all dropdown data with cascading for edit modal
                     Promise.all([
                         loadCategories('editProductCategory', product.categoryID),
-                        loadSubcategories('editProductSubcategory', product.subcategoryID),
-                        loadSubbiercategories('editProductSubbiercategory', product.subbiercategoryID),
+                        loadSubcategories('editProductSubcategory', product.subcategoryID, product.categoryID),
+                        loadSubbiercategories('editProductSubbiercategory', product.subbiercategoryID, product.subcategoryID),
                         loadBrands('editProductBrand', product.brandID),
                         loadManufacturers('editProductManufacturer', product.manufacturerID)
                     ]).then(() => {
+                        // Set up cascading event listeners for edit product modal
+                        setupCascadingDropdowns('editProductCategory', 'editProductSubcategory', 'editProductSubbiercategory');
+
                         document.getElementById('editProductModal').style.display = 'flex';
                         document.body.style.overflow = 'hidden';
                     }).catch(error => {
@@ -727,12 +765,18 @@
             });
     }
     
-    // Additional dropdown loaders
-    function loadSubcategories(selectId, selectedId = null) {
+    // Additional dropdown loaders with cascading functionality
+    function loadSubcategories(selectId, selectedId = null, categoryID = null) {
         const select = document.getElementById(selectId);
         select.innerHTML = '<option value="">Loading subcategories...</option>';
-        
-        return fetch('/api/v1/products/subcategories')
+
+        // Determine URL based on whether we're filtering by category
+        let url = '/api/v1/products/subcategories';
+        if (categoryID) {
+            url = `/api/v1/products/subcategories/filter?categoryID=${categoryID}`;
+        }
+
+        return fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.subcategories) {
@@ -748,7 +792,7 @@
                     });
                     return true;
                 } else {
-                    select.innerHTML = '<option value="">Error loading subcategories</option>';
+                    select.innerHTML = '<option value="">No subcategories available</option>';
                     return false;
                 }
             })
@@ -759,11 +803,17 @@
             });
     }
     
-    function loadSubbiercategories(selectId, selectedId = null) {
+    function loadSubbiercategories(selectId, selectedId = null, subcategoryID = null) {
         const select = document.getElementById(selectId);
         select.innerHTML = '<option value="">Loading sub-subcategories...</option>';
-        
-        return fetch('/api/v1/products/subbiercategories')
+
+        // Determine URL based on whether we're filtering by subcategory
+        let url = '/api/v1/products/subbiercategories';
+        if (subcategoryID) {
+            url = `/api/v1/products/subbiercategories/filter?subcategoryID=${subcategoryID}`;
+        }
+
+        return fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.subbiercategories) {
@@ -779,7 +829,7 @@
                     });
                     return true;
                 } else {
-                    select.innerHTML = '<option value="">Error loading sub-subcategories</option>';
+                    select.innerHTML = '<option value="">No sub-subcategories available</option>';
                     return false;
                 }
             })

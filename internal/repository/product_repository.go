@@ -233,6 +233,7 @@ func (r *ProductRepository) GetAllSubbiercategories(subbiercategories *[]models.
 	return r.db.Order("name ASC").Find(subbiercategories).Error
 }
 
+
 // GetAllBrands gets all brands
 func (r *ProductRepository) GetAllBrands(brands *[]models.Brand) error {
 	return r.db.Order("name ASC").Find(brands).Error
