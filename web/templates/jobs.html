@@ -1322,10 +1322,10 @@
                                 <input type="number"
                                        value="${price.toFixed(2)}"
                                        class="device-price-input rc-input rc-input-sm"
-                                       style="width: 80px;"
+                                       style="width: 100px;"
                                        step="0.01"
                                        onchange="updateDevicePrice(${jobID}, '${deviceID}', this.value)"
-                                       placeholder="0.00">
+                                       placeholder="${price.toFixed(2)}">
                                 <span class="rc-text-xs">€/day</span>
                                 <button type="button" onclick="removeDeviceFromEditJob(${jobID}, '${deviceID}')"
                                         class="rc-btn rc-btn-outline rc-btn-sm"
@@ -1702,10 +1702,11 @@
 
         /* Assigned devices styling in edit modal */
         .device-count-badge {
-            background: var(--accent-electric);
-            color: white;
-            padding: 1px 6px;
-            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: var(--text-primary);
+            padding: 2px 8px;
+            border-radius: 12px;
             font-size: 0.75rem;
             font-weight: 600;
         }
