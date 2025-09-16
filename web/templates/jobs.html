@@ -1320,7 +1320,6 @@
                             </div>
                             <div class="device-price-container rc-flex rc-flex-center rc-flex-gap-xs">
                                 <input type="number"
-                                       value="${price.toFixed(2)}"
                                        class="device-price-input rc-input rc-input-sm"
                                        style="width: 100px;"
                                        step="0.01"
@@ -1722,6 +1721,17 @@
 
         .device-price-input {
             text-align: right;
+        }
+
+        .device-price-input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        .device-price-input:focus::placeholder {
+            opacity: 0.3;
+            transition: opacity 0.2s ease;
         }
         .device-tree-container {
             font-family: 'Inter', sans-serif;
