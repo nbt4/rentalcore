@@ -634,9 +634,23 @@
                                 <div id="editDeviceTreeContainer" style="display: none;">
                                     <!-- Tree view will be loaded here -->
                                 </div>
-                                
+
+                                <!-- Currently Assigned Devices Section -->
+                                <div id="editAssignedDevicesContainer" class="rc-mt-lg">
+                                    <div class="rc-flex rc-flex-between rc-mb-md">
+                                        <h5 class="rc-heading-5">Currently Assigned Devices</h5>
+                                        <button type="button" onclick="refreshEditAssignedDevices(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" title="Refresh assigned devices">
+                                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                                        </button>
+                                    </div>
+                                    <div id="editAssignedDevicesList">
+                                        <!-- Assigned devices with price editing will appear here -->
+                                    </div>
+                                </div>
+
                                 <div id="editSelectedDevicesContainer" class="rc-mt-lg">
-                                    <h5>Selected Devices</h5>
+                                    <h5>Additional Device Selection</h5>
+                                    <p class="rc-text-sm rc-text-secondary rc-mb-sm">Select additional devices to add to this job:</p>
                                     <div id="editSelectedDevicesList" class="rc-flex rc-flex-wrap rc-flex-gap-sm">
                                         <!-- Selected devices will appear here as badges -->
                                     </div>
@@ -681,6 +695,9 @@
             
             // Update selected devices display immediately
             updateEditSelectedDevicesDisplay();
+
+            // Load and display currently assigned devices
+            loadEditAssignedDevices(job.jobID, existingDevices);
         })
         .catch(error => {
             content.innerHTML = `
@@ -1182,20 +1199,20 @@
 
     function findEditDeviceInTree(deviceId) {
         if (!editDeviceTreeData) return null;
-        
+
         for (const category of editDeviceTreeData) {
             if (category.direct_devices) {
                 const device = category.direct_devices.find(d => d.device_id === deviceId);
                 if (device) return device;
             }
-            
+
             if (category.subcategories) {
                 for (const subcategory of category.subcategories) {
                     if (subcategory.direct_devices) {
                         const device = subcategory.direct_devices.find(d => d.device_id === deviceId);
                         if (device) return device;
                     }
-                    
+
                     if (subcategory.subbiercategories) {
                         for (const subbiercategory of subcategory.subbiercategories) {
                             if (subbiercategory.devices) {
@@ -1207,8 +1224,152 @@
                 }
             }
         }
-        
+
         return null;
+    }
+
+    // Functions for managing assigned devices in edit modal
+    function loadEditAssignedDevices(jobID, devices) {
+        displayEditAssignedDevices(devices, jobID);
+    }
+
+    function refreshEditAssignedDevices(jobID) {
+        // Fetch fresh device data
+        fetch('/api/v1/jobs/' + jobID + '/devices')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Refreshed devices:', data);
+                const devices = data.devices || data || [];
+                displayEditAssignedDevices(devices, jobID);
+            })
+            .catch(error => {
+                console.error('Error refreshing assigned devices:', error);
+                document.getElementById('editAssignedDevicesList').innerHTML = `
+                    <div class="rc-alert rc-alert-error rc-alert-sm">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error refreshing devices: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function displayEditAssignedDevices(devices, jobID) {
+        const container = document.getElementById('editAssignedDevicesList');
+
+        if (!devices || devices.length === 0) {
+            container.innerHTML = `
+                <div class="rc-empty-state rc-p-md" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                    <i class="bi bi-cpu" style="font-size: 2rem; color: var(--text-muted); margin-bottom: var(--space-sm);"></i>
+                    <p class="rc-text-secondary">No devices assigned to this job yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Group devices by category for better organization
+        const categories = {
+            'Sound': [],
+            'Light': [],
+            'Effect': [],
+            'Stage': [],
+            'Other': []
+        };
+
+        devices.forEach(device => {
+            let category = 'Other';
+            if (device.device && device.device.product) {
+                const product = device.device.product;
+                const categoryID = product.categoryID;
+
+                // Categorize based on categoryID
+                if (categoryID === 1001) category = 'Sound';
+                else if (categoryID === 1002) category = 'Light';
+                else if (categoryID === 1003) category = 'Stage';
+                else if (categoryID === 1004) category = 'Effect';
+            }
+            categories[category].push(device);
+        });
+
+        let html = '';
+        Object.keys(categories).forEach(category => {
+            if (categories[category].length > 0) {
+                html += `
+                    <div class="assigned-category-group rc-mb-md">
+                        <div class="category-header rc-flex rc-flex-center rc-mb-sm">
+                            <i class="bi bi-${getCategoryIcon(category)} rc-mr-sm" style="color: var(--accent-electric);"></i>
+                            <h6 class="rc-heading-6" style="color: var(--text-primary);">${category}</h6>
+                            <span class="device-count-badge rc-ml-sm">${categories[category].length}</span>
+                        </div>
+                        <div class="assigned-devices-list">
+                `;
+
+                categories[category].forEach(device => {
+                    const deviceObj = device.device || device;
+                    const productName = deviceObj.product?.name || 'Unknown Product';
+                    const deviceID = deviceObj.deviceID;
+                    const serialNumber = deviceObj.serialNumber || deviceObj.serialnumber;
+                    const price = device.customPrice || device.price || deviceObj.product?.itemCostPerDay || 0;
+
+                    html += `
+                        <div class="assigned-device-item rc-flex rc-flex-between rc-flex-center rc-p-sm rc-mb-xs" style="background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--surface-3);">
+                            <div class="device-info">
+                                <div class="device-name rc-text-sm rc-font-medium">${productName}</div>
+                                <div class="device-details rc-text-xs rc-text-secondary">
+                                    ID: ${deviceID}${serialNumber ? ` • SN: ${serialNumber}` : ''}
+                                </div>
+                            </div>
+                            <div class="device-price-container rc-flex rc-flex-center rc-flex-gap-xs">
+                                <input type="number"
+                                       value="${price.toFixed(2)}"
+                                       class="device-price-input rc-input rc-input-sm"
+                                       style="width: 80px;"
+                                       step="0.01"
+                                       onchange="updateDevicePrice(${jobID}, '${deviceID}', this.value)"
+                                       placeholder="0.00">
+                                <span class="rc-text-xs">€/day</span>
+                                <button type="button" onclick="removeDeviceFromEditJob(${jobID}, '${deviceID}')"
+                                        class="rc-btn rc-btn-outline rc-btn-sm"
+                                        style="padding: 2px 6px;"
+                                        title="Remove device">
+                                    <i class="bi bi-trash" style="font-size: 0.75rem;"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html;
+    }
+
+    function removeDeviceFromEditJob(jobID, deviceID) {
+        if (confirm('Remove this device from the job?')) {
+            fetch(`/api/v1/jobs/${jobID}/devices/${deviceID}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Refresh the assigned devices display
+                    refreshEditAssignedDevices(jobID);
+                    // Also refresh the available device tree to reflect changes
+                    loadEditDeviceTree(jobID);
+                    // Show success feedback
+                    showToast('Device removed successfully', 'success');
+                } else {
+                    throw new Error('Failed to remove device');
+                }
+            })
+            .catch(error => {
+                console.error('Error removing device:', error);
+                showToast('Error removing device', 'error');
+            });
+        }
     }
 
     // Show job devices overview
@@ -1527,16 +1688,39 @@
             text-decoration: underline;
             text-decoration-style: dotted;
         }
-        
+
         .device-count-button:hover {
             background: var(--info);
             color: white;
             text-decoration: none;
             transform: translateY(-1px);
         }
-        
+
         .device-count-button:active {
             transform: translateY(0);
+        }
+
+        /* Assigned devices styling in edit modal */
+        .device-count-badge {
+            background: var(--accent-electric);
+            color: white;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .assigned-device-item {
+            transition: all 0.2s ease;
+        }
+
+        .assigned-device-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .device-price-input {
+            text-align: right;
         }
         .device-tree-container {
             font-family: 'Inter', sans-serif;
