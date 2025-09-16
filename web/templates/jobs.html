@@ -648,6 +648,27 @@
                                     </div>
                                 </div>
 
+                                <!-- Rental Equipment Section -->
+                                <div id="editRentalEquipmentContainer" class="rc-mt-lg">
+                                    <div class="rc-flex rc-flex-between rc-mb-md">
+                                        <h5 class="rc-heading-5">Rental Equipment</h5>
+                                        <div class="rc-flex rc-flex-gap-sm">
+                                            <button type="button" onclick="showManualRentalEntry(${job.jobID})" class="rc-btn rc-btn-success rc-btn-sm" title="Add new rental item">
+                                                <i class="bi bi-plus-lg"></i> Manual Entry
+                                            </button>
+                                            <button type="button" onclick="showRentalSelection(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" title="Select from existing rental equipment">
+                                                <i class="bi bi-collection"></i> Select Existing
+                                            </button>
+                                            <button type="button" onclick="refreshJobRentalEquipment(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" title="Refresh rental equipment">
+                                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="editRentalEquipmentList">
+                                        <!-- Rental equipment will appear here -->
+                                    </div>
+                                </div>
+
                                 <div id="editSelectedDevicesContainer" class="rc-mt-lg">
                                     <h5>Additional Device Selection</h5>
                                     <p class="rc-text-sm rc-text-secondary rc-mb-sm">Select additional devices to add to this job:</p>
@@ -698,6 +719,9 @@
 
             // Load and display currently assigned devices
             loadEditAssignedDevices(job.jobID, existingDevices);
+
+            // Load and display rental equipment for this job
+            refreshJobRentalEquipment(job.jobID);
         })
         .catch(error => {
             content.innerHTML = `
@@ -1612,6 +1636,467 @@
         if (modal) {
             modal.remove();
         }
+    }
+
+    // ===== RENTAL EQUIPMENT FUNCTIONS =====
+
+    function refreshJobRentalEquipment(jobID) {
+        fetch(`/api/v1/rental-equipment/job/${jobID}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Refreshed rental equipment:', data);
+                const rentalEquipment = data || [];
+                displayJobRentalEquipment(rentalEquipment, jobID);
+            })
+            .catch(error => {
+                console.error('Error refreshing rental equipment:', error);
+                document.getElementById('editRentalEquipmentList').innerHTML = `
+                    <div class="rc-alert rc-alert-error rc-alert-sm">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error refreshing rental equipment: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function displayJobRentalEquipment(rentalEquipment, jobID) {
+        const container = document.getElementById('editRentalEquipmentList');
+
+        if (!rentalEquipment || rentalEquipment.length === 0) {
+            container.innerHTML = `
+                <div class="rc-empty-state rc-p-md" style="background: var(--surface-2); border-radius: var(--radius-md);">
+                    <i class="bi bi-box-seam" style="font-size: 2rem; color: var(--text-muted); margin-bottom: var(--space-sm);"></i>
+                    <p class="rc-text-secondary">No rental equipment added to this job yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const html = rentalEquipment.map(rental => `
+            <div class="rc-card rc-card-sm rc-mb-sm" data-rental-id="${rental.EquipmentID}">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-align-start">
+                        <div class="rc-flex-1">
+                            <h6 class="rc-heading-6 rc-mb-xs">${rental.RentalEquipment?.ProductName || 'Unknown Product'}</h6>
+                            <p class="rc-text-sm rc-text-secondary rc-mb-xs">
+                                <i class="bi bi-building"></i> ${rental.RentalEquipment?.SupplierName || 'Unknown Supplier'}
+                                ${rental.RentalEquipment?.Category ? `• <span class="rc-badge rc-badge-outline rc-badge-xs">${rental.RentalEquipment.Category}</span>` : ''}
+                            </p>
+                            <div class="rc-flex rc-flex-gap-md rc-text-sm">
+                                <span><strong>Qty:</strong> ${rental.Quantity}</span>
+                                <span><strong>Days:</strong> ${rental.DaysUsed}</span>
+                                <span><strong>Rate:</strong> €${(rental.RentalEquipment?.RentalPrice || 0).toFixed(2)}/day</span>
+                                <span class="rc-text-primary"><strong>Total:</strong> €${rental.TotalCost.toFixed(2)}</span>
+                            </div>
+                            ${rental.Notes ? `<p class="rc-text-xs rc-text-secondary rc-mt-xs"><i class="bi bi-chat-text"></i> ${rental.Notes}</p>` : ''}
+                        </div>
+                        <div class="rc-flex rc-flex-gap-xs">
+                            <button type="button" onclick="removeRentalFromJob(${jobID}, ${rental.EquipmentID})"
+                                    class="rc-btn rc-btn-outline rc-btn-sm rc-btn-danger" title="Remove rental">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = html;
+    }
+
+    function showManualRentalEntry(jobID) {
+        const modal = document.createElement('div');
+        modal.className = 'rc-modal';
+        modal.id = 'manualRentalModal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="rc-modal-overlay" onclick="closeManualRentalModal()"></div>
+            <div class="rc-modal-content" style="max-width: 600px;">
+                <div class="rc-modal-header">
+                    <h3 class="rc-modal-title">
+                        <i class="bi bi-plus-lg"></i> Add Rental Equipment
+                    </h3>
+                    <button class="rc-modal-close" onclick="closeManualRentalModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body">
+                    <form id="manualRentalForm" onsubmit="submitManualRental(event, ${jobID})">
+                        <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md">
+                            <div class="rc-form-group">
+                                <label class="rc-label">Product Name *</label>
+                                <input type="text" class="rc-input" name="productName" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Supplier Name *</label>
+                                <input type="text" class="rc-input" name="supplierName" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Daily Rental Price (€) *</label>
+                                <input type="number" class="rc-input" name="rentalPrice" step="0.01" min="0" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Category</label>
+                                <input type="text" class="rc-input" name="category" list="categoryList">
+                                <datalist id="categoryList">
+                                    <option value="Audio">
+                                    <option value="Video">
+                                    <option value="Lighting">
+                                    <option value="Stage Equipment">
+                                    <option value="Transportation">
+                                    <option value="Other">
+                                </datalist>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Quantity *</label>
+                                <input type="number" class="rc-input" name="quantity" min="1" value="1" required>
+                            </div>
+                            <div class="rc-form-group">
+                                <label class="rc-label">Days Used *</label>
+                                <input type="number" class="rc-input" name="daysUsed" min="1" value="1" required>
+                            </div>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Description</label>
+                            <textarea class="rc-input" name="description" rows="2"></textarea>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Notes</label>
+                            <textarea class="rc-input" name="notes" rows="2"></textarea>
+                        </div>
+                        <div class="rc-flex rc-flex-between rc-mt-lg">
+                            <button type="button" onclick="closeManualRentalModal()" class="rc-btn rc-btn-secondary">
+                                <i class="bi bi-x-lg"></i> Cancel
+                            </button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-plus-lg"></i> Add Rental
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    function closeManualRentalModal() {
+        const modal = document.getElementById('manualRentalModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    function submitManualRental(event, jobID) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        // Show loading state
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+        submitBtn.disabled = true;
+
+        const data = {
+            jobID: jobID,
+            productName: formData.get('productName'),
+            supplierName: formData.get('supplierName'),
+            rentalPrice: parseFloat(formData.get('rentalPrice')),
+            category: formData.get('category') || '',
+            description: formData.get('description') || '',
+            notes: formData.get('notes') || '',
+            quantity: parseInt(formData.get('quantity')),
+            daysUsed: parseInt(formData.get('daysUsed'))
+        };
+
+        fetch('/api/v1/rental-equipment/manual-entry', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            // Success - close modal and refresh
+            closeManualRentalModal();
+            refreshJobRentalEquipment(jobID);
+            showToast('Rental equipment added successfully', 'success');
+        })
+        .catch(error => {
+            // Restore button and show error
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showToast('Error adding rental equipment: ' + error.message, 'error');
+        });
+    }
+
+    function showRentalSelection(jobID) {
+        const modal = document.createElement('div');
+        modal.className = 'rc-modal';
+        modal.id = 'rentalSelectionModal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="rc-modal-overlay" onclick="closeRentalSelectionModal()"></div>
+            <div class="rc-modal-content" style="max-width: 800px;">
+                <div class="rc-modal-header">
+                    <h3 class="rc-modal-title">
+                        <i class="bi bi-collection"></i> Select Rental Equipment
+                    </h3>
+                    <button class="rc-modal-close" onclick="closeRentalSelectionModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body">
+                    <div class="rc-text-center rc-py-xl">
+                        <div class="rc-spinner"></div>
+                        <p class="rc-text-muted rc-mt-md">Loading rental equipment...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Load rental equipment
+        fetch('/api/v1/rental-equipment')
+            .then(response => response.json())
+            .then(equipmentList => {
+                const modalBody = modal.querySelector('.rc-modal-body');
+
+                if (!equipmentList || equipmentList.length === 0) {
+                    modalBody.innerHTML = `
+                        <div class="rc-empty-state rc-text-center rc-py-xl">
+                            <i class="bi bi-box-seam" style="font-size: 3rem; color: var(--text-muted);"></i>
+                            <h4>No Equipment Available</h4>
+                            <p class="rc-text-muted">No rental equipment found. Add some equipment first.</p>
+                            <a href="/rental-equipment" class="rc-btn rc-btn-primary rc-mt-md">
+                                <i class="bi bi-plus-lg"></i> Add Equipment
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                modalBody.innerHTML = `
+                    <div class="rc-mb-md">
+                        <input type="text" class="rc-input" id="rentalSearchInput" placeholder="Search equipment..."
+                               oninput="filterRentalEquipment()">
+                    </div>
+                    <div id="rentalEquipmentGrid" class="rc-grid rc-grid-cols-1 rc-grid-gap-sm" style="max-height: 400px; overflow-y: auto;">
+                        ${equipmentList.map(equipment => `
+                            <div class="rc-card rc-card-hover rc-cursor-pointer rental-equipment-item"
+                                 data-search="${equipment.ProductName} ${equipment.SupplierName} ${equipment.Category}"
+                                 onclick="selectRentalEquipment(${equipment.EquipmentID}, '${equipment.ProductName}', '${equipment.SupplierName}', ${equipment.RentalPrice}, ${jobID})">
+                                <div class="rc-card-body">
+                                    <div class="rc-flex rc-flex-between">
+                                        <div>
+                                            <h6 class="rc-heading-6">${equipment.ProductName}</h6>
+                                            <p class="rc-text-sm rc-text-secondary">
+                                                <i class="bi bi-building"></i> ${equipment.SupplierName}
+                                                ${equipment.Category ? `• <span class="rc-badge rc-badge-outline rc-badge-xs">${equipment.Category}</span>` : ''}
+                                            </p>
+                                            <p class="rc-text-primary rc-font-weight-600">€${equipment.RentalPrice.toFixed(2)}/day</p>
+                                        </div>
+                                        <div class="rc-text-right rc-text-sm rc-text-muted">
+                                            ${equipment.TotalUsed > 0 ? `Used ${equipment.TotalUsed} times` : 'Never used'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            })
+            .catch(error => {
+                modal.querySelector('.rc-modal-body').innerHTML = `
+                    <div class="rc-alert rc-alert-error">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Error loading rental equipment: ${error.message}
+                    </div>
+                `;
+            });
+    }
+
+    function filterRentalEquipment() {
+        const searchTerm = document.getElementById('rentalSearchInput').value.toLowerCase();
+        const items = document.querySelectorAll('.rental-equipment-item');
+
+        items.forEach(item => {
+            const searchText = item.getAttribute('data-search').toLowerCase();
+            item.style.display = searchText.includes(searchTerm) ? 'block' : 'none';
+        });
+    }
+
+    function selectRentalEquipment(equipmentID, productName, supplierName, rentalPrice, jobID) {
+        closeRentalSelectionModal();
+
+        // Show quantity/days modal
+        const modal = document.createElement('div');
+        modal.className = 'rc-modal';
+        modal.id = 'rentalQuantityModal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="rc-modal-overlay" onclick="closeRentalQuantityModal()"></div>
+            <div class="rc-modal-content" style="max-width: 400px;">
+                <div class="rc-modal-header">
+                    <h3 class="rc-modal-title">
+                        <i class="bi bi-plus-lg"></i> Add to Job
+                    </h3>
+                    <button class="rc-modal-close" onclick="closeRentalQuantityModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body">
+                    <div class="rc-mb-md">
+                        <h5>${productName}</h5>
+                        <p class="rc-text-sm rc-text-secondary">${supplierName} • €${rentalPrice.toFixed(2)}/day</p>
+                    </div>
+
+                    <form onsubmit="addSelectedRentalToJob(event, ${equipmentID}, ${jobID})">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Quantity *</label>
+                            <input type="number" class="rc-input" name="quantity" min="1" value="1" required>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Days Used *</label>
+                            <input type="number" class="rc-input" name="daysUsed" min="1" value="1" required>
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Notes</label>
+                            <textarea class="rc-input" name="notes" rows="2"></textarea>
+                        </div>
+                        <div class="rc-flex rc-flex-between rc-mt-lg">
+                            <button type="button" onclick="closeRentalQuantityModal()" class="rc-btn rc-btn-secondary">
+                                Cancel
+                            </button>
+                            <button type="submit" class="rc-btn rc-btn-primary">
+                                Add to Job
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    function closeRentalSelectionModal() {
+        const modal = document.getElementById('rentalSelectionModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    function closeRentalQuantityModal() {
+        const modal = document.getElementById('rentalQuantityModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    function addSelectedRentalToJob(event, equipmentID, jobID) {
+        event.preventDefault();
+
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        // Show loading state
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+        submitBtn.disabled = true;
+
+        const data = {
+            jobID: jobID,
+            equipmentID: equipmentID,
+            quantity: parseInt(formData.get('quantity')),
+            daysUsed: parseInt(formData.get('daysUsed')),
+            notes: formData.get('notes') || ''
+        };
+
+        fetch('/api/v1/rental-equipment/add-to-job', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            // Success - close modal and refresh
+            closeRentalQuantityModal();
+            refreshJobRentalEquipment(jobID);
+            showToast('Rental equipment added to job successfully', 'success');
+        })
+        .catch(error => {
+            // Restore button and show error
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showToast('Error adding rental to job: ' + error.message, 'error');
+        });
+    }
+
+    function removeRentalFromJob(jobID, equipmentID) {
+        if (!confirm('Are you sure you want to remove this rental equipment from the job?')) {
+            return;
+        }
+
+        fetch(`/api/v1/rental-equipment/job/${jobID}/equipment/${equipmentID}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            refreshJobRentalEquipment(jobID);
+            showToast('Rental equipment removed successfully', 'success');
+        })
+        .catch(error => {
+            console.error('Error removing rental equipment:', error);
+            showToast('Error removing rental equipment', 'error');
+        });
+    }
+
+    function showToast(message, type) {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.className = `rc-toast rc-toast-${type}`;
+        toast.innerHTML = `
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            ${message}
+        `;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            color: white;
+            background: ${type === 'success' ? '#10b981' : '#ef4444'};
+            box-shadow: var(--shadow-lg);
+            min-width: 300px;
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
     </script>
     

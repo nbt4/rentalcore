@@ -20,9 +20,30 @@
                 <li><a href="/devices" class="rc-nav-link {{if eq .currentPage "devices"}}active{{end}}">
                     <i class="bi bi-cpu"></i> Devices
                 </a></li>
-                <li><a href="/products" class="rc-nav-link {{if eq .currentPage "products"}}active{{end}}">
-                    <i class="bi bi-box"></i> Products
-                </a></li>
+                <!-- Products Dropdown -->
+                <li class="rc-dropdown">
+                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "products") (eq .currentPage "rental-equipment") (eq .currentPage "rental-analytics")}}active{{end}}">
+                        <i class="bi bi-box"></i> Products
+                    </a>
+                    <div class="rc-dropdown-menu">
+                        <div class="rc-dropdown-header">
+                            <i class="bi bi-building"></i> Inventory
+                        </div>
+                        <a href="/products" class="rc-dropdown-item {{if eq .currentPage "products"}}active{{end}}">
+                            <i class="bi bi-boxes"></i> Own Products
+                        </a>
+                        <a href="/rental-equipment" class="rc-dropdown-item {{if eq .currentPage "rental-equipment"}}active{{end}}">
+                            <i class="bi bi-box-seam"></i> Rental Equipment
+                        </a>
+                        <hr class="rc-dropdown-divider">
+                        <div class="rc-dropdown-header">
+                            <i class="bi bi-graph-up"></i> Analytics
+                        </div>
+                        <a href="/rental-equipment/analytics" class="rc-dropdown-item {{if eq .currentPage "rental-analytics"}}active{{end}}">
+                            <i class="bi bi-clipboard-data"></i> Rental Analytics
+                        </a>
+                    </div>
+                </li>
                 <li><a href="/cables" class="rc-nav-link {{if eq .currentPage "cables"}}active{{end}}">
                     <i class="bi bi-lightning-charge"></i> Cables
                 </a></li>

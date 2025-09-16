@@ -513,3 +513,155 @@ type PackageDeviceResponse struct {
 	Device      *Device  `json:"device,omitempty"`
 	TotalPrice  float64  `json:"totalPrice"`
 }
+
+// ================================================================
+// RENTAL EQUIPMENT MODELS
+// ================================================================
+
+type RentalEquipment struct {
+	EquipmentID   uint      `gorm:"primaryKey;autoIncrement;column:equipment_id" json:"equipmentID"`
+	ProductName   string    `gorm:"not null;size:200;column:product_name" json:"productName" binding:"required,min=1,max=200"`
+	SupplierName  string    `gorm:"not null;size:100;column:supplier_name" json:"supplierName" binding:"required,min=1,max=100"`
+	RentalPrice   float64   `gorm:"type:decimal(12,2);not null;column:rental_price" json:"rentalPrice" binding:"required,min=0"`
+	Category      string    `gorm:"size:50;column:category" json:"category" binding:"max=50"`
+	Description   string    `gorm:"size:1000;column:description" json:"description" binding:"max=1000"`
+	Notes         string    `gorm:"size:500;column:notes" json:"notes" binding:"max=500"`
+	IsActive      bool      `gorm:"default:true;column:is_active" json:"isActive"`
+	CreatedAt     time.Time `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt     time.Time `gorm:"column:updated_at" json:"updatedAt"`
+	CreatedBy     *uint     `gorm:"column:created_by" json:"createdBy"`
+
+	// Analytics fields (computed)
+	TotalUsed     int     `gorm:"-:all" json:"totalUsed"`
+	TotalRevenue  float64 `gorm:"-:all" json:"totalRevenue"`
+	LastUsedDate  *time.Time `gorm:"-:all" json:"lastUsedDate"`
+
+	// Relationships
+	Creator         *User                 `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
+	JobRentalItems  []JobRentalEquipment  `gorm:"foreignKey:EquipmentID" json:"jobRentalItems,omitempty"`
+}
+
+func (RentalEquipment) TableName() string {
+	return "rental_equipment"
+}
+
+type JobRentalEquipment struct {
+	JobID       uint      `gorm:"primaryKey;column:job_id" json:"jobID"`
+	EquipmentID uint      `gorm:"primaryKey;column:equipment_id" json:"equipmentID"`
+	Quantity    uint      `gorm:"not null;default:1;column:quantity" json:"quantity" binding:"required,min=1,max=1000"`
+	DaysUsed    uint      `gorm:"not null;default:1;column:days_used" json:"daysUsed" binding:"required,min=1,max=365"`
+	TotalCost   float64   `gorm:"type:decimal(12,2);not null;column:total_cost" json:"totalCost" binding:"required,min=0"`
+	Notes       string    `gorm:"size:500;column:notes" json:"notes" binding:"max=500"`
+	CreatedAt   time.Time `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt   time.Time `gorm:"column:updated_at" json:"updatedAt"`
+
+	// Relationships
+	Job             *Job              `gorm:"foreignKey:JobID" json:"job,omitempty"`
+	RentalEquipment *RentalEquipment  `gorm:"foreignKey:EquipmentID" json:"rentalEquipment,omitempty"`
+}
+
+func (JobRentalEquipment) TableName() string {
+	return "job_rental_equipment"
+}
+
+// ================================================================
+// RENTAL EQUIPMENT DTOs
+// ================================================================
+
+type CreateRentalEquipmentRequest struct {
+	ProductName  string  `json:"productName" binding:"required,min=1,max=200"`
+	SupplierName string  `json:"supplierName" binding:"required,min=1,max=100"`
+	RentalPrice  float64 `json:"rentalPrice" binding:"required,min=0"`
+	Category     string  `json:"category" binding:"max=50"`
+	Description  string  `json:"description" binding:"max=1000"`
+	Notes        string  `json:"notes" binding:"max=500"`
+	IsActive     bool    `json:"isActive"`
+}
+
+type UpdateRentalEquipmentRequest struct {
+	ProductName  string  `json:"productName" binding:"required,min=1,max=200"`
+	SupplierName string  `json:"supplierName" binding:"required,min=1,max=100"`
+	RentalPrice  float64 `json:"rentalPrice" binding:"required,min=0"`
+	Category     string  `json:"category" binding:"max=50"`
+	Description  string  `json:"description" binding:"max=1000"`
+	Notes        string  `json:"notes" binding:"max=500"`
+	IsActive     bool    `json:"isActive"`
+}
+
+type AddRentalToJobRequest struct {
+	JobID       uint    `json:"jobID" binding:"required"`
+	EquipmentID uint    `json:"equipmentID" binding:"required"`
+	Quantity    uint    `json:"quantity" binding:"required,min=1,max=1000"`
+	DaysUsed    uint    `json:"daysUsed" binding:"required,min=1,max=365"`
+	Notes       string  `json:"notes" binding:"max=500"`
+}
+
+type ManualRentalEntryRequest struct {
+	JobID        uint    `json:"jobID" binding:"required"`
+	ProductName  string  `json:"productName" binding:"required,min=1,max=200"`
+	SupplierName string  `json:"supplierName" binding:"required,min=1,max=100"`
+	RentalPrice  float64 `json:"rentalPrice" binding:"required,min=0"`
+	Quantity     uint    `json:"quantity" binding:"required,min=1,max=1000"`
+	DaysUsed     uint    `json:"daysUsed" binding:"required,min=1,max=365"`
+	Category     string  `json:"category" binding:"max=50"`
+	Description  string  `json:"description" binding:"max=1000"`
+	Notes        string  `json:"notes" binding:"max=500"`
+}
+
+type RentalEquipmentResponse struct {
+	EquipmentID   uint       `json:"equipmentID"`
+	ProductName   string     `json:"productName"`
+	SupplierName  string     `json:"supplierName"`
+	RentalPrice   float64    `json:"rentalPrice"`
+	Category      string     `json:"category"`
+	Description   string     `json:"description"`
+	Notes         string     `json:"notes"`
+	IsActive      bool       `json:"isActive"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	Creator       *User      `json:"creator,omitempty"`
+	TotalUsed     int        `json:"totalUsed"`
+	TotalRevenue  float64    `json:"totalRevenue"`
+	LastUsedDate  *time.Time `json:"lastUsedDate"`
+}
+
+type RentalEquipmentAnalytics struct {
+	TotalEquipmentItems    int                           `json:"totalEquipmentItems"`
+	ActiveEquipmentItems   int                           `json:"activeEquipmentItems"`
+	TotalSuppliersCount    int                           `json:"totalSuppliersCount"`
+	TotalRentalRevenue     float64                       `json:"totalRentalRevenue"`
+	MostUsedEquipment      []MostUsedRentalEquipment     `json:"mostUsedEquipment"`
+	TopSuppliers           []TopRentalSupplier           `json:"topSuppliers"`
+	CategoryBreakdown      []RentalCategoryBreakdown     `json:"categoryBreakdown"`
+	MonthlyRentalRevenue   []MonthlyRentalRevenue        `json:"monthlyRentalRevenue"`
+}
+
+type MostUsedRentalEquipment struct {
+	EquipmentID  uint    `json:"equipmentID"`
+	ProductName  string  `json:"productName"`
+	SupplierName string  `json:"supplierName"`
+	UsageCount   int     `json:"usageCount"`
+	TotalRevenue float64 `json:"totalRevenue"`
+}
+
+type TopRentalSupplier struct {
+	SupplierName   string  `json:"supplierName"`
+	EquipmentCount int     `json:"equipmentCount"`
+	TotalRevenue   float64 `json:"totalRevenue"`
+	UsageCount     int     `json:"usageCount"`
+}
+
+type RentalCategoryBreakdown struct {
+	Category       string  `json:"category"`
+	EquipmentCount int     `json:"equipmentCount"`
+	TotalRevenue   float64 `json:"totalRevenue"`
+	UsageCount     int     `json:"usageCount"`
+}
+
+type MonthlyRentalRevenue struct {
+	Year         int     `json:"year"`
+	Month        int     `json:"month"`
+	TotalJobs    int     `json:"totalJobs"`
+	TotalRevenue float64 `json:"totalRevenue"`
+	ItemsRented  int     `json:"itemsRented"`
+}
