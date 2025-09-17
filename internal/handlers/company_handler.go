@@ -507,26 +507,64 @@ func (h *CompanyHandler) GetSMTPConfig(c *gin.Context) {
 }
 
 func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
+	log.Printf("UpdateSMTPConfig: Request received")
+
 	user, exists := GetCurrentUser(c)
 	if !exists {
+		log.Printf("UpdateSMTPConfig: Authentication failed")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 		return
 	}
 
+	log.Printf("UpdateSMTPConfig: User authenticated: %s", user.Username)
+
 	var request struct {
-		SMTPHost      string `json:"smtp_host" binding:"required"`
-		SMTPPort      int    `json:"smtp_port" binding:"required"`
-		SMTPUsername  string `json:"smtp_username" binding:"required"`
+		SMTPHost      string `json:"smtp_host"`
+		SMTPPort      int    `json:"smtp_port"`
+		SMTPUsername  string `json:"smtp_username"`
 		SMTPPassword  string `json:"smtp_password"`
-		SMTPFromEmail string `json:"smtp_from_email" binding:"required"`
+		SMTPFromEmail string `json:"smtp_from_email"`
 		SMTPFromName  string `json:"smtp_from_name"`
 		SMTPUseTLS    bool   `json:"smtp_use_tls"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Printf("UpdateSMTPConfig: JSON binding error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
+		})
+		return
+	}
+
+	log.Printf("UpdateSMTPConfig: Request data - Host: %s, Port: %d, Username: %s, FromEmail: %s",
+		request.SMTPHost, request.SMTPPort, request.SMTPUsername, request.SMTPFromEmail)
+
+	// Validate required fields manually
+	if request.SMTPHost == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "SMTP host is required",
+		})
+		return
+	}
+
+	if request.SMTPPort <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Valid SMTP port is required",
+		})
+		return
+	}
+
+	if request.SMTPUsername == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "SMTP username is required",
+		})
+		return
+	}
+
+	if request.SMTPFromEmail == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "From email address is required",
 		})
 		return
 	}
