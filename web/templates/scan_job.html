@@ -595,14 +595,100 @@
             </div>
         </div>
 
-        <div class="rc-grid scanner-layout" style="gap: var(--space-lg); grid-template-columns: 1fr; min-height: 500px;">
-            <style>
-                @media (min-width: 1024px) {
-                    .scanner-layout {
-                        grid-template-columns: 1fr 1fr !important;
-                    }
+        <style>
+            /* Tab Navigation Styles */
+            .scan-tabs {
+                display: flex;
+                gap: 4px;
+                margin-bottom: 20px;
+                background: var(--surface-2);
+                padding: 4px;
+                border-radius: 12px;
+                border: 1px solid var(--surface-3);
+            }
+
+            .scan-tab {
+                flex: 1;
+                padding: 12px 16px;
+                background: transparent;
+                border: none;
+                border-radius: 8px;
+                color: var(--text-muted);
+                font-weight: 500;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .scan-tab.active {
+                background: var(--accent-color);
+                color: white;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            .scan-tab:hover:not(.active) {
+                background: var(--surface-3);
+                color: var(--text-primary);
+            }
+
+            .scan-tab-content {
+                display: none;
+            }
+
+            .scan-tab-content.active {
+                display: block;
+            }
+
+            .scanner-layout {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: var(--space-lg);
+                min-height: 500px;
+            }
+
+            @media (min-width: 1024px) {
+                .scanner-layout {
+                    grid-template-columns: 1fr 1fr !important;
                 }
-            </style>
+            }
+
+            @media (max-width: 768px) {
+                .scan-tabs {
+                    flex-wrap: wrap;
+                }
+
+                .scan-tab {
+                    flex: 1 1 calc(50% - 2px);
+                    min-width: 120px;
+                    font-size: 13px;
+                    padding: 10px 12px;
+                }
+            }
+        </style>
+
+        <!-- Tab Navigation -->
+        <div class="scan-tabs">
+            <button class="scan-tab active" onclick="switchTab('scanner')" id="scanner-tab">
+                <i class="bi bi-camera"></i> Scanner
+            </button>
+            <button class="scan-tab" onclick="switchTab('devices')" id="devices-tab">
+                <i class="bi bi-list-check"></i> Devices
+            </button>
+            <button class="scan-tab" onclick="switchTab('cases')" id="cases-tab">
+                <i class="bi bi-box"></i> Cases
+            </button>
+            <button class="scan-tab" onclick="switchTab('files')" id="files-tab">
+                <i class="bi bi-paperclip"></i> Files
+            </button>
+        </div>
+
+        <!-- Scanner Tab Content -->
+        <div id="scanner-content" class="scan-tab-content active">
+            <div class="rc-grid scanner-layout">
             <!-- Scanner Column -->
             <div>
                 <div class="rc-card" style="border: 2px solid var(--accent-color); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
@@ -771,9 +857,13 @@
                     </div>
                 </div>
             </div>
+            </div>
+        </div>
 
-            <!-- Cases & Devices Column -->
-            <div>
+        <!-- Cases Tab Content -->
+        <div id="cases-content" class="scan-tab-content">
+            <div class="rc-grid" style="gap: var(--space-lg);">
+                <div>
                 <!-- Cases Section - Compact -->
                 {{if .cases}}
                 <div class="rc-card rc-mb-md" style="border: 1px solid var(--bg-tertiary);">
@@ -815,7 +905,14 @@
                     </div>
                 </div>
                 {{end}}
-                
+                </div>
+            </div>
+        </div>
+
+        <!-- Devices Tab Content -->
+        <div id="devices-content" class="scan-tab-content">
+            <div class="rc-grid" style="gap: var(--space-lg);">
+                <div>
                 <!-- Device Selection Tree Section -->
                 <div class="rc-card rc-mb-md">
                     <div class="rc-card-header rc-flex rc-flex-between" style="align-items: center;">
@@ -921,7 +1018,13 @@
                         </div>
                     </div>
                 </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Files Tab Content -->
+        <div id="files-content" class="scan-tab-content">
+            <div class="rc-grid" style="gap: var(--space-lg);">
                 <!-- File Attachments Card -->
                 <div class="rc-col">
                     <div class="rc-card">
@@ -1056,6 +1159,23 @@
             console.log('Scanner initialized, ready to start');
             // Keep the loading visible with "Click start to begin scanning" message
             // Don't remove 'active' class here - let startScanner() handle it
+        }
+
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.scan-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.scan-tab-content').forEach(content => content.classList.remove('active'));
+
+            // Add active class to selected tab and content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.getElementById(tabName + '-content').classList.add('active');
+
+            // Refresh device tree if switching to devices tab
+            if (tabName === 'devices') {
+                if (document.getElementById('refreshDeviceTreeScan')) {
+                    document.getElementById('refreshDeviceTreeScan').click();
+                }
+            }
         }
 
         function setupEventListeners() {
