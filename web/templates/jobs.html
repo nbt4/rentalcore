@@ -609,45 +609,6 @@
                         </div>
                     </div>
                     
-                    <!-- Device Selection Section -->
-                    <div class="rc-card rc-mb-lg" style="background: var(--surface-2); border: 1px solid var(--surface-3);">
-                        <div class="rc-card-header">
-                            <h4 class="rc-card-title">
-                                <i class="bi bi-cpu"></i> Device Selection
-                            </h4>
-                            <div class="rc-flex rc-flex-gap-sm">
-                                <button type="button" id="refreshEditDeviceTree" class="rc-btn rc-btn-outline rc-btn-sm">
-                                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                                </button>
-                                <button type="button" id="toggleEditTreeView" class="rc-btn rc-btn-outline rc-btn-sm">
-                                    <i class="bi bi-diagram-3"></i> Tree View
-                                </button>
-                            </div>
-                        </div>
-                        <div class="rc-card-body">
-                            <div id="editDeviceSelectionContainer">
-                                <div id="loadingEditDevices" class="rc-flex rc-flex-center rc-py-xl">
-                                    <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i>
-                                    Loading available devices...
-                                </div>
-                                
-                                <div id="editDeviceTreeContainer" style="display: none;">
-                                    <!-- Tree view will be loaded here -->
-                                </div>
-
-                                <!-- Currently Assigned Devices Section -->
-                                <div id="editAssignedDevicesContainer" class="rc-mt-lg">
-                                    <div class="rc-flex rc-flex-between rc-mb-md">
-                                        <h5 class="rc-heading-5">Currently Assigned Devices</h5>
-                                        <button type="button" onclick="refreshEditAssignedDevices(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" title="Refresh assigned devices">
-                                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                                        </button>
-                                    </div>
-                                    <div id="editAssignedDevicesList">
-                                        <!-- Assigned devices with price editing will appear here -->
-                                    </div>
-                                </div>
-
                                 <!-- Rental Equipment Section -->
                                 <div id="editRentalEquipmentContainer" class="rc-mt-lg">
                                     <div class="rc-flex rc-flex-between rc-mb-md">
@@ -669,13 +630,104 @@
                                     </div>
                                 </div>
 
-                                <div id="editSelectedDevicesContainer" class="rc-mt-lg">
-                                    <h5>Additional Device Selection</h5>
-                                    <p class="rc-text-sm rc-text-secondary rc-mb-sm">Select additional devices to add to this job:</p>
-                                    <div id="editSelectedDevicesList" class="rc-flex rc-flex-wrap rc-flex-gap-sm">
-                                        <!-- Selected devices will appear here as badges -->
+                                <!-- File Attachments Section -->
+                                <div id="editFileAttachmentsContainer" class="rc-mt-lg">
+                                    <div class="rc-flex rc-flex-between rc-mb-md">
+                                        <h5 class="rc-heading-5">
+                                            <i class="bi bi-paperclip"></i> File Attachments
+                                        </h5>
+                                        <button type="button" onclick="toggleEditAttachments()" class="rc-btn rc-btn-outline rc-btn-sm" id="toggleEditAttachmentsBtn">
+                                            <i class="bi bi-eye"></i> Show Files
+                                        </button>
                                     </div>
-                                    <input type="hidden" name="selected_devices" id="editSelectedDevicesInput" value="">
+                                    <div id="editAttachmentsSection" style="display: none;">
+                                        <div class="file-upload-area" style="border: 2px dashed var(--surface-3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 16px;"
+                                             onclick="document.getElementById('editJobFileInput').click();">
+                                            <i class="bi bi-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 6px;"></i>
+                                            <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Click to select files or drag and drop</p>
+                                            <small style="color: var(--text-muted); font-size: 12px;">Max 50MB per file</small>
+                                        </div>
+                                        <input type="file" id="editJobFileInput" multiple accept="*/*" style="display: none;" onchange="handleEditJobFileSelection(this)">
+
+                                        <div id="editSelectedFilesList" style="display: none;">
+                                            <h6 style="margin-bottom: 8px; font-size: 14px;">Selected Files:</h6>
+                                            <div id="editSelectedFilesContainer"></div>
+                                            <button type="button" class="rc-btn rc-btn-primary rc-btn-sm" onclick="uploadEditJobFiles()" style="margin-top: 8px;">
+                                                <i class="bi bi-upload"></i> Upload Files
+                                            </button>
+                                        </div>
+
+                                        <div id="editCurrentAttachments" style="margin-top: 16px;">
+                                            <h6 style="margin-bottom: 8px; font-size: 14px;">Current Attachments:</h6>
+                                            <div id="editAttachmentsList">Loading...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Device Tree Toggle Section -->
+                                <div class="rc-flex rc-flex-between rc-flex-align-center rc-mt-lg rc-mb-md">
+                                    <h5 class="rc-heading-5">Device Management</h5>
+                                    <button type="button" onclick="toggleEditDeviceTree()" class="rc-btn rc-btn-outline rc-btn-sm" id="toggleEditDeviceTreeBtn">
+                                        <i class="bi bi-eye"></i> Show Device Tree
+                                    </button>
+                                </div>
+
+                                <div id="editDeviceManagementSection" style="display: none;">
+                                    <div class="rc-card">
+                                        <div class="rc-card-header">
+                                            <div class="rc-flex rc-flex-between">
+                                                <h4 class="rc-card-title">Available Devices</h4>
+                                                <div class="rc-flex rc-flex-gap-sm">
+                                                    <button type="button" onclick="loadEditDeviceTree(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" id="refreshEditDeviceTree">
+                                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                                    </button>
+                                                    <button type="button" onclick="expandAllEditTreeNodes()" class="rc-btn rc-btn-outline rc-btn-sm" title="Expand All Categories">
+                                                        <i class="bi bi-arrows-expand"></i> Expand All
+                                                    </button>
+                                                    <button type="button" onclick="collapseAllEditTreeNodes()" class="rc-btn rc-btn-outline rc-btn-sm" title="Collapse All Categories">
+                                                        <i class="bi bi-arrows-collapse"></i> Collapse All
+                                                    </button>
+                                                    <button type="button" id="toggleEditTreeView" class="rc-btn rc-btn-outline rc-btn-sm">
+                                                        <i class="bi bi-diagram-3"></i> Tree View
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="rc-card-body">
+                                            <div id="editDeviceSelectionContainer">
+                                                <div id="loadingEditDevices" class="rc-flex rc-flex-center rc-py-xl">
+                                                    <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: var(--space-sm);"></i>
+                                                    Loading available devices...
+                                                </div>
+
+                                                <div id="editDeviceTreeContainer" style="display: none;">
+                                                    <!-- Tree view will be loaded here -->
+                                                </div>
+
+                                                <!-- Currently Assigned Devices Section -->
+                                                <div id="editAssignedDevicesContainer" class="rc-mt-lg">
+                                                    <div class="rc-flex rc-flex-between rc-mb-md">
+                                                        <h5 class="rc-heading-5">Currently Assigned Devices</h5>
+                                                        <button type="button" onclick="refreshEditAssignedDevices(${job.jobID})" class="rc-btn rc-btn-outline rc-btn-sm" title="Refresh assigned devices">
+                                                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                                                        </button>
+                                                    </div>
+                                                    <div id="editAssignedDevicesList">
+                                                        <!-- Assigned devices with price editing will appear here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="editSelectedDevicesContainer" class="rc-mt-lg">
+                                        <h5>Additional Device Selection</h5>
+                                        <p class="rc-text-sm rc-text-secondary rc-mb-sm">Select additional devices to add to this job:</p>
+                                        <div id="editSelectedDevicesList" class="rc-flex rc-flex-wrap rc-flex-gap-sm">
+                                            <!-- Selected devices will appear here as badges -->
+                                        </div>
+                                        <input type="hidden" name="selected_devices" id="editSelectedDevicesInput" value="">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2097,6 +2149,283 @@
         setTimeout(() => {
             toast.remove();
         }, 3000);
+    }
+
+    // ===== JOB EDIT MODAL FILE UPLOAD FUNCTIONS =====
+
+    let editJobSelectedFiles = [];
+
+    function handleEditJobFileSelection(input) {
+        const files = Array.from(input.files);
+        editJobSelectedFiles = editJobSelectedFiles.concat(files);
+        displayEditJobSelectedFiles();
+    }
+
+    function displayEditJobSelectedFiles() {
+        const container = document.getElementById('editSelectedFilesContainer');
+        const listDiv = document.getElementById('editSelectedFilesList');
+
+        if (editJobSelectedFiles.length === 0) {
+            listDiv.style.display = 'none';
+            return;
+        }
+
+        listDiv.style.display = 'block';
+
+        container.innerHTML = editJobSelectedFiles.map((file, index) => `
+            <div class="selected-file-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
+                <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                    <i class="bi bi-file-earmark" style="color: var(--primary);"></i>
+                    <div>
+                        <div style="font-size: 14px; font-weight: 500;">${file.name}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">${formatEditJobFileSize(file.size)}</div>
+                    </div>
+                </div>
+                <button type="button" class="rc-btn rc-btn-ghost rc-btn-sm" onclick="removeEditJobSelectedFile(${index})" style="color: var(--error);">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function removeEditJobSelectedFile(index) {
+        editJobSelectedFiles.splice(index, 1);
+        displayEditJobSelectedFiles();
+    }
+
+    function formatEditJobFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function uploadEditJobFiles() {
+        if (editJobSelectedFiles.length === 0) {
+            showToast('No files selected', 'error');
+            return;
+        }
+
+        const uploadBtn = document.querySelector('#editSelectedFilesList button');
+        const originalText = uploadBtn.innerHTML;
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Uploading...';
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Get current job ID from the form
+        const jobIDInput = document.querySelector('#editJobForm input[readonly]');
+        const jobID = jobIDInput ? jobIDInput.value : null;
+
+        if (!jobID) {
+            showToast('Cannot determine job ID', 'error');
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalText;
+            return;
+        }
+
+        for (const file of editJobSelectedFiles) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('jobID', jobID);
+
+            try {
+                const response = await fetch('/api/jobs/attachments/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (error) {
+                console.error('Error uploading file:', file.name, error);
+                errorCount++;
+            }
+        }
+
+        // Reset state
+        editJobSelectedFiles = [];
+        displayEditJobSelectedFiles();
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = originalText;
+
+        // Show result
+        if (errorCount === 0) {
+            showToast(`${successCount} file(s) uploaded successfully!`, 'success');
+        } else {
+            showToast(`${successCount} uploaded, ${errorCount} failed`, 'warning');
+        }
+
+        // Reload attachments
+        loadEditJobAttachments(jobID);
+    }
+
+    async function loadEditJobAttachments(jobID) {
+        try {
+            const response = await fetch(`/api/jobs/${jobID}/attachments`);
+            const attachments = await response.json();
+
+            const container = document.getElementById('editAttachmentsList');
+            if (!attachments || attachments.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); font-style: italic; margin: 0;">No files attached yet.</p>';
+                return;
+            }
+
+            container.innerHTML = attachments.map(attachment => `
+                <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
+                    <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                        <i class="bi ${getEditJobFileIcon(attachment.mimeType)}" style="color: var(--primary);"></i>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 500;">${attachment.originalFilename}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">
+                                ${attachment.fileSizeFormatted}
+                                ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rc-flex rc-flex-align-center rc-flex-gap-xs">
+                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadEditJobAttachment(${attachment.attachmentID})" title="Download">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="deleteEditJobAttachment(${attachment.attachmentID}, '${attachment.originalFilename}')" title="Delete" style="color: var(--error);">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading edit job attachments:', error);
+            document.getElementById('editAttachmentsList').innerHTML = '<p style="color: var(--error); margin: 0;">Error loading attachments.</p>';
+        }
+    }
+
+    function getEditJobFileIcon(mimeType) {
+        if (mimeType.startsWith('image/')) return 'bi-image';
+        if (mimeType.startsWith('video/')) return 'bi-play-circle';
+        if (mimeType.startsWith('audio/')) return 'bi-music-note';
+        if (mimeType.includes('pdf')) return 'bi-file-pdf';
+        if (mimeType.includes('word') || mimeType.includes('document')) return 'bi-file-text';
+        if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'bi-file-spreadsheet';
+        if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi-file-zip';
+        return 'bi-file-earmark';
+    }
+
+    function downloadEditJobAttachment(attachmentID) {
+        window.open(`/api/jobs/attachments/${attachmentID}/download`, '_blank');
+    }
+
+    async function deleteEditJobAttachment(attachmentID, filename) {
+        if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+        try {
+            const response = await fetch(`/api/jobs/attachments/${attachmentID}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showToast('Attachment deleted successfully!', 'success');
+                // Get current job ID and reload attachments
+                const jobIDInput = document.querySelector('#editJobForm input[readonly]');
+                const jobID = jobIDInput ? jobIDInput.value : null;
+                if (jobID) loadEditJobAttachments(jobID);
+            } else {
+                showToast('Failed to delete attachment: ' + (result.error || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting attachment:', error);
+            showToast('Error deleting attachment', 'error');
+        }
+    }
+
+    // ===== TOGGLE FUNCTIONS FOR EDIT MODAL =====
+
+    function toggleEditAttachments() {
+        const section = document.getElementById('editAttachmentsSection');
+        const button = document.getElementById('toggleEditAttachmentsBtn');
+
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            button.innerHTML = '<i class="bi bi-eye-slash"></i> Hide Files';
+
+            // Load attachments when showing for the first time
+            const jobIDInput = document.querySelector('#editJobForm input[readonly]');
+            const jobID = jobIDInput ? jobIDInput.value : null;
+            if (jobID) loadEditJobAttachments(jobID);
+        } else {
+            section.style.display = 'none';
+            button.innerHTML = '<i class="bi bi-eye"></i> Show Files';
+        }
+    }
+
+    function toggleEditDeviceTree() {
+        const section = document.getElementById('editDeviceManagementSection');
+        const button = document.getElementById('toggleEditDeviceTreeBtn');
+
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            button.innerHTML = '<i class="bi bi-eye-slash"></i> Hide Device Tree';
+
+            // Load device tree when showing for the first time
+            const jobIDInput = document.querySelector('#editJobForm input[readonly]');
+            const jobID = jobIDInput ? jobIDInput.value : null;
+            if (jobID) {
+                const startDate = document.querySelector('#editJobForm input[name="startDate"]').value;
+                const endDate = document.querySelector('#editJobForm input[name="endDate"]').value;
+                if (startDate && endDate) {
+                    loadEditDeviceTree(jobID);
+                }
+            }
+        } else {
+            section.style.display = 'none';
+            button.innerHTML = '<i class="bi bi-eye"></i> Show Device Tree';
+        }
+    }
+
+    // ===== DEVICE TREE EXPAND/COLLAPSE FUNCTIONS =====
+
+    function expandAllEditTreeNodes() {
+        const treeContainer = document.getElementById('editDeviceTreeContainer');
+        if (!treeContainer) return;
+
+        // Find all tree content divs that are collapsed
+        const collapsedNodes = treeContainer.querySelectorAll('.tree-content[style*="display: none"]');
+        const collapsedChevrons = treeContainer.querySelectorAll('.tree-chevron:not(.expanded)');
+
+        collapsedNodes.forEach(node => {
+            node.style.display = 'block';
+        });
+
+        collapsedChevrons.forEach(chevron => {
+            chevron.classList.add('expanded');
+        });
+
+        console.log(`Expanded ${collapsedNodes.length} device tree nodes`);
+    }
+
+    function collapseAllEditTreeNodes() {
+        const treeContainer = document.getElementById('editDeviceTreeContainer');
+        if (!treeContainer) return;
+
+        // Find all tree content divs that are expanded
+        const expandedNodes = treeContainer.querySelectorAll('.tree-content[style*="display: block"], .tree-content:not([style*="display: none"])');
+        const expandedChevrons = treeContainer.querySelectorAll('.tree-chevron.expanded');
+
+        expandedNodes.forEach(node => {
+            node.style.display = 'none';
+        });
+
+        expandedChevrons.forEach(chevron => {
+            chevron.classList.remove('expanded');
+        });
+
+        console.log(`Collapsed ${expandedNodes.length} device tree nodes`);
     }
     </script>
     

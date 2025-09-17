@@ -918,32 +918,40 @@
                             </div>
                             {{end}}
 
-                            <!-- File Attachments Section -->
-                            <div class="manual-input-section" style="margin-top: 20px;">
-                                <h6 style="margin-bottom: 16px;"><i class="bi bi-paperclip"></i> File Attachments</h6>
+                        </div>
+                    </div>
+                </div>
 
-                                <!-- Upload Area -->
-                                <div class="file-upload-area" style="border: 2px dashed var(--surface-3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 16px;"
-                                     onclick="document.getElementById('scanFileInput').click();">
-                                    <i class="bi bi-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 6px;"></i>
-                                    <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Click to select files or drag and drop</p>
-                                    <small style="color: var(--text-muted); font-size: 12px;">Max 50MB per file</small>
-                                </div>
-                                <input type="file" id="scanFileInput" multiple accept="*/*" style="display: none;" onchange="handleScanFileSelection(this)">
+                <!-- File Attachments Card -->
+                <div class="rc-col">
+                    <div class="rc-card">
+                        <div class="rc-card-header">
+                            <h3 class="rc-card-title">
+                                <i class="bi bi-paperclip"></i> File Attachments
+                            </h3>
+                        </div>
+                        <div class="rc-card-body">
+                            <!-- Upload Area -->
+                            <div class="file-upload-area" style="border: 2px dashed var(--surface-3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 16px;"
+                                 onclick="document.getElementById('scanFileInput').click();">
+                                <i class="bi bi-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 6px;"></i>
+                                <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Click to select files or drag and drop</p>
+                                <small style="color: var(--text-muted); font-size: 12px;">Max 50MB per file</small>
+                            </div>
+                            <input type="file" id="scanFileInput" multiple accept="*/*" style="display: none;" onchange="handleScanFileSelection(this)">
 
-                                <div id="scanSelectedFilesList" style="display: none;">
-                                    <h6 style="margin-bottom: 8px; font-size: 14px;">Selected Files:</h6>
-                                    <div id="scanSelectedFilesContainer"></div>
-                                    <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="uploadScanFiles()" style="margin-top: 8px;">
-                                        <i class="bi bi-upload"></i> Upload Files
-                                    </button>
-                                </div>
+                            <div id="scanSelectedFilesList" style="display: none;">
+                                <h6 style="margin-bottom: 8px; font-size: 14px;">Selected Files:</h6>
+                                <div id="scanSelectedFilesContainer"></div>
+                                <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="uploadScanFiles()" style="margin-top: 8px;">
+                                    <i class="bi bi-upload"></i> Upload Files
+                                </button>
+                            </div>
 
-                                <!-- Current Attachments -->
-                                <div id="scanCurrentAttachments" style="margin-top: 16px;">
-                                    <h6 style="margin-bottom: 8px; font-size: 14px;">Current Attachments:</h6>
-                                    <div id="scanAttachmentsList">Loading...</div>
-                                </div>
+                            <!-- Current Attachments -->
+                            <div id="scanCurrentAttachments" style="margin-top: 16px;">
+                                <h6 style="margin-bottom: 8px; font-size: 14px;">Current Attachments:</h6>
+                                <div id="scanAttachmentsList">Loading...</div>
                             </div>
                         </div>
                     </div>
