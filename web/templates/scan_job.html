@@ -688,8 +688,7 @@
 
         <!-- Scanner Tab Content -->
         <div id="scanner-content" class="scan-tab-content active">
-            <div class="rc-grid scanner-layout">
-            <!-- Scanner Column -->
+            <!-- Full width scanner layout -->
             <div>
                 <div class="rc-card" style="border: 2px solid var(--accent-color); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
                     <div class="rc-card-header" style="background: linear-gradient(135deg, var(--accent-color), #8B0000); color: white;">
@@ -786,74 +785,6 @@
                             </small>
                         </div>
 
-                        <!-- Rental Equipment Section -->
-                        <div class="manual-input-section" style="margin-top: 20px;">
-                            <h6 style="margin-bottom: 16px;"><i class="bi bi-box-seam"></i> Rental Equipment</h6>
-
-                            <!-- Add Rental Equipment -->
-                            <div style="margin-bottom: 20px;">
-                                <select id="rental-equipment-select" class="rc-input" style="margin-bottom: 8px;">
-                                    <option value="">Select rental equipment...</option>
-                                    {{range .rentalEquipment}}
-                                    {{if .IsActive}}
-                                    <option value="{{.EquipmentID}}" data-price="{{.RentalPrice}}" data-name="{{.ProductName}}" data-supplier="{{.SupplierName}}">
-                                        {{.ProductName}} - {{.SupplierName}} (€{{printf "%.2f" .RentalPrice}}/day)
-                                    </option>
-                                    {{end}}
-                                    {{end}}
-                                </select>
-
-                                <div class="rc-grid rc-grid-cols-2 rc-grid-gap-sm" style="margin-bottom: 8px;">
-                                    <div>
-                                        <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Quantity</label>
-                                        <input type="number" id="rental-quantity" class="rc-input" placeholder="1" value="1" min="1">
-                                    </div>
-                                    <div>
-                                        <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Days</label>
-                                        <input type="number" id="rental-days" class="rc-input" placeholder="1" value="1" min="1">
-                                    </div>
-                                </div>
-
-                                <input type="text" id="rental-notes" class="rc-input" placeholder="Notes (optional)" style="margin-bottom: 8px;">
-
-                                <div class="rc-flex rc-flex-gap-sm">
-                                    <button class="rc-btn rc-btn-primary" onclick="addRentalEquipment()">
-                                        <i class="bi bi-plus-lg"></i> Add Rental
-                                    </button>
-                                    <button class="rc-btn rc-btn-outline" onclick="showNewRentalModal()">
-                                        <i class="bi bi-plus-circle"></i> New Equipment
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Current Rental Equipment -->
-                            {{if .jobRentalEquipment}}
-                            <div class="rc-card rc-mb-md" style="border: 1px solid var(--surface-3);">
-                                <div class="rc-card-header" style="padding: 12px 16px; background: var(--surface-2);">
-                                    <h6 style="margin: 0; font-size: 14px;"><i class="bi bi-list-check"></i> Current Rental Equipment</h6>
-                                </div>
-                                <div class="rc-card-body" style="padding: 16px;">
-                                    <div id="rental-equipment-list">
-                                        {{range .jobRentalEquipment}}
-                                        <div class="rental-equipment-item rc-flex rc-flex-between rc-flex-align-center rc-mb-sm" data-equipment-id="{{.EquipmentID}}" style="padding: 12px; border: 1px solid var(--surface-3); border-radius: 8px; background: var(--surface-1);">
-                                            <div>
-                                                <div style="font-weight: 600; color: var(--text-primary);">{{.Equipment.ProductName}}</div>
-                                                <div style="font-size: 12px; color: var(--text-muted);">{{.Equipment.SupplierName}} • {{.Quantity}}x for {{.DaysUsed}} days</div>
-                                                {{if .Notes}}<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">{{.Notes}}</div>{{end}}
-                                            </div>
-                                            <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
-                                                <span style="font-weight: 600; color: var(--accent-electric);">€{{printf "%.2f" .TotalCost}}</span>
-                                                <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="removeRentalEquipment({{.EquipmentID}})" title="Remove">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {{end}}
-                                    </div>
-                                </div>
-                            </div>
-                            {{end}}
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1016,6 +947,78 @@
                             {{end}}
 
                         </div>
+                    </div>
+                </div>
+
+                <!-- Rental Equipment Section -->
+                <div class="rc-card rc-mb-md">
+                    <div class="rc-card-header">
+                        <h6><i class="bi bi-box-seam"></i> Rental Equipment</h6>
+                    </div>
+                    <div class="rc-card-body">
+                        <!-- Add Rental Equipment -->
+                        <div style="margin-bottom: 20px;">
+                            <select id="rental-equipment-select" class="rc-input" style="margin-bottom: 8px;">
+                                <option value="">Select rental equipment...</option>
+                                {{range .rentalEquipment}}
+                                {{if .IsActive}}
+                                <option value="{{.EquipmentID}}" data-price="{{.RentalPrice}}" data-name="{{.ProductName}}" data-supplier="{{.SupplierName}}">
+                                    {{.ProductName}} - {{.SupplierName}} (€{{printf "%.2f" .RentalPrice}}/day)
+                                </option>
+                                {{end}}
+                                {{end}}
+                            </select>
+
+                            <div class="rc-grid rc-grid-cols-2 rc-grid-gap-sm" style="margin-bottom: 8px;">
+                                <div>
+                                    <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Quantity</label>
+                                    <input type="number" id="rental-quantity" class="rc-input" placeholder="1" value="1" min="1">
+                                </div>
+                                <div>
+                                    <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Days</label>
+                                    <input type="number" id="rental-days" class="rc-input" placeholder="1" value="1" min="1">
+                                </div>
+                            </div>
+
+                            <input type="text" id="rental-notes" class="rc-input" placeholder="Notes (optional)" style="margin-bottom: 8px;">
+
+                            <div class="rc-flex rc-flex-gap-sm">
+                                <button class="rc-btn rc-btn-primary" onclick="addRentalEquipment()">
+                                    <i class="bi bi-plus-lg"></i> Add Rental
+                                </button>
+                                <button class="rc-btn rc-btn-outline" onclick="showNewRentalModal()">
+                                    <i class="bi bi-plus-circle"></i> New Equipment
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Current Rental Equipment -->
+                        {{if .jobRentalEquipment}}
+                        <div class="rc-card rc-mb-md" style="border: 1px solid var(--surface-3);">
+                            <div class="rc-card-header" style="padding: 12px 16px; background: var(--surface-2);">
+                                <h6 style="margin: 0; font-size: 14px;"><i class="bi bi-list-check"></i> Current Rental Equipment</h6>
+                            </div>
+                            <div class="rc-card-body" style="padding: 16px;">
+                                <div id="rental-equipment-list">
+                                    {{range .jobRentalEquipment}}
+                                    <div class="rental-equipment-item rc-flex rc-flex-between rc-flex-align-center rc-mb-sm" data-equipment-id="{{.EquipmentID}}" style="padding: 12px; border: 1px solid var(--surface-3); border-radius: 8px; background: var(--surface-1);">
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">{{.Equipment.ProductName}}</div>
+                                            <div style="font-size: 12px; color: var(--text-muted);">{{.Equipment.SupplierName}} • {{.Quantity}}x for {{.DaysUsed}} days</div>
+                                            {{if .Notes}}<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">{{.Notes}}</div>{{end}}
+                                        </div>
+                                        <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                                            <span style="font-weight: 600; color: var(--accent-electric);">€{{printf "%.2f" .TotalCost}}</span>
+                                            <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="removeRentalEquipment({{.EquipmentID}})" title="Remove">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </div>
+                        </div>
+                        {{end}}
                     </div>
                 </div>
                 </div>
