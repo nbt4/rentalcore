@@ -234,10 +234,17 @@ func (h *ScannerHandler) ScanDevice(c *gin.Context) {
 	fmt.Printf("🚨 DEBUG SCANNER: Job %d dates: %v to %v\n", req.JobID, job.StartDate, job.EndDate)
 
 	// Check if device is available for this job's date range
+	fmt.Printf("🔍 DEBUG SCANNER: Checking availability for device %s, job %d, dates: %v to %v\n",
+		device.DeviceID, req.JobID, job.StartDate, job.EndDate)
+
 	isAvailable, conflictingAssignment, err := h.deviceRepo.IsDeviceAvailableForJob(device.DeviceID, req.JobID, job.StartDate, job.EndDate)
 	if err != nil {
 		fmt.Printf("❌ DEBUG SCANNER: Availability check error: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check device availability"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to check device availability",
+			"details": err.Error(),
+			"device_id": device.DeviceID,
+		})
 		return
 	}
 
