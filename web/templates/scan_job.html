@@ -884,57 +884,15 @@
                     </div>
                     <div class="rc-card-body">
                         <div class="device-list" id="device-list">
-                            {{if .productGroups}}
-                            <div class="rc-accordion" id="deviceAccordion">
-                                {{range $productName, $group := .productGroups}}
-                                {{$productId := "unknown"}}
-                                {{if $group.Product}}{{$productId = printf "%d" $group.Product.ProductID}}{{end}}
-                                <div class="rc-accordion-item product-group">
-                                    <h2 class="rc-accordion-header" id="heading-product-{{$productId}}">
-                                        <button class="rc-accordion-button collapsed" type="button"
-                                                onclick="toggleAccordionWithLazyLoad('collapse-product-{{$productId}}', '{{$productName}}')"
-                                                aria-expanded="false"
-                                                aria-controls="collapse-product-{{$productId}}"
-                                                style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; text-align: left !important;">
-                                            <div class="product-info" style="text-align: left; flex: 1 1 auto;">
-                                                <div class="product-name">{{$productName}}</div>
-                                                {{if and $group.Product $group.Product.ItemCostPerDay}}
-                                                <small class="rc-text-muted">€{{printf "%.2f" (derefFloat $group.Product.ItemCostPerDay)}} per day</small>
-                                                {{end}}
-                                            </div>
-                                            <span class="rc-badge rc-badge-secondary" style="margin-left: 20px; flex: 0 0 auto;">{{$group.Count}} devices</span>
-                                        </button>
-                                    </h2>
-                                    <div id="collapse-product-{{$productId}}"
-                                         class="rc-accordion-collapse collapse"
-                                         aria-labelledby="heading-product-{{$productId}}"
-                                         data-product-name="{{$productName}}"
-                                         data-loaded="false">
-                                        <div class="rc-accordion-body">
-                                            <div class="device-loading" style="text-align: center; padding: 20px; color: var(--text-muted);">
-                                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: 8px;"></i>
-                                                Loading devices...
-                                            </div>
-                                            <div class="device-list-container" style="display: none;">
-                                                <!-- Devices will be loaded here via AJAX -->
-                                            </div>
-                                            <div class="device-pagination" style="display: none; text-align: center; margin-top: 16px;">
-                                                <button class="rc-btn rc-btn-outline rc-btn-sm load-more-devices" data-page="1">
-                                                    Load More Devices
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{end}}
+                            <!-- ULTRA-FAST LOADING: Load device groups via AJAX for instant page load -->
+                            <div class="device-groups-loading" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 1.5rem; margin-bottom: 12px;"></i>
+                                <div>Loading device groups...</div>
+                                <small style="color: var(--text-muted); margin-top: 8px; display: block;">{{.totalDevices}} total devices</small>
                             </div>
-                            {{else}}
-                            <div class="rc-text-center rc-py-xl" id="empty-state">
-                                <i class="bi bi-qr-code rc-text-4xl rc-text-muted"></i>
-                                <h5 class="rc-mt-md rc-text-muted">No devices scanned yet</h5>
-                                <p class="rc-text-muted">Start scanning to see results here</p>
+                            <div class="rc-accordion" id="deviceAccordion" style="display: none;">
+                                <!-- Device groups will be loaded here via AJAX -->
                             </div>
-                            {{end}}
 
                         </div>
                     </div>
@@ -1113,13 +1071,13 @@
             console.log('QuaggaJS available:', typeof Quagga !== 'undefined');
             console.log('Navigator mediaDevices available:', !!navigator.mediaDevices);
             console.log('getUserMedia available:', !!navigator.mediaDevices?.getUserMedia);
-            
+
             // Force close any open modals on page load
             const modal = document.getElementById('priceModal');
             if (modal) {
                 modal.style.display = 'none';
             }
-            
+
             // TARGETED fix - only remove the specific > text node
             function removeStrayChevron() {
                 // Remove any standalone > text nodes
@@ -1129,7 +1087,7 @@
                     null,
                     false
                 );
-                
+
                 let node;
                 while (node = walker.nextNode()) {
                     if (node.textContent && node.textContent.trim() === '>') {
@@ -1139,10 +1097,13 @@
                     }
                 }
             }
-            
+
             // Run once to remove the stray >
             setTimeout(removeStrayChevron, 50);
-            
+
+            // ULTRA-FAST LOADING: Load device groups immediately
+            loadDeviceGroups();
+
             initializeScanner();
             setupEventListeners();
             initializeBulkMode();
@@ -3212,10 +3173,88 @@
             }
         }
 
-        // === PERFORMANCE OPTIMIZATION: LAZY LOADING ===
+        // === ULTRA-FAST PERFORMANCE OPTIMIZATION ===
 
         // Cache for loaded device data
         const deviceCache = new Map();
+        let deviceGroupsLoaded = false;
+
+        // Load device groups via AJAX for instant page load
+        async function loadDeviceGroups() {
+            const loadingDiv = document.querySelector('.device-groups-loading');
+            const accordion = document.getElementById('deviceAccordion');
+
+            try {
+                const jobId = window.location.pathname.split('/').pop();
+                const response = await fetch(`/scan/${jobId}/groups/ajax`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load device groups');
+                }
+
+                const data = await response.json();
+
+                // Build accordion HTML
+                let accordionHTML = '';
+                data.groups.forEach((group, index) => {
+                    const productId = group.productID || 'unknown';
+                    const priceText = group.pricePerDay > 0 ? `€${group.pricePerDay.toFixed(2)} per day` : '';
+
+                    accordionHTML += `
+                        <div class="rc-accordion-item product-group">
+                            <h2 class="rc-accordion-header" id="heading-product-${productId}">
+                                <button class="rc-accordion-button collapsed" type="button"
+                                        onclick="toggleAccordionWithLazyLoad('collapse-product-${productId}', '${group.productName}')"
+                                        aria-expanded="false"
+                                        aria-controls="collapse-product-${productId}"
+                                        style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; text-align: left !important;">
+                                    <div class="product-info" style="text-align: left; flex: 1 1 auto;">
+                                        <div class="product-name">${group.productName}</div>
+                                        ${priceText ? `<small class="rc-text-muted">${priceText}</small>` : ''}
+                                    </div>
+                                    <span class="rc-badge rc-badge-secondary" style="margin-left: 20px; flex: 0 0 auto;">${group.count} devices</span>
+                                </button>
+                            </h2>
+                            <div id="collapse-product-${productId}"
+                                 class="rc-accordion-collapse collapse"
+                                 aria-labelledby="heading-product-${productId}"
+                                 data-product-name="${group.productName}"
+                                 data-loaded="false">
+                                <div class="rc-accordion-body">
+                                    <div class="device-loading" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                                        <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: 8px;"></i>
+                                        Loading devices...
+                                    </div>
+                                    <div class="device-list-container" style="display: none;">
+                                        <!-- Devices will be loaded here via AJAX -->
+                                    </div>
+                                    <div class="device-pagination" style="display: none; text-align: center; margin-top: 16px;">
+                                        <button class="rc-btn rc-btn-outline rc-btn-sm load-more-devices" data-page="1">
+                                            Load More Devices
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Show accordion and hide loading
+                accordion.innerHTML = accordionHTML;
+                loadingDiv.style.display = 'none';
+                accordion.style.display = 'block';
+                deviceGroupsLoaded = true;
+
+            } catch (error) {
+                console.error('Error loading device groups:', error);
+                loadingDiv.innerHTML = `
+                    <div style="color: var(--danger); text-align: center;">
+                        Failed to load device groups.
+                        <button onclick="loadDeviceGroups()" class="rc-btn rc-btn-link rc-btn-sm">Retry</button>
+                    </div>
+                `;
+            }
+        }
 
         // Toggle accordion with lazy loading
         function toggleAccordionWithLazyLoad(accordionId, productName) {
@@ -3343,45 +3382,114 @@
             }
         });
 
-        // === MODAL PERFORMANCE OPTIMIZATION ===
+        // === ULTRA-FAST MODAL OPTIMIZATION ===
 
-        // Pre-initialize modal elements for faster access
+        // Pre-cache ALL modal elements and forms
         let priceModal = null;
         let newRentalModal = null;
+        let modalElements = {};
+        let formCache = {};
 
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize modals with aggressive optimization
+        function initializeModals() {
             priceModal = document.getElementById('priceModal');
             newRentalModal = document.getElementById('newRentalModal');
 
-            // Pre-cache modal elements
-            if (priceModal) {
-                priceModal.style.willChange = 'opacity, transform';
+            // Cache all modal elements
+            modalElements = {
+                price: {
+                    modal: priceModal,
+                    deviceId: priceModal?.querySelector('#modal-device-id'),
+                    deviceName: priceModal?.querySelector('#modal-device-name'),
+                    customPrice: priceModal?.querySelector('#customPrice'),
+                    confirmBtn: priceModal?.querySelector('#confirm-assign'),
+                    defaultPriceInfo: priceModal?.querySelector('#default-price-info')
+                },
+                rental: {
+                    modal: newRentalModal,
+                    form: newRentalModal?.querySelector('form')
+                }
+            };
+
+            // Pre-optimize for GPU acceleration
+            [priceModal, newRentalModal].forEach(modal => {
+                if (modal) {
+                    modal.style.willChange = 'opacity, transform';
+                    modal.style.transform = 'scale(0.95)';
+                    modal.style.opacity = '0';
+                    modal.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+                }
+            });
+
+            // Pre-cache form data
+            cacheFormElements();
+        }
+
+        // Cache form elements for instant access
+        function cacheFormElements() {
+            const rentalForm = document.getElementById('newRentalForm');
+            if (rentalForm) {
+                formCache.rental = {
+                    form: rentalForm,
+                    productName: rentalForm.querySelector('[name="productName"]'),
+                    supplierName: rentalForm.querySelector('[name="supplierName"]'),
+                    rentalPrice: rentalForm.querySelector('[name="rentalPrice"]'),
+                    category: rentalForm.querySelector('[name="category"]'),
+                    description: rentalForm.querySelector('[name="description"]'),
+                    notes: rentalForm.querySelector('[name="notes"]')
+                };
             }
-            if (newRentalModal) {
-                newRentalModal.style.willChange = 'opacity, transform';
+        }
+
+        // Ultra-fast modal show with instant rendering
+        function showModalFast(modalType, data = {}) {
+            const elements = modalElements[modalType];
+            if (!elements?.modal) return;
+
+            const modal = elements.modal;
+
+            // Pre-populate data BEFORE showing
+            if (modalType === 'price' && data) {
+                if (elements.deviceId) elements.deviceId.textContent = data.deviceId || '-';
+                if (elements.deviceName) elements.deviceName.textContent = data.deviceName || '-';
+                if (elements.customPrice) elements.customPrice.value = '';
+                if (elements.defaultPriceInfo) {
+                    elements.defaultPriceInfo.textContent = data.defaultPrice ?
+                        `Default price: €${data.defaultPrice}` : 'Default price will be used if left empty';
+                }
             }
+
+            // Show with GPU acceleration
+            modal.style.display = 'block';
+            requestAnimationFrame(() => {
+                modal.style.opacity = '1';
+                modal.style.transform = 'scale(1)';
+            });
+
+            // Focus first input for immediate interaction
+            if (modalType === 'price' && elements.customPrice) {
+                setTimeout(() => elements.customPrice.focus(), 100);
+            }
+        }
+
+        // Ultra-fast modal hide
+        function hideModalFast(modalType) {
+            const elements = modalElements[modalType];
+            if (!elements?.modal) return;
+
+            const modal = elements.modal;
+            modal.style.opacity = '0';
+            modal.style.transform = 'scale(0.95)';
+
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 150);
+        }
+
+        // Call initialization after DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeModals, 0); // Run after other DOM operations
         });
-
-        // Fast modal show/hide with GPU acceleration
-        function showModal(modalElement) {
-            if (modalElement) {
-                modalElement.style.display = 'block';
-                requestAnimationFrame(() => {
-                    modalElement.style.opacity = '1';
-                    modalElement.style.transform = 'scale(1)';
-                });
-            }
-        }
-
-        function hideModal(modalElement) {
-            if (modalElement) {
-                modalElement.style.opacity = '0';
-                modalElement.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    modalElement.style.display = 'none';
-                }, 150);
-            }
-        }
 
         // === VIRTUAL SCROLLING FOR LARGE LISTS ===
 

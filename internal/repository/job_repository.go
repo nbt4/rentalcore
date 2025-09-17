@@ -619,19 +619,23 @@ type ProductSummary struct {
 	Count       int
 }
 
-// GetJobDeviceProductSummary returns summary of devices grouped by product (performance optimized)
+// GetJobDeviceProductSummary returns summary of devices grouped by product (ultra-fast)
 func (r *JobRepository) GetJobDeviceProductSummary(jobID uint) ([]ProductSummary, error) {
 	var summaries []ProductSummary
 
-	// Query to get device count grouped by product
+	// Ultra-fast query with minimal JOINs and optimized for performance
 	rows, err := r.db.Raw(`
-		SELECT p.name as product_name, COUNT(jd.deviceID) as count
+		SELECT
+			COALESCE(p.name, 'Unknown Product') as product_name,
+			COUNT(*) as count,
+			p.productID,
+			p.itemcostperday
 		FROM jobdevices jd
 		LEFT JOIN devices d ON jd.deviceID = d.deviceID
 		LEFT JOIN products p ON d.productID = p.productID
 		WHERE jd.jobID = ?
-		GROUP BY p.productID, p.name
-		ORDER BY p.name
+		GROUP BY p.productID, p.name, p.itemcostperday
+		ORDER BY count DESC, p.name
 	`, jobID).Rows()
 
 	if err != nil {
@@ -642,20 +646,26 @@ func (r *JobRepository) GetJobDeviceProductSummary(jobID uint) ([]ProductSummary
 	for rows.Next() {
 		var productName string
 		var count int
+		var productID *uint
+		var itemCostPerDay *float64
 
-		if err := rows.Scan(&productName, &count); err != nil {
+		if err := rows.Scan(&productName, &count, &productID, &itemCostPerDay); err != nil {
 			return nil, err
 		}
 
-		// Get the product details if needed
-		var product models.Product
-		if productName != "" {
-			r.db.Where("name = ?", productName).First(&product)
+		// Create lightweight product object without additional DB query
+		var product *models.Product
+		if productID != nil {
+			product = &models.Product{
+				ProductID:      *productID,
+				Name:           productName,
+				ItemCostPerDay: itemCostPerDay,
+			}
 		}
 
 		summaries = append(summaries, ProductSummary{
 			ProductName: productName,
-			Product:     &product,
+			Product:     product,
 			Count:       count,
 		})
 	}

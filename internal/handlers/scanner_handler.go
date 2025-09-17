@@ -117,32 +117,16 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 		}
 	}
 
-	// Get total device count for this job (performance optimized)
+	// Get ONLY total device count - no other queries for maximum speed
 	totalDevices, err := h.jobRepo.GetJobDeviceCount(uint(jobID))
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
 
-	// Only load device summary data for initial page load (performance optimization)
-	// Actual device lists will be loaded via AJAX when accordion sections are opened
+	// ULTRA-FAST MODE: Load absolutely nothing upfront
+	// All data will be loaded on-demand via AJAX
 	productGroups := make(map[string]*ProductGroup)
-
-	// Get product summaries only (count per product, no individual devices)
-	productSummaries, err := h.jobRepo.GetJobDeviceProductSummary(uint(jobID))
-	if err != nil {
-		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
-		return
-	}
-
-	// Create lightweight product groups with just counts
-	for _, summary := range productSummaries {
-		productGroups[summary.ProductName] = &ProductGroup{
-			Product: summary.Product,
-			Devices: []models.JobDevice{}, // Empty - will be loaded via AJAX
-			Count:   summary.Count,
-		}
-	}
 
 	// Get available cases for case scanning functionality
 	cases, err := h.caseRepo.List(&models.FilterParams{})
@@ -540,5 +524,48 @@ func (h *ScannerHandler) GetJobDevicesAJAX(c *gin.Context) {
 		"page":    page,
 		"limit":   limit,
 		"count":   len(devices),
+	})
+}
+
+// GetJobDeviceGroupsAJAX handles AJAX requests for loading device groups (ultra-fast)
+func (h *ScannerHandler) GetJobDeviceGroupsAJAX(c *gin.Context) {
+	jobIDStr := c.Param("jobid")
+
+	jobID, err := strconv.Atoi(jobIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
+		return
+	}
+
+	// Get product summaries only (super fast query)
+	productSummaries, err := h.jobRepo.GetJobDeviceProductSummary(uint(jobID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load device groups"})
+		return
+	}
+
+	// Convert to lightweight format for JSON
+	groups := make([]map[string]interface{}, 0)
+	for _, summary := range productSummaries {
+		group := map[string]interface{}{
+			"productName": summary.ProductName,
+			"count":       summary.Count,
+			"productID":   "",
+			"pricePerDay": 0.0,
+		}
+
+		if summary.Product != nil {
+			group["productID"] = summary.Product.ProductID
+			if summary.Product.ItemCostPerDay != nil {
+				group["pricePerDay"] = *summary.Product.ItemCostPerDay
+			}
+		}
+
+		groups = append(groups, group)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"groups": groups,
+		"total":  len(groups),
 	})
 }
