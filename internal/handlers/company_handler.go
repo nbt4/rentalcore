@@ -570,12 +570,16 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	}
 
 	// Get existing company settings or create new
+	log.Printf("UpdateSMTPConfig: Getting company settings...")
 	company, err := h.getCompanySettings()
 	if err != nil {
+		log.Printf("UpdateSMTPConfig: No existing company settings found, creating new: %v", err)
 		company = &models.CompanySettings{
 			CompanyName: "Ihre Firma GmbH",
 			CreatedAt:   time.Now(),
 		}
+	} else {
+		log.Printf("UpdateSMTPConfig: Found existing company settings with ID: %d", company.ID)
 	}
 
 	// Update email settings
@@ -597,10 +601,13 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	company.UpdatedAt = time.Now()
 
 	// Save to database
+	log.Printf("UpdateSMTPConfig: Saving to database, company ID: %d", company.ID)
 	var result *gorm.DB
 	if company.ID == 0 {
+		log.Printf("UpdateSMTPConfig: Creating new company settings record")
 		result = h.db.Create(company)
 	} else {
+		log.Printf("UpdateSMTPConfig: Updating existing company settings record")
 		result = h.db.Save(company)
 	}
 
@@ -612,6 +619,8 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 		})
 		return
 	}
+
+	log.Printf("UpdateSMTPConfig: Database save successful, affected rows: %d", result.RowsAffected)
 
 	log.Printf("SMTP config updated successfully by user %s: %s:%d", user.Username, request.SMTPHost, request.SMTPPort)
 

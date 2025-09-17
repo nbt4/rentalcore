@@ -377,7 +377,8 @@
                 smtp_from_name: formData.get('smtp_from_name'),
                 smtp_use_tls: formData.get('smtp_use_tls') === 'on'
             };
-            
+
+            console.log('Sending data:', data);
             showStatus('Saving email configuration...', 'info');
             
             fetch('/api/settings/smtp', {
@@ -387,8 +388,13 @@
                 },
                 body: JSON.stringify(data)
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 if (data.success) {
                     showStatus(data.message, 'success');
                     // Clear password field after successful save
