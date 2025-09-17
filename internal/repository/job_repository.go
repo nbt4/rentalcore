@@ -626,7 +626,7 @@ func (r *JobRepository) GetJobDeviceProductSummary(jobID uint) ([]ProductSummary
 	// Query to get device count grouped by product
 	rows, err := r.db.Raw(`
 		SELECT p.name as product_name, COUNT(jd.deviceID) as count
-		FROM job_devices jd
+		FROM jobdevices jd
 		LEFT JOIN devices d ON jd.deviceID = d.deviceID
 		LEFT JOIN products p ON d.productID = p.productID
 		WHERE jd.jobID = ?
@@ -672,11 +672,11 @@ func (r *JobRepository) GetJobDevicesPaginated(jobID uint, productName string, p
 
 	// Filter by product if specified
 	if productName != "" && productName != "Unknown Product" {
-		query = query.Joins("JOIN devices d ON job_devices.deviceID = d.deviceID").
+		query = query.Joins("JOIN devices d ON jobdevices.deviceID = d.deviceID").
 			Joins("JOIN products p ON d.productID = p.productID").
 			Where("p.name = ?", productName)
 	} else if productName == "Unknown Product" {
-		query = query.Joins("LEFT JOIN devices d ON job_devices.deviceID = d.deviceID").
+		query = query.Joins("LEFT JOIN devices d ON jobdevices.deviceID = d.deviceID").
 			Where("d.productID IS NULL")
 	}
 
