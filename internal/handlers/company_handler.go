@@ -332,7 +332,6 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 		// Create new company settings if none exist
 		company = &models.CompanySettings{
 			CompanyName: "Ihre Firma GmbH",
-			CreatedAt:   time.Now(),
 		}
 	}
 
@@ -576,7 +575,6 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 		log.Printf("UpdateSMTPConfig: No existing company settings found, creating new: %v", err)
 		company = &models.CompanySettings{
 			CompanyName: "Ihre Firma GmbH",
-			CreatedAt:   time.Now(),
 		}
 	} else {
 		log.Printf("UpdateSMTPConfig: Found existing company settings with ID: %d", company.ID)
@@ -597,10 +595,8 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	if request.SMTPPassword != "" {
 		company.SMTPPassword = &request.SMTPPassword
 	}
-	
-	company.UpdatedAt = time.Now()
 
-	// Save to database
+	// Save to database (GORM will handle UpdatedAt automatically)
 	log.Printf("UpdateSMTPConfig: Saving to database, company ID: %d", company.ID)
 	var result *gorm.DB
 	if company.ID == 0 {

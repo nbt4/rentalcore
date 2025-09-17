@@ -46,9 +46,9 @@ type CompanySettings struct {
 	SMTPFromEmail *string `gorm:"column:smtp_from_email" json:"smtpFromEmail"`
 	SMTPFromName  *string `gorm:"column:smtp_from_name" json:"smtpFromName"`
 	SMTPUseTLS    *bool   `gorm:"column:smtp_use_tls" json:"smtpUseTLS"`
-	
-	CreatedAt    time.Time `gorm:"column:created_at" json:"createdAt"`
-	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updatedAt"`
+
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt    time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 }
 
 func (CompanySettings) TableName() string {
