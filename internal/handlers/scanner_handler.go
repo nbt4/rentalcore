@@ -13,18 +13,20 @@ import (
 )
 
 type ScannerHandler struct {
-	deviceRepo   *repository.DeviceRepository
-	jobRepo      *repository.JobRepository
-	customerRepo *repository.CustomerRepository
-	caseRepo     *repository.CaseRepository
+	deviceRepo        *repository.DeviceRepository
+	jobRepo           *repository.JobRepository
+	customerRepo      *repository.CustomerRepository
+	caseRepo          *repository.CaseRepository
+	rentalEquipmentRepo *repository.RentalEquipmentRepository
 }
 
-func NewScannerHandler(jobRepo *repository.JobRepository, deviceRepo *repository.DeviceRepository, customerRepo *repository.CustomerRepository, caseRepo *repository.CaseRepository) *ScannerHandler {
+func NewScannerHandler(jobRepo *repository.JobRepository, deviceRepo *repository.DeviceRepository, customerRepo *repository.CustomerRepository, caseRepo *repository.CaseRepository, rentalEquipmentRepo *repository.RentalEquipmentRepository) *ScannerHandler {
 	return &ScannerHandler{
-		deviceRepo:   deviceRepo,
-		jobRepo:      jobRepo,
-		customerRepo: customerRepo,
-		caseRepo:     caseRepo,
+		deviceRepo:        deviceRepo,
+		jobRepo:           jobRepo,
+		customerRepo:      customerRepo,
+		caseRepo:          caseRepo,
+		rentalEquipmentRepo: rentalEquipmentRepo,
 	}
 }
 
@@ -151,15 +153,33 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 		cases = []models.Case{}
 	}
 
+	// Get available rental equipment
+	var rentalEquipment []models.RentalEquipment
+	err = h.rentalEquipmentRepo.GetAllRentalEquipment(&rentalEquipment)
+	if err != nil {
+		// If we can't get rental equipment, continue without them - don't fail the page
+		rentalEquipment = []models.RentalEquipment{}
+	}
+
+	// Get existing job rental equipment
+	var jobRentalEquipment []models.JobRentalEquipment
+	err = h.rentalEquipmentRepo.GetJobRentalEquipment(uint(jobID), &jobRentalEquipment)
+	if err != nil {
+		// If we can't get job rental equipment, continue without them - don't fail the page
+		jobRentalEquipment = []models.JobRentalEquipment{}
+	}
+
 	c.HTML(http.StatusOK, "scan_job.html", gin.H{
-		"title":           "Scanning Job #" + strconv.FormatUint(jobID, 10),
-		"job":             job,
-		"assignedDevices": assignedDevices,
-		"productGroups":   productGroups,
-		"totalDevices":    totalDevices,
-		"DeviceCount":     totalDevices,  // Add DeviceCount for template compatibility
-		"cases":           cases,
-		"user":            user,
+		"title":              "Scanning Job #" + strconv.FormatUint(jobID, 10),
+		"job":                job,
+		"assignedDevices":    assignedDevices,
+		"productGroups":      productGroups,
+		"totalDevices":       totalDevices,
+		"DeviceCount":        totalDevices,  // Add DeviceCount for template compatibility
+		"cases":              cases,
+		"rentalEquipment":    rentalEquipment,
+		"jobRentalEquipment": jobRentalEquipment,
+		"user":               user,
 	})
 }
 
@@ -414,4 +434,69 @@ func (h *ScannerHandler) ScanCase(c *gin.Context) {
 		"error_count":   errorCount,
 		"results":       results,
 	})
+}
+
+// AddRentalToJob adds rental equipment to a job from the scan page
+func (h *ScannerHandler) AddRentalToJob(c *gin.Context) {
+	var request models.AddRentalToJobRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get rental price from equipment
+	var equipment models.RentalEquipment
+	err := h.rentalEquipmentRepo.GetRentalEquipmentByID(request.EquipmentID, &equipment)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Rental equipment not found"})
+		return
+	}
+
+	// Calculate total cost
+	totalCost := equipment.RentalPrice * float64(request.Quantity) * float64(request.DaysUsed)
+
+	jobRental := &models.JobRentalEquipment{
+		JobID:       request.JobID,
+		EquipmentID: request.EquipmentID,
+		Quantity:    request.Quantity,
+		DaysUsed:    request.DaysUsed,
+		TotalCost:   totalCost,
+		Notes:       request.Notes,
+	}
+
+	err = h.rentalEquipmentRepo.AddRentalToJob(jobRental)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to add rental to job: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":    "Rental equipment added to job successfully",
+		"jobRental":  jobRental,
+		"totalCost":  totalCost,
+		"equipment":  equipment,
+	})
+}
+
+// RemoveRentalFromJob removes rental equipment from a job
+func (h *ScannerHandler) RemoveRentalFromJob(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("jobId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
+		return
+	}
+
+	equipmentID, err := strconv.ParseUint(c.Param("equipmentId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid equipment ID"})
+		return
+	}
+
+	err = h.rentalEquipmentRepo.RemoveRentalFromJob(uint(jobID), uint(equipmentID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to remove rental from job: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Rental equipment removed from job successfully"})
 }

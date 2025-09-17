@@ -688,16 +688,74 @@
                         <!-- Manual Input -->
                         <div class="manual-input-section" style="margin-top: 20px;">
                             <h6 style="margin-bottom: 16px;"><i class="bi bi-keyboard"></i> Manual Input</h6>
-                            <div class="rc-input-group" style="margin-bottom: 20px;">
-                                <input type="text" id="manual-input" class="rc-input" 
-                                       placeholder="Type device ID (e.g. SUB1001)" autocomplete="off">
-                                <button class="rc-btn rc-btn-primary" onclick="processManualInput()" style="margin-left: 8px;">
+                            <div style="margin-bottom: 20px;">
+                                <input type="text" id="manual-input" class="rc-input"
+                                       placeholder="Type device ID (e.g. SUB1001)" autocomplete="off" style="margin-bottom: 8px;">
+                                <button class="rc-btn rc-btn-primary" onclick="processManualInput()">
                                     <i class="bi bi-plus-lg"></i> Add
                                 </button>
                             </div>
                             <small class="rc-text-muted rc-mt-sm rc-block">
                                 <i class="bi bi-info-circle"></i> Camera not working? Use https:// URL or localhost:9000
                             </small>
+                        </div>
+
+                        <!-- Rental Equipment Section -->
+                        <div class="manual-input-section" style="margin-top: 20px;">
+                            <h6 style="margin-bottom: 16px;"><i class="bi bi-box-seam"></i> Rental Equipment</h6>
+
+                            <!-- Add Rental Equipment -->
+                            <div style="margin-bottom: 20px;">
+                                <select id="rental-equipment-select" class="rc-input" style="margin-bottom: 8px;">
+                                    <option value="">Select rental equipment...</option>
+                                    {{range .rentalEquipment}}
+                                    {{if .IsActive}}
+                                    <option value="{{.EquipmentID}}" data-price="{{.RentalPrice}}" data-name="{{.ProductName}}" data-supplier="{{.SupplierName}}">
+                                        {{.ProductName}} - {{.SupplierName}} (€{{printf "%.2f" .RentalPrice}}/day)
+                                    </option>
+                                    {{end}}
+                                    {{end}}
+                                </select>
+
+                                <div class="rc-grid rc-grid-cols-2 rc-grid-gap-sm" style="margin-bottom: 8px;">
+                                    <input type="number" id="rental-quantity" class="rc-input" placeholder="Quantity" value="1" min="1">
+                                    <input type="number" id="rental-days" class="rc-input" placeholder="Days" value="1" min="1">
+                                </div>
+
+                                <input type="text" id="rental-notes" class="rc-input" placeholder="Notes (optional)" style="margin-bottom: 8px;">
+
+                                <button class="rc-btn rc-btn-primary" onclick="addRentalEquipment()">
+                                    <i class="bi bi-plus-lg"></i> Add Rental
+                                </button>
+                            </div>
+
+                            <!-- Current Rental Equipment -->
+                            {{if .jobRentalEquipment}}
+                            <div class="rc-card rc-mb-md" style="border: 1px solid var(--surface-3);">
+                                <div class="rc-card-header" style="padding: 12px 16px; background: var(--surface-2);">
+                                    <h6 style="margin: 0; font-size: 14px;"><i class="bi bi-list-check"></i> Current Rental Equipment</h6>
+                                </div>
+                                <div class="rc-card-body" style="padding: 16px;">
+                                    <div id="rental-equipment-list">
+                                        {{range .jobRentalEquipment}}
+                                        <div class="rental-equipment-item rc-flex rc-flex-between rc-flex-align-center rc-mb-sm" data-equipment-id="{{.EquipmentID}}" style="padding: 12px; border: 1px solid var(--surface-3); border-radius: 8px; background: var(--surface-1);">
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-primary);">{{.Equipment.ProductName}}</div>
+                                                <div style="font-size: 12px; color: var(--text-muted);">{{.Equipment.SupplierName}} • {{.Quantity}}x for {{.DaysUsed}} days</div>
+                                                {{if .Notes}}<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">{{.Notes}}</div>{{end}}
+                                            </div>
+                                            <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                                                <span style="font-weight: 600; color: var(--accent-electric);">€{{printf "%.2f" .TotalCost}}</span>
+                                                <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="removeRentalEquipment({{.EquipmentID}})" title="Remove">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
                         </div>
                     </div>
                 </div>
@@ -2554,6 +2612,153 @@
                     await assignDevice(deviceId, customPrice);
                 });
             }
+        }
+
+        // Rental Equipment Functions
+        async function addRentalEquipment() {
+            const select = document.getElementById('rental-equipment-select');
+            const quantityInput = document.getElementById('rental-quantity');
+            const daysInput = document.getElementById('rental-days');
+            const notesInput = document.getElementById('rental-notes');
+
+            const equipmentId = parseInt(select.value);
+            const quantity = parseInt(quantityInput.value) || 1;
+            const days = parseInt(daysInput.value) || 1;
+            const notes = notesInput.value.trim();
+
+            if (!equipmentId) {
+                updateStatus('Please select rental equipment', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/jobs/{{.job.JobID}}/assign-rental`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        job_id: {{.job.JobID}},
+                        equipment_id: equipmentId,
+                        quantity: quantity,
+                        days_used: days,
+                        notes: notes
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateStatus(`Rental equipment added successfully - €${result.totalCost.toFixed(2)}`, 'success');
+
+                    // Add to the rental equipment list
+                    addRentalToList(result.equipment, quantity, days, notes, result.totalCost);
+
+                    // Reset form
+                    select.value = '';
+                    quantityInput.value = '1';
+                    daysInput.value = '1';
+                    notesInput.value = '';
+                } else {
+                    updateStatus('Failed to add rental equipment: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding rental equipment:', error);
+                updateStatus('Error adding rental equipment', 'error');
+            }
+        }
+
+        async function removeRentalEquipment(equipmentId) {
+            if (!confirm('Remove this rental equipment from the job?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/jobs/{{.job.JobID}}/rentals/${equipmentId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateStatus('Rental equipment removed successfully', 'success');
+
+                    // Remove from the list
+                    const item = document.querySelector(`[data-equipment-id="${equipmentId}"]`);
+                    if (item) {
+                        item.remove();
+                    }
+
+                    // Hide the rental equipment section if no items left
+                    const list = document.getElementById('rental-equipment-list');
+                    if (list && list.children.length === 0) {
+                        const rentalCard = list.closest('.rc-card');
+                        if (rentalCard) {
+                            rentalCard.style.display = 'none';
+                        }
+                    }
+                } else {
+                    updateStatus('Failed to remove rental equipment: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error removing rental equipment:', error);
+                updateStatus('Error removing rental equipment', 'error');
+            }
+        }
+
+        function addRentalToList(equipment, quantity, days, notes, totalCost) {
+            const list = document.getElementById('rental-equipment-list');
+            if (!list) {
+                // Create the rental equipment section if it doesn't exist
+                createRentalEquipmentSection();
+                return addRentalToList(equipment, quantity, days, notes, totalCost);
+            }
+
+            const item = document.createElement('div');
+            item.className = 'rental-equipment-item rc-flex rc-flex-between rc-flex-align-center rc-mb-sm';
+            item.setAttribute('data-equipment-id', equipment.equipment_id);
+            item.style.cssText = 'padding: 12px; border: 1px solid var(--surface-3); border-radius: 8px; background: var(--surface-1);';
+
+            item.innerHTML = `
+                <div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${equipment.product_name}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">${equipment.supplier_name} • ${quantity}x for ${days} days</div>
+                    ${notes ? `<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">${notes}</div>` : ''}
+                </div>
+                <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                    <span style="font-weight: 600; color: var(--accent-electric);">€${totalCost.toFixed(2)}</span>
+                    <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="removeRentalEquipment(${equipment.equipment_id})" title="Remove">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+
+            list.appendChild(item);
+
+            // Make sure the rental equipment section is visible
+            const rentalCard = list.closest('.rc-card');
+            if (rentalCard) {
+                rentalCard.style.display = 'block';
+            }
+        }
+
+        function createRentalEquipmentSection() {
+            const manualInputSection = document.querySelector('.manual-input-section');
+            if (!manualInputSection) return;
+
+            const rentalSection = document.createElement('div');
+            rentalSection.className = 'rc-card rc-mb-md';
+            rentalSection.style.cssText = 'border: 1px solid var(--surface-3);';
+            rentalSection.innerHTML = `
+                <div class="rc-card-header" style="padding: 12px 16px; background: var(--surface-2);">
+                    <h6 style="margin: 0; font-size: 14px;"><i class="bi bi-list-check"></i> Current Rental Equipment</h6>
+                </div>
+                <div class="rc-card-body" style="padding: 16px;">
+                    <div id="rental-equipment-list"></div>
+                </div>
+            `;
+
+            manualInputSection.parentNode.insertBefore(rentalSection, manualInputSection.nextSibling);
         }
     </script>
 
