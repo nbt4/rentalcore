@@ -106,13 +106,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Suppliers</p>
                         <p class="text-2xl font-semibold text-gray-900" id="suppliersCount">
-                            {{$suppliers := slice}}
-                            {{range .rentalEquipment}}
-                                {{$found := false}}
-                                {{range $suppliers}}{{if eq . $.SupplierName}}{{$found = true}}{{end}}{{end}}
-                                {{if not $found}}{{$suppliers = append $suppliers .SupplierName}}{{end}}
-                            {{end}}
-                            {{len $suppliers}}
+                            {{.suppliersCount}}
                         </p>
                     </div>
                 </div>
@@ -149,13 +143,7 @@
                     </select>
                     <select id="supplierFilter" class="form-select">
                         <option value="">All Suppliers</option>
-                        {{$uniqueSuppliers := slice}}
-                        {{range .rentalEquipment}}
-                            {{$found := false}}
-                            {{range $uniqueSuppliers}}{{if eq . $.SupplierName}}{{$found = true}}{{end}}{{end}}
-                            {{if not $found}}{{$uniqueSuppliers = append $uniqueSuppliers .SupplierName}}{{end}}
-                        {{end}}
-                        {{range $uniqueSuppliers}}
+                        {{range .uniqueSuppliers}}
                         <option value="{{.}}">{{.}}</option>
                         {{end}}
                     </select>

@@ -35,10 +35,24 @@ func (h *RentalEquipmentHandler) ShowRentalEquipmentList(c *gin.Context) {
 		return
 	}
 
+	// Calculate unique suppliers count and list
+	suppliersMap := make(map[string]bool)
+	for _, equipment := range rentalEquipment {
+		suppliersMap[equipment.SupplierName] = true
+	}
+
+	uniqueSuppliers := make([]string, 0, len(suppliersMap))
+	for supplier := range suppliersMap {
+		uniqueSuppliers = append(uniqueSuppliers, supplier)
+	}
+	suppliersCount := len(suppliersMap)
+
 	c.HTML(http.StatusOK, "rental_equipment_standalone.html", gin.H{
 		"title":           "Rental Equipment Management",
 		"user":            user,
 		"rentalEquipment": rentalEquipment,
+		"suppliersCount":  suppliersCount,
+		"uniqueSuppliers": uniqueSuppliers,
 		"currentPage":     "rental-equipment",
 	})
 }
