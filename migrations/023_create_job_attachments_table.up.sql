@@ -1,13 +1,13 @@
 -- Create job_attachments table for file attachments to jobs
 CREATE TABLE job_attachments (
-    attachment_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attachment_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     job_id INT NOT NULL,
     filename VARCHAR(255) NOT NULL,
     original_filename VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
     file_size BIGINT NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
-    uploaded_by INT UNSIGNED DEFAULT NULL,
+    uploaded_by BIGINT UNSIGNED DEFAULT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
