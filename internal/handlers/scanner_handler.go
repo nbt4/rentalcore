@@ -117,33 +117,31 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 		}
 	}
 
-	// Get assigned devices for this job
-	assignedDevices, err := h.jobRepo.GetJobDevices(uint(jobID))
+	// Get total device count for this job (performance optimized)
+	totalDevices, err := h.jobRepo.GetJobDeviceCount(uint(jobID))
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
 
-	// Group devices by product
+	// Only load device summary data for initial page load (performance optimization)
+	// Actual device lists will be loaded via AJAX when accordion sections are opened
 	productGroups := make(map[string]*ProductGroup)
-	totalDevices := len(assignedDevices)
 
-	for _, jd := range assignedDevices {
-		var productName string
-		if jd.Device.Product != nil {
-			productName = jd.Device.Product.Name
-		} else {
-			productName = "Unknown Product"
-		}
+	// Get product summaries only (count per product, no individual devices)
+	productSummaries, err := h.jobRepo.GetJobDeviceProductSummary(uint(jobID))
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
+		return
+	}
 
-		if _, exists := productGroups[productName]; !exists {
-			productGroups[productName] = &ProductGroup{
-				Product: jd.Device.Product,
-				Devices: []models.JobDevice{},
-			}
+	// Create lightweight product groups with just counts
+	for _, summary := range productSummaries {
+		productGroups[summary.ProductName] = &ProductGroup{
+			Product: summary.Product,
+			Devices: []models.JobDevice{}, // Empty - will be loaded via AJAX
+			Count:   summary.Count,
 		}
-		productGroups[productName].Devices = append(productGroups[productName].Devices, jd)
-		productGroups[productName].Count = len(productGroups[productName].Devices)
 	}
 
 	// Get available cases for case scanning functionality
@@ -172,7 +170,6 @@ func (h *ScannerHandler) ScanJob(c *gin.Context) {
 	c.HTML(http.StatusOK, "scan_job.html", gin.H{
 		"title":              "Scanning Job #" + strconv.FormatUint(jobID, 10),
 		"job":                job,
-		"assignedDevices":    assignedDevices,
 		"productGroups":      productGroups,
 		"totalDevices":       totalDevices,
 		"DeviceCount":        totalDevices,  // Add DeviceCount for template compatibility
@@ -506,4 +503,42 @@ func (h *ScannerHandler) RemoveRentalFromJob(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Rental equipment removed from job successfully"})
+}
+
+// GetJobDevicesAJAX handles AJAX requests for loading devices by product (performance optimized)
+func (h *ScannerHandler) GetJobDevicesAJAX(c *gin.Context) {
+	jobIDStr := c.Param("jobid")
+	productName := c.Query("product")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "50")
+
+	jobID, err := strconv.Atoi(jobIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
+		return
+	}
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 50
+	}
+
+	// Get paginated devices for the product
+	devices, err := h.jobRepo.GetJobDevicesPaginated(uint(jobID), productName, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load devices"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"devices": devices,
+		"page":    page,
+		"limit":   limit,
+		"count":   len(devices),
+	})
 }

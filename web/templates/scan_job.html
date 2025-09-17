@@ -891,9 +891,9 @@
                                 {{if $group.Product}}{{$productId = printf "%d" $group.Product.ProductID}}{{end}}
                                 <div class="rc-accordion-item product-group">
                                     <h2 class="rc-accordion-header" id="heading-product-{{$productId}}">
-                                        <button class="rc-accordion-button collapsed" type="button" 
-                                                onclick="toggleAccordion('collapse-product-{{$productId}}')" 
-                                                aria-expanded="false" 
+                                        <button class="rc-accordion-button collapsed" type="button"
+                                                onclick="toggleAccordionWithLazyLoad('collapse-product-{{$productId}}', '{{$productName}}')"
+                                                aria-expanded="false"
                                                 aria-controls="collapse-product-{{$productId}}"
                                                 style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; text-align: left !important;">
                                             <div class="product-info" style="text-align: left; flex: 1 1 auto;">
@@ -905,34 +905,24 @@
                                             <span class="rc-badge rc-badge-secondary" style="margin-left: 20px; flex: 0 0 auto;">{{$group.Count}} devices</span>
                                         </button>
                                     </h2>
-                                    <div id="collapse-product-{{$productId}}" 
-                                         class="rc-accordion-collapse collapse" 
-                                         aria-labelledby="heading-product-{{$productId}}">
+                                    <div id="collapse-product-{{$productId}}"
+                                         class="rc-accordion-collapse collapse"
+                                         aria-labelledby="heading-product-{{$productId}}"
+                                         data-product-name="{{$productName}}"
+                                         data-loaded="false">
                                         <div class="rc-accordion-body">
-                                            {{range $group.Devices}}
-                                            <div class="device-item-grouped" data-device-id="{{.Device.DeviceID}}">
-                                                <div class="rc-flex rc-flex-between rc-flex-start">
-                                                    <div class="rc-flex rc-flex-start" style="gap: 12px; flex-grow: 1;">
-                                                        <input type="checkbox" class="device-checkbox" data-device-id="{{.Device.DeviceID}}" onchange="updateBulkDeleteButton()">
-                                                        <div class="flex-grow-1">
-                                                            <div class="device-id">{{.Device.DeviceID}}</div>
-                                                            <div class="device-price">
-                                                                {{if .CustomPrice}}
-                                                                    €{{printf "%.2f" (derefFloat .CustomPrice)}} (custom price)
-                                                                {{else if and .Device.Product .Device.Product.ItemCostPerDay}}
-                                                                    €{{printf "%.2f" (derefFloat .Device.Product.ItemCostPerDay)}} (default price)
-                                                                {{else}}
-                                                                    No price set
-                                                                {{end}}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <button class="rc-btn rc-btn-outline-danger rc-btn-sm" onclick="removeDevice('{{.Device.DeviceID}}')">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
+                                            <div class="device-loading" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: 8px;"></i>
+                                                Loading devices...
                                             </div>
-                                            {{end}}
+                                            <div class="device-list-container" style="display: none;">
+                                                <!-- Devices will be loaded here via AJAX -->
+                                            </div>
+                                            <div class="device-pagination" style="display: none; text-align: center; margin-top: 16px;">
+                                                <button class="rc-btn rc-btn-outline rc-btn-sm load-more-devices" data-page="1">
+                                                    Load More Devices
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3219,6 +3209,246 @@
             } catch (error) {
                 console.error('Error creating rental equipment:', error);
                 updateStatus('Error creating rental equipment', 'error');
+            }
+        }
+
+        // === PERFORMANCE OPTIMIZATION: LAZY LOADING ===
+
+        // Cache for loaded device data
+        const deviceCache = new Map();
+
+        // Toggle accordion with lazy loading
+        function toggleAccordionWithLazyLoad(accordionId, productName) {
+            const accordion = document.getElementById(accordionId);
+            const isExpanded = !accordion.classList.contains('collapse');
+
+            // Toggle accordion
+            if (isExpanded) {
+                accordion.classList.add('collapse');
+                accordion.setAttribute('aria-expanded', 'false');
+            } else {
+                accordion.classList.remove('collapse');
+                accordion.setAttribute('aria-expanded', 'true');
+
+                // Load devices if not already loaded
+                if (accordion.dataset.loaded === 'false') {
+                    loadDevicesForProduct(accordionId, productName);
+                }
+            }
+        }
+
+        // Load devices for a product via AJAX
+        async function loadDevicesForProduct(accordionId, productName, page = 1) {
+            const accordion = document.getElementById(accordionId);
+            const loadingDiv = accordion.querySelector('.device-loading');
+            const containerDiv = accordion.querySelector('.device-list-container');
+            const paginationDiv = accordion.querySelector('.device-pagination');
+            const loadMoreBtn = paginationDiv.querySelector('.load-more-devices');
+
+            // Show loading if it's the first page
+            if (page === 1) {
+                loadingDiv.style.display = 'block';
+                containerDiv.style.display = 'none';
+            } else {
+                loadMoreBtn.innerHTML = '<i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; margin-right: 8px;"></i>Loading...';
+                loadMoreBtn.disabled = true;
+            }
+
+            try {
+                const jobId = window.location.pathname.split('/').pop();
+                const response = await fetch(`/scan/${jobId}/devices/ajax?product=${encodeURIComponent(productName)}&page=${page}&limit=50`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load devices');
+                }
+
+                const data = await response.json();
+
+                // Render devices
+                if (page === 1) {
+                    containerDiv.innerHTML = '';
+                }
+
+                data.devices.forEach(device => {
+                    const deviceHtml = createDeviceHTML(device);
+                    containerDiv.insertAdjacentHTML('beforeend', deviceHtml);
+                });
+
+                // Update pagination
+                if (data.devices.length === 50) { // Has more pages
+                    loadMoreBtn.dataset.page = page + 1;
+                    loadMoreBtn.innerHTML = 'Load More Devices';
+                    loadMoreBtn.disabled = false;
+                    paginationDiv.style.display = 'block';
+                } else {
+                    paginationDiv.style.display = 'none';
+                }
+
+                // Hide loading and show content
+                loadingDiv.style.display = 'none';
+                containerDiv.style.display = 'block';
+
+                // Mark as loaded
+                accordion.dataset.loaded = 'true';
+
+            } catch (error) {
+                console.error('Error loading devices:', error);
+                loadingDiv.innerHTML = '<div style="color: var(--danger); text-align: center;">Failed to load devices. <button onclick="loadDevicesForProduct(\'' + accordionId + '\', \'' + productName + '\', ' + page + ')" class="rc-btn rc-btn-link rc-btn-sm">Retry</button></div>';
+
+                if (page > 1) {
+                    loadMoreBtn.innerHTML = 'Retry';
+                    loadMoreBtn.disabled = false;
+                }
+            }
+        }
+
+        // Create HTML for a device item
+        function createDeviceHTML(jobDevice) {
+            const device = jobDevice.Device;
+            let priceText = 'No price set';
+
+            if (jobDevice.CustomPrice) {
+                priceText = `€${parseFloat(jobDevice.CustomPrice).toFixed(2)} (custom price)`;
+            } else if (device.Product && device.Product.ItemCostPerDay) {
+                priceText = `€${parseFloat(device.Product.ItemCostPerDay).toFixed(2)} (default price)`;
+            }
+
+            return `
+                <div class="device-item-grouped" data-device-id="${device.DeviceID}">
+                    <div class="rc-flex rc-flex-between rc-flex-start">
+                        <div class="rc-flex rc-flex-start" style="gap: 12px; flex-grow: 1;">
+                            <input type="checkbox" class="device-checkbox" data-device-id="${device.DeviceID}" onchange="updateBulkDeleteButton()">
+                            <div class="flex-grow-1">
+                                <div class="device-id">${device.DeviceID}</div>
+                                <div class="device-price">${priceText}</div>
+                            </div>
+                        </div>
+                        <button class="rc-btn rc-btn-outline-danger rc-btn-sm" onclick="removeDevice('${device.DeviceID}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle load more button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('load-more-devices')) {
+                const btn = e.target;
+                const accordion = btn.closest('.rc-accordion-collapse');
+                const productName = accordion.dataset.productName;
+                const page = parseInt(btn.dataset.page);
+
+                loadDevicesForProduct(accordion.id, productName, page);
+            }
+        });
+
+        // === MODAL PERFORMANCE OPTIMIZATION ===
+
+        // Pre-initialize modal elements for faster access
+        let priceModal = null;
+        let newRentalModal = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            priceModal = document.getElementById('priceModal');
+            newRentalModal = document.getElementById('newRentalModal');
+
+            // Pre-cache modal elements
+            if (priceModal) {
+                priceModal.style.willChange = 'opacity, transform';
+            }
+            if (newRentalModal) {
+                newRentalModal.style.willChange = 'opacity, transform';
+            }
+        });
+
+        // Fast modal show/hide with GPU acceleration
+        function showModal(modalElement) {
+            if (modalElement) {
+                modalElement.style.display = 'block';
+                requestAnimationFrame(() => {
+                    modalElement.style.opacity = '1';
+                    modalElement.style.transform = 'scale(1)';
+                });
+            }
+        }
+
+        function hideModal(modalElement) {
+            if (modalElement) {
+                modalElement.style.opacity = '0';
+                modalElement.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    modalElement.style.display = 'none';
+                }, 150);
+            }
+        }
+
+        // === VIRTUAL SCROLLING FOR LARGE LISTS ===
+
+        // Simple virtual scrolling implementation
+        class VirtualList {
+            constructor(container, itemHeight = 60, bufferSize = 5) {
+                this.container = container;
+                this.itemHeight = itemHeight;
+                this.bufferSize = bufferSize;
+                this.items = [];
+                this.visibleStart = 0;
+                this.visibleEnd = 0;
+                this.scrollTop = 0;
+
+                this.setupScrollListener();
+            }
+
+            setItems(items) {
+                this.items = items;
+                this.updateVisibleRange();
+                this.render();
+            }
+
+            setupScrollListener() {
+                this.container.addEventListener('scroll', () => {
+                    this.scrollTop = this.container.scrollTop;
+                    this.updateVisibleRange();
+                    this.render();
+                });
+            }
+
+            updateVisibleRange() {
+                const containerHeight = this.container.clientHeight;
+                const totalHeight = this.items.length * this.itemHeight;
+
+                this.visibleStart = Math.max(0, Math.floor(this.scrollTop / this.itemHeight) - this.bufferSize);
+                this.visibleEnd = Math.min(this.items.length, Math.ceil((this.scrollTop + containerHeight) / this.itemHeight) + this.bufferSize);
+            }
+
+            render() {
+                // Set container height to simulate all items
+                this.container.style.height = `${this.items.length * this.itemHeight}px`;
+                this.container.style.position = 'relative';
+
+                // Clear visible items
+                const existingItems = this.container.querySelectorAll('.virtual-item');
+                existingItems.forEach(item => item.remove());
+
+                // Render only visible items
+                for (let i = this.visibleStart; i < this.visibleEnd; i++) {
+                    const item = this.items[i];
+                    if (item) {
+                        const element = this.createItemElement(item, i);
+                        this.container.appendChild(element);
+                    }
+                }
+            }
+
+            createItemElement(item, index) {
+                const div = document.createElement('div');
+                div.className = 'virtual-item device-item-grouped';
+                div.style.position = 'absolute';
+                div.style.top = `${index * this.itemHeight}px`;
+                div.style.height = `${this.itemHeight}px`;
+                div.style.width = '100%';
+                div.innerHTML = createDeviceHTML(item);
+                return div;
             }
         }
     </script>

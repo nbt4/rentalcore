@@ -604,3 +604,93 @@ func (r *JobRepository) UpdateDevicePrice(jobID uint, deviceID string, price flo
 	fmt.Printf("🔧 DEBUG UpdateDevicePrice: Success!\n")
 	return nil
 }
+
+// GetJobDeviceCount returns the total number of devices assigned to a job (performance optimized)
+func (r *JobRepository) GetJobDeviceCount(jobID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.JobDevice{}).Where("jobID = ?", jobID).Count(&count).Error
+	return int(count), err
+}
+
+// ProductSummary represents device count summary by product
+type ProductSummary struct {
+	ProductName string
+	Product     *models.Product
+	Count       int
+}
+
+// GetJobDeviceProductSummary returns summary of devices grouped by product (performance optimized)
+func (r *JobRepository) GetJobDeviceProductSummary(jobID uint) ([]ProductSummary, error) {
+	var summaries []ProductSummary
+
+	// Query to get device count grouped by product
+	rows, err := r.db.Raw(`
+		SELECT p.name as product_name, COUNT(jd.deviceID) as count
+		FROM job_devices jd
+		LEFT JOIN devices d ON jd.deviceID = d.deviceID
+		LEFT JOIN products p ON d.productID = p.productID
+		WHERE jd.jobID = ?
+		GROUP BY p.productID, p.name
+		ORDER BY p.name
+	`, jobID).Rows()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var productName string
+		var count int
+
+		if err := rows.Scan(&productName, &count); err != nil {
+			return nil, err
+		}
+
+		// Get the product details if needed
+		var product models.Product
+		if productName != "" {
+			r.db.Where("name = ?", productName).First(&product)
+		}
+
+		summaries = append(summaries, ProductSummary{
+			ProductName: productName,
+			Product:     &product,
+			Count:       count,
+		})
+	}
+
+	return summaries, nil
+}
+
+// GetJobDevicesPaginated returns devices for a job with pagination
+func (r *JobRepository) GetJobDevicesPaginated(jobID uint, productName string, page int, limit int) ([]models.JobDevice, error) {
+	var jobDevices []models.JobDevice
+	offset := (page - 1) * limit
+
+	query := r.db.Where("jobID = ?", jobID)
+
+	// Filter by product if specified
+	if productName != "" && productName != "Unknown Product" {
+		query = query.Joins("JOIN devices d ON job_devices.deviceID = d.deviceID").
+			Joins("JOIN products p ON d.productID = p.productID").
+			Where("p.name = ?", productName)
+	} else if productName == "Unknown Product" {
+		query = query.Joins("LEFT JOIN devices d ON job_devices.deviceID = d.deviceID").
+			Where("d.productID IS NULL")
+	}
+
+	err := query.Preload("Device").
+		Limit(limit).
+		Offset(offset).
+		Find(&jobDevices).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Manually load products for each device
+	r.loadProductsForJobDevices(jobDevices)
+
+	return jobDevices, nil
+}
