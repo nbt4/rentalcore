@@ -1,270 +1,279 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
+    <script>
+        try{document.documentElement.setAttribute("data-theme",localStorage.getItem("rc-theme")||"dark")}catch(e){}
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}} - RentalCore</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .btn-orange { background-color: #ff8c00; border-color: #ff8c00; }
-        .btn-orange:hover { background-color: #e67e00; border-color: #e67e00; }
-        .stats-card { transition: transform 0.2s; }
-        .stats-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .chart-container { position: relative; height: 400px; }
-    </style>
 </head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-bold">RentalCore</h1>
-                <nav class="hidden md:flex space-x-6">
-                    <a href="/dashboard" class="hover:text-blue-200">Dashboard</a>
-                    <div class="relative group">
-                        <a href="#" class="hover:text-blue-200 flex items-center">
-                            Products <i class="fas fa-chevron-down ml-1"></i>
-                        </a>
-                        <div class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
-                            <a href="/products" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Own Products</a>
-                            <a href="/rental-equipment" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Rental Equipment</a>
-                        </div>
-                    </div>
-                    <a href="/jobs" class="hover:text-blue-200">Jobs</a>
-                    <a href="/customers" class="hover:text-blue-200">Customers</a>
-                    <a href="/analytics" class="hover:text-blue-200">Analytics</a>
-                </nav>
-            </div>
-            <div class="flex items-center space-x-4">
-                {{if .user}}
-                <span>Welcome, {{.user.Username}}</span>
-                <a href="/logout" class="hover:text-blue-200">Logout</a>
-                {{else}}
-                <a href="/login" class="hover:text-blue-200">Login</a>
-                {{end}}
-            </div>
-        </div>
-    </nav>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
             <div>
-                <h2 class="text-3xl font-bold text-gray-800">Rental Equipment Analytics</h2>
-                <p class="text-gray-600 mt-2">Track performance and usage of externally rented equipment</p>
+                <h1 class="rc-heading-2">Rental Equipment Analytics</h1>
+                <p class="rc-text">Track performance and usage of externally rented equipment</p>
             </div>
-            <div class="flex space-x-3">
-                <a href="/rental-equipment" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Equipment
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/rental-equipment" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Equipment
                 </a>
-                <button class="btn btn-orange text-white" onclick="exportAnalytics()">
-                    <i class="fas fa-download mr-2"></i>Export Report
+                <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="exportAnalytics()">
+                    <i class="bi bi-download"></i> Export Report
                 </button>
             </div>
         </div>
 
         <!-- Key Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-blue-100 rounded-full">
-                        <i class="fas fa-boxes text-blue-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Total Equipment</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{.analytics.TotalEquipmentItems}}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-green-100 rounded-full">
-                        <i class="fas fa-check-circle text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Active Equipment</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{.analytics.ActiveEquipmentItems}}</p>
+        <div class="rc-grid rc-grid-4 rc-mb-lg">
+            <div class="rc-card rc-animate-scale-in">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-center rc-flex-gap-md">
+                        <div class="rc-icon-circle rc-icon-circle-primary">
+                            <i class="bi bi-boxes"></i>
+                        </div>
+                        <div>
+                            <p class="rc-text-sm rc-text-muted">Total Equipment</p>
+                            <p class="rc-heading-3 rc-mb-0">{{.analytics.TotalEquipmentItems}}</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-orange-100 rounded-full">
-                        <i class="fas fa-building text-orange-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Suppliers</p>
-                        <p class="text-2xl font-semibold text-gray-900">{{.analytics.TotalSuppliersCount}}</p>
+            <div class="rc-card rc-animate-scale-in">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-center rc-flex-gap-md">
+                        <div class="rc-icon-circle rc-icon-circle-success">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div>
+                            <p class="rc-text-sm rc-text-muted">Active Equipment</p>
+                            <p class="rc-heading-3 rc-mb-0">{{.analytics.ActiveEquipmentItems}}</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-purple-100 rounded-full">
-                        <i class="fas fa-euro-sign text-purple-600"></i>
+            <div class="rc-card rc-animate-scale-in">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-center rc-flex-gap-md">
+                        <div class="rc-icon-circle rc-icon-circle-warning">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <div>
+                            <p class="rc-text-sm rc-text-muted">Suppliers</p>
+                            <p class="rc-heading-3 rc-mb-0">{{.analytics.TotalSuppliersCount}}</p>
+                        </div>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Total Revenue</p>
-                        <p class="text-2xl font-semibold text-gray-900">€{{printf "%.2f" .analytics.TotalRentalRevenue}}</p>
+                </div>
+            </div>
+
+            <div class="rc-card rc-animate-scale-in">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-center rc-flex-gap-md">
+                        <div class="rc-icon-circle rc-icon-circle-info">
+                            <i class="bi bi-currency-euro"></i>
+                        </div>
+                        <div>
+                            <p class="rc-text-sm rc-text-muted">Total Revenue</p>
+                            <p class="rc-heading-3 rc-mb-0">€{{printf "%.2f" .analytics.TotalRentalRevenue}}</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div class="rc-grid rc-grid-2 rc-mb-lg">
             <!-- Monthly Revenue Chart -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Revenue Trend</h3>
-                <div class="chart-container">
-                    <canvas id="monthlyRevenueChart"></canvas>
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-heading-4 rc-mb-0">Monthly Revenue Trend</h3>
+                </div>
+                <div class="rc-card-body">
+                    <div style="position: relative; height: 400px;">
+                        <canvas id="monthlyRevenueChart"></canvas>
+                    </div>
                 </div>
             </div>
 
             <!-- Category Breakdown Chart -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Category Breakdown</h3>
-                <div class="chart-container">
-                    <canvas id="categoryChart"></canvas>
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-heading-4 rc-mb-0">Category Breakdown</h3>
+                </div>
+                <div class="rc-card-body">
+                    <div style="position: relative; height: 400px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Data Tables Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div class="rc-grid rc-grid-2 rc-mb-lg">
             <!-- Most Used Equipment -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Most Used Equipment</h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Equipment</th>
-                                <th>Usage Count</th>
-                                <th>Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .analytics.MostUsedEquipment}}
-                            <tr>
-                                <td>
-                                    <div>
-                                        <div class="font-weight-bold">{{.ProductName}}</div>
-                                        <small class="text-muted">{{.SupplierName}}</small>
-                                    </div>
-                                </td>
-                                <td><span class="badge bg-info">{{.UsageCount}} times</span></td>
-                                <td class="text-right">€{{printf "%.2f" .TotalRevenue}}</td>
-                            </tr>
-                            {{else}}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted">No usage data available</td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-heading-4 rc-mb-0">Most Used Equipment</h3>
+                </div>
+                <div class="rc-card-body">
+                    <div class="rc-table-responsive">
+                        <table class="rc-table">
+                            <thead>
+                                <tr>
+                                    <th>Equipment</th>
+                                    <th>Usage Count</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .analytics.MostUsedEquipment}}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{.ProductName}}</strong>
+                                            <br><span class="rc-text-sm rc-text-muted">{{.SupplierName}}</span>
+                                        </div>
+                                    </td>
+                                    <td><span class="rc-badge rc-badge-info">{{.UsageCount}} times</span></td>
+                                    <td class="rc-text-right">€{{printf "%.2f" .TotalRevenue}}</td>
+                                </tr>
+                                {{else}}
+                                <tr>
+                                    <td colspan="3" class="rc-text-center rc-text-muted">No usage data available</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <!-- Top Suppliers -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Top Suppliers</h3>
-                <div class="overflow-x-auto">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Supplier</th>
-                                <th>Equipment Count</th>
-                                <th>Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .analytics.TopSuppliers}}
-                            <tr>
-                                <td>
-                                    <div class="font-weight-bold">{{.SupplierName}}</div>
-                                    <small class="text-muted">{{.UsageCount}} total rentals</small>
-                                </td>
-                                <td><span class="badge bg-secondary">{{.EquipmentCount}} items</span></td>
-                                <td class="text-right">€{{printf "%.2f" .TotalRevenue}}</td>
-                            </tr>
-                            {{else}}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted">No supplier data available</td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h3 class="rc-heading-4 rc-mb-0">Top Suppliers</h3>
+                </div>
+                <div class="rc-card-body">
+                    <div class="rc-table-responsive">
+                        <table class="rc-table">
+                            <thead>
+                                <tr>
+                                    <th>Supplier</th>
+                                    <th>Equipment Count</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .analytics.TopSuppliers}}
+                                <tr>
+                                    <td>
+                                        <strong>{{.SupplierName}}</strong>
+                                        <br><span class="rc-text-sm rc-text-muted">{{.UsageCount}} total rentals</span>
+                                    </td>
+                                    <td><span class="rc-badge rc-badge-secondary">{{.EquipmentCount}} items</span></td>
+                                    <td class="rc-text-right">€{{printf "%.2f" .TotalRevenue}}</td>
+                                </tr>
+                                {{else}}
+                                <tr>
+                                    <td colspan="3" class="rc-text-center rc-text-muted">No supplier data available</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Category Details -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Category Performance</h3>
-            <div class="overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Category</th>
-                            <th>Equipment Count</th>
-                            <th>Usage Count</th>
-                            <th>Total Revenue</th>
-                            <th>Avg. Revenue per Equipment</th>
-                            <th>Performance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .analytics.CategoryBreakdown}}
-                        <tr>
-                            <td>
-                                <span class="badge bg-secondary">{{.Category}}</span>
-                            </td>
-                            <td>{{.EquipmentCount}}</td>
-                            <td>{{.UsageCount}}</td>
-                            <td class="text-right">€{{printf "%.2f" .TotalRevenue}}</td>
-                            <td class="text-right">
-                                {{if gt .EquipmentCount 0}}
-                                €{{printf "%.2f" .AvgRevenuePerEquipment}}
-                                {{else}}
-                                €0.00
-                                {{end}}
-                            </td>
-                            <td>
-                                {{if gt .TotalRevenue 1000}}
-                                <span class="badge bg-success">Excellent</span>
-                                {{else if gt .TotalRevenue 500}}
-                                <span class="badge bg-warning">Good</span>
-                                {{else if gt .TotalRevenue 0}}
-                                <span class="badge bg-info">Fair</span>
-                                {{else}}
-                                <span class="badge bg-secondary">No Data</span>
-                                {{end}}
-                            </td>
-                        </tr>
-                        {{else}}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
-                                <i class="fas fa-chart-bar fa-3x mb-3 text-muted"></i>
-                                <p>No category data available. Start renting equipment to see analytics.</p>
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-heading-4 rc-mb-0">Category Performance</h3>
+            </div>
+            <div class="rc-card-body">
+                <div class="rc-table-responsive">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Equipment Count</th>
+                                <th>Usage Count</th>
+                                <th>Total Revenue</th>
+                                <th>Avg. Revenue per Equipment</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .analytics.CategoryBreakdown}}
+                            <tr>
+                                <td>
+                                    <span class="rc-badge rc-badge-secondary">{{.Category}}</span>
+                                </td>
+                                <td>{{.EquipmentCount}}</td>
+                                <td>{{.UsageCount}}</td>
+                                <td class="rc-text-right">€{{printf "%.2f" .TotalRevenue}}</td>
+                                <td class="rc-text-right">
+                                    {{if gt .EquipmentCount 0}}
+                                    €{{printf "%.2f" .AvgRevenuePerEquipment}}
+                                    {{else}}
+                                    €0.00
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{if gt .TotalRevenue 1000}}
+                                    <span class="rc-badge rc-badge-success">Excellent</span>
+                                    {{else if gt .TotalRevenue 500}}
+                                    <span class="rc-badge rc-badge-warning">Good</span>
+                                    {{else if gt .TotalRevenue 0}}
+                                    <span class="rc-badge rc-badge-info">Fair</span>
+                                    {{else}}
+                                    <span class="rc-badge rc-badge-secondary">No Data</span>
+                                    {{end}}
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="6" class="rc-text-center rc-text-muted rc-py-xl">
+                                    <i class="bi bi-bar-chart rc-text-4xl rc-text-muted rc-mb-md"></i>
+                                    <p>No category data available. Start renting equipment to see analytics.</p>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/rental-core-interactions.js"></script>
     <script>
         // Chart data from server
         const monthlyData = {{.analytics.MonthlyRentalRevenue}};
@@ -359,20 +368,23 @@
             window.URL.revokeObjectURL(url);
             a.remove();
 
-            showMessage('Analytics report exported successfully', 'success');
+            showNotification('Analytics report exported successfully', 'success');
         }
 
-        function showMessage(message, type) {
-            const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
-            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-            toast.innerHTML = `
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `rc-notification rc-notification-${type} rc-animate-fade-in`;
+            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+            notification.innerHTML = `
+                <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
                 ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="rc-notification-close" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x"></i>
+                </button>
             `;
 
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000);
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
         }
     </script>
 </body>

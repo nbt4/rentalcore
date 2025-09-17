@@ -1,326 +1,322 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
+    <script>
+        try{document.documentElement.setAttribute("data-theme",localStorage.getItem("rc-theme")||"dark")}catch(e){}
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}} - RentalCore</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .btn-orange { background-color: #ff8c00; border-color: #ff8c00; }
-        .btn-orange:hover { background-color: #e67e00; border-color: #e67e00; }
-        .table-hover tbody tr:hover { background-color: #f8f9fa; }
-        .badge-active { background-color: #28a745; }
-        .badge-inactive { background-color: #6c757d; }
-        .stats-card { transition: transform 0.2s; }
-        .stats-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    </style>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-bold">RentalCore</h1>
-                <nav class="hidden md:flex space-x-6">
-                    <a href="/dashboard" class="hover:text-blue-200">Dashboard</a>
-                    <div class="relative group">
-                        <a href="#" class="hover:text-blue-200 flex items-center">
-                            Products <i class="fas fa-chevron-down ml-1"></i>
-                        </a>
-                        <div class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
-                            <a href="/products" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Own Products</a>
-                            <a href="/rental-equipment" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 bg-blue-50">Rental Equipment</a>
-                        </div>
-                    </div>
-                    <a href="/jobs" class="hover:text-blue-200">Jobs</a>
-                    <a href="/customers" class="hover:text-blue-200">Customers</a>
-                    <a href="/analytics" class="hover:text-blue-200">Analytics</a>
-                </nav>
-            </div>
-            <div class="flex items-center space-x-4">
-                {{if .user}}
-                <span>Welcome, {{.user.Username}}</span>
-                <a href="/logout" class="hover:text-blue-200">Logout</a>
-                {{else}}
-                <a href="/login" class="hover:text-blue-200">Login</a>
-                {{end}}
-            </div>
-        </div>
-    </nav>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+    <main class="rc-container rc-mt-lg">
+        <!-- Page Header -->
+        <div class="rc-flex rc-flex-between rc-mb-xl">
             <div>
-                <h2 class="text-3xl font-bold text-gray-800">Rental Equipment Management</h2>
-                <p class="text-gray-600 mt-2">Manage externally rented equipment for your jobs</p>
+                <h1 class="rc-heading-2">Rental Equipment Management</h1>
+                <p class="rc-text">Manage externally rented equipment for your jobs</p>
             </div>
-            <div class="flex space-x-3">
-                <a href="/rental-equipment/analytics" class="btn btn-outline-primary">
-                    <i class="fas fa-chart-bar mr-2"></i>Analytics
+            <div class="rc-flex rc-flex-gap-sm">
+                <a href="/rental-equipment/analytics" class="rc-btn rc-btn-outline rc-btn-sm">
+                    <i class="bi bi-graph-up"></i> Analytics
                 </a>
-                <button class="btn btn-orange text-white" onclick="showCreateEquipmentModal()">
-                    <i class="fas fa-plus mr-2"></i>Add New Equipment
+                <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="showCreateEquipmentModal()">
+                    <i class="bi bi-plus-lg"></i> Add Equipment
                 </button>
             </div>
         </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-blue-100 rounded-full">
-                        <i class="fas fa-boxes text-blue-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Total Equipment</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="totalEquipmentCount">{{len .rentalEquipment}}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-green-100 rounded-full">
-                        <i class="fas fa-check-circle text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Active Equipment</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="activeEquipmentCount">
-                            {{$activeCount := 0}}
-                            {{range .rentalEquipment}}{{if .IsActive}}{{$activeCount = add $activeCount 1}}{{end}}{{end}}
-                            {{$activeCount}}
-                        </p>
+        <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-cols-lg-4 rc-grid-gap-lg rc-mb-xl">
+            <div class="rc-card rc-card-hover">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-align-center">
+                        <div>
+                            <div class="rc-text-muted rc-text-sm">Total Equipment</div>
+                            <div class="rc-heading-3 rc-text-primary">{{len .rentalEquipment}}</div>
+                        </div>
+                        <div class="rc-icon-wrapper rc-icon-wrapper-primary">
+                            <i class="bi bi-boxes"></i>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-orange-100 rounded-full">
-                        <i class="fas fa-building text-orange-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Suppliers</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="suppliersCount">
-                            {{.suppliersCount}}
-                        </p>
+            <div class="rc-card rc-card-hover">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-align-center">
+                        <div>
+                            <div class="rc-text-muted rc-text-sm">Active Equipment</div>
+                            <div class="rc-heading-3 rc-text-success">
+                                {{$activeCount := 0}}
+                                {{range .rentalEquipment}}{{if .IsActive}}{{$activeCount = add $activeCount 1}}{{end}}{{end}}
+                                {{$activeCount}}
+                            </div>
+                        </div>
+                        <div class="rc-icon-wrapper rc-icon-wrapper-success">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="stats-card bg-white p-6 rounded-lg shadow">
-                <div class="flex items-center">
-                    <div class="p-3 bg-purple-100 rounded-full">
-                        <i class="fas fa-euro-sign text-purple-600"></i>
+            <div class="rc-card rc-card-hover">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-align-center">
+                        <div>
+                            <div class="rc-text-muted rc-text-sm">Suppliers</div>
+                            <div class="rc-heading-3 rc-text-warning">{{.suppliersCount}}</div>
+                        </div>
+                        <div class="rc-icon-wrapper rc-icon-wrapper-warning">
+                            <i class="bi bi-building"></i>
+                        </div>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Total Revenue</p>
-                        <p class="text-2xl font-semibold text-gray-900" id="totalRevenueCount">
-                            {{$totalRevenue := 0.0}}
-                            {{range .rentalEquipment}}{{$totalRevenue = add $totalRevenue .TotalRevenue}}{{end}}
-                            €{{printf "%.2f" $totalRevenue}}
-                        </p>
+                </div>
+            </div>
+
+            <div class="rc-card rc-card-hover">
+                <div class="rc-card-body">
+                    <div class="rc-flex rc-flex-between rc-flex-align-center">
+                        <div>
+                            <div class="rc-text-muted rc-text-sm">Total Revenue</div>
+                            <div class="rc-heading-3 rc-text-purple">
+                                {{$totalRevenue := 0.0}}
+                                {{range .rentalEquipment}}{{$totalRevenue = add $totalRevenue .TotalRevenue}}{{end}}
+                                €{{printf "%.0f" $totalRevenue}}
+                            </div>
+                        </div>
+                        <div class="rc-icon-wrapper rc-icon-wrapper-purple">
+                            <i class="bi bi-currency-euro"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="rc-card rc-mb-lg">
+            <div class="rc-card-body">
+                <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-3 rc-grid-gap-md">
+                    <div class="rc-form-group">
+                        <label class="rc-label">Search Equipment</label>
+                        <div class="rc-input-group">
+                            <span class="rc-input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" id="searchInput" class="rc-input" placeholder="Search by name, supplier, category...">
+                        </div>
+                    </div>
+                    <div class="rc-form-group">
+                        <label class="rc-label">Status Filter</label>
+                        <select id="statusFilter" class="rc-select">
+                            <option value="">All Status</option>
+                            <option value="active">Active Only</option>
+                            <option value="inactive">Inactive Only</option>
+                        </select>
+                    </div>
+                    <div class="rc-form-group">
+                        <label class="rc-label">Supplier Filter</label>
+                        <select id="supplierFilter" class="rc-select">
+                            <option value="">All Suppliers</option>
+                            {{range .uniqueSuppliers}}
+                            <option value="{{.}}">{{.}}</option>
+                            {{end}}
+                        </select>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Search and Filter -->
-        <div class="bg-white p-4 rounded-lg shadow mb-6">
-            <div class="flex flex-wrap gap-4 items-center">
-                <div class="flex-1 min-w-64">
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search by product name, supplier, or category...">
-                </div>
-                <div class="flex space-x-2">
-                    <select id="statusFilter" class="form-select">
-                        <option value="">All Status</option>
-                        <option value="active">Active Only</option>
-                        <option value="inactive">Inactive Only</option>
-                    </select>
-                    <select id="supplierFilter" class="form-select">
-                        <option value="">All Suppliers</option>
-                        {{range .uniqueSuppliers}}
-                        <option value="{{.}}">{{.}}</option>
-                        {{end}}
-                    </select>
-                </div>
+        <!-- Equipment Table -->
+        <div class="rc-card">
+            <div class="rc-card-header">
+                <h3 class="rc-card-title">
+                    <i class="bi bi-box-seam"></i> Rental Equipment
+                </h3>
             </div>
-        </div>
-
-        <!-- Rental Equipment Table -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="table table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Product Name</th>
-                            <th>Supplier</th>
-                            <th>Category</th>
-                            <th>Rental Price</th>
-                            <th>Total Used</th>
-                            <th>Total Revenue</th>
-                            <th>Last Used</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="equipmentTableBody">
-                        {{range .rentalEquipment}}
-                        <tr data-equipment-id="{{.EquipmentID}}" data-status="{{if .IsActive}}active{{else}}inactive{{end}}"
-                            data-supplier="{{.SupplierName}}" data-search="{{.ProductName}} {{.SupplierName}} {{.Category}}">
-                            <td>
-                                <div>
-                                    <div class="font-weight-bold">{{.ProductName}}</div>
-                                    {{if .Description}}
-                                    <small class="text-muted">{{truncate .Description 50}}</small>
+            <div class="rc-card-body rc-p-0">
+                <div class="rc-table-container">
+                    <table class="rc-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Supplier</th>
+                                <th>Category</th>
+                                <th>Daily Rate</th>
+                                <th>Usage</th>
+                                <th>Revenue</th>
+                                <th>Status</th>
+                                <th class="rc-text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="equipmentTableBody">
+                            {{range .rentalEquipment}}
+                            <tr data-equipment-id="{{.EquipmentID}}" data-status="{{if .IsActive}}active{{else}}inactive{{end}}"
+                                data-supplier="{{.SupplierName}}" data-search="{{.ProductName}} {{.SupplierName}} {{.Category}}">
+                                <td>
+                                    <div>
+                                        <div class="rc-font-weight-600">{{.ProductName}}</div>
+                                        {{if .Description}}
+                                        <div class="rc-text-sm rc-text-muted">{{truncate .Description 50}}</div>
+                                        {{end}}
+                                    </div>
+                                </td>
+                                <td>{{.SupplierName}}</td>
+                                <td>
+                                    {{if .Category}}
+                                    <span class="rc-badge rc-badge-outline">{{.Category}}</span>
+                                    {{else}}
+                                    <span class="rc-text-muted">Uncategorized</span>
                                     {{end}}
-                                </div>
-                            </td>
-                            <td>{{.SupplierName}}</td>
-                            <td>
-                                {{if .Category}}
-                                <span class="badge bg-secondary">{{.Category}}</span>
-                                {{else}}
-                                <span class="text-muted">Uncategorized</span>
-                                {{end}}
-                            </td>
-                            <td class="text-right">€{{printf "%.2f" .RentalPrice}}</td>
-                            <td class="text-center">
-                                {{if gt .TotalUsed 0}}
-                                <span class="badge bg-info">{{.TotalUsed}} times</span>
-                                {{else}}
-                                <span class="text-muted">Never used</span>
-                                {{end}}
-                            </td>
-                            <td class="text-right">€{{printf "%.2f" .TotalRevenue}}</td>
-                            <td>
-                                {{if .LastUsedDate}}
-                                {{timeAgo .LastUsedDate}}
-                                {{else}}
-                                <span class="text-muted">Never</span>
-                                {{end}}
-                            </td>
-                            <td>
-                                {{if .IsActive}}
-                                <span class="badge badge-active">Active</span>
-                                {{else}}
-                                <span class="badge badge-inactive">Inactive</span>
-                                {{end}}
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editEquipment({{.EquipmentID}})" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteEquipment({{.EquipmentID}})" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {{else}}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-5">
-                                <i class="fas fa-box-open fa-3x mb-3 text-muted"></i>
-                                <p>No rental equipment found. <a href="#" onclick="showCreateEquipmentModal()" class="text-decoration-none">Add your first equipment</a></p>
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
+                                </td>
+                                <td class="rc-font-mono">€{{printf "%.2f" .RentalPrice}}</td>
+                                <td>
+                                    {{if gt .TotalUsed 0}}
+                                    <span class="rc-badge rc-badge-info">{{.TotalUsed}}x</span>
+                                    {{else}}
+                                    <span class="rc-text-muted">Never used</span>
+                                    {{end}}
+                                </td>
+                                <td class="rc-font-mono">€{{printf "%.2f" .TotalRevenue}}</td>
+                                <td>
+                                    {{if .IsActive}}
+                                    <span class="rc-badge rc-badge-success">Active</span>
+                                    {{else}}
+                                    <span class="rc-badge rc-badge-secondary">Inactive</span>
+                                    {{end}}
+                                </td>
+                                <td class="rc-text-center">
+                                    <div class="rc-btn-group">
+                                        <button class="rc-btn rc-btn-ghost rc-btn-sm" onclick="editEquipment({{.EquipmentID}})" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="rc-btn rc-btn-ghost rc-btn-sm rc-text-danger" onclick="deleteEquipment({{.EquipmentID}})" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="8" class="rc-text-center rc-py-xl">
+                                    <div class="rc-empty-state">
+                                        <i class="bi bi-box-seam rc-text-6xl rc-text-muted"></i>
+                                        <h4 class="rc-heading-4 rc-mt-md rc-mb-sm">No Equipment Found</h4>
+                                        <p class="rc-text-muted rc-mb-lg">No rental equipment found. Add your first equipment to get started.</p>
+                                        <button class="rc-btn rc-btn-primary" onclick="showCreateEquipmentModal()">
+                                            <i class="bi bi-plus-lg"></i> Add First Equipment
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Create/Edit Equipment Modal -->
-    <div class="modal fade" id="equipmentModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="equipmentModalTitle">Add New Rental Equipment</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="equipmentForm">
-                        <input type="hidden" id="equipmentId" name="equipmentId">
+    <div id="equipmentModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-overlay" onclick="closeEquipmentModal()"></div>
+        <div class="rc-modal-content" style="max-width: 600px;">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title" id="equipmentModalTitle">Add New Rental Equipment</h3>
+                <button class="rc-modal-close" onclick="closeEquipmentModal()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="equipmentForm">
+                    <input type="hidden" id="equipmentId" name="equipmentId">
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="productName" class="form-label">Product Name *</label>
-                                    <input type="text" class="form-control" id="productName" name="productName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="supplierName" class="form-label">Supplier Name *</label>
-                                    <input type="text" class="form-control" id="supplierName" name="supplierName" required>
-                                </div>
-                            </div>
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Product Name *</label>
+                            <input type="text" class="rc-input" id="productName" name="productName" required>
                         </div>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Supplier Name *</label>
+                            <input type="text" class="rc-input" id="supplierName" name="supplierName" required>
+                        </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="rentalPrice" class="form-label">Rental Price (per day) *</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">€</span>
-                                        <input type="number" class="form-control" id="rentalPrice" name="rentalPrice" step="0.01" min="0" required>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="category" class="form-label">Category</label>
-                                    <input type="text" class="form-control" id="category" name="category" list="categoryList">
-                                    <datalist id="categoryList">
-                                        <option value="Audio">
-                                        <option value="Video">
-                                        <option value="Lighting">
-                                        <option value="Stage Equipment">
-                                        <option value="Transportation">
-                                        <option value="Other">
-                                    </datalist>
-                                </div>
+                    <div class="rc-grid rc-grid-cols-1 rc-grid-cols-md-2 rc-grid-gap-md">
+                        <div class="rc-form-group">
+                            <label class="rc-label">Daily Rental Price (€) *</label>
+                            <div class="rc-input-group">
+                                <span class="rc-input-group-text">€</span>
+                                <input type="number" class="rc-input" id="rentalPrice" name="rentalPrice" step="0.01" min="0" required>
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        <div class="rc-form-group">
+                            <label class="rc-label">Category</label>
+                            <select class="rc-select" id="category" name="category">
+                                <option value="">Select Category</option>
+                                <option value="Audio">Audio</option>
+                                <option value="Video">Video</option>
+                                <option value="Lighting">Lighting</option>
+                                <option value="Stage Equipment">Stage Equipment</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Other">Other</option>
+                            </select>
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
-                        </div>
+                    <div class="rc-form-group">
+                        <label class="rc-label">Description</label>
+                        <textarea class="rc-input" id="description" name="description" rows="3"></textarea>
+                    </div>
 
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="isActive" name="isActive" checked>
-                                <label class="form-check-label" for="isActive">
-                                    Active (available for rental)
-                                </label>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-orange text-white" onclick="saveEquipment()">
-                        <i class="fas fa-save mr-1"></i>Save Equipment
-                    </button>
-                </div>
+                    <div class="rc-form-group">
+                        <label class="rc-label">Notes</label>
+                        <textarea class="rc-input" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+
+                    <div class="rc-form-group">
+                        <label class="rc-checkbox">
+                            <input type="checkbox" id="isActive" name="isActive" checked>
+                            <span class="rc-checkbox-mark"></span>
+                            Active (available for rental)
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="rc-modal-footer">
+                <button type="button" class="rc-btn rc-btn-secondary" onclick="closeEquipmentModal()">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </button>
+                <button type="button" class="rc-btn rc-btn-primary" onclick="saveEquipment()">
+                    <i class="bi bi-check-lg"></i> Save Equipment
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/rental-core-design.js?v={{.timestamp}}"></script>
     <script>
         let currentEquipmentId = null;
 
@@ -354,21 +350,20 @@
             document.getElementById('equipmentModalTitle').textContent = 'Add New Rental Equipment';
             document.getElementById('equipmentForm').reset();
             document.getElementById('isActive').checked = true;
-            new bootstrap.Modal(document.getElementById('equipmentModal')).show();
+            document.getElementById('equipmentModal').style.display = 'flex';
+        }
+
+        function closeEquipmentModal() {
+            document.getElementById('equipmentModal').style.display = 'none';
         }
 
         function editEquipment(equipmentId) {
             currentEquipmentId = equipmentId;
             document.getElementById('equipmentModalTitle').textContent = 'Edit Rental Equipment';
 
-            // Find the row with equipment data
-            const row = document.querySelector(`tr[data-equipment-id="${equipmentId}"]`);
-            if (!row) return;
-
-            // This would typically fetch full details via API, for now use basic data
-            // In a real implementation, make an API call to get full equipment details
-            showMessage('Feature will load equipment details from API', 'info');
-            new bootstrap.Modal(document.getElementById('equipmentModal')).show();
+            // This would typically fetch full details via API
+            showToast('Feature will load equipment details from API', 'info');
+            document.getElementById('equipmentModal').style.display = 'flex';
         }
 
         function saveEquipment() {
@@ -400,15 +395,15 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    showMessage(data.error, 'error');
+                    showToast(data.error, 'error');
                 } else {
-                    showMessage(data.message, 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('equipmentModal')).hide();
+                    showToast(data.message, 'success');
+                    closeEquipmentModal();
                     setTimeout(() => location.reload(), 1500);
                 }
             })
             .catch(error => {
-                showMessage('Error saving equipment: ' + error.message, 'error');
+                showToast('Error saving equipment: ' + error.message, 'error');
             });
         }
 
@@ -423,30 +418,44 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    showMessage(data.error, 'error');
+                    showToast(data.error, 'error');
                 } else {
-                    showMessage(data.message, 'success');
+                    showToast(data.message, 'success');
                     setTimeout(() => location.reload(), 1500);
                 }
             })
             .catch(error => {
-                showMessage('Error deleting equipment: ' + error.message, 'error');
+                showToast('Error deleting equipment: ' + error.message, 'error');
             });
         }
 
-        function showMessage(message, type) {
-            // Create toast notification
-            const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
-            toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-            toast.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        function showToast(message, type) {
+            // Create notification using RentalCore design system
+            const notification = document.createElement('div');
+            notification.className = `rc-notification rc-notification-${type}`;
+            notification.innerHTML = `
+                <div class="rc-notification-content">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    ${message}
+                </div>
             `;
 
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000);
+            document.body.appendChild(notification);
+
+            // Trigger animation
+            setTimeout(() => notification.classList.add('rc-notification-show'), 100);
+
+            // Remove after delay
+            setTimeout(() => {
+                notification.classList.remove('rc-notification-show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Rental Equipment page loaded');
+        });
     </script>
 </body>
 </html>
