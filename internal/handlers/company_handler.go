@@ -111,12 +111,22 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 	company.City = h.trimStringPointer(&city)
 	company.PostalCode = h.trimStringPointer(&postalCode)
 	company.Country = h.trimStringPointer(&country)
-	company.UpdatedAt = time.Now()
 
-	// Save to database
+	// Fix corrupted datetime values if they exist for existing records
+	if company.ID != 0 {
+		if company.CreatedAt.IsZero() {
+			company.CreatedAt = time.Now()
+			log.Printf("UpdateCompanySettingsForm: Fixed zero CreatedAt value")
+		}
+		if company.UpdatedAt.IsZero() {
+			company.UpdatedAt = time.Now()
+			log.Printf("UpdateCompanySettingsForm: Fixed zero UpdatedAt value")
+		}
+	}
+
+	// Save to database (GORM will handle timestamps automatically)
 	var result *gorm.DB
 	if company.ID == 0 {
-		company.CreatedAt = time.Now()
 		result = h.db.Create(company)
 	} else {
 		result = h.db.Save(company)
@@ -222,18 +232,27 @@ func (h *CompanyHandler) UpdateCompanySettings(c *gin.Context) {
 	company.SMTPFromEmail = h.trimStringPointer(request.SMTPFromEmail)
 	company.SMTPFromName = h.trimStringPointer(request.SMTPFromName)
 	company.SMTPUseTLS = request.SMTPUseTLS
-	
-	company.UpdatedAt = time.Now()
+
+	// Fix corrupted datetime values if they exist for existing records
+	if company.ID != 0 {
+		if company.CreatedAt.IsZero() {
+			company.CreatedAt = time.Now()
+			log.Printf("UpdateCompanySettings: Fixed zero CreatedAt value")
+		}
+		if company.UpdatedAt.IsZero() {
+			company.UpdatedAt = time.Now()
+			log.Printf("UpdateCompanySettings: Fixed zero UpdatedAt value")
+		}
+	}
 
 	// If updating existing record, preserve logo path if not provided
 	if request.LogoPath != nil && *request.LogoPath != "" {
 		company.LogoPath = request.LogoPath
 	}
 
-	// Save to database
+	// Save to database (GORM will handle timestamps automatically)
 	var result *gorm.DB
 	if company.ID == 0 {
-		company.CreatedAt = time.Now()
 		result = h.db.Create(company)
 	} else {
 		result = h.db.Save(company)
@@ -578,6 +597,16 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 		}
 	} else {
 		log.Printf("UpdateSMTPConfig: Found existing company settings with ID: %d", company.ID)
+
+		// Fix corrupted datetime values if they exist
+		if company.CreatedAt.IsZero() {
+			company.CreatedAt = time.Now()
+			log.Printf("UpdateSMTPConfig: Fixed zero CreatedAt value")
+		}
+		if company.UpdatedAt.IsZero() {
+			company.UpdatedAt = time.Now()
+			log.Printf("UpdateSMTPConfig: Fixed zero UpdatedAt value")
+		}
 	}
 
 	// Update email settings
