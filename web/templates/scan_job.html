@@ -718,15 +718,26 @@
                                 </select>
 
                                 <div class="rc-grid rc-grid-cols-2 rc-grid-gap-sm" style="margin-bottom: 8px;">
-                                    <input type="number" id="rental-quantity" class="rc-input" placeholder="Quantity" value="1" min="1">
-                                    <input type="number" id="rental-days" class="rc-input" placeholder="Days" value="1" min="1">
+                                    <div>
+                                        <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Quantity</label>
+                                        <input type="number" id="rental-quantity" class="rc-input" placeholder="1" value="1" min="1">
+                                    </div>
+                                    <div>
+                                        <label class="rc-form-label" style="font-size: 12px; margin-bottom: 4px; display: block;">Days</label>
+                                        <input type="number" id="rental-days" class="rc-input" placeholder="1" value="1" min="1">
+                                    </div>
                                 </div>
 
                                 <input type="text" id="rental-notes" class="rc-input" placeholder="Notes (optional)" style="margin-bottom: 8px;">
 
-                                <button class="rc-btn rc-btn-primary" onclick="addRentalEquipment()">
-                                    <i class="bi bi-plus-lg"></i> Add Rental
-                                </button>
+                                <div class="rc-flex rc-flex-gap-sm">
+                                    <button class="rc-btn rc-btn-primary" onclick="addRentalEquipment()">
+                                        <i class="bi bi-plus-lg"></i> Add Rental
+                                    </button>
+                                    <button class="rc-btn rc-btn-outline" onclick="showNewRentalModal()">
+                                        <i class="bi bi-plus-circle"></i> New Equipment
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Current Rental Equipment -->
@@ -906,6 +917,34 @@
                                 <p class="rc-text-muted">Start scanning to see results here</p>
                             </div>
                             {{end}}
+
+                            <!-- File Attachments Section -->
+                            <div class="manual-input-section" style="margin-top: 20px;">
+                                <h6 style="margin-bottom: 16px;"><i class="bi bi-paperclip"></i> File Attachments</h6>
+
+                                <!-- Upload Area -->
+                                <div class="file-upload-area" style="border: 2px dashed var(--surface-3); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 16px;"
+                                     onclick="document.getElementById('scanFileInput').click();">
+                                    <i class="bi bi-cloud-upload" style="font-size: 1.5rem; color: var(--text-muted); margin-bottom: 6px;"></i>
+                                    <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Click to select files or drag and drop</p>
+                                    <small style="color: var(--text-muted); font-size: 12px;">Max 50MB per file</small>
+                                </div>
+                                <input type="file" id="scanFileInput" multiple accept="*/*" style="display: none;" onchange="handleScanFileSelection(this)">
+
+                                <div id="scanSelectedFilesList" style="display: none;">
+                                    <h6 style="margin-bottom: 8px; font-size: 14px;">Selected Files:</h6>
+                                    <div id="scanSelectedFilesContainer"></div>
+                                    <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="uploadScanFiles()" style="margin-top: 8px;">
+                                        <i class="bi bi-upload"></i> Upload Files
+                                    </button>
+                                </div>
+
+                                <!-- Current Attachments -->
+                                <div id="scanCurrentAttachments" style="margin-top: 16px;">
+                                    <h6 style="margin-bottom: 8px; font-size: 14px;">Current Attachments:</h6>
+                                    <div id="scanAttachmentsList">Loading...</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2626,10 +2665,28 @@
             const days = parseInt(daysInput.value) || 1;
             const notes = notesInput.value.trim();
 
+            console.log('🔄 Adding rental equipment:', {
+                equipmentId,
+                quantity,
+                days,
+                notes,
+                jobID: {{.job.JobID}}
+            });
+
             if (!equipmentId) {
                 updateStatus('Please select rental equipment', 'error');
                 return;
             }
+
+            const requestData = {
+                job_id: {{.job.JobID}},
+                equipment_id: equipmentId,
+                quantity: quantity,
+                days_used: days,
+                notes: notes
+            };
+
+            console.log('📤 Request data:', requestData);
 
             try {
                 const response = await fetch(`/api/jobs/{{.job.JobID}}/assign-rental`, {
@@ -2637,16 +2694,13 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        job_id: {{.job.JobID}},
-                        equipment_id: equipmentId,
-                        quantity: quantity,
-                        days_used: days,
-                        notes: notes
-                    }),
+                    body: JSON.stringify(requestData),
                 });
 
+                console.log('📥 Response status:', response.status);
+
                 const result = await response.json();
+                console.log('📥 Response data:', result);
 
                 if (response.ok) {
                     updateStatus(`Rental equipment added successfully - €${result.totalCost.toFixed(2)}`, 'success');
@@ -2760,7 +2814,342 @@
 
             manualInputSection.parentNode.insertBefore(rentalSection, manualInputSection.nextSibling);
         }
+
+        // ===== FILE UPLOAD FUNCTIONS FOR SCAN PAGE =====
+
+        let scanSelectedFiles = [];
+
+        function handleScanFileSelection(input) {
+            const files = Array.from(input.files);
+            scanSelectedFiles = scanSelectedFiles.concat(files);
+            displayScanSelectedFiles();
+        }
+
+        function displayScanSelectedFiles() {
+            const container = document.getElementById('scanSelectedFilesContainer');
+            const listDiv = document.getElementById('scanSelectedFilesList');
+
+            if (scanSelectedFiles.length === 0) {
+                listDiv.style.display = 'none';
+                return;
+            }
+
+            listDiv.style.display = 'block';
+
+            container.innerHTML = scanSelectedFiles.map((file, index) => `
+                <div class="selected-file-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
+                    <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                        <i class="bi bi-file-earmark" style="color: var(--primary);"></i>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 500;">${file.name}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">${formatScanFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="rc-btn rc-btn-ghost rc-btn-sm" onclick="removeScanSelectedFile(${index})" style="color: var(--error);">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeScanSelectedFile(index) {
+            scanSelectedFiles.splice(index, 1);
+            displayScanSelectedFiles();
+        }
+
+        function formatScanFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function uploadScanFiles() {
+            if (scanSelectedFiles.length === 0) {
+                updateStatus('No files selected', 'error');
+                return;
+            }
+
+            const uploadBtn = document.querySelector('#scanSelectedFilesList button');
+            const originalText = uploadBtn.innerHTML;
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Uploading...';
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const file of scanSelectedFiles) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('jobID', {{.job.JobID}});
+
+                try {
+                    const response = await fetch('/api/jobs/attachments/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', file.name, error);
+                    errorCount++;
+                }
+            }
+
+            // Reset state
+            scanSelectedFiles = [];
+            displayScanSelectedFiles();
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalText;
+
+            // Show result
+            if (errorCount === 0) {
+                updateStatus(`${successCount} file(s) uploaded successfully!`, 'success');
+            } else {
+                updateStatus(`${successCount} uploaded, ${errorCount} failed`, 'warning');
+            }
+
+            // Reload attachments
+            loadScanAttachments();
+        }
+
+        async function loadScanAttachments() {
+            try {
+                const response = await fetch(`/api/jobs/{{.job.JobID}}/attachments`);
+                const attachments = await response.json();
+
+                const container = document.getElementById('scanAttachmentsList');
+                if (!attachments || attachments.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted); font-style: italic; margin: 0;">No files attached yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = attachments.map(attachment => `
+                    <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
+                        <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                            <i class="bi ${getScanFileIcon(attachment.mimeType)}" style="color: var(--primary);"></i>
+                            <div>
+                                <div style="font-size: 14px; font-weight: 500;">${attachment.originalFilename}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">
+                                    ${attachment.fileSizeFormatted}
+                                    ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-align-center rc-flex-gap-xs">
+                            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadScanAttachment(${attachment.attachmentID})" title="Download">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="deleteScanAttachment(${attachment.attachmentID}, '${attachment.originalFilename}')" title="Delete" style="color: var(--error);">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading scan attachments:', error);
+                document.getElementById('scanAttachmentsList').innerHTML = '<p style="color: var(--error); margin: 0;">Error loading attachments.</p>';
+            }
+        }
+
+        function getScanFileIcon(mimeType) {
+            if (mimeType.startsWith('image/')) return 'bi-image';
+            if (mimeType.startsWith('video/')) return 'bi-play-circle';
+            if (mimeType.startsWith('audio/')) return 'bi-music-note';
+            if (mimeType.includes('pdf')) return 'bi-file-pdf';
+            if (mimeType.includes('word') || mimeType.includes('document')) return 'bi-file-text';
+            if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'bi-file-spreadsheet';
+            if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi-file-zip';
+            return 'bi-file-earmark';
+        }
+
+        function downloadScanAttachment(attachmentID) {
+            window.open(`/api/jobs/attachments/${attachmentID}/download`, '_blank');
+        }
+
+        async function deleteScanAttachment(attachmentID, filename) {
+            if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+            try {
+                const response = await fetch(`/api/jobs/attachments/${attachmentID}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateStatus('Attachment deleted successfully!', 'success');
+                    loadScanAttachments();
+                } else {
+                    updateStatus('Failed to delete attachment: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting attachment:', error);
+                updateStatus('Error deleting attachment', 'error');
+            }
+        }
+
+        // Load attachments when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadScanAttachments();
+
+            // Setup drag and drop for scan file upload
+            const scanUploadArea = document.querySelector('#scanCurrentAttachments .file-upload-area');
+            if (scanUploadArea) {
+                scanUploadArea.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    scanUploadArea.style.backgroundColor = 'var(--surface-3)';
+                });
+
+                scanUploadArea.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    scanUploadArea.style.backgroundColor = '';
+                });
+
+                scanUploadArea.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    scanUploadArea.style.backgroundColor = '';
+
+                    const files = Array.from(e.dataTransfer.files);
+                    scanSelectedFiles = scanSelectedFiles.concat(files);
+                    displayScanSelectedFiles();
+                });
+            }
+        });
+
+        // New Rental Equipment Modal Functions
+        function showNewRentalModal() {
+            const modal = document.getElementById('newRentalModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function hideNewRentalModal() {
+            const modal = document.getElementById('newRentalModal');
+            if (modal) {
+                modal.style.display = 'none';
+                // Reset form
+                document.getElementById('newRentalForm').reset();
+            }
+        }
+
+        async function createNewRentalEquipment() {
+            const form = document.getElementById('newRentalForm');
+            const formData = new FormData(form);
+
+            const data = {
+                productName: formData.get('productName'),
+                supplierName: formData.get('supplierName'),
+                rentalPrice: parseFloat(formData.get('rentalPrice')),
+                category: formData.get('category'),
+                description: formData.get('description'),
+                notes: formData.get('notes'),
+                isActive: true
+            };
+
+            console.log('Creating new rental equipment:', data);
+
+            try {
+                const response = await fetch('/api/rental-equipment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateStatus('Rental equipment created successfully', 'success');
+                    hideNewRentalModal();
+
+                    // Add new option to select
+                    const select = document.getElementById('rental-equipment-select');
+                    const option = document.createElement('option');
+                    option.value = result.equipmentID;
+                    option.setAttribute('data-price', result.rentalPrice);
+                    option.setAttribute('data-name', result.productName);
+                    option.setAttribute('data-supplier', result.supplierName);
+                    option.textContent = `${result.productName} - ${result.supplierName} (€${result.rentalPrice.toFixed(2)}/day)`;
+                    select.appendChild(option);
+
+                    // Select the new option
+                    select.value = result.equipmentID;
+                } else {
+                    updateStatus('Failed to create rental equipment: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating rental equipment:', error);
+                updateStatus('Error creating rental equipment', 'error');
+            }
+        }
     </script>
+
+    <!-- New Rental Equipment Modal -->
+    <div id="newRentalModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="hideNewRentalModal()"></div>
+        <div class="rc-modal-content">
+            <div class="rc-modal-header">
+                <h3 class="rc-modal-title">Create New Rental Equipment</h3>
+                <button class="rc-modal-close" onclick="hideNewRentalModal()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="rc-modal-body">
+                <form id="newRentalForm">
+                    <div class="rc-form-group rc-mb-md">
+                        <label class="rc-form-label">Product Name *</label>
+                        <input type="text" name="productName" class="rc-form-input" required
+                               placeholder="e.g., LED Par Light 64">
+                    </div>
+
+                    <div class="rc-form-group rc-mb-md">
+                        <label class="rc-form-label">Supplier Name *</label>
+                        <input type="text" name="supplierName" class="rc-form-input" required
+                               placeholder="e.g., TechRent GmbH">
+                    </div>
+
+                    <div class="rc-grid rc-grid-cols-2 rc-grid-gap-md rc-mb-md">
+                        <div class="rc-form-group">
+                            <label class="rc-form-label">Rental Price per Day (€) *</label>
+                            <input type="number" name="rentalPrice" class="rc-form-input" step="0.01" min="0" required
+                                   placeholder="25.00">
+                        </div>
+                        <div class="rc-form-group">
+                            <label class="rc-form-label">Category</label>
+                            <input type="text" name="category" class="rc-form-input"
+                                   placeholder="e.g., Lighting">
+                        </div>
+                    </div>
+
+                    <div class="rc-form-group rc-mb-md">
+                        <label class="rc-form-label">Description</label>
+                        <textarea name="description" class="rc-form-input" rows="3"
+                                  placeholder="Technical specifications, features, etc."></textarea>
+                    </div>
+
+                    <div class="rc-form-group rc-mb-md">
+                        <label class="rc-form-label">Notes</label>
+                        <textarea name="notes" class="rc-form-input" rows="2"
+                                  placeholder="Internal notes, handling instructions, etc."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="rc-modal-footer">
+                <button class="rc-btn rc-btn-secondary" onclick="hideNewRentalModal()">Cancel</button>
+                <button class="rc-btn rc-btn-primary" onclick="createNewRentalEquipment()">
+                    <i class="bi bi-plus-lg"></i> Create Equipment
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript -->
     <script src="/static/js/rental-core-design.js"></script>
