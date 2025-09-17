@@ -3015,8 +3015,14 @@
                     <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
                         <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
                             <i class="bi ${getScanFileIcon(attachment.mimeType)}" style="color: var(--primary);"></i>
-                            <div>
-                                <div style="font-size: 14px; font-weight: 500;">${attachment.originalFilename}</div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 14px; font-weight: 500;">
+                                    <button onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                            style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 0; text-decoration: underline; font-size: 14px; font-weight: 500;"
+                                            title="Click to preview">
+                                        ${attachment.originalFilename}
+                                    </button>
+                                </div>
                                 <div style="font-size: 12px; color: var(--text-muted);">
                                     ${attachment.fileSizeFormatted}
                                     ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
@@ -3024,6 +3030,11 @@
                             </div>
                         </div>
                         <div class="rc-flex rc-flex-align-center rc-flex-gap-xs">
+                            <button class="rc-btn rc-btn-outline rc-btn-sm"
+                                    onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                    title="Preview">
+                                <i class="bi bi-eye"></i>
+                            </button>
                             <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadScanAttachment(${attachment.attachmentID})" title="Download">
                                 <i class="bi bi-download"></i>
                             </button>
@@ -3491,6 +3502,174 @@
             setTimeout(initializeModals, 0); // Run after other DOM operations
         });
 
+        // === FILE PREVIEW FUNCTIONALITY ===
+
+        let currentFileData = null;
+
+        // Preview file in modal
+        async function previewFile(attachmentID, filename, mimeType, fileSize) {
+            currentFileData = { attachmentID, filename, mimeType, fileSize };
+
+            // Update modal title and info
+            document.getElementById('filePreviewTitle').textContent = filename;
+            document.getElementById('filePreviewInfo').textContent = `${fileSize} • ${mimeType}`;
+
+            // Show modal immediately
+            const modal = document.getElementById('filePreviewModal');
+            modal.style.display = 'block';
+
+            // Show loading state
+            const content = document.getElementById('filePreviewContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 2rem; margin-bottom: 16px;"></i>
+                    <div>Loading file preview...</div>
+                </div>
+            `;
+
+            try {
+                await loadFilePreview(attachmentID, mimeType, filename);
+            } catch (error) {
+                console.error('Error loading file preview:', error);
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--danger);">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i>
+                        <div>Failed to load file preview</div>
+                        <button onclick="downloadCurrentFile()" class="rc-btn rc-btn-primary rc-btn-sm" style="margin-top: 16px;">
+                            <i class="bi bi-download"></i> Download Instead
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Load file preview based on type
+        async function loadFilePreview(attachmentID, mimeType, filename) {
+            const content = document.getElementById('filePreviewContent');
+
+            if (mimeType.startsWith('image/')) {
+                // Image preview
+                const img = new Image();
+                img.onload = function() {
+                    content.innerHTML = `
+                        <img src="/api/jobs/attachments/${attachmentID}/download"
+                             alt="${filename}"
+                             style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                    `;
+                };
+                img.onerror = function() {
+                    throw new Error('Failed to load image');
+                };
+                img.src = `/api/jobs/attachments/${attachmentID}/download`;
+
+            } else if (mimeType === 'application/pdf') {
+                // PDF preview
+                content.innerHTML = `
+                    <iframe src="/api/jobs/attachments/${attachmentID}/download"
+                            style="width: 100%; height: 70vh; border: none;"
+                            title="${filename}">
+                    </iframe>
+                `;
+
+            } else if (mimeType.startsWith('text/') ||
+                       mimeType === 'application/json' ||
+                       mimeType === 'application/xml' ||
+                       filename.endsWith('.log') ||
+                       filename.endsWith('.txt') ||
+                       filename.endsWith('.md')) {
+                // Text file preview
+                const response = await fetch(`/api/jobs/attachments/${attachmentID}/download`);
+                const text = await response.text();
+
+                content.innerHTML = `
+                    <pre style="white-space: pre-wrap; margin: 20px; font-family: 'JetBrains Mono', monospace;
+                               font-size: 14px; line-height: 1.5; background: var(--surface-1);
+                               padding: 20px; border-radius: 8px; overflow: auto; max-height: 60vh;">${escapeHtml(text)}</pre>
+                `;
+
+            } else if (mimeType.startsWith('video/')) {
+                // Video preview
+                content.innerHTML = `
+                    <video controls style="max-width: 100%; max-height: 70vh;">
+                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+
+            } else if (mimeType.startsWith('audio/')) {
+                // Audio preview
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                        <div style="margin-bottom: 20px; font-size: 18px;">${filename}</div>
+                        <audio controls style="width: 100%; max-width: 400px;">
+                            <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                `;
+
+            } else {
+                // Unsupported file type - show download option
+                const fileIcon = getFileTypeIcon(mimeType, filename);
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <i class="${fileIcon}" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                        <div style="margin-bottom: 8px; font-size: 18px;">${filename}</div>
+                        <div style="margin-bottom: 20px; color: var(--text-muted);">Preview not available for this file type</div>
+                        <button onclick="downloadCurrentFile()" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-download"></i> Download File
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Get file type icon
+        function getFileTypeIcon(mimeType, filename) {
+            if (mimeType.startsWith('image/')) return 'bi bi-file-image';
+            if (mimeType === 'application/pdf') return 'bi bi-file-pdf';
+            if (mimeType.startsWith('text/')) return 'bi bi-file-text';
+            if (mimeType.startsWith('video/')) return 'bi bi-file-play';
+            if (mimeType.startsWith('audio/')) return 'bi bi-file-music';
+            if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi bi-file-zip';
+            if (mimeType.includes('excel') || filename.endsWith('.xlsx') || filename.endsWith('.xls')) return 'bi bi-file-excel';
+            if (mimeType.includes('word') || filename.endsWith('.docx') || filename.endsWith('.doc')) return 'bi bi-file-word';
+            if (mimeType.includes('powerpoint') || filename.endsWith('.pptx') || filename.endsWith('.ppt')) return 'bi bi-file-ppt';
+            return 'bi bi-file-earmark';
+        }
+
+        // Escape HTML for text preview
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Hide file preview modal
+        function hideFilePreviewModal() {
+            const modal = document.getElementById('filePreviewModal');
+            modal.style.display = 'none';
+            currentFileData = null;
+        }
+
+        // Download current file
+        function downloadCurrentFile() {
+            if (currentFileData) {
+                window.open(`/api/jobs/attachments/${currentFileData.attachmentID}/download`, '_blank');
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('filePreviewModal');
+                if (modal.style.display !== 'none') {
+                    hideFilePreviewModal();
+                }
+            }
+        });
+
         // === VIRTUAL SCROLLING FOR LARGE LISTS ===
 
         // Simple virtual scrolling implementation
@@ -3560,6 +3739,34 @@
             }
         }
     </script>
+
+    <!-- File Preview Modal -->
+    <div id="filePreviewModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="hideFilePreviewModal()"></div>
+        <div class="rc-modal-content" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto;">
+            <div class="rc-modal-header" style="padding: 16px; border-bottom: 1px solid var(--surface-3);">
+                <div class="rc-flex rc-flex-between rc-flex-align-center">
+                    <div>
+                        <h5 class="rc-modal-title" id="filePreviewTitle" style="margin: 0; font-size: 18px;">File Preview</h5>
+                        <p id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);"></p>
+                    </div>
+                    <div class="rc-flex rc-flex-gap-sm">
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadCurrentFile()" id="downloadFileBtn">
+                            <i class="bi bi-download"></i> Download
+                        </button>
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="hideFilePreviewModal()">
+                            <i class="bi bi-x"></i> Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="rc-modal-body" style="padding: 0; max-height: calc(90vh - 120px); overflow: auto;">
+                <div id="filePreviewContent" style="min-height: 300px; display: flex; align-items: center; justify-content: center;">
+                    <!-- File content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- New Rental Equipment Modal -->
     <div id="newRentalModal" class="rc-modal" style="display: none;">
