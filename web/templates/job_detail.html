@@ -265,6 +265,68 @@
                         {{end}}
                     </div>
                 </div>
+
+                <!-- Job Attachments -->
+                <div class="rc-card rc-mt-lg">
+                    <div class="rc-card-header">
+                        <h3 class="rc-card-title"><i class="bi bi-paperclip"></i> Attachments</h3>
+                        <button class="rc-btn rc-btn-primary rc-btn-sm" onclick="showUploadModal()">
+                            <i class="bi bi-plus-lg"></i> Add File
+                        </button>
+                    </div>
+                    <div class="rc-card-body">
+                        <div id="attachments-list">
+                            <!-- Attachments will be loaded here -->
+                            <div class="rc-text-center rc-p-lg" id="loading-attachments">
+                                <i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i>
+                                Loading attachments...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="rc-modal" style="display: none;">
+            <div class="rc-modal-backdrop" onclick="hideUploadModal()"></div>
+            <div class="rc-modal-content">
+                <div class="rc-modal-header">
+                    <h3 class="rc-modal-title">Upload File</h3>
+                    <button class="rc-modal-close" onclick="hideUploadModal()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <input type="hidden" name="jobID" value="{{.job.JobID}}">
+
+                        <div class="rc-form-group rc-mb-md">
+                            <label class="rc-form-label">Choose File</label>
+                            <input type="file" name="file" id="fileInput" class="rc-form-input" accept="*/*" required>
+                            <small class="rc-text-secondary">Maximum file size: 50MB</small>
+                        </div>
+
+                        <div class="rc-form-group rc-mb-md">
+                            <label class="rc-form-label">Description (optional)</label>
+                            <textarea name="description" class="rc-form-input" rows="3" maxlength="1000"
+                                     placeholder="Add a description for this file..."></textarea>
+                        </div>
+
+                        <div id="upload-progress" style="display: none;" class="rc-mb-md">
+                            <div class="rc-progress">
+                                <div class="rc-progress-bar" id="progress-bar" style="width: 0%"></div>
+                            </div>
+                            <small class="rc-text-secondary" id="progress-text">Uploading...</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="rc-modal-footer">
+                    <button class="rc-btn rc-btn-secondary" onclick="hideUploadModal()">Cancel</button>
+                    <button class="rc-btn rc-btn-primary" onclick="uploadFile()" id="upload-btn">
+                        <i class="bi bi-upload"></i> Upload
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -305,6 +367,257 @@
     function showDeviceDetails(deviceID) {
         // This function can be imported from the devices page if needed
         window.open('/devices/' + deviceID, '_blank');
+    }
+
+    // ===== FILE ATTACHMENT FUNCTIONS =====
+
+    // Load attachments when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAttachments();
+    });
+
+    // Load attachments for this job
+    function loadAttachments() {
+        const jobID = {{.job.JobID}};
+
+        fetch(`/api/jobs/${jobID}/attachments`)
+            .then(response => response.json())
+            .then(attachments => {
+                displayAttachments(attachments);
+            })
+            .catch(error => {
+                console.error('Error loading attachments:', error);
+                document.getElementById('attachments-list').innerHTML =
+                    '<div class="rc-text-center rc-p-lg rc-text-secondary">Failed to load attachments</div>';
+            });
+    }
+
+    // Display attachments in the UI
+    function displayAttachments(attachments) {
+        const container = document.getElementById('attachments-list');
+
+        if (!attachments || attachments.length === 0) {
+            container.innerHTML = `
+                <div class="rc-text-center rc-p-lg">
+                    <i class="bi bi-paperclip" style="font-size: 3rem; color: var(--text-muted);"></i>
+                    <h4 class="rc-text-muted">No Attachments</h4>
+                    <p class="rc-text-secondary">Upload files to attach them to this job.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="attachment-list">';
+        attachments.forEach(attachment => {
+            const isImage = attachment.isImage;
+            const iconClass = getFileIcon(attachment.mimeType);
+            const uploadDate = new Date(attachment.uploadedAt).toLocaleDateString('de-DE');
+
+            html += `
+                <div class="attachment-item rc-flex rc-flex-between rc-p-md rc-border-bottom">
+                    <div class="attachment-info rc-flex rc-flex-gap-md" style="align-items: center;">
+                        <div class="attachment-icon">
+                            <i class="bi ${iconClass}" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        </div>
+                        <div>
+                            <div class="attachment-name">
+                                <strong>${escapeHtml(attachment.originalFilename)}</strong>
+                                ${isImage ? '<span class="rc-badge rc-badge-info rc-badge-sm">Image</span>' : ''}
+                            </div>
+                            <div class="attachment-meta rc-text-sm rc-text-secondary">
+                                ${attachment.fileSizeFormatted} • ${uploadDate}
+                                ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
+                            </div>
+                            ${attachment.description ? `<div class="attachment-desc rc-text-sm rc-mt-xs">${escapeHtml(attachment.description)}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="attachment-actions rc-flex rc-flex-gap-xs">
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadAttachment(${attachment.attachmentID})" title="Download">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="editAttachmentDescription(${attachment.attachmentID}, '${escapeHtml(attachment.description)}')" title="Edit Description">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="deleteAttachment(${attachment.attachmentID}, '${escapeHtml(attachment.originalFilename)}')" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    // Show upload modal
+    function showUploadModal() {
+        document.getElementById('uploadModal').style.display = 'flex';
+    }
+
+    // Hide upload modal
+    function hideUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+        document.getElementById('uploadForm').reset();
+        document.getElementById('upload-progress').style.display = 'none';
+    }
+
+    // Upload file
+    function uploadFile() {
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const progressDiv = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const uploadBtn = document.getElementById('upload-btn');
+
+        if (!fileInput.files[0]) {
+            alert('Please select a file to upload.');
+            return;
+        }
+
+        const formData = new FormData(form);
+
+        // Show progress
+        progressDiv.style.display = 'block';
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Uploading...';
+
+        const xhr = new XMLHttpRequest();
+
+        // Progress tracking
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = `Uploading... ${Math.round(percentComplete)}%`;
+            }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 201) {
+                hideUploadModal();
+                loadAttachments(); // Reload attachments
+                showNotification('File uploaded successfully!', 'success');
+            } else {
+                const response = JSON.parse(xhr.responseText);
+                alert('Upload failed: ' + (response.error || 'Unknown error'));
+            }
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', function() {
+            alert('Upload failed due to network error.');
+        });
+
+        // Reset upload button state
+        xhr.addEventListener('loadend', function() {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload';
+            progressDiv.style.display = 'none';
+        });
+
+        xhr.open('POST', '/api/jobs/attachments/upload');
+        xhr.send(formData);
+    }
+
+    // Download attachment
+    function downloadAttachment(attachmentID) {
+        window.open(`/api/jobs/attachments/${attachmentID}/download`, '_blank');
+    }
+
+    // Delete attachment
+    function deleteAttachment(attachmentID, filename) {
+        if (confirm(`Are you sure you want to delete "${filename}"?`)) {
+            fetch(`/api/jobs/attachments/${attachmentID}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.message) {
+                    loadAttachments(); // Reload attachments
+                    showNotification('Attachment deleted successfully!', 'success');
+                } else {
+                    alert('Failed to delete attachment: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting attachment:', error);
+                alert('Failed to delete attachment.');
+            });
+        }
+    }
+
+    // Edit attachment description
+    function editAttachmentDescription(attachmentID, currentDescription) {
+        const newDescription = prompt('Edit description:', currentDescription || '');
+
+        if (newDescription !== null && newDescription !== currentDescription) {
+            fetch(`/api/jobs/attachments/${attachmentID}/description`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ description: newDescription })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.message) {
+                    loadAttachments(); // Reload attachments
+                    showNotification('Description updated successfully!', 'success');
+                } else {
+                    alert('Failed to update description: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error updating description:', error);
+                alert('Failed to update description.');
+            });
+        }
+    }
+
+    // Helper functions
+    function getFileIcon(mimeType) {
+        if (mimeType.startsWith('image/')) return 'bi-image';
+        if (mimeType.startsWith('video/')) return 'bi-play-circle';
+        if (mimeType.startsWith('audio/')) return 'bi-music-note';
+        if (mimeType.includes('pdf')) return 'bi-file-pdf';
+        if (mimeType.includes('word') || mimeType.includes('document')) return 'bi-file-text';
+        if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'bi-file-spreadsheet';
+        if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi-file-zip';
+        return 'bi-file-earmark';
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showNotification(message, type = 'info') {
+        // Simple notification - you can enhance this based on your notification system
+        const notification = document.createElement('div');
+        notification.className = `rc-notification rc-notification-${type}`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--background-elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px 16px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        `;
+        notification.innerHTML = `<i class="bi bi-check-circle"></i> ${message}`;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
     </script>
 

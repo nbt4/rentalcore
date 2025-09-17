@@ -666,3 +666,54 @@ type MonthlyRentalRevenue struct {
 	TotalRevenue float64 `json:"totalRevenue"`
 	ItemsRented  int     `json:"itemsRented"`
 }
+
+// ================================================================
+// JOB ATTACHMENTS MODELS
+// ================================================================
+
+type JobAttachment struct {
+	AttachmentID     uint      `gorm:"primaryKey;autoIncrement;column:attachment_id" json:"attachmentID"`
+	JobID            uint      `gorm:"not null;column:job_id" json:"jobID"`
+	Filename         string    `gorm:"not null;size:255;column:filename" json:"filename"`
+	OriginalFilename string    `gorm:"not null;size:255;column:original_filename" json:"originalFilename"`
+	FilePath         string    `gorm:"not null;size:500;column:file_path" json:"filePath"`
+	FileSize         int64     `gorm:"not null;column:file_size" json:"fileSize"`
+	MimeType         string    `gorm:"not null;size:100;column:mime_type" json:"mimeType"`
+	UploadedBy       *uint     `gorm:"column:uploaded_by" json:"uploadedBy"`
+	UploadedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP;column:uploaded_at" json:"uploadedAt"`
+	Description      string    `gorm:"type:text;column:description" json:"description"`
+	IsActive         bool      `gorm:"default:true;column:is_active" json:"isActive"`
+
+	// Relationships
+	Job      *Job  `gorm:"foreignKey:JobID" json:"job,omitempty"`
+	Uploader *User `gorm:"foreignKey:UploadedBy" json:"uploader,omitempty"`
+}
+
+func (JobAttachment) TableName() string {
+	return "job_attachments"
+}
+
+// ================================================================
+// JOB ATTACHMENTS DTOs
+// ================================================================
+
+type UploadAttachmentRequest struct {
+	JobID       uint   `json:"jobID" binding:"required"`
+	Description string `json:"description" binding:"max=1000"`
+}
+
+type JobAttachmentResponse struct {
+	AttachmentID     uint      `json:"attachmentID"`
+	JobID            uint      `json:"jobID"`
+	Filename         string    `json:"filename"`
+	OriginalFilename string    `json:"originalFilename"`
+	FileSize         int64     `json:"fileSize"`
+	MimeType         string    `json:"mimeType"`
+	UploadedBy       *uint     `json:"uploadedBy"`
+	UploadedAt       time.Time `json:"uploadedAt"`
+	Description      string    `json:"description"`
+	IsActive         bool      `json:"isActive"`
+	Uploader         *User     `json:"uploader,omitempty"`
+	FileSizeFormatted string   `json:"fileSizeFormatted"`
+	IsImage          bool      `json:"isImage"`
+}
