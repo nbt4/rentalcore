@@ -1118,9 +1118,58 @@ body {
     font-size: 1rem;
 }
 
-/* Form System */
+/* Responsive Form System */
+.rc-form {
+    display: grid;
+    gap: var(--space-md);
+}
+
 .rc-form-group {
     margin-bottom: var(--space-lg);
+}
+
+.rc-form-grid {
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: 1fr;
+}
+
+/* Responsive form grid */
+@media (min-width: 640px) {
+    .rc-form-grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .rc-form-grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .rc-form-grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Form field spans */
+.rc-form-span-2 {
+    grid-column: span 1;
+}
+
+@media (min-width: 640px) {
+    .rc-form-span-2 {
+        grid-column: span 2;
+    }
+}
+
+@media (min-width: 1024px) {
+    .rc-form-span-3 {
+        grid-column: span 3;
+    }
+
+    .rc-form-span-4 {
+        grid-column: span 4;
+    }
 }
 
 .rc-label {
@@ -1128,7 +1177,7 @@ body {
     color: var(--text-primary);
     font-weight: 500;
     margin-bottom: var(--space-xs);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
 }
 
 .rc-input {
@@ -1459,6 +1508,93 @@ body {
 .rc-hidden { display: none; }
 .rc-visible { display: block; }
 
+/* Responsive Visibility Utilities */
+.rc-hide-xs { display: none; }
+.rc-hide-sm,
+.rc-hide-md,
+.rc-hide-lg,
+.rc-hide-xl { display: block; }
+
+@media (min-width: 480px) {
+    .rc-hide-xs { display: block; }
+    .rc-hide-sm { display: none; }
+}
+
+@media (min-width: 640px) {
+    .rc-hide-sm { display: block; }
+    .rc-hide-md { display: none; }
+}
+
+@media (min-width: 768px) {
+    .rc-hide-md { display: block; }
+    .rc-hide-lg { display: none; }
+}
+
+@media (min-width: 1024px) {
+    .rc-hide-lg { display: block; }
+    .rc-hide-xl { display: none; }
+}
+
+@media (min-width: 1280px) {
+    .rc-hide-xl { display: block; }
+}
+
+/* Show only on specific breakpoints */
+.rc-show-xs,
+.rc-show-sm,
+.rc-show-md,
+.rc-show-lg,
+.rc-show-xl { display: none; }
+
+.rc-show-xs { display: block; }
+
+@media (min-width: 480px) {
+    .rc-show-xs { display: none; }
+    .rc-show-sm { display: block; }
+}
+
+@media (min-width: 640px) {
+    .rc-show-sm { display: none; }
+    .rc-show-md { display: block; }
+}
+
+@media (min-width: 768px) {
+    .rc-show-md { display: none; }
+    .rc-show-lg { display: block; }
+}
+
+@media (min-width: 1024px) {
+    .rc-show-lg { display: none; }
+    .rc-show-xl { display: block; }
+}
+
+/* Responsive Image Utilities */
+.rc-img-responsive {
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.rc-img-contain {
+    object-fit: contain;
+}
+
+.rc-img-cover {
+    object-fit: cover;
+}
+
+.rc-aspect-square {
+    aspect-ratio: 1;
+}
+
+.rc-aspect-video {
+    aspect-ratio: 16 / 9;
+}
+
+.rc-aspect-photo {
+    aspect-ratio: 4 / 3;
+}
+
 /* Animations */
 @keyframes rc-fade-in {
     from { opacity: 0; transform: translateY(10px); }
@@ -1557,41 +1693,73 @@ body {
     filter: drop-shadow(0 0 8px currentColor);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .rc-container {
-        padding: 0 var(--space-sm);
-    }
-    
-    .rc-grid-2,
-    .rc-grid-3,
-    .rc-grid-4 {
-        grid-template-columns: 1fr;
-    }
-    
-    .rc-navbar-nav {
-        flex-direction: column;
-        gap: var(--space-xs);
-    }
-    
-    .rc-heading-1 {
-        font-size: 2rem;
-    }
-    
-    .rc-heading-2 {
-        font-size: 1.5rem;
-    }
-    
+/* Enhanced Responsive Layout Adjustments */
+@media (max-width: 480px) {
     .rc-card {
-        padding: var(--space-md);
+        padding: var(--space-sm);
     }
-    
+
     .rc-flex {
         flex-direction: column;
     }
-    
+
     .rc-flex-between {
         align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    /* Stack action buttons vertically on tiny screens */
+    .rc-inline {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rc-inline .rc-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .rc-card {
+        padding: var(--space-md);
+    }
+
+    /* Allow some horizontal layout on larger phones */
+    .rc-flex-between {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    @media (orientation: landscape) {
+        .rc-flex-between {
+            flex-direction: row;
+        }
+    }
+}
+
+/* Content flow improvements */
+@media (max-width: 768px) {
+    /* Page headers should be more compact */
+    .rc-page-header {
+        text-align: center;
+        margin-bottom: var(--space-lg);
+    }
+
+    .rc-page-header .rc-heading-1,
+    .rc-page-header .rc-heading-2 {
+        margin-bottom: var(--space-sm);
+    }
+
+    /* Button groups should stack */
+    .rc-cluster {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rc-cluster .rc-btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -2491,26 +2659,64 @@ label,
     font-weight: 500;
 }
 
-/* Modal Responsive */
-@media (max-width: 768px) {
+/* Enhanced Modal Responsive */
+@media (max-width: 480px) {
     .rc-modal {
-        padding: var(--space-md);
+        padding: 0;
+        align-items: stretch;
     }
-    
+
     .rc-modal-content,
     .rc-modal-content-large {
         max-width: 100% !important;
-        max-height: 95vh;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0;
+        height: 100vh;
     }
-    
+
+    .rc-modal-header {
+        padding: var(--space-md);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface-1);
+        border-bottom: 1px solid var(--surface-3);
+    }
+
+    .rc-modal-body {
+        padding: var(--space-md);
+        flex: 1;
+        overflow-y: auto;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .rc-modal {
+        padding: var(--space-sm);
+    }
+
+    .rc-modal-content,
+    .rc-modal-content-large {
+        max-width: calc(100vw - var(--space-xl)) !important;
+        max-height: calc(100vh - var(--space-xl));
+    }
+
     .rc-modal-header,
     .rc-modal-body {
         padding: var(--space-md);
     }
-    
+
     .rc-details-grid {
         grid-template-columns: 1fr;
         gap: var(--space-md);
+    }
+}
+
+/* Large screen modal behavior */
+@media (min-width: 1200px) {
+    .rc-modal-content-large {
+        max-width: 1000px !important;
     }
 }
 
