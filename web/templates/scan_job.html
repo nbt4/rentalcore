@@ -3730,7 +3730,13 @@
             const container = document.getElementById('jobModalAttachmentsList');
 
             try {
+                console.log('Loading attachments for job:', {{.job.JobID}});
                 const response = await fetch(`/api/jobs/{{.job.JobID}}/attachments`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const attachments = await response.json();
 
                 if (!attachments || attachments.length === 0) {
@@ -3743,21 +3749,33 @@
                     return;
                 }
 
-                container.innerHTML = attachments.map(attachment => `
+                // Debug: Log the response to console
+                console.log('Job modal attachments response:', attachments);
+
+                container.innerHTML = attachments.map(attachment => {
+                    // Handle both possible ID field names
+                    const attachmentId = attachment.attachmentID || attachment.attachmentId || attachment.id;
+                    const filename = attachment.originalFilename || attachment.filename || 'Unknown File';
+                    const mimeType = attachment.mimeType || attachment.mime_type || 'application/octet-stream';
+                    const fileSize = attachment.fileSizeFormatted || attachment.fileSize || 'Unknown Size';
+
+                    console.log('Processing attachment:', { attachmentId, filename, mimeType, fileSize });
+
+                    return `
                     <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-md"
                          style="border: 1px solid var(--surface-3); border-radius: 8px; margin-bottom: 8px; background: var(--surface-1);">
                         <div class="rc-flex rc-flex-align-center rc-flex-gap-md" style="flex: 1;">
-                            <i class="bi ${getScanFileIcon(attachment.mimeType)}" style="color: var(--primary); font-size: 1.5rem;"></i>
+                            <i class="bi ${getScanFileIcon(mimeType)}" style="color: var(--primary); font-size: 1.5rem;"></i>
                             <div style="flex: 1;">
                                 <div style="font-size: 16px; font-weight: 500; margin-bottom: 4px;">
-                                    <button onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                    <button onclick="previewFile(${attachmentId}, '${filename.replace(/'/g, "\\'")}', '${mimeType}', '${fileSize}')"
                                             style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 0; text-decoration: underline; font-size: 16px; font-weight: 500;"
                                             title="Click to preview">
-                                        ${attachment.originalFilename}
+                                        ${filename}
                                     </button>
                                 </div>
                                 <div style="font-size: 13px; color: var(--text-muted);">
-                                    ${attachment.fileSizeFormatted}
+                                    ${fileSize}
                                     ${attachment.uploader ? ` • Uploaded by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
                                     ${attachment.uploadedAt ? ` • ${new Date(attachment.uploadedAt).toLocaleDateString()}` : ''}
                                 </div>
@@ -3765,18 +3783,19 @@
                         </div>
                         <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
                             <button class="rc-btn rc-btn-outline rc-btn-sm"
-                                    onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                    onclick="previewFile(${attachmentId}, '${filename.replace(/'/g, "\\'")}', '${mimeType}', '${fileSize}')"
                                     title="Preview">
                                 <i class="bi bi-eye"></i>
                             </button>
                             <button type="button" class="rc-btn rc-btn-outline rc-btn-sm"
-                                    onclick="downloadScanAttachment(${attachment.attachmentID})"
+                                    onclick="downloadScanAttachment(${attachmentId})"
                                     title="Download">
                                 <i class="bi bi-download"></i>
                             </button>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
 
             } catch (error) {
                 console.error('Error loading job modal attachments:', error);
@@ -3784,6 +3803,7 @@
                     <div style="text-align: center; padding: 40px; color: var(--danger);">
                         <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i>
                         <div>Error loading attachments</div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">${error.message}</div>
                         <button onclick="loadJobModalAttachments()" class="rc-btn rc-btn-outline rc-btn-sm" style="margin-top: 16px;">
                             <i class="bi bi-arrow-clockwise"></i> Retry
                         </button>
