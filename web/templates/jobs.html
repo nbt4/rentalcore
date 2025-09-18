@@ -2649,7 +2649,7 @@
             img.onload = function() {
                 content.innerHTML = `
                     <div style="text-align: center;">
-                        <img src="/api/jobs/attachments/${attachmentID}/download"
+                        <img src="/api/jobs/attachments/${attachmentID}/view"
                              alt="${filename}"
                              style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 4px;">
                     </div>
@@ -2658,14 +2658,17 @@
             img.onerror = function() {
                 throw new Error('Failed to load image');
             };
-            img.src = `/api/jobs/attachments/${attachmentID}/download`;
+            img.src = `/api/jobs/attachments/${attachmentID}/view`;
         } else if (mimeType === 'application/pdf') {
-            // PDF preview
+            // PDF preview with enhanced viewer
             content.innerHTML = `
-                <iframe src="/api/jobs/attachments/${attachmentID}/download"
-                        style="width: 100%; height: 60vh; border: none; border-radius: 4px;"
-                        title="${filename}">
-                </iframe>
+                <div style="width: 100%; height: 70vh; border: 1px solid var(--surface-3); border-radius: 4px; overflow: hidden;">
+                    <iframe src="/api/jobs/attachments/${attachmentID}/view"
+                            style="width: 100%; height: 100%; border: none;"
+                            title="${filename}"
+                            allow="fullscreen">
+                    </iframe>
+                </div>
             `;
         } else if (mimeType.startsWith('text/') ||
                    mimeType === 'application/json' ||
@@ -2674,7 +2677,7 @@
                    filename.endsWith('.txt') ||
                    filename.endsWith('.md')) {
             // Text file preview
-            const response = await fetch(`/api/jobs/attachments/${attachmentID}/download`);
+            const response = await fetch(`/api/jobs/attachments/${attachmentID}/view`);
             const text = await response.text();
             content.innerHTML = `
                 <pre style="background: var(--surface-2); padding: 16px; border-radius: 4px; overflow: auto; max-height: 50vh; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5;">${escapeHtml(text)}</pre>
@@ -2684,7 +2687,7 @@
             content.innerHTML = `
                 <div style="text-align: center;">
                     <video controls style="max-width: 100%; max-height: 60vh; border-radius: 4px;">
-                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -2696,7 +2699,7 @@
                     <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
                     <div style="margin-bottom: 20px; font-size: 18px;">${filename}</div>
                     <audio controls style="width: 100%; max-width: 400px;">
-                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                         Your browser does not support the audio element.
                     </audio>
                 </div>

@@ -195,6 +195,46 @@ func (h *JobAttachmentHandler) GetJobAttachments(c *gin.Context) {
 	c.JSON(http.StatusOK, responses)
 }
 
+// ViewAttachment serves a file for inline viewing (preview)
+func (h *JobAttachmentHandler) ViewAttachment(c *gin.Context) {
+	attachmentIDStr := c.Param("id")
+	attachmentID, err := strconv.ParseUint(attachmentIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid attachment ID"})
+		return
+	}
+
+	attachment, err := h.repo.GetByID(uint(attachmentID))
+	if err != nil {
+		log.Printf("Attachment not found for ID %d: %v", attachmentID, err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
+		return
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(attachment.FilePath); os.IsNotExist(err) {
+		log.Printf("File not found on disk: %s", attachment.FilePath)
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found on disk"})
+		return
+	}
+
+	// Set headers for inline viewing (no attachment disposition)
+	c.Header("Content-Type", attachment.MimeType)
+	c.Header("Content-Length", fmt.Sprintf("%d", attachment.FileSize))
+
+	// For PDFs, add additional headers for better browser support
+	if attachment.MimeType == "application/pdf" {
+		c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", attachment.OriginalFilename))
+		c.Header("X-Content-Type-Options", "nosniff")
+	} else {
+		// For other files that can be displayed inline, set inline disposition
+		c.Header("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", attachment.OriginalFilename))
+	}
+
+	// Serve the file
+	c.File(attachment.FilePath)
+}
+
 // DownloadAttachment serves a file download
 func (h *JobAttachmentHandler) DownloadAttachment(c *gin.Context) {
 	attachmentIDStr := c.Param("id")

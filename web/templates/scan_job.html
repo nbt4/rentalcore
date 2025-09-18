@@ -3555,7 +3555,7 @@
                 const img = new Image();
                 img.onload = function() {
                     content.innerHTML = `
-                        <img src="/api/jobs/attachments/${attachmentID}/download"
+                        <img src="/api/jobs/attachments/${attachmentID}/view"
                              alt="${filename}"
                              style="max-width: 100%; max-height: 100%; object-fit: contain;">
                     `;
@@ -3563,12 +3563,12 @@
                 img.onerror = function() {
                     throw new Error('Failed to load image');
                 };
-                img.src = `/api/jobs/attachments/${attachmentID}/download`;
+                img.src = `/api/jobs/attachments/${attachmentID}/view`;
 
             } else if (mimeType === 'application/pdf') {
                 // PDF preview
                 content.innerHTML = `
-                    <iframe src="/api/jobs/attachments/${attachmentID}/download"
+                    <iframe src="/api/jobs/attachments/${attachmentID}/view"
                             style="width: 100%; height: 70vh; border: none;"
                             title="${filename}">
                     </iframe>
@@ -3581,7 +3581,7 @@
                        filename.endsWith('.txt') ||
                        filename.endsWith('.md')) {
                 // Text file preview
-                const response = await fetch(`/api/jobs/attachments/${attachmentID}/download`);
+                const response = await fetch(`/api/jobs/attachments/${attachmentID}/view`);
                 const text = await response.text();
 
                 content.innerHTML = `
@@ -3594,7 +3594,7 @@
                 // Video preview
                 content.innerHTML = `
                     <video controls style="max-width: 100%; max-height: 70vh;">
-                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                         Your browser does not support the video tag.
                     </video>
                 `;
@@ -3606,7 +3606,7 @@
                         <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
                         <div style="margin-bottom: 20px; font-size: 18px;">${filename}</div>
                         <audio controls style="width: 100%; max-width: 400px;">
-                            <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                            <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                             Your browser does not support the audio element.
                         </audio>
                     </div>
