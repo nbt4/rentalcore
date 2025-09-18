@@ -3885,25 +3885,25 @@
     <!-- File Preview Modal -->
     <div id="filePreviewModal" class="rc-modal" style="display: none;">
         <div class="rc-modal-backdrop" onclick="hideFilePreviewModal()"></div>
-        <div class="rc-modal-content" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto;">
-            <div class="rc-modal-header" style="padding: 16px; border-bottom: 1px solid var(--surface-3);">
+        <div class="rc-modal-content" style="max-width: 95vw; max-height: 95vh; width: 1400px; margin: 2.5vh auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 12px; overflow: hidden;">
+            <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1);">
                 <div class="rc-flex rc-flex-between rc-flex-align-center">
-                    <div>
-                        <h5 class="rc-modal-title" id="filePreviewTitle" style="margin: 0; font-size: 18px;">File Preview</h5>
-                        <p id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);"></p>
+                    <div style="flex: 1;">
+                        <h5 class="rc-modal-title" id="filePreviewTitle" style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary);">File Preview</h5>
+                        <p id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);"></p>
                     </div>
                     <div class="rc-flex rc-flex-gap-sm">
-                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadCurrentFile()" id="downloadFileBtn">
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadCurrentFile()" id="downloadFileBtn" style="padding: 8px 16px;">
                             <i class="bi bi-download"></i> Download
                         </button>
-                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="hideFilePreviewModal()">
-                            <i class="bi bi-x"></i> Close
+                        <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="hideFilePreviewModal()" style="padding: 8px; color: var(--text-muted);">
+                            <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="rc-modal-body" style="padding: 0; max-height: calc(90vh - 120px); overflow: auto;">
-                <div id="filePreviewContent" style="min-height: 300px; display: flex; align-items: center; justify-content: center;">
+            <div class="rc-modal-body" style="padding: 0; height: calc(95vh - 140px); overflow: auto; background: var(--surface-0);">
+                <div id="filePreviewContent" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                     <!-- File content will be loaded here -->
                 </div>
             </div>

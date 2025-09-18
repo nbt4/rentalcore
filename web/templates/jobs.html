@@ -2613,24 +2613,28 @@
         modal.style.display = 'none';
         modal.innerHTML = `
             <div class="rc-modal-overlay" onclick="hideFilePreviewModal()"></div>
-            <div class="rc-modal-content" style="max-width: 90vw; max-height: 90vh; width: 800px;">
-                <div class="rc-modal-header">
-                    <div>
-                        <h3 class="rc-modal-title" id="filePreviewTitle">File Preview</h3>
-                        <p class="rc-text-muted rc-text-sm" id="filePreviewInfo" style="margin: 0;"></p>
+            <div class="rc-modal-content" style="max-width: 95vw; max-height: 95vh; width: 1400px; margin: 2.5vh auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 12px; overflow: hidden;">
+                <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1);">
+                    <div style="flex: 1;">
+                        <h3 class="rc-modal-title" id="filePreviewTitle" style="font-size: 18px; font-weight: 600; margin: 0; color: var(--text-primary);">File Preview</h3>
+                        <p class="rc-text-muted rc-text-sm" id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 13px;"></p>
                     </div>
-                    <button class="rc-modal-close" onclick="hideFilePreviewModal()">
-                        <i class="bi bi-x-lg"></i>
+                    <button class="rc-modal-close" onclick="hideFilePreviewModal()" style="padding: 8px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; color: var(--text-muted); cursor: pointer;">
+                        <i class="bi bi-x-lg" style="font-size: 16px;"></i>
                     </button>
                 </div>
-                <div class="rc-modal-body" id="filePreviewContent" style="max-height: 70vh; overflow: auto;">
-                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                        <div>Loading...</div>
+                <div class="rc-modal-body" id="filePreviewContent" style="height: calc(95vh - 140px); overflow: auto; background: var(--surface-0); padding: 0;">
+                    <div style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
+                        <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 2.5rem; margin-bottom: 16px; color: var(--primary);"></i>
+                        <div style="font-size: 16px;">Loading file preview...</div>
                     </div>
                 </div>
-                <div class="rc-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div></div>
-                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-outline">
+                <div class="rc-modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--surface-3); background: var(--surface-1); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-info-circle" style="color: var(--text-muted); font-size: 14px;"></i>
+                        <span style="font-size: 13px; color: var(--text-muted);">Press Esc to close</span>
+                    </div>
+                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-outline" style="padding: 8px 16px;">
                         <i class="bi bi-download"></i> Download
                     </button>
                 </div>
@@ -2648,10 +2652,11 @@
             const img = new Image();
             img.onload = function() {
                 content.innerHTML = `
-                    <div style="text-align: center;">
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface-2); padding: 20px; box-sizing: border-box;">
                         <img src="/api/jobs/attachments/${attachmentID}/view"
                              alt="${filename}"
-                             style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 4px;">
+                             style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); cursor: zoom-in;"
+                             onclick="this.style.cursor = this.style.cursor === 'zoom-out' ? 'zoom-in' : 'zoom-out'; this.style.transform = this.style.transform ? '' : 'scale(1.5)'; this.style.transition = 'transform 0.3s ease';">
                     </div>
                 `;
             };
@@ -2660,13 +2665,14 @@
             };
             img.src = `/api/jobs/attachments/${attachmentID}/view`;
         } else if (mimeType === 'application/pdf') {
-            // PDF preview with enhanced viewer
+            // PDF preview with enhanced full-size viewer
             content.innerHTML = `
-                <div style="width: 100%; height: 70vh; border: 1px solid var(--surface-3); border-radius: 4px; overflow: hidden;">
+                <div style="width: 100%; height: 100%; background: #525659; display: flex; align-items: center; justify-content: center;">
                     <iframe src="/api/jobs/attachments/${attachmentID}/view"
-                            style="width: 100%; height: 100%; border: none;"
+                            style="width: 100%; height: 100%; border: none; background: white;"
                             title="${filename}"
-                            allow="fullscreen">
+                            allow="fullscreen"
+                            loading="lazy">
                     </iframe>
                 </div>
             `;
@@ -2680,41 +2686,49 @@
             const response = await fetch(`/api/jobs/attachments/${attachmentID}/view`);
             const text = await response.text();
             content.innerHTML = `
-                <pre style="background: var(--surface-2); padding: 16px; border-radius: 4px; overflow: auto; max-height: 50vh; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5;">${escapeHtml(text)}</pre>
+                <div style="width: 100%; height: 100%; background: var(--surface-2); padding: 24px; box-sizing: border-box; overflow: auto;">
+                    <pre style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(text)}</pre>
+                </div>
             `;
         } else if (mimeType.startsWith('video/')) {
-            // Video preview
+            // Video preview with larger player
             content.innerHTML = `
-                <div style="text-align: center;">
-                    <video controls style="max-width: 100%; max-height: 60vh; border-radius: 4px;">
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface-3); padding: 20px; box-sizing: border-box;">
+                    <video controls style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);">
                         <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                         Your browser does not support the video tag.
                     </video>
                 </div>
             `;
         } else if (mimeType.startsWith('audio/')) {
-            // Audio preview
+            // Audio preview with enhanced layout
             content.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
-                    <div style="margin-bottom: 20px; font-size: 18px;">${filename}</div>
-                    <audio controls style="width: 100%; max-width: 400px;">
-                        <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
-                        Your browser does not support the audio element.
-                    </audio>
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--surface-1), var(--surface-2)); padding: 60px;">
+                    <div style="text-align: center; max-width: 600px;">
+                        <i class="bi bi-music-note-beamed" style="font-size: 5rem; color: var(--primary); margin-bottom: 32px; opacity: 0.8;"></i>
+                        <h3 style="margin-bottom: 24px; font-size: 24px; font-weight: 600; color: var(--text-primary);">${filename}</h3>
+                        <div style="background: var(--surface-0); padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+                            <audio controls style="width: 100%; max-width: 500px; height: 54px;">
+                                <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>
                 </div>
             `;
         } else {
             // Unsupported file type - show download option
             const fileIcon = getJobDetailsFileTypeIcon(mimeType, filename);
             content.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <i class="${fileIcon}" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
-                    <div style="margin-bottom: 8px; font-size: 18px;">${filename}</div>
-                    <div style="margin-bottom: 20px; color: var(--text-muted);">Preview not available for this file type</div>
-                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
-                        <i class="bi bi-download"></i> Download File
-                    </button>
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface-1); padding: 60px;">
+                    <div style="text-align: center; max-width: 500px;">
+                        <i class="${fileIcon}" style="font-size: 6rem; color: var(--primary); margin-bottom: 32px; opacity: 0.8;"></i>
+                        <h3 style="margin-bottom: 16px; font-size: 24px; font-weight: 600; color: var(--text-primary); word-break: break-word;">${filename}</h3>
+                        <p style="margin-bottom: 32px; color: var(--text-muted); font-size: 16px;">Preview not available for this file type</p>
+                        <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary" style="padding: 12px 24px; font-size: 16px;">
+                            <i class="bi bi-download"></i> Download File
+                        </button>
+                    </div>
                 </div>
             `;
         }
