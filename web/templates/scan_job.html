@@ -3786,7 +3786,7 @@
                        filename.endsWith('.doc') ||
                        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
                        mimeType === 'application/msword') {
-                // Word document preview using Office Online viewer
+                // Word document preview - showing download option until attachment API is fixed
                 content.innerHTML = `
                     <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
                         <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
@@ -3794,24 +3794,28 @@
                                 <i class="bi bi-file-word" style="font-size: 24px; color: #2B579A;"></i>
                                 <div>
                                     <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
-                                    <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Word Document Preview</p>
+                                    <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Word Document</p>
                                 </div>
                             </div>
                         </div>
-                        <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
-                            <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(window.location.origin + '/api/jobs/attachments/' + attachmentID + '/view')}"
-                                    style="width: 100%; height: 100%; border: none; background: white;"
-                                    title="${filename}"
-                                    loading="lazy"
-                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            </iframe>
-                            <div style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
-                                <i class="bi bi-file-word" style="font-size: 4rem; color: #2B579A; margin-bottom: 20px; opacity: 0.8;"></i>
-                                <h3 style="margin-bottom: 12px; font-size: 20px;">Office Preview Unavailable</h3>
-                                <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">The online preview service couldn't load this document. You can download it to view with your local Word application.</p>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                            <i class="bi bi-file-word" style="font-size: 4rem; color: #2B579A; margin-bottom: 20px; opacity: 0.8;"></i>
+                            <h3 style="margin-bottom: 12px; font-size: 20px;">Word Document Preview</h3>
+                            <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">Word documents can be viewed by downloading them to your device. The file will open in your default Word application.</p>
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
                                 <button onclick="downloadCurrentFile()" class="rc-btn rc-btn-primary">
                                     <i class="bi bi-download"></i> Download Document
                                 </button>
+                                <button onclick="closePreviewModal()" class="rc-btn rc-btn-secondary">
+                                    <i class="bi bi-x"></i> Close
+                                </button>
+                            </div>
+                            <div style="margin-top: 20px; padding: 16px; background: var(--surface-1); border-radius: 8px; font-size: 13px; color: var(--text-muted);">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>File Information</strong>
+                                </div>
+                                <div>Size: ${(mimeType || '').includes('document') ? 'Word Document' : filename.split('.').pop().toUpperCase()} • Type: ${mimeType || 'Document'}</div>
                             </div>
                         </div>
                     </div>
