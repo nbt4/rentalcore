@@ -162,7 +162,7 @@
     <!-- Job Details Modal -->
     <div id="jobDetailsModal" class="rc-modal" style="display: none;">
         <div class="rc-modal-overlay" onclick="closeJobModal()"></div>
-        <div class="rc-modal-content" id="jobDetailsModalContent">
+        <div class="rc-modal-content" id="jobDetailsModalContent" style="max-width: 900px !important; width: 90vw !important;">
             <div class="rc-modal-header">
                 <h3 class="rc-modal-title" id="jobDetailsModalTitle">
                     <i class="bi bi-briefcase"></i> Job Details
@@ -362,7 +362,7 @@
         document.getElementById('jobDetailsModalTitle').innerHTML = '<i class="bi bi-cpu"></i> Device Overview - Job #' + jobID;
         
         // Make modal larger for device overview
-        document.getElementById('jobDetailsModalContent').style.maxWidth = '1200px';
+        document.getElementById('jobDetailsModalContent').style.maxWidth = '1400px';
         
         // Load device data
         loadJobDevices(jobID);
@@ -2623,7 +2623,7 @@
                         <i class="bi bi-x-lg" style="font-size: 16px;"></i>
                     </button>
                 </div>
-                <div class="rc-modal-body" id="filePreviewContent" style="height: calc(95vh - 140px); overflow: auto; background: var(--surface-0); padding: 0;">
+                <div class="rc-modal-body" id="filePreviewContent" style="height: calc(95vh - 120px); overflow: auto; background: var(--surface-0); padding: 0;">
                     <div style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
                         <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 2.5rem; margin-bottom: 16px; color: var(--primary);"></i>
                         <div style="font-size: 16px;">Loading file preview...</div>
