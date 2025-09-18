@@ -2613,7 +2613,7 @@
         modal.style.display = 'none';
         modal.innerHTML = `
             <div class="rc-modal-overlay" onclick="hideFilePreviewModal()"></div>
-            <div class="rc-modal-content" style="max-width: 95vw; max-height: 95vh; width: 1400px; margin: 2.5vh auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 12px; overflow: hidden;">
+            <div class="rc-modal-content" style="max-width: 95vw !important; max-height: 95vh !important; width: 1400px !important; margin: 2.5vh auto !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; border-radius: 12px !important; overflow: hidden !important;">
                 <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1);">
                     <div style="flex: 1;">
                         <h3 class="rc-modal-title" id="filePreviewTitle" style="font-size: 18px; font-weight: 600; margin: 0; color: var(--text-primary);">File Preview</h3>
@@ -2712,6 +2712,42 @@
                                 <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                                 Your browser does not support the audio element.
                             </audio>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (mimeType.includes('word') ||
+                   mimeType.includes('document') ||
+                   filename.endsWith('.docx') ||
+                   filename.endsWith('.doc') ||
+                   mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                   mimeType === 'application/msword') {
+            // Word document preview using Office Online or Google Docs Viewer
+            content.innerHTML = `
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-file-text" style="font-size: 24px; color: var(--primary);"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Word Document Preview</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(window.location.origin + '/api/jobs/attachments/' + attachmentID + '/view')}"
+                                style="width: 100%; height: 100%; border: none; background: white;"
+                                title="${filename}"
+                                loading="lazy"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        </iframe>
+                        <div style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                            <i class="bi bi-file-text" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px; opacity: 0.8;"></i>
+                            <h3 style="margin-bottom: 12px; font-size: 20px;">Office Preview Unavailable</h3>
+                            <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">The online preview service couldn't load this document. You can download it to view with your local Word application.</p>
+                            <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-download"></i> Download Document
+                            </button>
                         </div>
                     </div>
                 </div>
