@@ -2766,7 +2766,7 @@
                    filename.endsWith('.avi') ||
                    filename.endsWith('.mkv') ||
                    filename.endsWith('.m4v')) {
-            // Enhanced video preview
+            // Video preview - showing download option until attachment API is fixed
             content.innerHTML = `
                 <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
                     <div style="padding: 16px 24px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; gap: 12px;">
@@ -2776,11 +2776,27 @@
                             <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Video File</p>
                         </div>
                     </div>
-                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #000; padding: 20px;">
-                        <video controls style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);">
-                            <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
-                            Your browser does not support the video tag.
-                        </video>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px; text-align: center;">
+                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 50%; padding: 24px; margin-bottom: 24px; backdrop-filter: blur(10px);">
+                            <i class="bi bi-play-circle" style="font-size: 3rem; color: var(--primary);"></i>
+                        </div>
+                        <h3 style="margin-bottom: 12px; font-size: 20px; color: white;">Video Preview</h3>
+                        <p style="margin-bottom: 24px; color: rgba(255, 255, 255, 0.8); max-width: 400px; line-height: 1.5;">Download this ${filename.split('.').pop().toUpperCase()} video to play it in your preferred media player with full quality and controls.</p>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                            <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary" style="background: var(--primary); border: none; padding: 12px 24px; font-weight: 600;">
+                                <i class="bi bi-download"></i> Download Video
+                            </button>
+                            <button onclick="closeFilePreviewModal()" class="rc-btn rc-btn-secondary" style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 12px 24px;">
+                                <i class="bi bi-x"></i> Close
+                            </button>
+                        </div>
+                        <div style="margin-top: 24px; padding: 16px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; font-size: 13px; color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px);">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <i class="bi bi-info-circle"></i>
+                                <strong style="color: white;">Video Information</strong>
+                            </div>
+                            <div>Format: ${filename.split('.').pop().toUpperCase()} • Type: ${mimeType || 'Video File'}</div>
+                        </div>
                     </div>
                 </div>
             `;
