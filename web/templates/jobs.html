@@ -304,12 +304,34 @@
                         ${jobData.discount > 0 ? '<div class="rc-form-group"><label class="rc-label">Discount</label><div>' + jobData.discount + ' ' + (jobData.discount_type === 'percent' ? '%' : '€') + '</div></div>' : ''}
                         ${jobData.finalRevenue ? '<div class="rc-form-group"><label class="rc-label">Final Revenue</label><div class="rc-text-lg">€' + jobData.finalRevenue.toFixed(2) + '</div></div>' : ''}
                     </div>
+
+                    <!-- File Attachments Section -->
+                    <div class="rc-mt-lg">
+                        <div class="rc-flex rc-flex-between rc-flex-align-center rc-mb-md">
+                            <h4 class="rc-text-lg rc-font-semibold">
+                                <i class="bi bi-paperclip"></i> File Attachments
+                            </h4>
+                            <span class="rc-badge rc-badge-outline" id="attachmentCount">Loading...</span>
+                        </div>
+                        <div id="jobDetailsAttachmentsList" class="rc-card" style="background: var(--surface-1); border: 1px solid var(--surface-3);">
+                            <div class="rc-card-body">
+                                <div class="rc-text-center rc-py-md">
+                                    <div class="rc-spinner rc-spinner-sm"></div>
+                                    <p class="rc-text-muted rc-text-sm rc-mt-sm">Loading attachments...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="rc-flex rc-flex-end rc-mt-lg">
                         <button onclick="showEditJob(${jobData.jobID})" class="rc-btn rc-btn-primary">
                             <i class="bi bi-pencil"></i> Edit Job
                         </button>
                     </div>
                 `;
+
+                // Load file attachments after job details are loaded
+                loadJobDetailsAttachments(jobData.jobID);
             })
             .catch(error => {
                 content.innerHTML = `
@@ -2280,8 +2302,14 @@
                 <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
                     <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
                         <i class="bi ${getEditJobFileIcon(attachment.mimeType)}" style="color: var(--primary);"></i>
-                        <div>
-                            <div style="font-size: 14px; font-weight: 500;">${attachment.originalFilename}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 500;">
+                                <button onclick="previewJobDetailsFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                        style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 0; text-decoration: underline; font-size: 14px; font-weight: 500;"
+                                        title="Click to preview">
+                                    ${attachment.originalFilename}
+                                </button>
+                            </div>
                             <div style="font-size: 12px; color: var(--text-muted);">
                                 ${attachment.fileSizeFormatted}
                                 ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
@@ -2289,6 +2317,11 @@
                         </div>
                     </div>
                     <div class="rc-flex rc-flex-align-center rc-flex-gap-xs">
+                        <button class="rc-btn rc-btn-outline rc-btn-sm"
+                                onclick="previewJobDetailsFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                title="Preview">
+                            <i class="bi bi-eye"></i>
+                        </button>
                         <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadEditJobAttachment(${attachment.attachmentID})" title="Download">
                             <i class="bi bi-download"></i>
                         </button>
@@ -2358,6 +2391,9 @@
             const jobIDInput = document.querySelector('#editJobForm input[readonly]');
             const jobID = jobIDInput ? jobIDInput.value : null;
             if (jobID) loadEditJobAttachments(jobID);
+
+            // Setup drag and drop functionality
+            setupEditJobDragAndDrop();
         } else {
             section.style.display = 'none';
             button.innerHTML = '<i class="bi bi-eye"></i> Show Files';
@@ -2427,6 +2463,359 @@
 
         console.log(`Collapsed ${expandedNodes.length} device tree nodes`);
     }
+
+    // Job Details Attachments Functions
+    async function loadJobDetailsAttachments(jobID) {
+        try {
+            const response = await fetch(`/api/jobs/${jobID}/attachments`);
+            const attachments = await response.json();
+
+            const countBadge = document.getElementById('attachmentCount');
+            const container = document.getElementById('jobDetailsAttachmentsList');
+
+            if (countBadge) {
+                countBadge.textContent = attachments && attachments.length ? attachments.length : '0';
+            }
+
+            if (!attachments || attachments.length === 0) {
+                container.innerHTML = `
+                    <div class="rc-card-body">
+                        <div class="rc-text-center rc-py-md">
+                            <i class="bi bi-file-earmark" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 8px;"></i>
+                            <p style="color: var(--text-muted); font-style: italic; margin: 0;">No files attached to this job.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="rc-card-body">
+                    ${attachments.map(attachment => `
+                        <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-sm" style="border: 1px solid var(--surface-3); border-radius: 6px; margin-bottom: 6px; background: var(--surface-1);">
+                            <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                                <i class="bi ${getJobDetailsFileIcon(attachment.mimeType)}" style="color: var(--primary);"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 14px; font-weight: 500;">
+                                        <button onclick="previewJobDetailsFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                                style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 0; text-decoration: underline; font-size: 14px; font-weight: 500;"
+                                                title="Click to preview">
+                                            ${attachment.originalFilename}
+                                        </button>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">
+                                        ${attachment.fileSizeFormatted}
+                                        ${attachment.uploader ? ` • by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
+                                        • ${new Date(attachment.uploadedAt).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="rc-flex rc-flex-align-center rc-flex-gap-xs">
+                                <button class="rc-btn rc-btn-outline rc-btn-sm"
+                                        onclick="previewJobDetailsFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                        title="Preview">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="downloadJobDetailsAttachment(${attachment.attachmentID})" title="Download">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error loading job details attachments:', error);
+            const container = document.getElementById('jobDetailsAttachmentsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="rc-card-body">
+                        <div class="rc-alert rc-alert-error">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Error loading attachments.
+                        </div>
+                    </div>
+                `;
+            }
+            const countBadge = document.getElementById('attachmentCount');
+            if (countBadge) {
+                countBadge.textContent = 'Error';
+            }
+        }
+    }
+
+    function getJobDetailsFileIcon(mimeType) {
+        if (mimeType.startsWith('image/')) return 'bi-image';
+        if (mimeType.startsWith('video/')) return 'bi-play-circle';
+        if (mimeType.startsWith('audio/')) return 'bi-music-note';
+        if (mimeType.includes('pdf')) return 'bi-file-pdf';
+        if (mimeType.includes('word') || mimeType.includes('document')) return 'bi-file-text';
+        if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'bi-file-spreadsheet';
+        if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi-file-zip';
+        return 'bi-file-earmark';
+    }
+
+    function downloadJobDetailsAttachment(attachmentID) {
+        window.open(`/api/jobs/attachments/${attachmentID}/download`, '_blank');
+    }
+
+    // File Preview Variables
+    let currentPreviewFileData = null;
+
+    // Preview file in modal
+    async function previewJobDetailsFile(attachmentID, filename, mimeType, fileSize) {
+        currentPreviewFileData = { attachmentID, filename, mimeType, fileSize };
+
+        // Create or get preview modal
+        let modal = document.getElementById('filePreviewModal');
+        if (!modal) {
+            modal = createFilePreviewModal();
+            document.body.appendChild(modal);
+        }
+
+        // Update modal title and info
+        document.getElementById('filePreviewTitle').textContent = filename;
+        document.getElementById('filePreviewInfo').textContent = `${fileSize} • ${mimeType}`;
+
+        // Show modal immediately
+        modal.style.display = 'flex';
+
+        // Show loading state
+        const content = document.getElementById('filePreviewContent');
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 2rem; margin-bottom: 16px;"></i>
+                <div>Loading file preview...</div>
+            </div>
+        `;
+
+        try {
+            await loadJobDetailsFilePreview(attachmentID, mimeType, filename);
+        } catch (error) {
+            console.error('Error loading file preview:', error);
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--danger);">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i>
+                    <div>Failed to load file preview</div>
+                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary rc-btn-sm" style="margin-top: 16px;">
+                        <i class="bi bi-download"></i> Download Instead
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // Create file preview modal
+    function createFilePreviewModal() {
+        const modal = document.createElement('div');
+        modal.id = 'filePreviewModal';
+        modal.className = 'rc-modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <div class="rc-modal-overlay" onclick="hideFilePreviewModal()"></div>
+            <div class="rc-modal-content" style="max-width: 90vw; max-height: 90vh; width: 800px;">
+                <div class="rc-modal-header">
+                    <div>
+                        <h3 class="rc-modal-title" id="filePreviewTitle">File Preview</h3>
+                        <p class="rc-text-muted rc-text-sm" id="filePreviewInfo" style="margin: 0;"></p>
+                    </div>
+                    <button class="rc-modal-close" onclick="hideFilePreviewModal()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="rc-modal-body" id="filePreviewContent" style="max-height: 70vh; overflow: auto;">
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <div>Loading...</div>
+                    </div>
+                </div>
+                <div class="rc-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div></div>
+                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-outline">
+                        <i class="bi bi-download"></i> Download
+                    </button>
+                </div>
+            </div>
+        `;
+        return modal;
+    }
+
+    // Load file preview based on type
+    async function loadJobDetailsFilePreview(attachmentID, mimeType, filename) {
+        const content = document.getElementById('filePreviewContent');
+
+        if (mimeType.startsWith('image/')) {
+            // Image preview
+            const img = new Image();
+            img.onload = function() {
+                content.innerHTML = `
+                    <div style="text-align: center;">
+                        <img src="/api/jobs/attachments/${attachmentID}/download"
+                             alt="${filename}"
+                             style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 4px;">
+                    </div>
+                `;
+            };
+            img.onerror = function() {
+                throw new Error('Failed to load image');
+            };
+            img.src = `/api/jobs/attachments/${attachmentID}/download`;
+        } else if (mimeType === 'application/pdf') {
+            // PDF preview
+            content.innerHTML = `
+                <iframe src="/api/jobs/attachments/${attachmentID}/download"
+                        style="width: 100%; height: 60vh; border: none; border-radius: 4px;"
+                        title="${filename}">
+                </iframe>
+            `;
+        } else if (mimeType.startsWith('text/') ||
+                   mimeType === 'application/json' ||
+                   mimeType === 'application/xml' ||
+                   filename.endsWith('.log') ||
+                   filename.endsWith('.txt') ||
+                   filename.endsWith('.md')) {
+            // Text file preview
+            const response = await fetch(`/api/jobs/attachments/${attachmentID}/download`);
+            const text = await response.text();
+            content.innerHTML = `
+                <pre style="background: var(--surface-2); padding: 16px; border-radius: 4px; overflow: auto; max-height: 50vh; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5;">${escapeHtml(text)}</pre>
+            `;
+        } else if (mimeType.startsWith('video/')) {
+            // Video preview
+            content.innerHTML = `
+                <div style="text-align: center;">
+                    <video controls style="max-width: 100%; max-height: 60vh; border-radius: 4px;">
+                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            `;
+        } else if (mimeType.startsWith('audio/')) {
+            // Audio preview
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="bi bi-music-note-beamed" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                    <div style="margin-bottom: 20px; font-size: 18px;">${filename}</div>
+                    <audio controls style="width: 100%; max-width: 400px;">
+                        <source src="/api/jobs/attachments/${attachmentID}/download" type="${mimeType}">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            `;
+        } else {
+            // Unsupported file type - show download option
+            const fileIcon = getJobDetailsFileTypeIcon(mimeType, filename);
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="${fileIcon}" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px;"></i>
+                    <div style="margin-bottom: 8px; font-size: 18px;">${filename}</div>
+                    <div style="margin-bottom: 20px; color: var(--text-muted);">Preview not available for this file type</div>
+                    <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                        <i class="bi bi-download"></i> Download File
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // Get file type icon for preview
+    function getJobDetailsFileTypeIcon(mimeType, filename) {
+        if (mimeType.startsWith('image/')) return 'bi bi-file-image';
+        if (mimeType === 'application/pdf') return 'bi bi-file-pdf';
+        if (mimeType.startsWith('text/')) return 'bi bi-file-text';
+        if (mimeType.startsWith('video/')) return 'bi bi-file-play';
+        if (mimeType.startsWith('audio/')) return 'bi bi-file-music';
+        if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi bi-file-zip';
+        if (mimeType.includes('excel') || filename.endsWith('.xlsx') || filename.endsWith('.xls')) return 'bi bi-file-excel';
+        if (mimeType.includes('word') || filename.endsWith('.docx') || filename.endsWith('.doc')) return 'bi bi-file-word';
+        if (mimeType.includes('powerpoint') || filename.endsWith('.pptx') || filename.endsWith('.ppt')) return 'bi bi-file-ppt';
+        return 'bi bi-file-earmark';
+    }
+
+    // Escape HTML for text preview
+    function escapeHtml(unsafe) {
+        const div = document.createElement('div');
+        div.textContent = unsafe;
+        return div.innerHTML;
+    }
+
+    // Hide file preview modal
+    function hideFilePreviewModal() {
+        const modal = document.getElementById('filePreviewModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        currentPreviewFileData = null;
+    }
+
+    // Download current file
+    function downloadCurrentPreviewFile() {
+        if (currentPreviewFileData) {
+            window.open(`/api/jobs/attachments/${currentPreviewFileData.attachmentID}/download`, '_blank');
+        }
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const fileModal = document.getElementById('filePreviewModal');
+            const jobModal = document.getElementById('jobDetailsModal');
+            if (fileModal && fileModal.style.display !== 'none') {
+                hideFilePreviewModal();
+            } else if (jobModal && jobModal.style.display !== 'none') {
+                closeJobModal();
+            }
+        }
+    });
+
+    // Setup drag and drop for edit job form
+    function setupEditJobDragAndDrop() {
+        const uploadArea = document.querySelector('#editAttachmentsSection .file-upload-area');
+        if (!uploadArea) return;
+
+        // Remove existing listeners first
+        uploadArea.removeEventListener('dragover', handleEditJobDragOver);
+        uploadArea.removeEventListener('dragleave', handleEditJobDragLeave);
+        uploadArea.removeEventListener('drop', handleEditJobDrop);
+
+        // Add drag and drop event listeners
+        uploadArea.addEventListener('dragover', handleEditJobDragOver);
+        uploadArea.addEventListener('dragleave', handleEditJobDragLeave);
+        uploadArea.addEventListener('drop', handleEditJobDrop);
+    }
+
+    function handleEditJobDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const uploadArea = e.currentTarget;
+        uploadArea.style.backgroundColor = 'var(--surface-2)';
+        uploadArea.style.borderColor = 'var(--primary)';
+        uploadArea.style.transform = 'scale(1.02)';
+    }
+
+    function handleEditJobDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const uploadArea = e.currentTarget;
+        uploadArea.style.backgroundColor = '';
+        uploadArea.style.borderColor = 'var(--surface-3)';
+        uploadArea.style.transform = '';
+    }
+
+    function handleEditJobDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const uploadArea = e.currentTarget;
+        uploadArea.style.backgroundColor = '';
+        uploadArea.style.borderColor = 'var(--surface-3)';
+        uploadArea.style.transform = '';
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            editJobSelectedFiles = editJobSelectedFiles.concat(files);
+            displayEditJobSelectedFiles();
+        }
+    }
+
     </script>
     
     <!-- Device Tree Styles for Edit Modal -->
