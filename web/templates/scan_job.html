@@ -592,6 +592,9 @@
                 <a href="/jobs/{{.job.JobID}}" class="rc-btn rc-btn-outline rc-btn-sm">
                     <i class="bi bi-eye"></i> View Details
                 </a>
+                <button onclick="showJobModal()" class="rc-btn rc-btn-primary rc-btn-sm">
+                    <i class="bi bi-file-earmark-text"></i> View Job & Files
+                </button>
             </div>
         </div>
 
@@ -3663,12 +3666,131 @@
         // Close modal with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                const modal = document.getElementById('filePreviewModal');
-                if (modal.style.display !== 'none') {
+                const fileModal = document.getElementById('filePreviewModal');
+                const jobModal = document.getElementById('jobViewModal');
+
+                if (fileModal.style.display !== 'none') {
                     hideFilePreviewModal();
+                } else if (jobModal.style.display !== 'none') {
+                    hideJobModal();
                 }
             }
         });
+
+        // === JOB VIEW MODAL FUNCTIONALITY ===
+
+        // Show job modal
+        function showJobModal() {
+            const modal = document.getElementById('jobViewModal');
+            modal.style.display = 'block';
+
+            // Switch to info tab by default
+            switchJobTab('info');
+        }
+
+        // Hide job modal
+        function hideJobModal() {
+            const modal = document.getElementById('jobViewModal');
+            modal.style.display = 'none';
+        }
+
+        // Switch between tabs in job modal
+        function switchJobTab(tabName) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.job-modal-tab').forEach(tab => {
+                tab.classList.remove('active');
+                tab.style.color = 'var(--text-muted)';
+                tab.style.borderBottomColor = 'transparent';
+            });
+
+            // Remove active class from all content
+            document.querySelectorAll('.job-modal-tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+
+            // Activate selected tab
+            const activeTab = document.getElementById('job-' + tabName + '-tab');
+            const activeContent = document.getElementById('job-' + tabName + '-content');
+
+            if (activeTab && activeContent) {
+                activeTab.classList.add('active');
+                activeTab.style.color = 'var(--text-primary)';
+                activeTab.style.borderBottomColor = 'var(--accent-color)';
+                activeContent.style.display = 'block';
+
+                // Load files when Files tab is selected
+                if (tabName === 'files') {
+                    loadJobModalAttachments();
+                }
+            }
+        }
+
+        // Load attachments in job modal
+        async function loadJobModalAttachments() {
+            const container = document.getElementById('jobModalAttachmentsList');
+
+            try {
+                const response = await fetch(`/api/jobs/{{.job.JobID}}/attachments`);
+                const attachments = await response.json();
+
+                if (!attachments || attachments.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="bi bi-file-earmark" style="font-size: 3rem; margin-bottom: 16px;"></i>
+                            <div>No files attached to this job</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = attachments.map(attachment => `
+                    <div class="attachment-item rc-flex rc-flex-between rc-flex-align-center rc-p-md"
+                         style="border: 1px solid var(--surface-3); border-radius: 8px; margin-bottom: 8px; background: var(--surface-1);">
+                        <div class="rc-flex rc-flex-align-center rc-flex-gap-md" style="flex: 1;">
+                            <i class="bi ${getScanFileIcon(attachment.mimeType)}" style="color: var(--primary); font-size: 1.5rem;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-size: 16px; font-weight: 500; margin-bottom: 4px;">
+                                    <button onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                            style="background: none; border: none; color: var(--primary); cursor: pointer; padding: 0; text-decoration: underline; font-size: 16px; font-weight: 500;"
+                                            title="Click to preview">
+                                        ${attachment.originalFilename}
+                                    </button>
+                                </div>
+                                <div style="font-size: 13px; color: var(--text-muted);">
+                                    ${attachment.fileSizeFormatted}
+                                    ${attachment.uploader ? ` • Uploaded by ${attachment.uploader.firstName} ${attachment.uploader.lastName}` : ''}
+                                    ${attachment.uploadedAt ? ` • ${new Date(attachment.uploadedAt).toLocaleDateString()}` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rc-flex rc-flex-align-center rc-flex-gap-sm">
+                            <button class="rc-btn rc-btn-outline rc-btn-sm"
+                                    onclick="previewFile(${attachment.attachmentID}, '${attachment.originalFilename}', '${attachment.mimeType}', '${attachment.fileSizeFormatted}')"
+                                    title="Preview">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm"
+                                    onclick="downloadScanAttachment(${attachment.attachmentID})"
+                                    title="Download">
+                                <i class="bi bi-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading job modal attachments:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--danger);">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; margin-bottom: 16px;"></i>
+                        <div>Error loading attachments</div>
+                        <button onclick="loadJobModalAttachments()" class="rc-btn rc-btn-outline rc-btn-sm" style="margin-top: 16px;">
+                            <i class="bi bi-arrow-clockwise"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
 
         // === VIRTUAL SCROLLING FOR LARGE LISTS ===
 
@@ -3763,6 +3885,103 @@
             <div class="rc-modal-body" style="padding: 0; max-height: calc(90vh - 120px); overflow: auto;">
                 <div id="filePreviewContent" style="min-height: 300px; display: flex; align-items: center; justify-content: center;">
                     <!-- File content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job View Modal -->
+    <div id="jobViewModal" class="rc-modal" style="display: none;">
+        <div class="rc-modal-backdrop" onclick="hideJobModal()"></div>
+        <div class="rc-modal-content" style="max-width: 1000px; max-height: 90vh;">
+            <div class="rc-modal-header" style="padding: 20px; border-bottom: 1px solid var(--surface-3);">
+                <div class="rc-flex rc-flex-between rc-flex-align-center">
+                    <div>
+                        <h5 class="rc-modal-title" style="margin: 0; font-size: 20px;">{{.job.Description}}</h5>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted);">Job #{{.job.JobID}} • {{.totalDevices}} devices</p>
+                    </div>
+                    <button class="rc-btn rc-btn-outline rc-btn-sm" onclick="hideJobModal()">
+                        <i class="bi bi-x"></i> Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- Job Modal Tab Navigation -->
+            <div class="job-modal-tabs" style="display: flex; background: var(--surface-2); border-bottom: 1px solid var(--surface-3);">
+                <button class="job-modal-tab active" onclick="switchJobTab('info')" id="job-info-tab"
+                        style="flex: 1; padding: 16px; background: none; border: none; color: var(--text-primary); cursor: pointer; border-bottom: 2px solid var(--accent-color);">
+                    <i class="bi bi-info-circle"></i> Job Info
+                </button>
+                <button class="job-modal-tab" onclick="switchJobTab('files')" id="job-files-tab"
+                        style="flex: 1; padding: 16px; background: none; border: none; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent;">
+                    <i class="bi bi-paperclip"></i> Files
+                </button>
+            </div>
+
+            <div class="rc-modal-body" style="padding: 0; max-height: calc(90vh - 140px); overflow: auto;">
+                <!-- Job Info Tab -->
+                <div id="job-info-content" class="job-modal-tab-content" style="padding: 20px;">
+                    <div class="rc-grid rc-grid-cols-2 rc-grid-gap-lg">
+                        <div>
+                            <h6 style="margin-bottom: 12px; color: var(--text-primary); font-size: 16px;">Job Details</h6>
+                            <div style="background: var(--surface-1); padding: 16px; border-radius: 8px; border: 1px solid var(--surface-3);">
+                                <div style="margin-bottom: 12px;">
+                                    <strong>Job ID:</strong> #{{.job.JobID}}
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <strong>Description:</strong> {{.job.Description}}
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <strong>Start Date:</strong> {{if .job.StartDate}}{{.job.StartDate.Format "02.01.2006"}}{{else}}Not set{{end}}
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <strong>End Date:</strong> {{if .job.EndDate}}{{.job.EndDate.Format "02.01.2006"}}{{else}}Not set{{end}}
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <strong>Revenue:</strong> €{{printf "%.2f" .job.Revenue}}
+                                </div>
+                                <div>
+                                    <strong>Total Devices:</strong> {{.totalDevices}}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 style="margin-bottom: 12px; color: var(--text-primary); font-size: 16px;">Customer Information</h6>
+                            <div style="background: var(--surface-1); padding: 16px; border-radius: 8px; border: 1px solid var(--surface-3);">
+                                {{if .job.Customer}}
+                                <div style="margin-bottom: 12px;">
+                                    <strong>Name:</strong> {{if .job.Customer.CompanyName}}{{.job.Customer.CompanyName}}{{else}}{{.job.Customer.FirstName}} {{.job.Customer.LastName}}{{end}}
+                                </div>
+                                {{if .job.Customer.Email}}<div style="margin-bottom: 12px;">
+                                    <strong>Email:</strong> {{.job.Customer.Email}}
+                                </div>{{end}}
+                                {{if .job.Customer.Phone}}<div style="margin-bottom: 12px;">
+                                    <strong>Phone:</strong> {{.job.Customer.Phone}}
+                                </div>{{end}}
+                                {{if .job.Customer.Address}}<div>
+                                    <strong>Address:</strong> {{.job.Customer.Address}}
+                                </div>{{end}}
+                                {{else}}
+                                <p style="color: var(--text-muted); font-style: italic; margin: 0;">No customer information available</p>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Files Tab -->
+                <div id="job-files-content" class="job-modal-tab-content" style="display: none; padding: 20px;">
+                    <div style="margin-bottom: 20px;">
+                        <h6 style="margin-bottom: 16px; color: var(--text-primary); font-size: 16px;">
+                            <i class="bi bi-paperclip"></i> Job Attachments
+                        </h6>
+                        <div id="jobModalAttachmentsList" style="min-height: 200px;">
+                            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 1.5rem; margin-bottom: 12px;"></i>
+                                <div>Loading attachments...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
