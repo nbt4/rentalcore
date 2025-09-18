@@ -2647,16 +2647,35 @@
     async function loadJobDetailsFilePreview(attachmentID, mimeType, filename) {
         const content = document.getElementById('filePreviewContent');
 
-        if (mimeType.startsWith('image/')) {
-            // Image preview
+        if (mimeType.startsWith('image/') ||
+           filename.endsWith('.jpg') ||
+           filename.endsWith('.jpeg') ||
+           filename.endsWith('.png') ||
+           filename.endsWith('.gif') ||
+           filename.endsWith('.webp') ||
+           filename.endsWith('.svg') ||
+           filename.endsWith('.bmp') ||
+           filename.endsWith('.tiff') ||
+           filename.endsWith('.ico')) {
+            // Enhanced image preview with metadata
             const img = new Image();
             img.onload = function() {
                 content.innerHTML = `
-                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface-2); padding: 20px; box-sizing: border-box;">
-                        <img src="/api/jobs/attachments/${attachmentID}/view"
-                             alt="${filename}"
-                             style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); cursor: zoom-in;"
-                             onclick="this.style.cursor = this.style.cursor === 'zoom-out' ? 'zoom-in' : 'zoom-out'; this.style.transform = this.style.transform ? '' : 'scale(1.5)'; this.style.transition = 'transform 0.3s ease';">
+                    <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                        <div style="padding: 16px 24px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-image" style="font-size: 18px; color: var(--primary);"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 14px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Image • ${img.naturalWidth}x${img.naturalHeight}px</p>
+                            </div>
+                        </div>
+                        <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; overflow: hidden;">
+                            <img src="/api/jobs/attachments/${attachmentID}/view"
+                                 alt="${filename}"
+                                 id="previewImage"
+                                 style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); cursor: zoom-in; transition: transform 0.3s ease;"
+                                 onclick="toggleImageZoom(this);">
+                        </div>
                     </div>
                 `;
             };
@@ -2679,29 +2698,93 @@
         } else if (mimeType.startsWith('text/') ||
                    mimeType === 'application/json' ||
                    mimeType === 'application/xml' ||
+                   mimeType === 'application/yaml' ||
+                   mimeType === 'application/csv' ||
+                   mimeType === 'text/csv' ||
+                   mimeType === 'application/rtf' ||
                    filename.endsWith('.log') ||
                    filename.endsWith('.txt') ||
-                   filename.endsWith('.md')) {
-            // Text file preview
+                   filename.endsWith('.md') ||
+                   filename.endsWith('.rtf') ||
+                   filename.endsWith('.csv') ||
+                   filename.endsWith('.json') ||
+                   filename.endsWith('.yaml') ||
+                   filename.endsWith('.yml') ||
+                   filename.endsWith('.xml') ||
+                   filename.endsWith('.html') ||
+                   filename.endsWith('.htm') ||
+                   filename.endsWith('.css') ||
+                   filename.endsWith('.js') ||
+                   filename.endsWith('.ts') ||
+                   filename.endsWith('.py') ||
+                   filename.endsWith('.java') ||
+                   filename.endsWith('.c') ||
+                   filename.endsWith('.cpp') ||
+                   filename.endsWith('.cs') ||
+                   filename.endsWith('.php') ||
+                   filename.endsWith('.rb') ||
+                   filename.endsWith('.go') ||
+                   filename.endsWith('.rs') ||
+                   filename.endsWith('.sql') ||
+                   filename.endsWith('.sh') ||
+                   filename.endsWith('.bat') ||
+                   filename.endsWith('.cfg') ||
+                   filename.endsWith('.ini') ||
+                   filename.endsWith('.conf')) {
+            // Text/code file preview with syntax highlighting
             const response = await fetch(`/api/jobs/attachments/${attachmentID}/view`);
             const text = await response.text();
+            const language = getLanguageFromFilename(filename);
             content.innerHTML = `
-                <div style="width: 100%; height: 100%; background: var(--surface-2); padding: 24px; box-sizing: border-box; overflow: auto;">
-                    <pre style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(text)}</pre>
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 16px 24px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-code-slash" style="font-size: 18px; color: var(--primary);"></i>
+                        <div>
+                            <h4 style="margin: 0; font-size: 14px; font-weight: 600;">${filename}</h4>
+                            <p style="margin: 0; font-size: 12px; color: var(--text-muted);">${language} • ${text.split('\n').length} lines</p>
+                        </div>
+                    </div>
+                    <div style="flex: 1; padding: 24px; overflow: auto;">
+                        <pre style="margin: 0; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word; background: var(--surface-0); padding: 20px; border-radius: 8px; border: 1px solid var(--surface-3);">${escapeHtml(text)}</pre>
+                    </div>
                 </div>
             `;
-        } else if (mimeType.startsWith('video/')) {
-            // Video preview with larger player
+        } else if (mimeType.startsWith('video/') ||
+                   filename.endsWith('.mp4') ||
+                   filename.endsWith('.webm') ||
+                   filename.endsWith('.ogg') ||
+                   filename.endsWith('.ogv') ||
+                   filename.endsWith('.mov') ||
+                   filename.endsWith('.avi') ||
+                   filename.endsWith('.mkv') ||
+                   filename.endsWith('.m4v')) {
+            // Enhanced video preview
             content.innerHTML = `
-                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface-3); padding: 20px; box-sizing: border-box;">
-                    <video controls style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);">
-                        <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
-                        Your browser does not support the video tag.
-                    </video>
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 16px 24px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-play-circle" style="font-size: 18px; color: var(--primary);"></i>
+                        <div>
+                            <h4 style="margin: 0; font-size: 14px; font-weight: 600;">${filename}</h4>
+                            <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Video File</p>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #000; padding: 20px;">
+                        <video controls style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);">
+                            <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
                 </div>
             `;
-        } else if (mimeType.startsWith('audio/')) {
-            // Audio preview with enhanced layout
+        } else if (mimeType.startsWith('audio/') ||
+                   filename.endsWith('.mp3') ||
+                   filename.endsWith('.wav') ||
+                   filename.endsWith('.ogg') ||
+                   filename.endsWith('.m4a') ||
+                   filename.endsWith('.aac') ||
+                   filename.endsWith('.flac') ||
+                   filename.endsWith('.wma')) {
+            // Enhanced audio preview
             content.innerHTML = `
                 <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--surface-1), var(--surface-2)); padding: 60px;">
                     <div style="text-align: center; max-width: 600px;">
@@ -2712,6 +2795,77 @@
                                 <source src="/api/jobs/attachments/${attachmentID}/view" type="${mimeType}">
                                 Your browser does not support the audio element.
                             </audio>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (mimeType.includes('excel') ||
+                   mimeType.includes('spreadsheet') ||
+                   filename.endsWith('.xlsx') ||
+                   filename.endsWith('.xls') ||
+                   mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                   mimeType === 'application/vnd.ms-excel') {
+            // Excel/spreadsheet preview
+            content.innerHTML = `
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-file-spreadsheet" style="font-size: 24px; color: #1D6F42;"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Excel Spreadsheet Preview</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(window.location.origin + '/api/jobs/attachments/' + attachmentID + '/view')}"
+                                style="width: 100%; height: 100%; border: none; background: white;"
+                                title="${filename}"
+                                loading="lazy"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        </iframe>
+                        <div style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                            <i class="bi bi-file-spreadsheet" style="font-size: 4rem; color: #1D6F42; margin-bottom: 20px; opacity: 0.8;"></i>
+                            <h3 style="margin-bottom: 12px; font-size: 20px;">Spreadsheet Preview Unavailable</h3>
+                            <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">The online preview service couldn't load this spreadsheet. You can download it to view with Excel or similar application.</p>
+                            <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-download"></i> Download Spreadsheet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (mimeType.includes('presentation') ||
+                   filename.endsWith('.pptx') ||
+                   filename.endsWith('.ppt') ||
+                   mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+                   mimeType === 'application/vnd.ms-powerpoint') {
+            // PowerPoint presentation preview
+            content.innerHTML = `
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-file-slides" style="font-size: 24px; color: #D24726;"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 13px; color: var(--text-muted);">PowerPoint Presentation Preview</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(window.location.origin + '/api/jobs/attachments/' + attachmentID + '/view')}"
+                                style="width: 100%; height: 100%; border: none; background: white;"
+                                title="${filename}"
+                                loading="lazy"
+                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        </iframe>
+                        <div style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                            <i class="bi bi-file-slides" style="font-size: 4rem; color: #D24726; margin-bottom: 20px; opacity: 0.8;"></i>
+                            <h3 style="margin-bottom: 12px; font-size: 20px;">Presentation Preview Unavailable</h3>
+                            <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">The online preview service couldn't load this presentation. You can download it to view with PowerPoint or similar application.</p>
+                            <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                                <i class="bi bi-download"></i> Download Presentation
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2727,7 +2881,7 @@
                 <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
                     <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <i class="bi bi-file-text" style="font-size: 24px; color: var(--primary);"></i>
+                            <i class="bi bi-file-word" style="font-size: 24px; color: #2B579A;"></i>
                             <div>
                                 <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
                                 <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Word Document Preview</p>
@@ -2742,13 +2896,74 @@
                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         </iframe>
                         <div style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
-                            <i class="bi bi-file-text" style="font-size: 4rem; color: var(--primary); margin-bottom: 20px; opacity: 0.8;"></i>
+                            <i class="bi bi-file-word" style="font-size: 4rem; color: #2B579A; margin-bottom: 20px; opacity: 0.8;"></i>
                             <h3 style="margin-bottom: 12px; font-size: 20px;">Office Preview Unavailable</h3>
                             <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">The online preview service couldn't load this document. You can download it to view with your local Word application.</p>
                             <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
                                 <i class="bi bi-download"></i> Download Document
                             </button>
                         </div>
+                    </div>
+                </div>
+            `;
+        } else if (filename.endsWith('.glb') ||
+                   filename.endsWith('.gltf') ||
+                   filename.endsWith('.obj') ||
+                   filename.endsWith('.stl') ||
+                   filename.endsWith('.fbx') ||
+                   filename.endsWith('.step') ||
+                   filename.endsWith('.stp') ||
+                   filename.endsWith('.dxf')) {
+            // 3D/CAD file preview
+            content.innerHTML = `
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-box" style="font-size: 24px; color: #6366F1;"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 13px; color: var(--text-muted);">3D/CAD File Preview</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                        <i class="bi bi-box" style="font-size: 4rem; color: #6366F1; margin-bottom: 20px; opacity: 0.8;"></i>
+                        <h3 style="margin-bottom: 12px; font-size: 20px;">3D Model Preview</h3>
+                        <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">3D file preview requires specialized viewer. Download the file to view in CAD software or 3D viewer.</p>
+                        <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-download"></i> Download 3D File
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (mimeType.includes('zip') ||
+                   mimeType.includes('archive') ||
+                   mimeType.includes('compressed') ||
+                   filename.endsWith('.zip') ||
+                   filename.endsWith('.rar') ||
+                   filename.endsWith('.7z') ||
+                   filename.endsWith('.tar') ||
+                   filename.endsWith('.gz') ||
+                   filename.endsWith('.bz2')) {
+            // Archive file preview
+            content.innerHTML = `
+                <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
+                    <div style="padding: 20px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="bi bi-file-zip" style="font-size: 24px; color: #F59E0B;"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px; font-weight: 600;">${filename}</h4>
+                                <p style="margin: 0; font-size: 13px; color: var(--text-muted);">Archive File</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center;">
+                        <i class="bi bi-file-zip" style="font-size: 4rem; color: #F59E0B; margin-bottom: 20px; opacity: 0.8;"></i>
+                        <h3 style="margin-bottom: 12px; font-size: 20px;">Archive File</h3>
+                        <p style="margin-bottom: 24px; color: var(--text-muted); max-width: 400px;">Archive contents cannot be previewed directly. Download the file to extract and view contents.</p>
+                        <button onclick="downloadCurrentPreviewFile()" class="rc-btn rc-btn-primary">
+                            <i class="bi bi-download"></i> Download Archive
+                        </button>
                     </div>
                 </div>
             `;
@@ -2778,17 +2993,82 @@
         if (mimeType.startsWith('video/')) return 'bi bi-file-play';
         if (mimeType.startsWith('audio/')) return 'bi bi-file-music';
         if (mimeType.includes('zip') || mimeType.includes('archive')) return 'bi bi-file-zip';
-        if (mimeType.includes('excel') || filename.endsWith('.xlsx') || filename.endsWith('.xls')) return 'bi bi-file-excel';
+        if (mimeType.includes('excel') || filename.endsWith('.xlsx') || filename.endsWith('.xls')) return 'bi bi-file-spreadsheet';
         if (mimeType.includes('word') || filename.endsWith('.docx') || filename.endsWith('.doc')) return 'bi bi-file-word';
-        if (mimeType.includes('powerpoint') || filename.endsWith('.pptx') || filename.endsWith('.ppt')) return 'bi bi-file-ppt';
+        if (mimeType.includes('powerpoint') || filename.endsWith('.pptx') || filename.endsWith('.ppt')) return 'bi bi-file-slides';
+        if (filename.endsWith('.glb') || filename.endsWith('.gltf') || filename.endsWith('.obj') || filename.endsWith('.stl')) return 'bi bi-box';
         return 'bi bi-file-earmark';
+    }
+
+    // Get language from filename for syntax highlighting
+    function getLanguageFromFilename(filename) {
+        const ext = filename.toLowerCase().split('.').pop();
+        const languages = {
+            'js': 'JavaScript',
+            'ts': 'TypeScript',
+            'jsx': 'React JSX',
+            'tsx': 'React TSX',
+            'py': 'Python',
+            'java': 'Java',
+            'c': 'C',
+            'cpp': 'C++',
+            'cc': 'C++',
+            'cxx': 'C++',
+            'cs': 'C#',
+            'php': 'PHP',
+            'rb': 'Ruby',
+            'go': 'Go',
+            'rs': 'Rust',
+            'html': 'HTML',
+            'htm': 'HTML',
+            'css': 'CSS',
+            'scss': 'SCSS',
+            'sass': 'Sass',
+            'less': 'Less',
+            'json': 'JSON',
+            'xml': 'XML',
+            'yaml': 'YAML',
+            'yml': 'YAML',
+            'sql': 'SQL',
+            'sh': 'Shell',
+            'bash': 'Bash',
+            'bat': 'Batch',
+            'md': 'Markdown',
+            'txt': 'Text',
+            'log': 'Log',
+            'cfg': 'Config',
+            'ini': 'INI',
+            'conf': 'Config',
+            'csv': 'CSV',
+            'rtf': 'Rich Text'
+        };
+        return languages[ext] || 'Text';
+    }
+
+    // Toggle image zoom functionality
+    function toggleImageZoom(img) {
+        if (img.style.transform) {
+            img.style.transform = '';
+            img.style.cursor = 'zoom-in';
+            img.style.position = 'static';
+            img.style.zIndex = 'auto';
+        } else {
+            img.style.transform = 'scale(2)';
+            img.style.cursor = 'zoom-out';
+            img.style.position = 'relative';
+            img.style.zIndex = '1000';
+        }
     }
 
     // Escape HTML for text preview
     function escapeHtml(unsafe) {
-        const div = document.createElement('div');
-        div.textContent = unsafe;
-        return div.innerHTML;
+        if (typeof unsafe !== 'string') return '';
+        return unsafe
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     // Hide file preview modal
