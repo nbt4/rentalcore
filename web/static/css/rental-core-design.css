@@ -781,35 +781,71 @@ body {
     position: relative;
 }
 
-/* Mobile responsive navbar */
+/* Enhanced Responsive Navigation */
+
+/* Mobile Navigation (up to 768px) */
 @media (max-width: 768px) {
     .rc-navbar-toggle {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
     }
-    
+
     .rc-navbar-nav {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: min(300px, 80vw);
+        height: 100vh;
         background: var(--surface-1);
-        border: 1px solid var(--surface-3);
-        border-top: none;
-        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        border-left: 1px solid var(--surface-3);
         flex-direction: column;
-        padding: var(--space-md);
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-10px);
-        transition: var(--transition-normal);
+        padding: var(--space-lg) var(--space-md);
+        z-index: 1050;
+        overflow-y: auto;
+        transition: right var(--transition-normal) ease;
+        box-shadow: var(--shadow-xl);
     }
-    
+
     .rc-navbar-nav.show {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
+        right: 0;
     }
-    
+
+    /* Mobile nav backdrop */
+    .rc-navbar-nav.show::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 300px;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: -1;
+        backdrop-filter: blur(4px);
+    }
+
+    /* Mobile nav header */
+    .rc-navbar-nav::before {
+        content: '';
+        display: block;
+        margin-bottom: var(--space-lg);
+    }
+
+    .rc-navbar-nav > li {
+        width: 100%;
+        margin-bottom: var(--space-xs);
+    }
+
+    .rc-nav-link {
+        width: 100%;
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        justify-content: flex-start;
+    }
+
+    /* Mobile dropdown behavior */
     .rc-dropdown-menu {
         position: static;
         opacity: 1;
@@ -819,6 +855,56 @@ body {
         border: none;
         background: var(--surface-2);
         margin: var(--space-sm) 0 0 var(--space-md);
+        border-radius: var(--radius-md);
+    }
+
+    .rc-dropdown.show .rc-dropdown-menu {
+        margin-top: var(--space-sm);
+    }
+}
+
+/* Tablet Navigation (769px to 1023px) */
+@media (min-width: 769px) and (max-width: 1023px) {
+    .rc-navbar {
+        padding: var(--space-sm) 0;
+    }
+
+    .rc-navbar-nav {
+        gap: var(--space-xs);
+    }
+
+    .rc-nav-link {
+        padding: var(--space-sm);
+        flex-direction: column;
+        font-size: var(--text-xs);
+        min-width: 60px;
+        text-align: center;
+    }
+
+    .rc-nav-link i {
+        font-size: 1.25rem;
+        margin-bottom: var(--space-xs);
+    }
+
+    /* Hide text in dropdown toggles on tablet */
+    .rc-dropdown-toggle {
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .rc-dropdown-toggle::after {
+        display: none;
+    }
+}
+
+/* Desktop Navigation (1024px+) */
+@media (min-width: 1024px) {
+    .rc-navbar-nav {
+        gap: var(--space-sm);
+    }
+
+    .rc-nav-link {
+        padding: var(--space-sm) var(--space-md);
     }
 }
 
@@ -1148,17 +1234,24 @@ body {
     color: var(--info);
 }
 
-/* Table System */
+/* Responsive Table System */
 .rc-table-container {
     background: var(--surface-1);
     border-radius: var(--radius-lg);
-    overflow: hidden;
     border: 1px solid var(--surface-3);
+    position: relative;
+    overflow: hidden;
+}
+
+.rc-table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .rc-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: max-content;
 }
 
 .rc-table th {
@@ -1168,12 +1261,17 @@ body {
     padding: var(--space-md);
     text-align: left;
     border-bottom: 1px solid var(--surface-3);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .rc-table td {
     padding: var(--space-md);
     border-bottom: 1px solid var(--surface-3);
     color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 .rc-table tr:hover {
@@ -1182,6 +1280,97 @@ body {
 
 .rc-table tr:last-child td {
     border-bottom: none;
+}
+
+/* Responsive table behavior */
+@media (max-width: 768px) {
+    /* Option 1: Horizontal scroll with sticky first column */
+    .rc-table-scroll {
+        overflow-x: auto;
+        border-radius: var(--radius-lg);
+    }
+
+    .rc-table-scroll .rc-table th:first-child,
+    .rc-table-scroll .rc-table td:first-child {
+        position: sticky;
+        left: 0;
+        background: var(--surface-2);
+        z-index: 2;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .rc-table-scroll .rc-table th:first-child {
+        z-index: 3;
+    }
+
+    /* Option 2: Card layout for mobile */
+    .rc-table-cards {
+        display: none;
+    }
+
+    .rc-table-cards .rc-table-card {
+        background: var(--surface-2);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        margin-bottom: var(--space-md);
+        border: 1px solid var(--surface-3);
+    }
+
+    .rc-table-cards .rc-table-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-sm);
+        padding-bottom: var(--space-sm);
+        border-bottom: 1px solid var(--surface-3);
+    }
+
+    .rc-table-cards .rc-table-card-title {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .rc-table-cards .rc-table-card-content {
+        display: grid;
+        gap: var(--space-sm);
+    }
+
+    .rc-table-cards .rc-table-card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-xs) 0;
+    }
+
+    .rc-table-cards .rc-table-card-label {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .rc-table-cards .rc-table-card-value {
+        color: var(--text-primary);
+        font-weight: 500;
+        text-align: right;
+    }
+
+    /* Hide table, show cards on mobile when using card mode */
+    .rc-table-container.rc-mobile-cards .rc-table-responsive {
+        display: none;
+    }
+
+    .rc-table-container.rc-mobile-cards .rc-table-cards {
+        display: block;
+    }
+}
+
+/* Compact table for tablets */
+@media (min-width: 769px) and (max-width: 1023px) {
+    .rc-table th,
+    .rc-table td {
+        padding: var(--space-sm);
+        font-size: var(--text-sm);
+    }
 }
 
 /* Badge System */

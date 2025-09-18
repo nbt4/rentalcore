@@ -136,11 +136,11 @@ class RentalCoreDesign {
                 this.closeAllDropdowns();
             }
             
-            // Close mobile nav when clicking outside
+            // Close mobile nav when clicking outside or on backdrop
             const nav = document.querySelector('.rc-navbar-nav');
             const toggle = document.querySelector('.rc-navbar-toggle');
-            if (nav && nav.classList.contains('show') && 
-                !e.target.closest('.rc-navbar-nav') && 
+            if (nav && nav.classList.contains('show') &&
+                !e.target.closest('.rc-navbar-nav') &&
                 !e.target.closest('.rc-navbar-toggle')) {
                 nav.classList.remove('show');
                 const icon = toggle?.querySelector('i');
