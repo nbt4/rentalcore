@@ -2577,6 +2577,9 @@
         document.getElementById('filePreviewTitle').textContent = filename;
         document.getElementById('filePreviewInfo').textContent = `${fileSize} • ${mimeType}`;
 
+        // Apply adaptive sizing based on file type
+        applyAdaptiveModalSizing(modal, mimeType, filename);
+
         // Show modal immediately
         modal.style.display = 'flex';
 
@@ -2613,23 +2616,25 @@
         modal.style.display = 'none';
         modal.innerHTML = `
             <div class="rc-modal-overlay" onclick="hideFilePreviewModal()"></div>
-            <div class="rc-modal-content" style="max-width: 95vw !important; max-height: 95vh !important; width: 1400px !important; margin: 2.5vh auto !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; border-radius: 12px !important; overflow: hidden !important;">
-                <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1);">
-                    <div style="flex: 1;">
-                        <h3 class="rc-modal-title" id="filePreviewTitle" style="font-size: 18px; font-weight: 600; margin: 0; color: var(--text-primary);">File Preview</h3>
-                        <p class="rc-text-muted rc-text-sm" id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 13px;"></p>
+            <div class="rc-modal-content" id="filePreviewModalContent" style="max-width: 95vw !important; max-height: 98vh !important; width: 1400px !important; height: 90vh !important; margin: 1vh auto !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; border-radius: 12px !important; overflow: hidden !important; display: flex !important; flex-direction: column !important;">
+                <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1); flex-shrink: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <h3 class="rc-modal-title" id="filePreviewTitle" style="font-size: 18px; font-weight: 600; margin: 0; color: var(--text-primary);">File Preview</h3>
+                            <p class="rc-text-muted rc-text-sm" id="filePreviewInfo" style="margin: 4px 0 0 0; font-size: 13px;"></p>
+                        </div>
+                        <button class="rc-modal-close" onclick="hideFilePreviewModal()" style="padding: 8px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; color: var(--text-muted); cursor: pointer;">
+                            <i class="bi bi-x-lg" style="font-size: 16px;"></i>
+                        </button>
                     </div>
-                    <button class="rc-modal-close" onclick="hideFilePreviewModal()" style="padding: 8px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; color: var(--text-muted); cursor: pointer;">
-                        <i class="bi bi-x-lg" style="font-size: 16px;"></i>
-                    </button>
                 </div>
-                <div class="rc-modal-body" id="filePreviewContent" style="height: calc(95vh - 120px); overflow: auto; background: var(--surface-0); padding: 0;">
+                <div class="rc-modal-body" id="filePreviewContent" style="flex: 1; overflow: auto; background: var(--surface-0); padding: 0; min-height: 0;">
                     <div style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
                         <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite; font-size: 2.5rem; margin-bottom: 16px; color: var(--primary);"></i>
                         <div style="font-size: 16px;">Loading file preview...</div>
                     </div>
                 </div>
-                <div class="rc-modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--surface-3); background: var(--surface-1); display: flex; justify-content: space-between; align-items: center;">
+                <div class="rc-modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--surface-3); background: var(--surface-1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <i class="bi bi-info-circle" style="color: var(--text-muted); font-size: 14px;"></i>
                         <span style="font-size: 13px; color: var(--text-muted);">Press Esc to close</span>
@@ -2657,16 +2662,19 @@
            filename.endsWith('.bmp') ||
            filename.endsWith('.tiff') ||
            filename.endsWith('.ico')) {
-            // Enhanced image preview with metadata
+            // Enhanced image preview with metadata and adaptive sizing
             const img = new Image();
             img.onload = function() {
+                // Apply adaptive sizing based on image aspect ratio
+                adaptModalForImage(img.naturalWidth, img.naturalHeight);
+
                 content.innerHTML = `
                     <div style="width: 100%; height: 100%; background: var(--surface-2); display: flex; flex-direction: column;">
                         <div style="padding: 16px 24px; background: var(--surface-1); border-bottom: 1px solid var(--surface-3); display: flex; align-items: center; gap: 12px;">
                             <i class="bi bi-image" style="font-size: 18px; color: var(--primary);"></i>
                             <div>
                                 <h4 style="margin: 0; font-size: 14px; font-weight: 600;">${filename}</h4>
-                                <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Image • ${img.naturalWidth}x${img.naturalHeight}px</p>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Image • ${img.naturalWidth}x${img.naturalHeight}px • ${getImageOrientation(img.naturalWidth, img.naturalHeight)}</p>
                             </div>
                         </div>
                         <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; overflow: hidden;">
@@ -3043,6 +3051,136 @@
             'rtf': 'Rich Text'
         };
         return languages[ext] || 'Text';
+    }
+
+    // Apply adaptive modal sizing based on file type
+    function applyAdaptiveModalSizing(modal, mimeType, filename) {
+        const modalContent = modal.querySelector('#filePreviewModalContent');
+
+        // Reset to default first
+        modalContent.style.width = '1400px';
+        modalContent.style.height = '90vh';
+        modalContent.style.maxWidth = '95vw';
+        modalContent.style.maxHeight = '98vh';
+
+        if (mimeType === 'application/pdf' || filename.endsWith('.pdf')) {
+            // PDF documents - optimize for A4 vertical reading
+            modalContent.style.width = '900px';
+            modalContent.style.height = '95vh';
+            modalContent.style.maxWidth = '90vw';
+            modalContent.style.maxHeight = '98vh';
+        } else if (mimeType.startsWith('image/') || isImageFile(filename)) {
+            // Images - will be handled dynamically after loading to detect aspect ratio
+            modalContent.style.width = '95vw';
+            modalContent.style.height = '95vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '98vh';
+        } else if (mimeType.startsWith('video/') || isVideoFile(filename)) {
+            // Videos - optimize for video aspect ratios
+            modalContent.style.width = '95vw';
+            modalContent.style.height = '85vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '95vh';
+        } else if (is3DFile(filename) || isArchiveFile(filename)) {
+            // 3D models and archives - maximize space
+            modalContent.style.width = '95vw';
+            modalContent.style.height = '95vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '98vh';
+        } else if (isOfficeFile(mimeType, filename)) {
+            // Office documents - optimize for document viewing
+            modalContent.style.width = '95vw';
+            modalContent.style.height = '95vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '98vh';
+        } else if (isCodeFile(filename)) {
+            // Code files - wide format for better readability
+            modalContent.style.width = '95vw';
+            modalContent.style.height = '90vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '95vh';
+        }
+    }
+
+    // Helper functions for file type detection
+    function isImageFile(filename) {
+        return /\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff|ico)$/i.test(filename);
+    }
+
+    function isVideoFile(filename) {
+        return /\.(mp4|webm|ogg|ogv|mov|avi|mkv|m4v)$/i.test(filename);
+    }
+
+    function is3DFile(filename) {
+        return /\.(glb|gltf|obj|stl|fbx|step|stp|dxf)$/i.test(filename);
+    }
+
+    function isArchiveFile(filename) {
+        return /\.(zip|rar|7z|tar|gz|bz2)$/i.test(filename);
+    }
+
+    function isOfficeFile(mimeType, filename) {
+        return mimeType.includes('excel') || mimeType.includes('spreadsheet') ||
+               mimeType.includes('presentation') || mimeType.includes('powerpoint') ||
+               /\.(xlsx|xls|pptx|ppt)$/i.test(filename);
+    }
+
+    function isCodeFile(filename) {
+        return /\.(html|htm|css|js|ts|jsx|tsx|py|java|c|cpp|cs|php|rb|go|rs|sql|sh|bat|json|yaml|yml|xml|cfg|ini|conf)$/i.test(filename);
+    }
+
+    // Adapt modal size for images based on aspect ratio
+    function adaptModalForImage(width, height) {
+        const modal = document.getElementById('filePreviewModal');
+        const modalContent = modal.querySelector('#filePreviewModalContent');
+        const aspectRatio = width / height;
+
+        if (aspectRatio > 1.5) {
+            // Landscape image - prioritize width
+            modalContent.style.width = '95vw';
+            modalContent.style.height = 'auto';
+            modalContent.style.maxHeight = '95vh';
+        } else if (aspectRatio < 0.75) {
+            // Portrait image - prioritize height
+            modalContent.style.width = 'auto';
+            modalContent.style.height = '95vh';
+            modalContent.style.maxWidth = '90vw';
+        } else {
+            // Square-ish image - balanced approach
+            modalContent.style.width = '85vw';
+            modalContent.style.height = '90vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '95vh';
+        }
+    }
+
+    // Get image orientation description
+    function getImageOrientation(width, height) {
+        const aspectRatio = width / height;
+        if (aspectRatio > 1.3) return 'Landscape';
+        if (aspectRatio < 0.8) return 'Portrait';
+        return 'Square';
+    }
+
+    // Maximize modal size for specific content types
+    function maximizeModalSize() {
+        const modal = document.getElementById('filePreviewModal');
+        const modalContent = modal.querySelector('#filePreviewModalContent');
+        modalContent.style.width = '98vw';
+        modalContent.style.height = '96vh';
+        modalContent.style.maxWidth = '98vw';
+        modalContent.style.maxHeight = '98vh';
+        modalContent.style.margin = '1vh auto';
+    }
+
+    // Adapt modal for generic files
+    function adaptModalForGenericFile() {
+        const modal = document.getElementById('filePreviewModal');
+        const modalContent = modal.querySelector('#filePreviewModalContent');
+        modalContent.style.width = '800px';
+        modalContent.style.height = '70vh';
+        modalContent.style.maxWidth = '90vw';
+        modalContent.style.maxHeight = '85vh';
     }
 
     // Toggle image zoom functionality

@@ -3958,6 +3958,92 @@
             return languages[ext] || 'Text';
         }
 
+        // Apply adaptive modal sizing based on file type
+        function applyAdaptiveModalSizing(mimeType, filename) {
+            const modal = document.getElementById('filePreviewModal');
+            const modalContent = modal.querySelector('#filePreviewModalContent');
+
+            // Reset to default first
+            modalContent.style.width = '1400px';
+            modalContent.style.height = '90vh';
+            modalContent.style.maxWidth = '95vw';
+            modalContent.style.maxHeight = '98vh';
+
+            if (mimeType === 'application/pdf' || filename.endsWith('.pdf')) {
+                // PDF documents - optimize for A4 vertical reading
+                modalContent.style.width = '900px';
+                modalContent.style.height = '95vh';
+                modalContent.style.maxWidth = '90vw';
+                modalContent.style.maxHeight = '98vh';
+            } else if (mimeType.startsWith('image/') || isImageFile(filename)) {
+                // Images - will be handled dynamically after loading to detect aspect ratio
+                modalContent.style.width = '95vw';
+                modalContent.style.height = '95vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '98vh';
+            } else if (mimeType.startsWith('video/') || isVideoFile(filename)) {
+                // Videos - optimize for video aspect ratios
+                modalContent.style.width = '95vw';
+                modalContent.style.height = '85vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '95vh';
+            } else if (is3DFile(filename) || isArchiveFile(filename)) {
+                // 3D models and archives - maximize space
+                modalContent.style.width = '95vw';
+                modalContent.style.height = '95vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '98vh';
+            } else if (isOfficeFile(mimeType, filename)) {
+                // Office documents - optimize for document viewing
+                modalContent.style.width = '95vw';
+                modalContent.style.height = '95vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '98vh';
+            } else if (isCodeFile(filename)) {
+                // Code files - wide format for better readability
+                modalContent.style.width = '95vw';
+                modalContent.style.height = '90vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '95vh';
+            }
+        }
+
+        // Adapt modal size for images based on aspect ratio
+        function adaptModalForImage(width, height) {
+            const modal = document.getElementById('filePreviewModal');
+            const modalContent = modal.querySelector('#filePreviewModalContent');
+            const aspectRatio = width / height;
+
+            if (aspectRatio > 1.5) {
+                // Landscape image - prioritize width
+                modalContent.style.width = '95vw';
+                modalContent.style.height = 'auto';
+                modalContent.style.maxHeight = '95vh';
+            } else if (aspectRatio < 0.75) {
+                // Portrait image - prioritize height
+                modalContent.style.width = 'auto';
+                modalContent.style.height = '95vh';
+                modalContent.style.maxWidth = '90vw';
+            } else {
+                // Square-ish image - balanced approach
+                modalContent.style.width = '85vw';
+                modalContent.style.height = '90vh';
+                modalContent.style.maxWidth = '95vw';
+                modalContent.style.maxHeight = '95vh';
+            }
+        }
+
+        // Maximize modal size for specific content types
+        function maximizeModalSize() {
+            const modal = document.getElementById('filePreviewModal');
+            const modalContent = modal.querySelector('#filePreviewModalContent');
+            modalContent.style.width = '98vw';
+            modalContent.style.height = '96vh';
+            modalContent.style.maxWidth = '98vw';
+            modalContent.style.maxHeight = '98vh';
+            modalContent.style.margin = '1vh auto';
+        }
+
         // Toggle image zoom functionality
         function toggleImageZoom(img) {
             if (img.style.transform) {
@@ -4220,7 +4306,7 @@
     <!-- File Preview Modal -->
     <div id="filePreviewModal" class="rc-modal" style="display: none;">
         <div class="rc-modal-backdrop" onclick="hideFilePreviewModal()"></div>
-        <div class="rc-modal-content" style="max-width: 95vw !important; max-height: 95vh !important; width: 1400px !important; margin: 2.5vh auto !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; border-radius: 12px !important; overflow: hidden !important;">
+        <div class="rc-modal-content" id="filePreviewModalContent" style="max-width: 95vw !important; max-height: 98vh !important; width: 1400px !important; height: 90vh !important; margin: 1vh auto !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; border-radius: 12px !important; overflow: hidden !important; display: flex !important; flex-direction: column !important;">
             <div class="rc-modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--surface-3); background: var(--surface-1);">
                 <div class="rc-flex rc-flex-between rc-flex-align-center">
                     <div style="flex: 1;">
@@ -4237,7 +4323,7 @@
                     </div>
                 </div>
             </div>
-            <div class="rc-modal-body" style="padding: 0; height: calc(95vh - 120px); overflow: auto; background: var(--surface-0);">
+            <div class="rc-modal-body" style="padding: 0; flex: 1; overflow: auto; background: var(--surface-0); min-height: 0;">
                 <div id="filePreviewContent" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                     <!-- File content will be loaded here -->
                 </div>
