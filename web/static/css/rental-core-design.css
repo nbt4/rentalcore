@@ -42,14 +42,31 @@
     --text-muted: #94a3b8;
     --text-inverse: #0f172a;
     
-    /* Spacing Scale */
-    --space-xs: 0.25rem;
-    --space-sm: 0.5rem;
-    --space-md: 1rem;
-    --space-lg: 1.5rem;
-    --space-xl: 2rem;
-    --space-2xl: 3rem;
-    --space-3xl: 4rem;
+    /* Responsive Spacing Scale - Fluid spacing using clamp() */
+    --space-xs: clamp(0.25rem, 0.5vw, 0.375rem);
+    --space-sm: clamp(0.5rem, 1vw, 0.75rem);
+    --space-md: clamp(1rem, 2vw, 1.25rem);
+    --space-lg: clamp(1.5rem, 3vw, 2rem);
+    --space-xl: clamp(2rem, 4vw, 3rem);
+    --space-2xl: clamp(3rem, 6vw, 4rem);
+    --space-3xl: clamp(4rem, 8vw, 6rem);
+
+    /* Responsive Breakpoints */
+    --breakpoint-xs: 20rem;    /* 320px */
+    --breakpoint-sm: 30rem;    /* 480px */
+    --breakpoint-md: 40rem;    /* 640px */
+    --breakpoint-lg: 48rem;    /* 768px */
+    --breakpoint-xl: 64rem;    /* 1024px */
+    --breakpoint-2xl: 80rem;   /* 1280px */
+    --breakpoint-3xl: 96rem;   /* 1536px */
+
+    /* Container Sizes */
+    --container-xs: 100%;
+    --container-sm: 30rem;     /* 480px */
+    --container-md: 40rem;     /* 640px */
+    --container-lg: 64rem;     /* 1024px */
+    --container-xl: 80rem;     /* 1280px */
+    --container-2xl: 87.5rem;  /* 1400px */
     
     /* Border Radius */
     --radius-sm: 0.375rem;
@@ -68,6 +85,21 @@
     /* Typography */
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
     --font-sans: 'Inter', system-ui, sans-serif;
+
+    /* Fluid Typography Scale */
+    --text-xs: clamp(0.75rem, 0.8vw, 0.875rem);   /* 12-14px */
+    --text-sm: clamp(0.875rem, 1vw, 1rem);        /* 14-16px */
+    --text-base: clamp(1rem, 1.2vw, 1.125rem);    /* 16-18px */
+    --text-lg: clamp(1.125rem, 1.4vw, 1.25rem);   /* 18-20px */
+    --text-xl: clamp(1.25rem, 1.6vw, 1.5rem);     /* 20-24px */
+    --text-2xl: clamp(1.5rem, 2vw, 2rem);         /* 24-32px */
+    --text-3xl: clamp(1.875rem, 2.5vw, 2.5rem);   /* 30-40px */
+    --text-4xl: clamp(2.25rem, 3vw, 3rem);        /* 36-48px */
+
+    /* Line Heights */
+    --leading-tight: 1.25;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
     
     /* Animations */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -255,23 +287,88 @@ body {
     overflow-x: hidden;
 }
 
-/* Custom Grid System */
+/* Responsive Container System */
 .rc-container {
     width: 100%;
-    max-width: 1400px;
     margin: 0 auto;
     padding: 0 var(--space-md);
+
+    /* Responsive max-widths */
+    max-width: var(--container-2xl);
 }
 
+.rc-container-sm { max-width: var(--container-sm); }
+.rc-container-md { max-width: var(--container-md); }
+.rc-container-lg { max-width: var(--container-lg); }
+.rc-container-xl { max-width: var(--container-xl); }
+.rc-container-2xl { max-width: var(--container-2xl); }
+.rc-container-fluid { max-width: none; }
+
+/* Responsive padding adjustments */
+@media (max-width: 480px) {
+    .rc-container {
+        padding: 0 var(--space-sm);
+    }
+}
+
+@media (min-width: 1200px) {
+    .rc-container {
+        padding: 0 var(--space-lg);
+    }
+}
+
+/* Enhanced Responsive Grid System */
 .rc-grid {
     display: grid;
     gap: var(--space-md);
 }
 
-.rc-grid-2 { grid-template-columns: repeat(2, 1fr); }
-.rc-grid-3 { grid-template-columns: repeat(3, 1fr); }
-.rc-grid-4 { grid-template-columns: repeat(4, 1fr); }
-.rc-grid-auto { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+/* Responsive grid templates */
+.rc-grid-auto {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.rc-grid-auto-sm {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+}
+
+.rc-grid-auto-lg {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+}
+
+/* Fixed grid with responsive breakdowns */
+.rc-grid-1 { grid-template-columns: 1fr; }
+.rc-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+.rc-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+.rc-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Responsive grid breakdowns */
+@media (max-width: 768px) {
+    .rc-grid-2,
+    .rc-grid-3,
+    .rc-grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1023px) {
+    .rc-grid-3,
+    .rc-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .rc-grid-4 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
 
 .rc-flex {
     display: flex;
@@ -287,11 +384,72 @@ body {
 .rc-flex-gap-xs { gap: var(--space-xs); }
 .rc-flex-gap-sm { gap: var(--space-sm); }
 
-/* Typography */
+/* Layout Primitives */
+.rc-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.rc-stack-sm { gap: var(--space-sm); }
+.rc-stack-lg { gap: var(--space-lg); }
+.rc-stack-xl { gap: var(--space-xl); }
+
+.rc-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.rc-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.rc-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+}
+
+.rc-sidebar > :first-child {
+    flex-basis: 20rem;
+    flex-grow: 1;
+}
+
+.rc-sidebar > :last-child {
+    flex-basis: 0;
+    flex-grow: 999;
+    min-width: calc(50% - var(--space-lg));
+}
+
+/* Content width constraints */
+.rc-prose {
+    max-width: 72ch;
+}
+
+.rc-prose-wide {
+    max-width: 96ch;
+}
+
+/* Touch targets for mobile */
+.rc-touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive Typography */
 .rc-heading-1 {
-    font-size: 3rem;
+    font-size: var(--text-4xl);
     font-weight: 800;
-    line-height: 1.1;
+    line-height: var(--leading-tight);
     background: linear-gradient(135deg, var(--accent-electric), var(--accent-purple));
     background-clip: text;
     -webkit-background-clip: text;
@@ -300,32 +458,60 @@ body {
 }
 
 .rc-heading-2 {
-    font-size: 2rem;
+    font-size: var(--text-3xl);
     font-weight: 700;
+    line-height: var(--leading-tight);
     color: var(--text-primary);
     margin-bottom: var(--space-md);
 }
 
 .rc-heading-3 {
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 600;
+    line-height: var(--leading-tight);
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.rc-heading-4 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: var(--leading-normal);
     color: var(--text-primary);
     margin-bottom: var(--space-sm);
 }
 
 .rc-text {
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+}
+
+.rc-text-xs {
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
 }
 
 .rc-text-sm {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
     color: var(--text-muted);
+}
+
+.rc-text-lg {
+    font-size: var(--text-lg);
+    line-height: var(--leading-normal);
+}
+
+.rc-text-xl {
+    font-size: var(--text-xl);
+    line-height: var(--leading-normal);
 }
 
 .rc-text-mono {
     font-family: var(--font-mono);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
 }
 
 /* Navigation System */
@@ -1227,12 +1413,56 @@ body {
     }
 }
 
-/* Focus Visible for Accessibility */
+/* Enhanced Focus Styles for Accessibility */
 .rc-btn:focus-visible,
 .rc-input:focus-visible,
-.rc-nav-link:focus-visible {
+.rc-nav-link:focus-visible,
+.rc-dropdown-toggle:focus-visible,
+.rc-dropdown-item:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
     outline: 2px solid var(--accent-electric);
     outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Remove default focus styles to prevent double outlines */
+.rc-btn:focus,
+.rc-input:focus,
+.rc-nav-link:focus,
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+}
+
+/* Enhanced touch targets */
+@media (pointer: coarse) {
+    .rc-btn,
+    .rc-nav-link,
+    .rc-dropdown-toggle,
+    button,
+    a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* Bootstrap Button Enhancements for Action Buttons */
