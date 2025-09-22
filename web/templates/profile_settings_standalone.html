@@ -146,24 +146,26 @@
                     </div>
                     <div class="rc-card-body">
                         <!-- 2FA Section -->
-                        <div class="rc-security-feature rc-mb-lg">
+                        <div class="rc-security-feature">
                             <div class="rc-security-feature-header">
-                                <div class="rc-security-icon {{if .twoFAEnabled}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
-                                    <i class="bi bi-shield-{{if .twoFAEnabled}}check{{else}}exclamation{{end}}"></i>
+                                <div class="rc-security-icon-container">
+                                    <div class="rc-security-icon {{if .twoFAEnabled}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
+                                        <i class="bi bi-shield-{{if .twoFAEnabled}}check{{else}}exclamation{{end}}"></i>
+                                    </div>
                                 </div>
                                 <div class="rc-security-info">
                                     <h5 class="rc-security-title">Two-Factor Authentication</h5>
                                     <p class="rc-security-desc">Add an extra layer of security to your account</p>
                                 </div>
                                 <div class="rc-security-status">
-                                    <div class="rc-status-indicator {{if .twoFAEnabled}}rc-status-enabled{{else}}rc-status-disabled{{end}}">
+                                    <div class="rc-status-badge {{if .twoFAEnabled}}rc-status-enabled{{else}}rc-status-disabled{{end}}">
                                         <span class="rc-status-dot"></span>
                                         <span class="rc-status-text">{{if .twoFAEnabled}}Enabled{{else}}Disabled{{end}}</span>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="rc-flex rc-gap-sm">
+
+                            <div class="rc-security-actions">
                                 {{if .twoFAEnabled}}
                                     <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="disable2FA()">
                                         <i class="bi bi-shield-x"></i> Disable 2FA
@@ -181,15 +183,17 @@
                         <!-- Passkeys Section -->
                         <div class="rc-security-feature">
                             <div class="rc-security-feature-header">
-                                <div class="rc-security-icon {{if .passkeys}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
-                                    <i class="bi bi-key"></i>
+                                <div class="rc-security-icon-container">
+                                    <div class="rc-security-icon {{if .passkeys}}rc-security-enabled{{else}}rc-security-disabled{{end}}">
+                                        <i class="bi bi-key"></i>
+                                    </div>
                                 </div>
                                 <div class="rc-security-info">
                                     <h5 class="rc-security-title">Passkeys</h5>
                                     <p class="rc-security-desc">Modern passwordless authentication using biometrics or hardware keys</p>
                                 </div>
                                 <div class="rc-security-status">
-                                    <div class="rc-passkey-count">
+                                    <div class="rc-passkey-count-badge">
                                         <span class="rc-count-number">{{if .passkeys}}{{len .passkeys}}{{else}}0{{end}}</span>
                                         <span class="rc-count-label">{{if eq (len .passkeys) 1}}Key{{else}}Keys{{end}}</span>
                                     </div>
@@ -224,9 +228,11 @@
                                 {{end}}
                             </div>
 
-                            <button type="button" class="rc-btn rc-btn-outline rc-btn-sm rc-w-full" onclick="addPasskey()">
-                                <i class="bi bi-plus-lg"></i> Add Passkey
-                            </button>
+                            <div class="rc-security-actions">
+                                <button type="button" class="rc-btn rc-btn-outline rc-btn-sm" onclick="addPasskey()">
+                                    <i class="bi bi-plus-lg"></i> Add Passkey
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Recent Activity -->
@@ -1436,25 +1442,30 @@
         background: var(--surface-2);
         border: 1px solid var(--surface-3);
         border-radius: var(--radius-lg);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
+        padding: var(--space-6);
+        margin-bottom: var(--space-6);
     }
 
     .rc-security-feature-header {
         display: flex;
-        align-items: center;
-        gap: var(--space-lg);
-        margin-bottom: var(--space-lg);
+        align-items: flex-start;
+        gap: var(--space-5);
+        margin-bottom: var(--space-6);
+    }
+
+    .rc-security-icon-container {
+        flex-shrink: 0;
+        padding: var(--space-2);
     }
 
     .rc-security-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-lg);
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         transition: all var(--transition-normal);
     }
 
@@ -1490,16 +1501,26 @@
 
     .rc-security-status {
         flex-shrink: 0;
+        align-self: flex-start;
+        margin-top: var(--space-1);
     }
 
-    .rc-status-indicator {
-        display: flex;
+    .rc-status-badge {
+        display: inline-flex;
         align-items: center;
-        gap: var(--space-sm);
-        padding: var(--space-sm) var(--space-md);
-        border-radius: 50px;
-        font-size: 0.875rem;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-lg);
+        font-size: 0.75rem;
         font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .rc-security-actions {
+        margin-top: var(--space-4);
+        display: flex;
+        gap: var(--space-3);
+        flex-wrap: wrap;
     }
 
     .rc-status-enabled {
@@ -1522,17 +1543,21 @@
         animation: pulse 2s infinite;
     }
 
-    .rc-passkey-count {
+    .rc-passkey-count-badge {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
-        padding: var(--space-sm) var(--space-md);
+        padding: var(--space-3) var(--space-4);
         background: rgba(0, 245, 255, 0.1);
         border: 1px solid rgba(0, 245, 255, 0.2);
         border-radius: var(--radius-lg);
+        min-width: 60px;
     }
 
     .rc-count-number {
         display: block;
-        font-size: 1.5rem;
+        font-size: 1.125rem;
         font-weight: 700;
         color: var(--accent-electric);
         line-height: 1;
@@ -1540,12 +1565,12 @@
 
     .rc-count-label {
         display: block;
-        font-size: 0.75rem;
+        font-size: 0.625rem;
         color: var(--text-muted);
         text-transform: uppercase;
         font-weight: 600;
         letter-spacing: 0.5px;
-        margin-top: var(--space-xs);
+        margin-top: var(--space-1);
     }
 
     /* Smooth Scrolling */
@@ -1600,7 +1625,17 @@
         .rc-security-feature-header {
             flex-direction: column;
             text-align: center;
-            gap: var(--space-md);
+            gap: var(--space-4);
+            align-items: center;
+        }
+
+        .rc-security-icon-container {
+            padding: 0;
+        }
+
+        .rc-security-actions {
+            justify-content: center;
+            margin-top: var(--space-5);
         }
 
         .rc-card-header-enhanced {

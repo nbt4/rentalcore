@@ -43,7 +43,16 @@ class RentalCoreDesign {
                     console.log('Dropdown toggle clicked');
                     e.preventDefault();
                     e.stopPropagation();
-                    this.toggleDropdown(dropdown);
+
+                    // Check if we're on mobile
+                    const isMobile = window.innerWidth <= 768;
+                    if (isMobile) {
+                        // On mobile, only toggle - don't redirect
+                        this.toggleDropdown(dropdown);
+                    } else {
+                        // On desktop, normal dropdown behavior
+                        this.toggleDropdown(dropdown);
+                    }
                 });
 
                 // Close dropdown when clicking menu items (except headers and dividers)
@@ -73,12 +82,8 @@ class RentalCoreDesign {
         if (!isOpen) {
             console.log('Opening dropdown');
             dropdown.classList.add('show');
-            
-            // Focus first item if it exists
-            const firstItem = dropdown.querySelector('.rc-dropdown-item');
-            if (firstItem) {
-                setTimeout(() => firstItem.focus(), 100);
-            }
+
+            // Don't auto-focus items - let users navigate naturally
         } else {
             console.log('Dropdown was already open, now closed by closeAllDropdowns');
         }

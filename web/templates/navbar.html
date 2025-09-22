@@ -85,7 +85,7 @@
                 <!-- User Dropdown -->
                 {{if .user}}
                 <li class="rc-dropdown">
-                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "profile") (eq .currentPage "settings") (eq .currentPage "users") (eq .currentPage "security")}}active{{end}}">
+                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "profile") (eq .currentPage "profile-settings") (eq .currentPage "settings") (eq .currentPage "users") (eq .currentPage "security")}}active{{end}}">
                         <i class="bi bi-person-circle"></i> {{.user.Username}}
                     </a>
                     <div class="rc-dropdown-menu">
@@ -94,7 +94,7 @@
                         </div>
                         <hr class="rc-dropdown-divider">
                         <div class="rc-dropdown-header">Personal</div>
-                        <a href="/profile/settings" class="rc-dropdown-item {{if eq .currentPage "profile"}}active{{end}}">
+                        <a href="/profile/settings" class="rc-dropdown-item {{if or (eq .currentPage "profile") (eq .currentPage "profile-settings")}}active{{end}}">
                             <i class="bi bi-person-gear"></i> Profile Settings
                         </a>
                         <hr class="rc-dropdown-divider">

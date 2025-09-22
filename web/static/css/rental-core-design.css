@@ -566,8 +566,9 @@ body {
 
 .rc-navbar-content {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: var(--space-8); /* Better spacing between brand and nav */
 }
 
 .rc-navbar-brand {
@@ -589,9 +590,10 @@ body {
 
 .rc-navbar-nav {
     display: flex;
-    gap: var(--space-xs);
+    gap: var(--space-1); /* Tighter spacing between nav items */
     list-style: none;
     align-items: center;
+    margin-left: auto; /* Push nav items to the right */
 }
 
 .rc-nav-link {
@@ -886,18 +888,24 @@ body {
     /* Mobile dropdown behavior */
     .rc-dropdown-menu {
         position: static;
-        opacity: 1;
-        visibility: visible;
+        opacity: 0;
+        visibility: hidden;
         transform: none;
         box-shadow: none;
         border: none;
         background: var(--surface-2);
-        margin: var(--space-sm) 0 0 var(--space-md);
+        margin: 0 0 0 var(--space-md);
         border-radius: var(--radius-md);
+        max-height: 0;
+        overflow: hidden;
+        transition: all var(--transition-normal) ease;
     }
 
     .rc-dropdown.show .rc-dropdown-menu {
+        opacity: 1;
+        visibility: visible;
         margin-top: var(--space-sm);
+        max-height: 300px;
     }
 }
 
