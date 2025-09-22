@@ -60,13 +60,40 @@
                     <li><a href="/devices" class="rc-nav-link {{if eq .currentPage "devices"}}active{{end}}">
                         <i class="bi bi-cpu"></i> Devices
                     </a></li>
+                    <!-- Products Dropdown -->
+                    <li class="rc-dropdown">
+                        <a href="#" class="rc-nav-link rc-dropdown-toggle">
+                            <i class="bi bi-box"></i> Products
+                        </a>
+                        <div class="rc-dropdown-menu">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-building"></i> Inventory
+                            </div>
+                            <a href="/products" class="rc-dropdown-item {{if eq .currentPage "products"}}active{{end}}">
+                                <i class="bi bi-boxes"></i> Own Products
+                            </a>
+                            <a href="/rental-equipment" class="rc-dropdown-item {{if eq .currentPage "rental-equipment"}}active{{end}}">
+                                <i class="bi bi-box-seam"></i> Rental Equipment
+                            </a>
+                            <hr class="rc-dropdown-divider">
+                            <div class="rc-dropdown-header">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </div>
+                            <a href="/rental-equipment/analytics" class="rc-dropdown-item {{if eq .currentPage "rental-analytics"}}active{{end}}">
+                                <i class="bi bi-clipboard-data"></i> Rental Analytics
+                            </a>
+                        </div>
+                    </li>
+                    <li><a href="/cables" class="rc-nav-link {{if eq .currentPage "cables"}}active{{end}}">
+                        <i class="bi bi-lightning-charge"></i> Cables
+                    </a></li>
                     <li><a href="/customers" class="rc-nav-link {{if eq .currentPage "customers"}}active{{end}}">
                         <i class="bi bi-people"></i> Customers
                     </a></li>
                     <li><a href="/cases" class="rc-nav-link {{if eq .currentPage "cases"}}active{{end}}">
-                        <i class="bi bi-box"></i> Cases
+                        <i class="bi bi-archive"></i> Cases
                     </a></li>
-                    
+
                     <!-- Tools Dropdown -->
                     <li class="rc-dropdown">
                         <a href="#" class="rc-nav-link rc-dropdown-toggle">
@@ -76,21 +103,20 @@
                             <div class="rc-dropdown-header">
                                 <i class="bi bi-folder"></i> Management
                             </div>
-                            </a>
-                            <a href="/workflow/packages" class="rc-dropdown-item">
+                            <a href="/workflow/packages" class="rc-dropdown-item {{if eq .currentPage "packages"}}active{{end}}">
                                 <i class="bi bi-box-seam"></i> Equipment Packages
                             </a>
                             <hr class="rc-dropdown-divider">
                             <div class="rc-dropdown-header">
                                 <i class="bi bi-building"></i> Business
                             </div>
-                            <a href="/invoices" class="rc-dropdown-item">
+                            <a href="/invoices" class="rc-dropdown-item {{if eq .currentPage "invoices"}}active{{end}}">
                                 <i class="bi bi-file-text"></i> Invoices
                             </a>
-                            <a href="/analytics" class="rc-dropdown-item">
+                            <a href="/analytics" class="rc-dropdown-item {{if eq .currentPage "analytics"}}active{{end}}">
                                 <i class="bi bi-graph-up"></i> Analytics
                             </a>
-                            <a href="/financial" class="rc-dropdown-item">
+                            <a href="/financial" class="rc-dropdown-item {{if eq .currentPage "financial"}}active{{end}}">
                                 <i class="bi bi-calculator"></i> Financial
                             </a>
                         </div>
@@ -108,23 +134,23 @@
                             </div>
                             <hr class="rc-dropdown-divider">
                             <div class="rc-dropdown-header">Personal</div>
-                            <a href="/profile/settings" class="rc-dropdown-item">
+                            <a href="/profile/settings" class="rc-dropdown-item {{if or (eq .currentPage "profile") (eq .currentPage "profile-settings")}}active{{end}}">
                                 <i class="bi bi-person-gear"></i> Profile Settings
                             </a>
                             <hr class="rc-dropdown-divider">
                             <div class="rc-dropdown-header">Company</div>
-                            <a href="/settings/company" class="rc-dropdown-item">
+                            <a href="/settings/company" class="rc-dropdown-item {{if eq .currentPage "settings"}}active{{end}}">
                                 <i class="bi bi-building-gear"></i> Company Settings
                             </a>
                             <hr class="rc-dropdown-divider">
                             <div class="rc-dropdown-header">System</div>
-                            <a href="/users" class="rc-dropdown-item">
+                            <a href="/users" class="rc-dropdown-item {{if eq .currentPage "users"}}active{{end}}">
                                 <i class="bi bi-people-fill"></i> User Management
                             </a>
-                            <a href="/security/roles" class="rc-dropdown-item">
+                            <a href="/security/roles" class="rc-dropdown-item {{if eq .currentPage "security"}}active{{end}}">
                                 <i class="bi bi-person-badge"></i> Role Management
                             </a>
-                            <a href="/security/audit" class="rc-dropdown-item">
+                            <a href="/security/audit" class="rc-dropdown-item {{if eq .currentPage "security"}}active{{end}}">
                                 <i class="bi bi-shield-check"></i> Security & Audit
                             </a>
                             <hr class="rc-dropdown-divider">
