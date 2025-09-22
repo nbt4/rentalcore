@@ -22,7 +22,7 @@
                 </a></li>
                 <!-- Products Dropdown -->
                 <li class="rc-dropdown">
-                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "products") (eq .currentPage "rental-equipment") (eq .currentPage "rental-analytics")}}active{{end}}">
+                    <a href="#" class="rc-nav-link rc-dropdown-toggle">
                         <i class="bi bi-box"></i> Products
                     </a>
                     <div class="rc-dropdown-menu">
@@ -56,7 +56,7 @@
                 
                 <!-- Tools Dropdown -->
                 <li class="rc-dropdown">
-                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "packages") (eq .currentPage "invoices") (eq .currentPage "analytics") (eq .currentPage "financial")}}active{{end}}">
+                    <a href="#" class="rc-nav-link rc-dropdown-toggle">
                         <i class="bi bi-tools"></i> Tools
                     </a>
                     <div class="rc-dropdown-menu">
@@ -85,7 +85,7 @@
                 <!-- User Dropdown -->
                 {{if .user}}
                 <li class="rc-dropdown">
-                    <a href="#" class="rc-nav-link rc-dropdown-toggle {{if or (eq .currentPage "profile") (eq .currentPage "profile-settings") (eq .currentPage "settings") (eq .currentPage "users") (eq .currentPage "security")}}active{{end}}">
+                    <a href="#" class="rc-nav-link rc-dropdown-toggle">
                         <i class="bi bi-person-circle"></i> {{.user.Username}}
                     </a>
                     <div class="rc-dropdown-menu">
