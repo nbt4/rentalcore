@@ -42,14 +42,25 @@
     --text-muted: #94a3b8;
     --text-inverse: #0f172a;
     
-    /* Responsive Spacing Scale - Fluid spacing using clamp() */
-    --space-xs: clamp(0.25rem, 0.5vw, 0.375rem);
-    --space-sm: clamp(0.5rem, 1vw, 0.75rem);
-    --space-md: clamp(1rem, 2vw, 1.25rem);
-    --space-lg: clamp(1.5rem, 3vw, 2rem);
-    --space-xl: clamp(2rem, 4vw, 3rem);
-    --space-2xl: clamp(3rem, 6vw, 4rem);
-    --space-3xl: clamp(4rem, 8vw, 6rem);
+    /* Design System Spacing Scale (4, 8, 12, 16, 20, 24, 32, 40, 48) */
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+
+    /* Legacy aliases for backward compatibility */
+    --space-xs: var(--space-2);   /* 8px */
+    --space-sm: var(--space-3);   /* 12px */
+    --space-md: var(--space-4);   /* 16px */
+    --space-lg: var(--space-6);   /* 24px */
+    --space-xl: var(--space-8);   /* 32px */
+    --space-2xl: var(--space-10); /* 40px */
+    --space-3xl: var(--space-12); /* 48px */
 
     /* Responsive Breakpoints */
     --breakpoint-xs: 20rem;    /* 320px */
@@ -60,20 +71,20 @@
     --breakpoint-2xl: 80rem;   /* 1280px */
     --breakpoint-3xl: 96rem;   /* 1536px */
 
-    /* Container Sizes */
+    /* Container Sizes - Following design system */
     --container-xs: 100%;
-    --container-sm: 30rem;     /* 480px */
-    --container-md: 40rem;     /* 640px */
+    --container-sm: 40rem;     /* 640px */
+    --container-md: 48rem;     /* 768px */
     --container-lg: 64rem;     /* 1024px */
     --container-xl: 80rem;     /* 1280px */
-    --container-2xl: 87.5rem;  /* 1400px */
+    --container-2xl: 90rem;    /* 1440px max content width */
     
-    /* Border Radius */
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
-    --radius-2xl: 1.5rem;
+    /* Border Radius - Design system values */
+    --radius-sm: 0.375rem;   /* 6px */
+    --radius-md: 0.625rem;   /* 10px */
+    --radius-lg: 1rem;       /* 16px */
+    --radius-xl: 1.25rem;    /* 20px */
+    --radius-2xl: 1.5rem;    /* 24px */
     
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
@@ -86,15 +97,15 @@
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    /* Fluid Typography Scale */
-    --text-xs: clamp(0.75rem, 0.8vw, 0.875rem);   /* 12-14px */
-    --text-sm: clamp(0.875rem, 1vw, 1rem);        /* 14-16px */
-    --text-base: clamp(1rem, 1.2vw, 1.125rem);    /* 16-18px */
-    --text-lg: clamp(1.125rem, 1.4vw, 1.25rem);   /* 18-20px */
-    --text-xl: clamp(1.25rem, 1.6vw, 1.5rem);     /* 20-24px */
-    --text-2xl: clamp(1.5rem, 2vw, 2rem);         /* 24-32px */
-    --text-3xl: clamp(1.875rem, 2.5vw, 2.5rem);   /* 30-40px */
-    --text-4xl: clamp(2.25rem, 3vw, 3rem);        /* 36-48px */
+    /* Typography Scale - Fluid with better hierarchy */
+    --text-xs: clamp(0.75rem, 0.9vw, 0.875rem);    /* 12-14px - Label/Meta */
+    --text-sm: clamp(0.875rem, 1.0vw, 1rem);       /* 14-16px - Body */
+    --text-base: clamp(1rem, 1.0vw, 1rem);         /* 16px - Body baseline */
+    --text-lg: clamp(1.125rem, 1.4vw, 1.25rem);    /* 18-20px */
+    --text-xl: clamp(1.125rem, 1.4vw, 1.375rem);   /* 18-22px - H3 */
+    --text-2xl: clamp(1.375rem, 1.8vw, 1.75rem);   /* 22-28px - H2 */
+    --text-3xl: clamp(1.75rem, 2.4vw, 2.25rem);    /* 28-36px - H1 */
+    --text-4xl: clamp(2.25rem, 3vw, 3rem);         /* 36-48px - Display */
 
     /* Line Heights */
     --leading-tight: 1.25;
@@ -291,10 +302,17 @@ body {
 .rc-container {
     width: 100%;
     margin: 0 auto;
-    padding: 0 var(--space-md);
+    padding: 0 var(--space-4);
 
-    /* Responsive max-widths */
+    /* Content shell max-width 1280-1440px centered */
+    max-width: var(--container-xl);
+}
+
+/* App shell with proper centering */
+.rc-app-shell {
     max-width: var(--container-2xl);
+    margin: 0 auto;
+    padding: 0 var(--space-4);
 }
 
 .rc-container-sm { max-width: var(--container-sm); }
@@ -306,67 +324,87 @@ body {
 
 /* Responsive padding adjustments */
 @media (max-width: 480px) {
-    .rc-container {
-        padding: 0 var(--space-sm);
+    .rc-container,
+    .rc-app-shell {
+        padding: 0 var(--space-4);
+    }
+}
+
+@media (min-width: 768px) {
+    .rc-container,
+    .rc-app-shell {
+        padding: 0 var(--space-6);
     }
 }
 
 @media (min-width: 1200px) {
-    .rc-container {
-        padding: 0 var(--space-lg);
+    .rc-container,
+    .rc-app-shell {
+        padding: 0 var(--space-8);
     }
 }
 
 /* Enhanced Responsive Grid System */
 .rc-grid {
     display: grid;
-    gap: var(--space-md);
+    gap: var(--space-6);
 }
 
-/* Responsive grid templates */
+/* Responsive gap adjustments */
+@media (min-width: 768px) {
+    .rc-grid {
+        gap: var(--space-6);
+    }
+}
+
+@media (min-width: 1024px) {
+    .rc-grid {
+        gap: var(--space-8);
+    }
+}
+
+/* Auto-fit grids with minmax to prevent tiny cards */
 .rc-grid-auto {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
 .rc-grid-auto-sm {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 
 .rc-grid-auto-lg {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 
-/* Fixed grid with responsive breakdowns */
-.rc-grid-1 { grid-template-columns: 1fr; }
+/* Fixed grids with proper minmax */
+.rc-grid-1 {
+    grid-template-columns: 1fr;
+}
+
 .rc-grid-2 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
+
 .rc-grid-3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
+
 .rc-grid-4 {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
-/* Responsive grid breakdowns */
-@media (max-width: 768px) {
-    .rc-grid-2,
-    .rc-grid-3,
-    .rc-grid-4 {
-        grid-template-columns: 1fr;
+/* Desktop-only larger grids for spacious layouts */
+@media (min-width: 1024px) {
+    .rc-grid-2 {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     }
-}
 
-@media (min-width: 769px) and (max-width: 1023px) {
-    .rc-grid-3,
-    .rc-grid-4 {
-        grid-template-columns: repeat(2, 1fr);
+    .rc-grid-3 {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     }
-}
 
-@media (min-width: 1024px) and (max-width: 1279px) {
     .rc-grid-4 {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
 }
 
@@ -913,11 +951,12 @@ body {
     background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
     border: 1px solid var(--surface-3);
     border-radius: var(--radius-lg);
-    padding: var(--space-lg);
+    padding: var(--space-6);  /* 24px consistent padding */
     box-shadow: var(--shadow-md);
     transition: var(--transition-normal);
     position: relative;
     overflow: hidden;
+    min-width: 0; /* Prevent flex overflow */
 }
 
 .rc-card::before {
@@ -941,8 +980,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-md);
-    padding-bottom: var(--space-md);
+    margin-bottom: var(--space-5); /* 20px */
+    padding-bottom: var(--space-4); /* 16px */
     border-bottom: 1px solid var(--surface-3);
 }
 
@@ -961,17 +1000,19 @@ body {
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs);
-    padding: var(--space-sm) var(--space-lg);
+    padding: var(--space-3) var(--space-6); /* Consistent with design tokens */
     border: none;
     border-radius: var(--radius-md);
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     text-decoration: none;
     cursor: pointer;
     transition: var(--transition-fast);
     position: relative;
     overflow: hidden;
     font-family: inherit;
+    min-height: 44px; /* Touch target compliance */
+    justify-content: center;
 }
 
 /* Fix for form submission buttons */
@@ -1130,12 +1171,12 @@ body {
 
 .rc-form-grid {
     display: grid;
-    gap: var(--space-md);
+    gap: var(--space-5); /* 20px consistent gap */
     grid-template-columns: 1fr;
 }
 
-/* Responsive form grid */
-@media (min-width: 640px) {
+/* Responsive form grid - mobile-first */
+@media (min-width: 768px) {
     .rc-form-grid-2 {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1182,14 +1223,15 @@ body {
 
 .rc-input {
     width: 100%;
-    padding: var(--space-md);
+    padding: var(--space-4) var(--space-4); /* 16px for touch-friendly targets */
     background: var(--surface-2);
     border: 1px solid var(--surface-3);
     border-radius: var(--radius-md);
     color: var(--text-primary);
-    font-size: 1rem;
+    font-size: var(--text-base);
     transition: var(--transition-fast);
     font-family: inherit;
+    min-height: 44px; /* Ensure 44px touch target */
 }
 
 .rc-input:focus {
@@ -1307,20 +1349,22 @@ body {
     background: var(--surface-2);
     color: var(--text-primary);
     font-weight: 600;
-    padding: var(--space-md);
+    padding: var(--space-4) var(--space-6); /* 16px vertical, 24px horizontal */
     text-align: left;
     border-bottom: 1px solid var(--surface-3);
     white-space: nowrap;
     position: sticky;
     top: 0;
     z-index: 1;
+    height: 56px; /* Stable header height */
 }
 
 .rc-table td {
-    padding: var(--space-md);
+    padding: var(--space-4) var(--space-6); /* 16px vertical, 24px horizontal */
     border-bottom: 1px solid var(--surface-3);
     color: var(--text-secondary);
     white-space: nowrap;
+    vertical-align: middle;
 }
 
 .rc-table tr:hover {
@@ -1417,8 +1461,25 @@ body {
 @media (min-width: 769px) and (max-width: 1023px) {
     .rc-table th,
     .rc-table td {
-        padding: var(--space-sm);
+        padding: var(--space-3) var(--space-4); /* 12px vertical, 16px horizontal */
         font-size: var(--text-sm);
+    }
+
+    .rc-table th {
+        height: 48px; /* Slightly smaller on tablet */
+    }
+}
+
+/* Enhanced mobile table strategy */
+@media (max-width: 768px) {
+    .rc-table th,
+    .rc-table td {
+        padding: var(--space-2) var(--space-3); /* 8px vertical, 12px horizontal */
+        font-size: var(--text-sm);
+    }
+
+    .rc-table th {
+        height: 44px; /* Touch-friendly on mobile */
     }
 }
 
@@ -1696,7 +1757,7 @@ body {
 /* Enhanced Responsive Layout Adjustments */
 @media (max-width: 480px) {
     .rc-card {
-        padding: var(--space-sm);
+        padding: var(--space-4); /* 16px on mobile */
     }
 
     .rc-flex {
@@ -1722,7 +1783,7 @@ body {
 
 @media (min-width: 481px) and (max-width: 768px) {
     .rc-card {
-        padding: var(--space-md);
+        padding: var(--space-5); /* 20px on tablet */
     }
 
     /* Allow some horizontal layout on larger phones */
@@ -2544,15 +2605,16 @@ label,
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     border: 1px solid var(--surface-3);
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
+    max-width: 720px; /* Larger for better desktop experience */
+    width: calc(100vw - var(--space-8)); /* Better responsive spacing */
+    max-height: calc(100vh - var(--space-8));
     overflow: hidden;
     display: flex;
     flex-direction: column;
     animation: modalSlideIn 0.2s ease-out;
     z-index: 1051;
     flex-shrink: 0;
+    margin: var(--space-4); /* Consistent spacing around modal */
 }
 
 @keyframes modalSlideIn {

@@ -390,6 +390,126 @@ RentalCore features a comprehensive responsive design system built from the grou
 - **Accessibility-Focused**: Enhanced focus states, reduced motion support, and screen reader optimization
 - **Performance-Oriented**: Fluid typography and spacing using CSS clamp() functions
 
+## 🎨 Design System & Responsive Guidelines
+
+### **Design Tokens**
+
+#### Spacing Scale (Consistent 4,8,12,16,20,24,32,40,48)
+```css
+--space-1: 0.25rem;   /* 4px */
+--space-2: 0.5rem;    /* 8px */
+--space-3: 0.75rem;   /* 12px */
+--space-4: 1rem;      /* 16px */
+--space-5: 1.25rem;   /* 20px */
+--space-6: 1.5rem;    /* 24px */
+--space-8: 2rem;      /* 32px */
+--space-10: 2.5rem;   /* 40px */
+--space-12: 3rem;     /* 48px */
+```
+
+#### Typography Scale (Fluid with clamp)
+```css
+--text-xs: clamp(0.75rem, 0.9vw, 0.875rem);    /* 12-14px - Label/Meta */
+--text-sm: clamp(0.875rem, 1.0vw, 1rem);       /* 14-16px - Body */
+--text-base: clamp(1rem, 1.0vw, 1rem);         /* 16px - Body baseline */
+--text-xl: clamp(1.125rem, 1.4vw, 1.375rem);   /* 18-22px - H3 */
+--text-2xl: clamp(1.375rem, 1.8vw, 1.75rem);   /* 22-28px - H2 */
+--text-3xl: clamp(1.75rem, 2.4vw, 2.25rem);    /* 28-36px - H1 */
+```
+
+#### Border Radius
+```css
+--radius-sm: 0.375rem;   /* 6px */
+--radius-md: 0.625rem;   /* 10px */
+--radius-lg: 1rem;       /* 16px */
+```
+
+#### Container Max-Widths
+```css
+--container-sm: 40rem;     /* 640px */
+--container-md: 48rem;     /* 768px */
+--container-lg: 64rem;     /* 1024px */
+--container-xl: 80rem;     /* 1280px */
+--container-2xl: 90rem;    /* 1440px max content width */
+```
+
+### **Grid System**
+
+#### Auto-Fill Grids (Prevents Tiny Cards)
+```css
+.rc-grid-auto {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-6); /* 24px on mobile */
+    gap: var(--space-8); /* 32px on desktop */
+}
+```
+
+#### Card Grids with Minmax Rules
+- **Mobile**: Single column, full width
+- **Tablet/Desktop**: `repeat(auto-fill, minmax(280px, 1fr))`
+- **Large Desktop**: `repeat(auto-fill, minmax(320px, 1fr))`
+
+### **Layout Patterns**
+
+#### App Shell Centering
+```css
+.rc-container {
+    max-width: var(--container-xl); /* 1280px */
+    margin: 0 auto;
+    padding: 0 var(--space-4); /* 16px base */
+    padding: 0 var(--space-6); /* 24px on tablet+ */
+    padding: 0 var(--space-8); /* 32px on large desktop */
+}
+```
+
+#### Form Grids
+- **Mobile**: Single column layout
+- **Tablet (768px+)**: Two-column grid for appropriate fields
+- **Desktop (1024px+)**: Three-column grid for complex forms
+- **Gap**: Consistent `var(--space-5)` (20px)
+
+#### Data Tables
+- **Desktop**: Generous padding (16px vertical, 24px horizontal)
+- **Tablet**: Reduced padding (12px vertical, 16px horizontal)
+- **Mobile**: Card transformation OR horizontal scroll with sticky first column
+- **Touch Targets**: 44-56px row heights
+
+### **Accessibility Features**
+
+#### Touch Targets
+- **Minimum**: 44×44px for all interactive elements
+- **Buttons**: Consistent `min-height: 44px`
+- **Form Inputs**: `min-height: 44px` with proper padding
+
+#### Focus States
+- **Focus-visible**: 2px solid accent outline with 2px offset
+- **Focus Rings**: Only visible for keyboard navigation
+- **High Contrast**: Maintains WCAG 2.2 AA compliance
+
+#### Responsive Images
+```css
+.responsive-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9; /* Intrinsic sizing */
+    object-fit: cover;
+}
+```
+
+### **Performance Optimizations**
+
+#### CSS Features
+- **Fluid Typography**: Uses `clamp()` for optimal scaling
+- **Container Queries**: Future-ready responsive patterns
+- **CSS Grid**: Prefer over flexbox for 2D layouts
+- **Aspect Ratio**: Prevents cumulative layout shift
+
+#### Best Practices
+- Content-driven heights (avoid forced equal heights)
+- Lazy loading for non-critical media
+- Efficient selector specificity
+- Minimal layout thrash with CSS-only solutions
+
 ### 📱 **Breakpoint Strategy**
 - **xs (360-479px)**: Compact phones with stacked layouts
 - **sm (480-639px)**: Large phones with selective horizontal arrangements
