@@ -757,61 +757,9 @@ body {
     display: none;
 }
 
-/* Explicitly prevent auto-highlighting of first dropdown items */
-.rc-dropdown-item:first-child:not(.active) {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-}
-
-.rc-dropdown-item:first-of-type:not(.active) {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-}
-
-/* Prevent hover effects on first dropdown items when not active */
-.rc-dropdown-item:first-child:not(.active):hover,
-.rc-dropdown-item:first-of-type:not(.active):hover {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-}
-
-.rc-dropdown-item:first-child:not(.active):hover::before,
-.rc-dropdown-item:first-of-type:not(.active):hover::before {
-    display: none !important;
-    width: 0 !important;
-}
-
-.rc-dropdown-item:first-child:not(.active):hover i,
-.rc-dropdown-item:first-of-type:not(.active):hover i {
-    color: var(--text-secondary) !important;
-}
-
-/* Prevent focus effects on first dropdown items when not active */
-.rc-dropdown-item:first-child:not(.active):focus,
-.rc-dropdown-item:first-of-type:not(.active):focus {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-    outline: none !important;
-}
-
-/* Apply max specificity to override any other styles */
-.rc-dropdown.show .rc-dropdown-item:first-child:not(.active),
-.rc-dropdown.show .rc-dropdown-item:first-of-type:not(.active) {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-}
-
-.rc-dropdown.show .rc-dropdown-item:first-child:not(.active):hover,
-.rc-dropdown.show .rc-dropdown-item:first-of-type:not(.active):hover {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    transform: none !important;
-}
+/* Note: Removed overly aggressive CSS rules that prevented hover effects on first dropdown items.
+   The auto-highlighting issue was actually caused by JavaScript, not CSS.
+   Now all dropdown items have proper hover effects while preventing unwanted auto-focus. */
 
 .rc-dropdown-item:hover:not(.active)::before {
     width: 100%;
