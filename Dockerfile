@@ -18,7 +18,10 @@ COPY . .
 
 # Build the WASM decoder
 RUN cd web/scanner/wasm && \
-    ./build.sh prod && \
+    chmod +x build.sh && \
+    GOOS=js GOARCH=wasm go build -ldflags="-s -w" -o decoder.wasm ../decoder && \
+    cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./wasm_exec.js 2>/dev/null || \
+    cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" ./wasm_exec.js && \
     echo "WASM decoder built successfully"
 
 # Build the application
