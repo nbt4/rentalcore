@@ -1127,6 +1127,85 @@ func (h *JobHandler) ScanDeviceForPack(c *gin.Context) {
 	})
 }
 
+// UpdateDevicePackStatus handles updating pack status for a specific device
+func (h *JobHandler) UpdateDevicePackStatus(c *gin.Context) {
+	jobIDStr := c.Param("id")
+	deviceID := c.Param("deviceId")
+
+	jobID, err := strconv.ParseUint(jobIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
+		return
+	}
+
+	var req struct {
+		PackStatus string `json:"pack_status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// Validate pack_status value
+	validStatuses := []string{"pending", "packed", "issued", "returned"}
+	valid := false
+	for _, status := range validStatuses {
+		if req.PackStatus == status {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pack_status value"})
+		return
+	}
+
+	// Validate that device is assigned to this job
+	var count int64
+	err = h.jobRepo.GetDB().Table("jobdevices").
+		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
+		Count(&count).Error
+	if err != nil {
+		fmt.Printf("Error checking device assignment: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	if count == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Device not assigned to this job"})
+		return
+	}
+
+	// Update pack status
+	now := time.Now()
+	updateData := map[string]interface{}{
+		"pack_status": req.PackStatus,
+	}
+
+	// Only update pack_ts when marking as packed
+	if req.PackStatus == "packed" {
+		updateData["pack_ts"] = now
+	}
+
+	err = h.jobRepo.GetDB().Table("jobdevices").
+		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
+		Updates(updateData).Error
+	if err != nil {
+		fmt.Printf("Error updating pack status: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pack status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"message":    "Pack status updated successfully",
+		"deviceID":   deviceID,
+		"jobID":      jobID,
+		"packStatus": req.PackStatus,
+		"updatedAt":  now,
+	})
+}
+
 // FinishPack handles finishing the pack process
 func (h *JobHandler) FinishPack(c *gin.Context) {
 	jobIDStr := c.Param("id")
