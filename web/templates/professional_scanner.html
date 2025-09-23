@@ -458,8 +458,8 @@
         </div>
     </div>
 
-    <!-- ZXing for barcode detection -->
-    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <!-- ZXing for barcode detection - using more stable version -->
+    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 
     <script>
         class ProfessionalBarcodeScanner {
@@ -490,21 +490,35 @@
                 try {
                     this.updateStatus('Initializing professional camera system...', 'info');
 
-                    // Initialize ZXing with optimized settings
-                    this.codeReader = new ZXing.BrowserBarcodeReader();
+                    // Initialize ZXing with mobile-compatible settings
+                    try {
+                        // Try different ZXing reader types for compatibility
+                        if (typeof ZXing.BrowserBarcodeReader !== 'undefined') {
+                            this.codeReader = new ZXing.BrowserBarcodeReader();
+                        } else if (typeof ZXing.BrowserMultiFormatReader !== 'undefined') {
+                            this.codeReader = new ZXing.BrowserMultiFormatReader();
+                        } else {
+                            throw new Error('No compatible ZXing reader found');
+                        }
 
-                    // Configure for maximum performance
-                    const hints = new Map();
-                    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-                    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-                        ZXing.BarcodeFormat.CODE_128,
-                        ZXing.BarcodeFormat.CODE_39,
-                        ZXing.BarcodeFormat.EAN_13,
-                        ZXing.BarcodeFormat.EAN_8,
-                        ZXing.BarcodeFormat.UPC_A,
-                        ZXing.BarcodeFormat.UPC_E
-                    ]);
-                    this.codeReader.setHints(hints);
+                        console.log('ZXing reader initialized:', this.codeReader.constructor.name);
+
+                        // Try to configure hints if available
+                        try {
+                            if (typeof this.codeReader.setHints === 'function') {
+                                const hints = new Map();
+                                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                                this.codeReader.setHints(hints);
+                                console.log('ZXing hints configured');
+                            }
+                        } catch (hintError) {
+                            console.log('ZXing hints not supported, using defaults');
+                        }
+
+                    } catch (error) {
+                        console.error('ZXing initialization failed:', error);
+                        throw new Error('Barcode scanner not supported on this device');
+                    }
 
                     // Get available video devices
                     this.videoDevices = await this.codeReader.listVideoInputDevices();
