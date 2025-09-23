@@ -16,6 +16,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Build the WASM decoder
+RUN cd web/scanner/wasm && \
+    ./build.sh prod && \
+    echo "WASM decoder built successfully"
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server cmd/server/main.go
 

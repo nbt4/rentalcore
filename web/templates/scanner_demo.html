@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .demo-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .demo-header {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .demo-header h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #00ff00;
+            font-weight: 600;
+        }
+
+        .demo-header p {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .scanner-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .demo-footer {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .demo-results {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .result-success {
+            border-left: 4px solid #00ff00;
+        }
+
+        .result-error {
+            border-left: 4px solid #ff4444;
+        }
+
+        .result-format {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .result-text {
+            color: #fff;
+            margin: 4px 0;
+        }
+
+        .result-meta {
+            color: #999;
+            font-size: 10px;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .demo-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .demo-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-button.active {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        .demo-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #ccc;
+            text-transform: uppercase;
+        }
+
+        .loading-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #00ff00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .demo-header {
+                padding: 8px 16px;
+            }
+
+            .demo-header h1 {
+                font-size: 16px;
+            }
+
+            .demo-footer {
+                padding: 12px 16px;
+            }
+
+            .demo-controls {
+                flex-wrap: wrap;
+            }
+
+            .demo-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Header -->
+        <div class="demo-header">
+            <h1>🔍 Go-First Barcode Scanner Demo</h1>
+            <p>Test the WASM barcode decoder with live camera feed</p>
+        </div>
+
+        <!-- Scanner -->
+        <div class="scanner-container">
+            <div id="scanner-view" class="scanner-view"></div>
+
+            <!-- Loading message -->
+            <div id="loading-message" class="loading-message">
+                <div class="spinner"></div>
+                <p>Initializing Go WASM decoder...</p>
+            </div>
+        </div>
+
+        <!-- Footer with results and controls -->
+        <div class="demo-footer">
+            <!-- Controls -->
+            <div class="demo-controls">
+                <button id="start-btn" class="demo-button">Start Scanner</button>
+                <button id="stop-btn" class="demo-button">Stop Scanner</button>
+                <button id="clear-btn" class="demo-button">Clear Results</button>
+                <button id="test-fallback" class="demo-button">Test Fallback</button>
+            </div>
+
+            <!-- Statistics -->
+            <div class="demo-stats">
+                <div class="stat-item">
+                    <div id="stat-scans" class="stat-value">0</div>
+                    <div class="stat-label">Total Scans</div>
+                </div>
+                <div class="stat-item">
+                    <div id="stat-success" class="stat-value">0</div>
+                    <div class="stat-label">Success</div>
+                </div>
+                <div class="stat-item">
+                    <div id="stat-errors" class="stat-value">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div id="stat-avg-time" class="stat-value">0ms</div>
+                    <div class="stat-label">Avg Time</div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="demo-results" id="results-container">
+                <div class="result-item">
+                    <div class="result-text">Scan results will appear here...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load scanner components -->
+    <script type="module">
+        // Demo application state
+        const demoState = {
+            scanner: null,
+            integration: null,
+            isScanning: false,
+            stats: {
+                totalScans: 0,
+                successScans: 0,
+                errorScans: 0,
+                totalTime: 0
+            },
+            results: []
+        };
+
+        // DOM elements
+        const elements = {
+            scannerView: document.getElementById('scanner-view'),
+            loadingMessage: document.getElementById('loading-message'),
+            startBtn: document.getElementById('start-btn'),
+            stopBtn: document.getElementById('stop-btn'),
+            clearBtn: document.getElementById('clear-btn'),
+            testFallbackBtn: document.getElementById('test-fallback'),
+            resultsContainer: document.getElementById('results-container'),
+            statScans: document.getElementById('stat-scans'),
+            statSuccess: document.getElementById('stat-success'),
+            statErrors: document.getElementById('stat-errors'),
+            statAvgTime: document.getElementById('stat-avg-time')
+        };
+
+        // Initialize the demo
+        async function initializeDemo() {
+            try {
+                console.log('[Demo] Initializing Go-first scanner demo...');
+
+                // Load CSS
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/static/scanner/ui/scanner.css';
+                document.head.appendChild(link);
+
+                // Import scanner modules
+                const { default: ScannerView } = await import('/static/scanner/ui/ScannerView.tsx');
+                const { ScannerIntegration } = await import('/static/scanner/ui/scanner-integration.js');
+
+                // Initialize integration (demo mode - no job ID)
+                demoState.integration = new ScannerIntegration();
+                demoState.integration.initialize('demo');
+
+                // Set up event listeners
+                setupEventListeners();
+
+                // Create scanner view (this would typically be React, but we'll use vanilla JS for demo)
+                await initializeScannerView();
+
+                elements.loadingMessage.style.display = 'none';
+                console.log('[Demo] Scanner demo initialized successfully');
+
+            } catch (error) {
+                console.error('[Demo] Failed to initialize scanner demo:', error);
+                showError('Failed to initialize scanner: ' + error.message);
+            }
+        }
+
+        // Initialize scanner view (simplified vanilla JS version)
+        async function initializeScannerView() {
+            // For demo purposes, we'll create a simplified scanner interface
+            elements.scannerView.innerHTML = `
+                <div style="position: relative; width: 100%; height: 100%; background: #333; display: flex; align-items: center; justify-content: center;">
+                    <video id="demo-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <canvas id="demo-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00ff00; font-size: 16px; text-align: center; pointer-events: none;">
+                        📱 Point camera at barcode<br>
+                        <small>WASM decoder ready</small>
+                    </div>
+                </div>
+            `;
+
+            // Initialize camera and decoder (simplified)
+            await initializeCamera();
+            await initializeDecoder();
+        }
+
+        // Initialize camera
+        async function initializeCamera() {
+            try {
+                const video = document.getElementById('demo-video');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+
+                video.srcObject = stream;
+                console.log('[Demo] Camera initialized');
+            } catch (error) {
+                console.error('[Demo] Camera initialization failed:', error);
+                showError('Camera access failed: ' + error.message);
+            }
+        }
+
+        // Initialize decoder
+        async function initializeDecoder() {
+            try {
+                const { DecoderManager } = await import('/static/scanner/worker/decoder-manager.js');
+
+                demoState.decoder = new DecoderManager();
+                await demoState.decoder.initialize();
+
+                // Set up decode event listener
+                demoState.decoder.addEventListener('decode', handleDecodeResult);
+
+                console.log('[Demo] WASM decoder initialized');
+            } catch (error) {
+                console.error('[Demo] Decoder initialization failed:', error);
+                showError('Decoder initialization failed: ' + error.message);
+            }
+        }
+
+        // Handle decode results
+        function handleDecodeResult(event) {
+            const { result, duplicate, processingTime } = event;
+
+            demoState.stats.totalScans++;
+
+            if (duplicate) {
+                addResult({
+                    type: 'duplicate',
+                    message: 'Duplicate scan ignored',
+                    timestamp: Date.now()
+                });
+                return;
+            }
+
+            if (result) {
+                demoState.stats.successScans++;
+                demoState.stats.totalTime += processingTime;
+
+                addResult({
+                    type: 'success',
+                    format: result.format,
+                    text: result.text,
+                    processingTime,
+                    timestamp: Date.now()
+                });
+
+                // Visual feedback
+                showScanFeedback();
+            } else {
+                demoState.stats.errorScans++;
+                addResult({
+                    type: 'error',
+                    message: 'No barcode detected',
+                    timestamp: Date.now()
+                });
+            }
+
+            updateStats();
+        }
+
+        // Add result to display
+        function addResult(result) {
+            demoState.results.unshift(result);
+
+            // Keep only last 10 results
+            if (demoState.results.length > 10) {
+                demoState.results = demoState.results.slice(0, 10);
+            }
+
+            updateResultsDisplay();
+        }
+
+        // Update results display
+        function updateResultsDisplay() {
+            if (demoState.results.length === 0) {
+                elements.resultsContainer.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-text">Scan results will appear here...</div>
+                    </div>
+                `;
+                return;
+            }
+
+            elements.resultsContainer.innerHTML = demoState.results.map(result => {
+                const timeStr = new Date(result.timestamp).toLocaleTimeString();
+
+                if (result.type === 'success') {
+                    return `
+                        <div class="result-item result-success">
+                            <div class="result-format">${result.format}</div>
+                            <div class="result-text">${result.text}</div>
+                            <div class="result-meta">${timeStr} • ${result.processingTime}ms</div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="result-item result-error">
+                            <div class="result-text">${result.message}</div>
+                            <div class="result-meta">${timeStr}</div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // Update statistics
+        function updateStats() {
+            elements.statScans.textContent = demoState.stats.totalScans;
+            elements.statSuccess.textContent = demoState.stats.successScans;
+            elements.statErrors.textContent = demoState.stats.errorScans;
+
+            const avgTime = demoState.stats.successScans > 0
+                ? Math.round(demoState.stats.totalTime / demoState.stats.successScans)
+                : 0;
+            elements.statAvgTime.textContent = avgTime + 'ms';
+        }
+
+        // Show scan feedback
+        function showScanFeedback() {
+            const overlay = document.getElementById('demo-overlay');
+            if (overlay) {
+                const ctx = overlay.getContext('2d');
+
+                // Flash green
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                ctx.fillRect(0, 0, overlay.width, overlay.height);
+
+                setTimeout(() => {
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+                }, 200);
+            }
+
+            // Play sound (if possible)
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBLLZ9N6VVaS1');
+                audio.volume = 0.2;
+                audio.play().catch(() => {});
+            } catch (error) {
+                // Ignore audio errors
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            elements.loadingMessage.innerHTML = `
+                <div style="color: #ff4444; text-align: center;">
+                    <h3>⚠️ Error</h3>
+                    <p>${message}</p>
+                    <button onclick="location.reload()" style="background: #ff4444; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        Retry
+                    </button>
+                </div>
+            `;
+            elements.loadingMessage.style.display = 'block';
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            elements.startBtn.addEventListener('click', startScanning);
+            elements.stopBtn.addEventListener('click', stopScanning);
+            elements.clearBtn.addEventListener('click', clearResults);
+            elements.testFallbackBtn.addEventListener('click', testFallback);
+        }
+
+        // Start scanning
+        function startScanning() {
+            if (!demoState.decoder) {
+                showError('Decoder not initialized');
+                return;
+            }
+
+            demoState.isScanning = true;
+            elements.startBtn.classList.add('active');
+            elements.stopBtn.classList.remove('active');
+
+            // Start frame capture (simplified)
+            console.log('[Demo] Starting scan...');
+        }
+
+        // Stop scanning
+        function stopScanning() {
+            demoState.isScanning = false;
+            elements.startBtn.classList.remove('active');
+            elements.stopBtn.classList.add('active');
+
+            console.log('[Demo] Stopping scan...');
+        }
+
+        // Clear results
+        function clearResults() {
+            demoState.results = [];
+            demoState.stats = {
+                totalScans: 0,
+                successScans: 0,
+                errorScans: 0,
+                totalTime: 0
+            };
+            updateResultsDisplay();
+            updateStats();
+        }
+
+        // Test fallback decode
+        async function testFallback() {
+            try {
+                const response = await fetch('/api/scan/status');
+                const status = await response.json();
+
+                addResult({
+                    type: status.enabled ? 'success' : 'error',
+                    message: `Fallback decoder: ${status.enabled ? 'Available' : 'Disabled'}`,
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                addResult({
+                    type: 'error',
+                    message: 'Fallback test failed: ' + error.message,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        // Initialize demo when page loads
+        document.addEventListener('DOMContentLoaded', initializeDemo);
+    </script>
+</body>
+</html>
