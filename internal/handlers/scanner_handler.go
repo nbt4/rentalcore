@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
@@ -85,10 +86,20 @@ func (h *ScannerHandler) ScanJobSelection(c *gin.Context) {
 
 func (h *ScannerHandler) ScanJob(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
+	// Check if this is a mobile device and redirect to optimized mobile scanner
+	userAgent := c.GetHeader("User-Agent")
+	isMobile := h.isMobileDevice(userAgent)
+
 	jobID, err := strconv.ParseUint(c.Param("jobId"), 10, 32)
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, "/error?code=400&message=Bad Request&details=Invalid job ID")
+		return
+	}
+
+	// For mobile devices, redirect to optimized mobile scanner
+	if isMobile {
+		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/mobile/scanner/%d", jobID))
 		return
 	}
 
@@ -568,4 +579,29 @@ func (h *ScannerHandler) GetJobDeviceGroupsAJAX(c *gin.Context) {
 		"groups": groups,
 		"total":  len(groups),
 	})
+}
+
+// isMobileDevice checks if the user agent indicates a mobile device
+func (h *ScannerHandler) isMobileDevice(userAgent string) bool {
+	userAgent = strings.ToLower(userAgent)
+	mobileKeywords := []string{
+		"mobile", "iphone", "ipod", "android", "blackberry",
+		"nokia", "opera mini", "windows mobile", "windows phone",
+		"iemobile", "wpdesktop", "palm", "phone", "tablet",
+		"kindle", "silk", "fennec", "maemo", "iris", "avant",
+		"nook", "chromeos", "crkey", "mobile", "samsung",
+		"htc", "lg", "mot", "sony", "ericsson", "alcatel",
+		"asus", "bird", "dell", "docomo", "huawei", "kyocera",
+		"lenovo", "lge", "panasonic", "philips", "samsung",
+		"sharp", "toshiba", "vodafone", "xiaomi", "oppo",
+		"vivo", "oneplus", "pixel",
+	}
+
+	for _, keyword := range mobileKeywords {
+		if strings.Contains(userAgent, keyword) {
+			return true
+		}
+	}
+
+	return false
 }

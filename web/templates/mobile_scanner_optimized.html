@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Professional Scanner - RentalCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/rental-core-design.css" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="TS Manager">
+
+    <style>
+        :root {
+            --scanner-primary: #0d6efd;
+            --scanner-success: #198754;
+            --scanner-warning: #ffc107;
+            --scanner-danger: #dc3545;
+            --scanner-overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            overflow: hidden;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            background: #000;
+            margin: 0;
+            padding: 0;
+        }
+
+        .professional-scanner {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .scanner-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        #scanner-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform-origin: center;
+            transition: transform 0.3s ease;
+        }
+
+        #scanner-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background:
+                linear-gradient(to bottom, var(--scanner-overlay) 0%, transparent 25%, transparent 75%, var(--scanner-overlay) 100%),
+                linear-gradient(to right, var(--scanner-overlay) 0%, transparent 25%, transparent 75%, var(--scanner-overlay) 100%);
+        }
+
+        .scanner-reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 200px;
+            border: 3px solid var(--scanner-primary);
+            border-radius: 15px;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .scanner-reticle.scanning {
+            border-color: var(--scanner-success);
+            box-shadow: 0 0 25px rgba(25, 135, 84, 0.6);
+            animation: scanPulse 1.5s infinite;
+        }
+
+        .scanner-reticle.success {
+            border-color: var(--scanner-success);
+            transform: translate(-50%, -50%) scale(1.15);
+            box-shadow: 0 0 40px rgba(25, 135, 84, 0.9);
+        }
+
+        .scanner-reticle.error {
+            border-color: var(--scanner-danger);
+            transform: translate(-50%, -50%) scale(0.85);
+            box-shadow: 0 0 40px rgba(220, 53, 69, 0.9);
+        }
+
+        @keyframes scanPulse {
+            0%, 100% {
+                border-color: var(--scanner-success);
+                box-shadow: 0 0 25px rgba(25, 135, 84, 0.6);
+            }
+            50% {
+                border-color: #20c997;
+                box-shadow: 0 0 50px rgba(32, 201, 151, 0.8);
+            }
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--scanner-success), transparent);
+            opacity: 0;
+            animation: scanLineMove 1.5s linear infinite;
+        }
+
+        @keyframes scanLineMove {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .scanner-reticle.scanning .scan-line {
+            opacity: 1;
+        }
+
+        .performance-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: #20c997;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            border: 1px solid #20c997;
+            backdrop-filter: blur(10px);
+        }
+
+        .scan-status {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .scan-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+
+        .control-btn.active {
+            background: var(--scanner-warning);
+            color: #000;
+            border-color: var(--scanner-warning);
+        }
+
+        .control-btn.primary {
+            width: 80px;
+            height: 80px;
+            background: var(--scanner-primary);
+            border-color: var(--scanner-primary);
+            font-size: 2rem;
+        }
+
+        .control-btn.primary.scanning {
+            background: var(--scanner-success);
+            animation: pulseButton 1.5s infinite;
+        }
+
+        @keyframes pulseButton {
+            0% {
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+                transform: scale(1);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(25, 135, 84, 0);
+                transform: scale(1.05);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+                transform: scale(1);
+            }
+        }
+
+        .result-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            z-index: 2000;
+            display: none;
+            max-width: 90vw;
+            text-align: center;
+            backdrop-filter: blur(20px);
+        }
+
+        .result-modal.show {
+            display: block;
+            animation: slideUpModal 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes slideUpModal {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 50%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1900;
+            display: none;
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-backdrop.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .detection-zones {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .detection-box {
+            position: absolute;
+            border: 2px solid var(--scanner-warning);
+            background: rgba(255, 193, 7, 0.1);
+            transition: all 0.1s ease;
+        }
+
+        .detection-box.found {
+            border-color: var(--scanner-success);
+            background: rgba(25, 135, 84, 0.2);
+            box-shadow: 0 0 15px rgba(25, 135, 84, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="professional-scanner">
+        <!-- Performance Overlay -->
+        <div class="performance-overlay" id="performance-overlay">
+            FPS: <span id="fps-counter">0</span> |
+            Detection: <span id="detection-rate">0</span>/s |
+            Quality: <span id="image-quality">Good</span>
+        </div>
+
+        <!-- Scanner Viewport -->
+        <div class="scanner-viewport">
+            <video id="scanner-video" autoplay muted playsinline></video>
+            <canvas id="scanner-canvas"></canvas>
+
+            <!-- Detection Zones Overlay -->
+            <div class="detection-zones" id="detection-zones"></div>
+
+            <!-- Scanner Overlay -->
+            <div class="scanner-overlay">
+                <div class="scanner-reticle scanning" id="scanner-reticle">
+                    <div class="scan-line"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="scan-status" id="scan-status">
+            <i class="bi bi-camera-video"></i> Initializing professional scanner...
+        </div>
+
+        <!-- Controls -->
+        <div class="scan-controls">
+            <button class="control-btn" id="torch-btn" onclick="toggleTorch()" title="Flashlight">
+                <i class="bi bi-lightbulb"></i>
+            </button>
+
+            <button class="control-btn primary scanning" id="scan-btn" onclick="toggleScanning()" title="Scan">
+                <i class="bi bi-camera" id="scan-icon"></i>
+            </button>
+
+            <button class="control-btn" onclick="closeScanner()" title="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Backdrop -->
+    <div class="modal-backdrop" id="modal-backdrop" onclick="closeModal()"></div>
+
+    <!-- Result Modal -->
+    <div class="result-modal" id="result-modal">
+        <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--scanner-success); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 20px;">
+            <i class="bi bi-check-lg"></i>
+        </div>
+        <h4 id="result-title">Barcode Detected!</h4>
+        <div class="mt-3">
+            <p><strong>Code:</strong> <span id="scanned-code"></span></p>
+            <p><strong>Format:</strong> <span id="scanned-format"></span></p>
+            <p><strong>Quality:</strong> <span id="scan-quality"></span></p>
+        </div>
+
+        <div class="mt-4">
+            <button class="btn btn-success me-2" onclick="processResult()">
+                <i class="bi bi-plus-circle"></i> Process
+            </button>
+            <button class="btn btn-primary" onclick="continueScan()">
+                <i class="bi bi-camera"></i> Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- QuaggaJS 2 for advanced barcode detection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+    <script>
+        class ProfessionalScanner {
+            constructor() {
+                this.isScanning = false;
+                this.isInitialized = false;
+                this.torchEnabled = false;
+                this.detectionRate = 0;
+                this.fps = 0;
+                this.lastDetectionTime = 0;
+                this.detectionCooldown = 800; // Reduced for faster scanning
+                this.scanHistory = [];
+
+                // Performance monitoring
+                this.frameCount = 0;
+                this.detectionCount = 0;
+                this.lastStatsUpdate = Date.now();
+
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.updateStatus('Initializing professional scanner...', 'warning');
+
+                    // Setup camera with optimal settings
+                    await this.setupCamera();
+
+                    // Initialize QuaggaJS with advanced configuration
+                    await this.initializeQuagga();
+
+                    this.isInitialized = true;
+                    this.startScanning();
+
+                } catch (error) {
+                    console.error('Scanner initialization failed:', error);
+                    this.updateStatus('Scanner initialization failed: ' + error.message, 'danger');
+                }
+            }
+
+            async setupCamera() {
+                const constraints = {
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920, min: 1280 },
+                        height: { ideal: 1080, min: 720 },
+                        frameRate: { ideal: 60, min: 30 },
+                        focusMode: 'continuous',
+                        exposureMode: 'continuous',
+                        whiteBalanceMode: 'continuous'
+                    }
+                };
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    const video = document.getElementById('scanner-video');
+                    video.srcObject = stream;
+
+                    // Check torch capability
+                    const track = stream.getVideoTracks()[0];
+                    const capabilities = track.getCapabilities();
+                    if (capabilities.torch) {
+                        document.getElementById('torch-btn').style.display = 'flex';
+                    }
+
+                    return new Promise((resolve) => {
+                        video.addEventListener('loadedmetadata', () => {
+                            resolve();
+                        });
+                    });
+
+                } catch (error) {
+                    throw new Error('Camera access failed: ' + error.message);
+                }
+            }
+
+            async initializeQuagga() {
+                return new Promise((resolve, reject) => {
+                    // Advanced QuaggaJS configuration for maximum detection performance
+                    const config = {
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: document.querySelector('#scanner-video'),
+                            constraints: {
+                                facingMode: "environment"
+                            },
+                            area: { // Scan area optimization
+                                top: "20%",
+                                right: "20%",
+                                left: "20%",
+                                bottom: "20%"
+                            }
+                        },
+
+                        // Multiple workers for parallel processing
+                        numOfWorkers: navigator.hardwareConcurrency || 4,
+
+                        // Enhanced frequency for real-time detection
+                        frequency: 20, // Increased from default 10
+
+                        decoder: {
+                            // All major 1D barcode formats
+                            readers: [
+                                "code_128_reader",
+                                "ean_reader",
+                                "ean_8_reader",
+                                "code_39_reader",
+                                "code_39_vin_reader",
+                                "codabar_reader",
+                                "upc_reader",
+                                "upc_e_reader",
+                                "i2of5_reader",
+                                "2of5_reader",
+                                "code_93_reader"
+                            ],
+
+                            // Advanced detection settings
+                            multiple: false, // Focus on single barcode for speed
+
+                            // Enhanced debug mode for small barcodes
+                            debug: {
+                                drawBoundingBox: true,
+                                showFrequency: true,
+                                drawScanline: true,
+                                showPattern: true
+                            }
+                        },
+
+                        // Advanced preprocessing for screen barcodes
+                        locate: true,
+
+                        locator: {
+                            patchSize: "medium", // Better for small barcodes
+                            halfSample: false,   // Full resolution processing
+                            willReadFrequently: true,
+
+                            // Enhanced edge detection
+                            debug: {
+                                showCanvas: false,
+                                showPatches: false,
+                                showFoundPatches: false,
+                                showSkeleton: false,
+                                showLabels: false,
+                                showPatchLabels: false,
+                                showRemainingPatchLabels: false,
+                                boxFromPatches: {
+                                    showTransformed: false,
+                                    showTransformedBox: false,
+                                    showBB: false
+                                }
+                            }
+                        },
+
+                        // Image preprocessing for screen detection
+                        src: null
+                    };
+
+                    Quagga.init(config, (err) => {
+                        if (err) {
+                            console.error('QuaggaJS initialization failed:', err);
+                            reject(new Error('Barcode engine initialization failed'));
+                            return;
+                        }
+
+                        console.log('QuaggaJS initialized successfully');
+
+                        // Setup detection handlers
+                        this.setupQuaggaHandlers();
+
+                        resolve();
+                    });
+                });
+            }
+
+            setupQuaggaHandlers() {
+                // Real-time detection handler
+                Quagga.onDetected((result) => {
+                    const now = Date.now();
+                    if (now - this.lastDetectionTime < this.detectionCooldown) {
+                        return; // Rate limiting
+                    }
+
+                    this.lastDetectionTime = now;
+                    this.detectionCount++;
+
+                    console.log('Barcode detected:', result.codeResult.code);
+                    this.handleDetection(result);
+                });
+
+                // Processing handler for visual feedback
+                Quagga.onProcessed((result) => {
+                    this.frameCount++;
+                    this.updatePerformanceStats();
+
+                    // Show detection boxes
+                    this.updateDetectionBoxes(result);
+                });
+            }
+
+            handleDetection(result) {
+                const code = result.codeResult.code;
+                const format = result.codeResult.format;
+                const quality = this.calculateQuality(result);
+
+                // Enhanced feedback
+                this.provideFeedback();
+
+                // Visual feedback
+                this.updateReticle('success');
+
+                // Stop scanning temporarily
+                this.pauseScanning();
+
+                // Show result
+                this.showResult({
+                    code: code,
+                    format: format.toUpperCase(),
+                    quality: quality,
+                    timestamp: new Date()
+                });
+
+                // Add to history
+                this.scanHistory.unshift({
+                    code: code,
+                    format: format,
+                    quality: quality,
+                    timestamp: new Date()
+                });
+
+                // Keep only last 20 scans
+                if (this.scanHistory.length > 20) {
+                    this.scanHistory = this.scanHistory.slice(0, 20);
+                }
+            }
+
+            calculateQuality(result) {
+                // Enhanced quality calculation
+                if (!result.codeResult) return 'Poor';
+
+                const rawDecoding = result.codeResult.decodedCodes;
+                if (!rawDecoding || rawDecoding.length === 0) return 'Poor';
+
+                // Calculate average quality from all decoded elements
+                let totalQuality = 0;
+                let qualityCount = 0;
+
+                rawDecoding.forEach(decoded => {
+                    if (decoded.error !== undefined) {
+                        totalQuality += Math.max(0, 1 - decoded.error);
+                        qualityCount++;
+                    }
+                });
+
+                if (qualityCount === 0) return 'Good';
+
+                const avgQuality = totalQuality / qualityCount;
+
+                if (avgQuality > 0.8) return 'Excellent';
+                if (avgQuality > 0.6) return 'Good';
+                if (avgQuality > 0.4) return 'Fair';
+                return 'Poor';
+            }
+
+            updateDetectionBoxes(result) {
+                const detectionZones = document.getElementById('detection-zones');
+                detectionZones.innerHTML = ''; // Clear previous boxes
+
+                if (result && result.boxes) {
+                    result.boxes.forEach((box, index) => {
+                        const boxEl = document.createElement('div');
+                        boxEl.className = 'detection-box';
+                        if (result.codeResult) {
+                            boxEl.classList.add('found');
+                        }
+
+                        // Position the box
+                        boxEl.style.left = box[0][0] + 'px';
+                        boxEl.style.top = box[0][1] + 'px';
+                        boxEl.style.width = (box[1][0] - box[0][0]) + 'px';
+                        boxEl.style.height = (box[2][1] - box[0][1]) + 'px';
+
+                        detectionZones.appendChild(boxEl);
+                    });
+                }
+            }
+
+            updatePerformanceStats() {
+                const now = Date.now();
+                if (now - this.lastStatsUpdate >= 1000) {
+                    // Calculate FPS
+                    this.fps = Math.round(this.frameCount * 1000 / (now - this.lastStatsUpdate));
+
+                    // Calculate detection rate
+                    this.detectionRate = Math.round(this.detectionCount * 1000 / (now - this.lastStatsUpdate));
+
+                    // Update UI
+                    document.getElementById('fps-counter').textContent = this.fps;
+                    document.getElementById('detection-rate').textContent = this.detectionRate;
+
+                    // Update quality indicator
+                    let quality = 'Good';
+                    if (this.fps < 20) quality = 'Poor';
+                    else if (this.fps > 45) quality = 'Excellent';
+                    document.getElementById('image-quality').textContent = quality;
+
+                    // Reset counters
+                    this.frameCount = 0;
+                    this.detectionCount = 0;
+                    this.lastStatsUpdate = now;
+                }
+            }
+
+            startScanning() {
+                if (!this.isInitialized || this.isScanning) return;
+
+                this.isScanning = true;
+                Quagga.start();
+
+                this.updateScanButton('scanning');
+                this.updateReticle('scanning');
+                this.updateStatus('Scanning for barcodes... Hold steady', 'success');
+            }
+
+            pauseScanning() {
+                if (!this.isScanning) return;
+
+                this.isScanning = false;
+                Quagga.pause();
+
+                this.updateScanButton('default');
+                this.updateReticle('default');
+            }
+
+            resumeScanning() {
+                if (this.isScanning) return;
+
+                this.isScanning = true;
+                Quagga.start();
+
+                this.updateScanButton('scanning');
+                this.updateReticle('scanning');
+                this.updateStatus('Scanning resumed...', 'success');
+            }
+
+            async toggleTorch() {
+                const video = document.getElementById('scanner-video');
+                const stream = video.srcObject;
+
+                if (!stream) return;
+
+                try {
+                    const track = stream.getVideoTracks()[0];
+                    const capabilities = track.getCapabilities();
+
+                    if (capabilities.torch) {
+                        this.torchEnabled = !this.torchEnabled;
+
+                        await track.applyConstraints({
+                            advanced: [{ torch: this.torchEnabled }]
+                        });
+
+                        const torchBtn = document.getElementById('torch-btn');
+                        torchBtn.classList.toggle('active', this.torchEnabled);
+
+                        this.vibrate([50]);
+                    }
+                } catch (error) {
+                    console.error('Torch control failed:', error);
+                }
+            }
+
+            provideFeedback() {
+                // Haptic feedback
+                this.vibrate([100, 50, 100]);
+
+                // Audio feedback
+                this.playSuccessSound();
+
+                // Visual flash
+                this.flashScreen();
+            }
+
+            vibrate(pattern) {
+                if (navigator.vibrate) {
+                    navigator.vibrate(pattern);
+                }
+            }
+
+            playSuccessSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.1);
+                    oscillator.type = 'sine';
+
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.2);
+                } catch (error) {
+                    console.log('Audio not supported');
+                }
+            }
+
+            flashScreen() {
+                const overlay = document.querySelector('.scanner-overlay');
+                overlay.style.background = 'rgba(255,255,255,0.4)';
+                setTimeout(() => {
+                    overlay.style.background = '';
+                }, 150);
+            }
+
+            showResult(result) {
+                document.getElementById('scanned-code').textContent = result.code;
+                document.getElementById('scanned-format').textContent = result.format;
+                document.getElementById('scan-quality').textContent = result.quality;
+
+                document.getElementById('modal-backdrop').classList.add('show');
+                document.getElementById('result-modal').classList.add('show');
+
+                // Auto-close after 5 seconds
+                setTimeout(() => {
+                    if (document.getElementById('result-modal').classList.contains('show')) {
+                        this.continueScan();
+                    }
+                }, 5000);
+            }
+
+            updateScanButton(state) {
+                const btn = document.getElementById('scan-btn');
+                const icon = document.getElementById('scan-icon');
+
+                btn.className = 'control-btn primary';
+
+                switch (state) {
+                    case 'scanning':
+                        btn.classList.add('scanning');
+                        icon.className = 'bi bi-pause';
+                        break;
+                    default:
+                        icon.className = 'bi bi-camera';
+                }
+            }
+
+            updateReticle(state) {
+                const reticle = document.getElementById('scanner-reticle');
+                reticle.className = 'scanner-reticle';
+
+                if (state) {
+                    reticle.classList.add(state);
+
+                    if (state !== 'scanning') {
+                        setTimeout(() => {
+                            reticle.className = 'scanner-reticle scanning';
+                        }, 1000);
+                    }
+                }
+            }
+
+            updateStatus(message, type = 'info') {
+                const statusEl = document.getElementById('scan-status');
+                const icons = {
+                    success: 'check-circle-fill',
+                    warning: 'exclamation-triangle-fill',
+                    danger: 'x-circle-fill',
+                    info: 'info-circle-fill'
+                };
+
+                statusEl.innerHTML = `<i class="bi bi-${icons[type] || 'info-circle'}"></i> ${message}`;
+            }
+
+            destroy() {
+                if (this.isInitialized) {
+                    Quagga.stop();
+                }
+
+                const video = document.getElementById('scanner-video');
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                }
+            }
+        }
+
+        // Global scanner instance
+        let professionalScanner;
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            professionalScanner = new ProfessionalScanner();
+        });
+
+        // Global functions
+        function toggleScanning() {
+            if (professionalScanner.isScanning) {
+                professionalScanner.pauseScanning();
+            } else {
+                professionalScanner.resumeScanning();
+            }
+        }
+
+        function toggleTorch() {
+            professionalScanner.toggleTorch();
+        }
+
+        function continueScan() {
+            closeModal();
+            setTimeout(() => professionalScanner.resumeScanning(), 500);
+        }
+
+        function closeModal() {
+            document.getElementById('modal-backdrop').classList.remove('show');
+            document.getElementById('result-modal').classList.remove('show');
+        }
+
+        function processResult() {
+            const code = document.getElementById('scanned-code').textContent;
+            const jobID = {{.jobID}};
+
+            // Process the scanned code (e.g., assign to job)
+            console.log('Processing barcode:', code, 'for job:', jobID);
+
+            // Send to backend
+            fetch(`/api/v1/jobs/${jobID}/scan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceID: code })
+            }).then(response => {
+                if (response.ok) {
+                    alert('Device assigned successfully!');
+                    professionalScanner.vibrate([200, 100, 200]);
+                } else {
+                    alert('Failed to assign device');
+                }
+                continueScan();
+            }).catch(error => {
+                console.error('Assignment failed:', error);
+                alert('Assignment failed: ' + error.message);
+                continueScan();
+            });
+        }
+
+        function closeScanner() {
+            professionalScanner.destroy();
+            window.location.href = '/scan/select';
+        }
+
+        // Prevent page refresh on pull-to-refresh
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            const touch = e.touches[0];
+            if (touch.clientY <= 40) {
+                e.preventDefault();
+            }
+        });
+
+        // Handle visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (professionalScanner) professionalScanner.pauseScanning();
+            } else {
+                setTimeout(() => {
+                    if (professionalScanner) professionalScanner.resumeScanning();
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
