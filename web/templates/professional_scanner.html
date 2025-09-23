@@ -458,8 +458,8 @@
         </div>
     </div>
 
-    <!-- ZXing for barcode detection - using more stable version -->
-    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+    <!-- ZXing for barcode detection - using proven working version -->
+    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 
     <script>
         class ProfessionalBarcodeScanner {
@@ -470,7 +470,7 @@
                 this.codeReader = null;
                 this.currentStream = null;
                 this.lastScanTime = 0;
-                this.scanCooldown = 1200;
+                this.scanCooldown = 800;
                 this.currentDeviceIndex = 0;
                 this.videoDevices = [];
                 this.jobID = {{.jobID}};
@@ -490,31 +490,10 @@
                 try {
                     this.updateStatus('Initializing professional camera system...', 'info');
 
-                    // Initialize ZXing with mobile-compatible settings
+                    // Initialize ZXing with simple, working configuration
                     try {
-                        // Try different ZXing reader types for compatibility
-                        if (typeof ZXing.BrowserBarcodeReader !== 'undefined') {
-                            this.codeReader = new ZXing.BrowserBarcodeReader();
-                        } else if (typeof ZXing.BrowserMultiFormatReader !== 'undefined') {
-                            this.codeReader = new ZXing.BrowserMultiFormatReader();
-                        } else {
-                            throw new Error('No compatible ZXing reader found');
-                        }
-
-                        console.log('ZXing reader initialized:', this.codeReader.constructor.name);
-
-                        // Try to configure hints if available
-                        try {
-                            if (typeof this.codeReader.setHints === 'function') {
-                                const hints = new Map();
-                                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-                                this.codeReader.setHints(hints);
-                                console.log('ZXing hints configured');
-                            }
-                        } catch (hintError) {
-                            console.log('ZXing hints not supported, using defaults');
-                        }
-
+                        this.codeReader = new ZXing.BrowserBarcodeReader();
+                        console.log('ZXing BrowserBarcodeReader initialized successfully');
                     } catch (error) {
                         console.error('ZXing initialization failed:', error);
                         throw new Error('Barcode scanner not supported on this device');
@@ -766,24 +745,33 @@
                 this.updateReticle('scanning');
                 this.updateStatus('Scanning for barcodes... Hold steady for best results', 'scanning');
 
-                // Start ZXing continuous decode
-                this.codeReader.decodeFromVideoDevice(
-                    undefined,
-                    'camera-video',
-                    (result, error) => {
-                        if (result) {
-                            const now = Date.now();
-                            if (now - this.lastScanTime > this.scanCooldown) {
-                                this.lastScanTime = now;
-                                this.handleBarcodeDetected(result.text);
+                console.log('Starting ZXing continuous scanning...');
+
+                // Start ZXing continuous decode with simplified error handling
+                try {
+                    this.codeReader.decodeFromVideoDevice(
+                        undefined,
+                        'camera-video',
+                        (result, error) => {
+                            if (result && result.text) {
+                                console.log('Barcode found:', result.text);
+                                const now = Date.now();
+                                if (now - this.lastScanTime > this.scanCooldown) {
+                                    this.lastScanTime = now;
+                                    this.handleBarcodeDetected(result.text);
+                                }
+                            }
+
+                            // Only log actual errors, not NotFoundException
+                            if (error && error.name !== 'NotFoundException') {
+                                console.log('Scan error:', error.name, error.message);
                             }
                         }
-                        // Ignore NotFoundException - this is expected when no barcode is found
-                        if (error && !(error instanceof ZXing.NotFoundException)) {
-                            console.log('Scan error (non-critical):', error.message);
-                        }
-                    }
-                );
+                    );
+                } catch (error) {
+                    console.error('Failed to start continuous scanning:', error);
+                    this.updateStatus('Failed to start scanning: ' + error.message, 'error');
+                }
             }
 
             async handleBarcodeDetected(code) {
