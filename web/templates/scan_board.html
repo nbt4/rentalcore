@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        // Prevent FOUC by setting theme immediately
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Scan Board - Job {{.jobID}} - RentalCore</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ScanBoard">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/rental-core-design.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Barcode generation library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <style>
+        :root {
+            --scan-board-bg: #000;
+            --scan-board-card: #1a1a1a;
+            --scan-board-text: #ffffff;
+            --scan-board-success: #22c55e;
+            --scan-board-pending: #f59e0b;
+            --scan-board-border: #374151;
+            --scan-board-hover: #2a2a2a;
+        }
+
+        [data-theme="light"] {
+            --scan-board-bg: #f8fafc;
+            --scan-board-card: #ffffff;
+            --scan-board-text: #1f2937;
+            --scan-board-success: #16a34a;
+            --scan-board-pending: #d97706;
+            --scan-board-border: #e5e7eb;
+            --scan-board-hover: #f1f5f9;
+        }
+
+        body {
+            background: var(--scan-board-bg);
+            color: var(--scan-board-text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .scan-board-container {
+            min-height: 100vh;
+            padding: 20px;
+            max-width: 100%;
+        }
+
+        .scan-board-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--scan-board-card);
+            border-radius: 12px;
+            border: 1px solid var(--scan-board-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .scan-board-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .scan-board-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin: 5px 0 0 0;
+        }
+
+        .scan-board-progress {
+            text-align: right;
+            flex-shrink: 0;
+            margin-left: 20px;
+        }
+
+        .progress-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--scan-board-success) 0deg,
+                var(--scan-board-success) calc(var(--progress) * 3.6deg),
+                var(--scan-board-border) calc(var(--progress) * 3.6deg),
+                var(--scan-board-border) 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .progress-circle::before {
+            content: '';
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--scan-board-card);
+            position: absolute;
+        }
+
+        .progress-text {
+            font-weight: 700;
+            font-size: 1.1rem;
+            z-index: 1;
+        }
+
+        .progress-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 8px;
+        }
+
+        .finish-button {
+            background: var(--scan-board-success);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            margin-left: 15px;
+        }
+
+        .finish-button:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+        }
+
+        .finish-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .device-grid {
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .device-grid {
+                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            }
+        }
+
+        .device-card {
+            background: var(--scan-board-card);
+            border: 2px solid var(--scan-board-border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .device-card:hover {
+            background: var(--scan-board-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .device-card.packed {
+            border-color: var(--scan-board-success);
+            background: linear-gradient(135deg, var(--scan-board-card) 0%, rgba(34, 197, 94, 0.1) 100%);
+        }
+
+        .device-card.pending {
+            border-color: var(--scan-board-pending);
+        }
+
+        .device-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--scan-board-pending);
+        }
+
+        .device-status.packed {
+            background: var(--scan-board-success);
+        }
+
+        .device-checkmark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5rem;
+            color: var(--scan-board-success);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .device-card.packed .device-checkmark {
+            opacity: 1;
+        }
+
+        .device-barcode {
+            margin: 15px 0;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .device-barcode svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .device-info h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 15px 0 5px 0;
+            line-height: 1.3;
+        }
+
+        .device-info .device-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .device-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--scan-board-card);
+            color: var(--scan-board-text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--scan-board-border);
+        }
+
+        .control-button:hover {
+            transform: scale(1.1);
+            background: var(--scan-board-hover);
+        }
+
+        .missing-items-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .missing-items-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--scan-board-card);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0 0 10px 0;
+            color: var(--scan-board-pending);
+        }
+
+        .missing-items-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .missing-items-list li {
+            padding: 10px;
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--scan-board-pending);
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .modal-button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-button.primary {
+            background: var(--scan-board-success);
+            color: white;
+        }
+
+        .modal-button.secondary {
+            background: var(--scan-board-border);
+            color: var(--scan-board-text);
+        }
+
+        .modal-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .scan-board-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+
+            .scan-board-progress {
+                text-align: center;
+                margin-left: 0;
+            }
+
+            .device-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .progress-circle {
+                width: 60px;
+                height: 60px;
+            }
+
+            .progress-circle::before {
+                width: 45px;
+                height: 45px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-board-container">
+        <div class="scan-board-header">
+            <div>
+                <h1 class="scan-board-title">Scan Board</h1>
+                <p class="scan-board-subtitle">Job: <span id="job-description">{{.description}}</span></p>
+            </div>
+            <div class="scan-board-progress">
+                <div class="progress-circle" id="progress-circle" style="--progress: 0">
+                    <span class="progress-text" id="progress-text">0/0</span>
+                </div>
+                <div class="progress-label">Packed</div>
+                <button class="finish-button" id="finish-button" onclick="finishPack()">
+                    <i class="bi bi-check-circle"></i> Finish
+                </button>
+            </div>
+        </div>
+
+        <div class="device-grid" id="device-grid">
+            <!-- Devices will be populated here by JavaScript -->
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-button" onclick="refreshData()" title="Refresh">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="control-button" onclick="toggleTheme()" title="Toggle Theme">
+                <i class="bi bi-circle-half"></i>
+            </button>
+            <button class="control-button" onclick="window.close()" title="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Missing Items Modal -->
+    <div class="missing-items-modal" id="missing-items-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="bi bi-exclamation-triangle"></i> Missing Items</h2>
+                <p>The following items have not been packed yet:</p>
+            </div>
+            <ul class="missing-items-list" id="missing-items-list">
+                <!-- Missing items will be populated here -->
+            </ul>
+            <div class="modal-buttons">
+                <button class="modal-button secondary" onclick="closeMissingItemsModal()">
+                    Cancel
+                </button>
+                <button class="modal-button primary" onclick="forceFinish()">
+                    <i class="bi bi-check-circle"></i> Force Finish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const jobID = {{.jobID}};
+        let devices = [];
+        let refreshInterval;
+
+        // Initialize the scan board
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDevices();
+            startAutoRefresh();
+        });
+
+        // Load devices from API
+        async function loadDevices() {
+            try {
+                const response = await fetch(`/api/v1/jobs/${jobID}/scanboard`);
+                if (!response.ok) throw new Error('Failed to load devices');
+
+                const data = await response.json();
+                devices = data.devices || [];
+
+                renderDevices();
+                updateProgress();
+            } catch (error) {
+                console.error('Error loading devices:', error);
+                showError('Failed to load devices');
+            }
+        }
+
+        // Render devices in the grid
+        function renderDevices() {
+            const grid = document.getElementById('device-grid');
+            grid.innerHTML = '';
+
+            devices.forEach(device => {
+                const card = createDeviceCard(device);
+                grid.appendChild(card);
+            });
+        }
+
+        // Create a device card element
+        function createDeviceCard(device) {
+            const card = document.createElement('div');
+            card.className = `device-card ${device.packStatus}`;
+            card.setAttribute('data-device-id', device.deviceID);
+
+            card.innerHTML = `
+                <div class="device-status ${device.packStatus}"></div>
+                <div class="device-checkmark"><i class="bi bi-check-circle-fill"></i></div>
+
+                ${device.imageUrl ? `<img src="${device.imageUrl}" alt="Product" class="device-image">` : ''}
+
+                <div class="device-barcode">
+                    <svg id="barcode-${device.deviceID}"></svg>
+                </div>
+
+                <div class="device-info">
+                    <h3>${device.productName}</h3>
+                    <div class="device-id">${device.deviceID}</div>
+                </div>
+            `;
+
+            // Generate barcode after element is added to DOM
+            setTimeout(() => {
+                try {
+                    JsBarcode(`#barcode-${device.deviceID}`, device.barcodePayload, {
+                        format: "CODE128",
+                        width: 2,
+                        height: 60,
+                        displayValue: false,
+                        margin: 5
+                    });
+                } catch (error) {
+                    console.error('Error generating barcode for', device.deviceID, error);
+                }
+            }, 10);
+
+            return card;
+        }
+
+        // Update progress indicator
+        function updateProgress() {
+            const packedCount = devices.filter(d => d.packStatus === 'packed').length;
+            const totalCount = devices.length;
+            const percentage = totalCount > 0 ? Math.round((packedCount / totalCount) * 100) : 0;
+
+            const progressCircle = document.getElementById('progress-circle');
+            const progressText = document.getElementById('progress-text');
+            const finishButton = document.getElementById('finish-button');
+
+            progressCircle.style.setProperty('--progress', percentage);
+            progressText.textContent = `${packedCount}/${totalCount}`;
+
+            // Enable finish button when all items are packed
+            finishButton.disabled = totalCount === 0;
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            refreshInterval = setInterval(loadDevices, 5000); // Refresh every 5 seconds
+        }
+
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // Refresh data manually
+        function refreshData() {
+            loadDevices();
+        }
+
+        // Finish pack workflow
+        async function finishPack() {
+            const finishButton = document.getElementById('finish-button');
+            const originalContent = finishButton.innerHTML;
+
+            finishButton.innerHTML = '<span class="loading"></span> Finishing...';
+            finishButton.disabled = true;
+
+            try {
+                const response = await fetch(`/api/v1/jobs/${jobID}/finish-pack`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ force: false })
+                });
+
+                if (!response.ok) throw new Error('Failed to finish pack');
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Pack process completed successfully!');
+                    loadDevices(); // Refresh to show final status
+                } else if (result.missingItems && result.missingItems.length > 0) {
+                    showMissingItemsModal(result.missingItems);
+                } else {
+                    throw new Error(result.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error finishing pack:', error);
+                showError('Failed to finish pack: ' + error.message);
+            } finally {
+                finishButton.innerHTML = originalContent;
+                finishButton.disabled = false;
+            }
+        }
+
+        // Force finish with missing items
+        async function forceFinish() {
+            try {
+                const response = await fetch(`/api/v1/jobs/${jobID}/finish-pack`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ force: true })
+                });
+
+                if (!response.ok) throw new Error('Failed to force finish');
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeMissingItemsModal();
+                    showSuccess('Pack process completed successfully!');
+                    loadDevices(); // Refresh to show final status
+                } else {
+                    throw new Error(result.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error force finishing pack:', error);
+                showError('Failed to force finish: ' + error.message);
+            }
+        }
+
+        // Show missing items modal
+        function showMissingItemsModal(missingItems) {
+            const modal = document.getElementById('missing-items-modal');
+            const list = document.getElementById('missing-items-list');
+
+            list.innerHTML = '';
+            missingItems.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                list.appendChild(li);
+            });
+
+            modal.classList.add('show');
+        }
+
+        // Close missing items modal
+        function closeMissingItemsModal() {
+            const modal = document.getElementById('missing-items-modal');
+            modal.classList.remove('show');
+        }
+
+        // Toggle theme
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('rc-theme', newTheme);
+        }
+
+        // Utility functions for notifications
+        function showSuccess(message) {
+            // You can implement a toast notification system here
+            alert('✅ ' + message);
+        }
+
+        function showError(message) {
+            // You can implement a toast notification system here
+            alert('❌ ' + message);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('missing-items-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMissingItemsModal();
+            }
+        });
+
+        // Handle page visibility change to pause/resume auto-refresh
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>

@@ -16,6 +16,11 @@ func NewJobRepository(db *Database) *JobRepository {
 	return &JobRepository{db: db}
 }
 
+// GetDB returns the underlying database connection
+func (r *JobRepository) GetDB() *Database {
+	return r.db
+}
+
 // loadProductsForJobDevices manually loads products for job devices
 // This is a workaround for GORM nested preloading issues
 func (r *JobRepository) loadProductsForJobDevices(jobDevices []models.JobDevice) {

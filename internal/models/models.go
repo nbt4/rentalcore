@@ -157,11 +157,13 @@ func (Subbiercategory) TableName() string {
 }
 
 type JobDevice struct {
-	JobID       uint     `json:"jobID" gorm:"primaryKey;column:jobID"`
-	DeviceID    string   `json:"deviceID" gorm:"primaryKey;column:deviceID"`
-	Job         Job      `json:"job,omitempty" gorm:"foreignKey:JobID"`
-	Device      Device   `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
-	CustomPrice *float64 `json:"custom_price" gorm:"column:custom_price"`
+	JobID       uint      `json:"jobID" gorm:"primaryKey;column:jobID"`
+	DeviceID    string    `json:"deviceID" gorm:"primaryKey;column:deviceID"`
+	Job         Job       `json:"job,omitempty" gorm:"foreignKey:JobID"`
+	Device      Device    `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
+	CustomPrice *float64  `json:"custom_price" gorm:"column:custom_price"`
+	PackStatus  string    `json:"pack_status" gorm:"column:pack_status;default:pending"`
+	PackTs      *time.Time `json:"pack_ts" gorm:"column:pack_ts"`
 }
 
 func (JobDevice) TableName() string {
@@ -539,4 +541,65 @@ type WebAuthnSession struct {
 
 func (WebAuthnSession) TableName() string {
 	return "webauthn_sessions"
+}
+
+// JobDeviceEvent represents events in the pack workflow
+type JobDeviceEvent struct {
+	ID        uint      `json:"id" gorm:"primaryKey;column:id"`
+	JobID     uint      `json:"jobID" gorm:"column:jobID"`
+	DeviceID  string    `json:"deviceID" gorm:"column:deviceID"`
+	EventType string    `json:"event_type" gorm:"column:event_type"`
+	Actor     *string   `json:"actor" gorm:"column:actor"`
+	Timestamp time.Time `json:"timestamp" gorm:"column:timestamp;default:CURRENT_TIMESTAMP"`
+	Metadata  *string   `json:"metadata" gorm:"column:metadata;type:json"`
+}
+
+func (JobDeviceEvent) TableName() string {
+	return "job_device_events"
+}
+
+// ProductImage represents product images
+type ProductImage struct {
+	ImageID      uint      `json:"imageID" gorm:"primaryKey;column:imageID"`
+	ProductID    uint      `json:"productID" gorm:"column:productID"`
+	Filename     string    `json:"filename" gorm:"column:filename"`
+	OriginalName *string   `json:"original_name" gorm:"column:original_name"`
+	FilePath     string    `json:"file_path" gorm:"column:file_path"`
+	FileSize     *uint64   `json:"file_size" gorm:"column:file_size"`
+	MimeType     *string   `json:"mime_type" gorm:"column:mime_type"`
+	IsPrimary    bool      `json:"is_primary" gorm:"column:is_primary;default:false"`
+	AltText      *string   `json:"alt_text" gorm:"column:alt_text"`
+	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
+}
+
+func (ProductImage) TableName() string {
+	return "product_images"
+}
+
+// ScanBoardDevice represents a device in the scan board view
+type ScanBoardDevice struct {
+	DeviceID        string  `json:"deviceID"`
+	ProductName     string  `json:"productName"`
+	PackStatus      string  `json:"packStatus"`
+	BarcodePayload  string  `json:"barcodePayload"`
+	ImageURL        *string `json:"imageUrl,omitempty"`
+}
+
+// ScanRequest represents a scan request for the pack workflow
+type ScanRequest struct {
+	DeviceID       *string `json:"deviceID,omitempty"`
+	BarcodePayload *string `json:"barcodePayload,omitempty"`
+}
+
+// FinishPackRequest represents a request to finish packing a job
+type FinishPackRequest struct {
+	Force bool `json:"force"` // Force finish even if items are missing
+}
+
+// FinishPackResponse represents the response from finish pack endpoint
+type FinishPackResponse struct {
+	Success       bool     `json:"success"`
+	MissingItems  []string `json:"missingItems,omitempty"`
+	Message       string   `json:"message"`
 }

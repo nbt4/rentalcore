@@ -33,6 +33,13 @@ A comprehensive, enterprise-grade equipment rental management system built with 
 - **Device Inventory**: Complete equipment tracking with categories and products
 - **Availability Tracking**: Real-time device status (available, checked out, maintenance)
 - **QR Code & Barcode Generation**: Automated code generation for device identification
+- **🆕 Scan-Board**: Full-screen pack workflow board displaying large barcodes for all job devices
+  - **Live Pack Status**: Real-time visual indication of packed vs pending items
+  - **Visual Progress Tracking**: Circular progress indicator with completion percentage
+  - **Large Barcode Display**: High-contrast barcodes for easy scanning from distance
+  - **Missing Items Warning**: Smart workflow prevents finishing with missing items
+  - **Auto-refresh**: Live updates every 5 seconds with manual refresh option
+  - **Dark/Light Theme**: Supports both themes with optimal contrast for scanning
 - **Bulk Operations**: Mass device assignment and status updates
 - **Equipment Packages**: Predefined equipment bundles for common rentals
 - **Revenue Tracking**: Per-device revenue analytics and performance insights
