@@ -407,7 +407,7 @@
         <div class="quality-indicator" id="quality-indicator">
             Camera: Starting...<br>
             Focus: Auto<br>
-            Detection: Ready
+            Detection: ZBar WASM
         </div>
 
         <!-- Torch Control -->
@@ -458,8 +458,8 @@
         </div>
     </div>
 
-    <!-- ZXing for barcode detection - using proven working version -->
-    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <!-- ZBar WASM for superior barcode detection -->
+    <script src="https://unpkg.com/zbar-wasm@0.9.0/dist/index.js"></script>
 
     <script>
         class ProfessionalBarcodeScanner {
@@ -467,14 +467,15 @@
                 this.isInitialized = false;
                 this.isScanning = false;
                 this.torchEnabled = false;
-                this.codeReader = null;
+                this.scanner = null;
                 this.currentStream = null;
                 this.lastScanTime = 0;
-                this.scanCooldown = 800;
+                this.scanCooldown = 300; // Faster with ZBar
                 this.currentDeviceIndex = 0;
                 this.videoDevices = [];
                 this.jobID = {{.jobID}};
                 this.lastDetectedCode = null;
+                this.scanningActive = false;
 
                 // Enhanced camera capabilities
                 this.capabilities = {
@@ -488,19 +489,22 @@
 
             async init() {
                 try {
-                    this.updateStatus('Initializing professional camera system...', 'info');
+                    this.updateStatus('Initializing ZBar WASM scanner...', 'info');
 
-                    // Initialize ZXing with simple, working configuration
+                    // Initialize ZBar WASM - the most performant barcode scanner
                     try {
-                        this.codeReader = new ZXing.BrowserBarcodeReader();
-                        console.log('ZXing BrowserBarcodeReader initialized successfully');
+                        const { scanImageData } = await import('https://unpkg.com/zbar-wasm@0.9.0/dist/index.js');
+                        this.scanImageData = scanImageData;
+                        console.log('ZBar WASM initialized successfully');
                     } catch (error) {
-                        console.error('ZXing initialization failed:', error);
-                        throw new Error('Barcode scanner not supported on this device');
+                        console.error('ZBar WASM initialization failed:', error);
+                        // Fallback to alternative implementation
+                        await this.initFallbackScanner();
                     }
 
                     // Get available video devices
-                    this.videoDevices = await this.codeReader.listVideoInputDevices();
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    this.videoDevices = devices.filter(device => device.kind === 'videoinput');
 
                     if (this.videoDevices.length === 0) {
                         throw new Error('No camera found on this device');
@@ -521,11 +525,32 @@
                     this.startContinuousScanning();
 
                     this.isInitialized = true;
-                    this.updateStatus('Professional scanner ready - Position barcode in frame', 'success');
+                    this.updateStatus('ZBar WASM scanner ready - Position barcode in frame', 'success');
 
                 } catch (error) {
                     console.error('Professional scanner initialization failed:', error);
                     this.updateStatus('Camera access failed: ' + error.message, 'error');
+                }
+            }
+
+            async initFallbackScanner() {
+                // Fallback to alternative high-performance scanner
+                try {
+                    // Use alternative WASM-based scanner
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.4/dist/index.js';
+                    document.head.appendChild(script);
+
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = reject;
+                    });
+
+                    this.scanImageData = window.zbarWasm.scanImageData;
+                    console.log('Fallback ZBar WASM initialized');
+                } catch (error) {
+                    console.error('Fallback scanner failed:', error);
+                    throw new Error('No compatible barcode scanner available');
                 }
             }
 
@@ -539,7 +564,7 @@
 
                 this.currentDeviceIndex = this.videoDevices.indexOf(preferredDevice);
 
-                // Professional camera constraints for optimal barcode scanning
+                // Ultra-high quality camera constraints for optimal barcode scanning
                 const constraints = {
                     video: {
                         deviceId: { exact: preferredDevice.deviceId },
@@ -738,39 +763,65 @@
             }
 
             startContinuousScanning() {
-                if (!this.codeReader || this.isScanning) return;
+                if (this.scanningActive) return;
 
+                this.scanningActive = true;
                 this.isScanning = true;
                 this.updateScanButton('scanning');
                 this.updateReticle('scanning');
-                this.updateStatus('Scanning for barcodes... Hold steady for best results', 'scanning');
+                this.updateStatus('ZBar WASM scanning active - Ultra-fast detection enabled', 'scanning');
 
-                console.log('Starting ZXing continuous scanning...');
+                console.log('Starting ZBar WASM continuous scanning...');
 
-                // Start ZXing continuous decode with simplified error handling
+                // High-performance continuous scanning with ZBar WASM
+                this.scanLoop();
+            }
+
+            async scanLoop() {
+                if (!this.scanningActive) return;
+
                 try {
-                    this.codeReader.decodeFromVideoDevice(
-                        undefined,
-                        'camera-video',
-                        (result, error) => {
-                            if (result && result.text) {
-                                console.log('Barcode found:', result.text);
-                                const now = Date.now();
-                                if (now - this.lastScanTime > this.scanCooldown) {
-                                    this.lastScanTime = now;
-                                    this.handleBarcodeDetected(result.text);
-                                }
-                            }
+                    const video = document.getElementById('camera-video');
+                    const canvas = document.getElementById('scan-canvas');
+                    const ctx = canvas.getContext('2d');
 
-                            // Only log actual errors, not NotFoundException
-                            if (error && error.name !== 'NotFoundException') {
-                                console.log('Scan error:', error.name, error.message);
-                            }
+                    // Set canvas size to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+
+                    // Draw current video frame to canvas
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    // Get image data for ZBar processing
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    // Scan with ZBar WASM for maximum performance
+                    const results = await this.scanImageData(imageData, {
+                        // Configure for all barcode types for maximum compatibility
+                        types: ['ean8', 'ean13', 'upca', 'upce', 'isbn10', 'isbn13', 'i25', 'codabar', 'code39', 'code93', 'code128', 'qr', 'datamatrix', 'pdf417']
+                    });
+
+                    if (results && results.length > 0) {
+                        const result = results[0];
+                        console.log('ZBar detected barcode:', result.data);
+
+                        const now = Date.now();
+                        if (now - this.lastScanTime > this.scanCooldown) {
+                            this.lastScanTime = now;
+                            await this.handleBarcodeDetected(result.data);
                         }
-                    );
+                    }
+
                 } catch (error) {
-                    console.error('Failed to start continuous scanning:', error);
-                    this.updateStatus('Failed to start scanning: ' + error.message, 'error');
+                    // Only log actual errors, not normal "no barcode found" cases
+                    if (error.message && !error.message.includes('No barcode')) {
+                        console.log('ZBar scan error:', error.message);
+                    }
+                }
+
+                // Continue scanning loop with high frequency
+                if (this.scanningActive) {
+                    requestAnimationFrame(() => this.scanLoop());
                 }
             }
 
@@ -1078,16 +1129,14 @@
             }
 
             pauseScanning() {
-                if (this.codeReader && this.isScanning) {
-                    this.codeReader.reset();
-                    this.isScanning = false;
-                    this.updateScanButton('default');
-                    this.updateReticle('default');
-                }
+                this.scanningActive = false;
+                this.isScanning = false;
+                this.updateScanButton('default');
+                this.updateReticle('default');
             }
 
             resumeScanning() {
-                if (!this.isScanning && this.isInitialized) {
+                if (!this.scanningActive && this.isInitialized) {
                     this.lastDetectedCode = null; // Reset last detected code
                     this.startContinuousScanning();
                 }
@@ -1151,16 +1200,14 @@
                 indicator.innerHTML = `
                     Camera: ${resolution}@${frameRate}fps<br>
                     Focus: ${focusMode}<br>
-                    Detection: Active
+                    Detection: ZBar WASM
                 `;
             }
 
             destroy() {
+                this.scanningActive = false;
                 if (this.currentStream) {
                     this.currentStream.getTracks().forEach(track => track.stop());
-                }
-                if (this.codeReader) {
-                    this.codeReader.reset();
                 }
                 this.isInitialized = false;
             }
