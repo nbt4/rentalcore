@@ -676,7 +676,10 @@ func main() {
 		},
 	}
 	r.SetFuncMap(funcMap)
-	r.LoadHTMLGlob("web/templates/*")
+	// Load HTML templates only if they exist (legacy support)
+	if _, err := os.Stat("web/templates"); err == nil {
+		r.LoadHTMLGlob("web/templates/*")
+	}
 
 	// Simple health check endpoint for Docker
 	r.GET("/health", func(c *gin.Context) {
