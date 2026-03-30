@@ -240,10 +240,6 @@ func buildWarehouseCasesURL(r *http.Request) string {
 func deprecatedFeatureHandler(feature string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		message := fmt.Sprintf("%s has been removed from RentalCore.", feature)
-		if strings.Contains(c.GetHeader("Accept"), "text/html") {
-			c.HTML(http.StatusGone, "error.html", gin.H{"error": message})
-			return
-		}
 		c.AbortWithStatusJSON(http.StatusGone, gin.H{"error": message})
 	}
 }
@@ -731,17 +727,8 @@ func main() {
 		message := c.DefaultQuery("message", "Internal Server Error")
 		details := c.DefaultQuery("details", "Something went wrong on the server")
 
-		// Convert code to integer for template comparison
 		codeInt, _ := strconv.Atoi(code)
-
-		c.HTML(http.StatusOK, "error_page.html", gin.H{
-			"error_code":    codeInt,
-			"error_message": message,
-			"error_details": details,
-			"request_id":    c.GetHeader("X-Request-Id"),
-			"timestamp":     time.Now().Format("2006-01-02 15:04:05"),
-			"user":          nil,
-		})
+		c.JSON(codeInt, gin.H{"error": message, "details": details})
 	})
 
 	// SPA fallback: serve React index.html for all non-API, non-static routes
@@ -822,23 +809,19 @@ func setupRoutes(r *gin.Engine,
 	rbacMiddleware *middleware.RBACMiddleware,
 	complianceMiddleware *compliance.ComplianceMiddleware) {
 
-	// Root route - redirect to dashboard if authenticated, login if not
+	// Root route - serve SPA
 	r.GET("/", func(c *gin.Context) {
-		// Check if user is authenticated by looking for session
-		sessionID, err := c.Cookie("session_id")
-		if err != nil || sessionID == "" {
-			c.Redirect(http.StatusTemporaryRedirect, "/login")
-			return
-		}
-		c.Redirect(http.StatusTemporaryRedirect, "/dashboard")
+		c.File("web/dist/index.html")
 	})
 
-	// Authentication routes (no auth required)
-	r.GET("/login", authHandler.LoginForm)
-	r.POST("/login", authHandler.Login)
-	r.GET("/login/2fa", authHandler.Login2FAForm)
-	r.POST("/login/2fa", authHandler.Login2FAVerify)
-	r.GET("/logout", authHandler.Logout)
+	// SPA routes - serve index.html (React Router handles client-side routing)
+	r.GET("/login", func(c *gin.Context) { c.File("web/dist/index.html") })
+	r.GET("/change-password", func(c *gin.Context) { c.File("web/dist/index.html") })
+	r.GET("/logout", func(c *gin.Context) {
+		// Clear session cookie and redirect to SPA
+		c.SetCookie("session_id", "", -1, "/", "", false, true)
+		c.Redirect(http.StatusTemporaryRedirect, "/login")
+	})
 
 	// JSON API auth endpoints for React frontend (no session required)
 	apiAuth := r.Group("/api/v1/auth")
@@ -852,8 +835,8 @@ func setupRoutes(r *gin.Engine,
 	// Passkey authentication routes (no auth required for login)
 	auth := r.Group("/auth")
 	{
-		// Force password change (requires session but no role check)
-		auth.GET("/force-password-change", authHandler.ShowForcePasswordChange)
+		// Force password change - serve SPA (React handles the flow)
+		auth.GET("/force-password-change", func(c *gin.Context) { c.File("web/dist/index.html") })
 		auth.POST("/force-password-change", authHandler.HandleForcePasswordChange)
 	}
 
@@ -871,27 +854,28 @@ func setupRoutes(r *gin.Engine,
 	protected := r.Group("/")
 	protected.Use(authHandler.AuthMiddleware())
 	{
-		// Web interface routes
-		protected.GET("/dashboard", homeHandler.Dashboard)
-		protected.GET("/help", infoHandler.Help)
-		protected.GET("/about", infoHandler.About)
-		protected.GET("/contact", infoHandler.Contact)
+		// SPA page routes - serve React frontend
+		spaHandler := func(c *gin.Context) { c.File("web/dist/index.html") }
+		protected.GET("/dashboard", spaHandler)
+		protected.GET("/help", spaHandler)
+		protected.GET("/about", spaHandler)
+		protected.GET("/contact", spaHandler)
+		protected.GET("/admin", spaHandler)
 
 		// Job routes
 		jobs := protected.Group("/jobs")
 		{
-			jobs.GET("", jobHandler.ListJobs)
-			jobs.GET("/new", jobHandler.NewJobForm)
+			jobs.GET("", spaHandler)
+			jobs.GET("/new", spaHandler)
 			jobs.POST("", jobHandler.CreateJob)
-			jobs.GET("/:id", jobHandler.GetJob)
-			jobs.GET("/:id/edit", jobHandler.EditJobForm)
+			jobs.GET("/:id", spaHandler)
+			jobs.GET("/:id/edit", spaHandler)
 			jobs.PUT("/:id", jobHandler.UpdateJob)
-			jobs.POST("/:id/update", jobHandler.UpdateJob) // Additional POST route for form updates
+			jobs.POST("/:id/update", jobHandler.UpdateJob)
 			jobs.DELETE("/:id", jobHandler.DeleteJob)
 			jobs.GET("/:id/devices", jobHandler.GetJobDevices)
 			jobs.POST("/:id/devices", jobHandler.AssignDevice)
 			jobs.DELETE("/:id/devices/:deviceId", jobHandler.RemoveDevice)
-
 		}
 
 		// Device routes - redirect to WarehouseCore
@@ -945,35 +929,20 @@ func setupRoutes(r *gin.Engine,
 		// Rental Equipment routes
 		rentalEquipment := protected.Group("/rental-equipment")
 		{
-			rentalEquipment.GET("", rentalEquipmentHandler.ShowRentalEquipmentList)
-			rentalEquipment.GET("/new", rentalEquipmentHandler.ShowRentalEquipmentForm)
-			rentalEquipment.GET("/:id/edit", rentalEquipmentHandler.ShowRentalEquipmentForm)
-			rentalEquipment.GET("/analytics", rentalEquipmentHandler.ShowRentalAnalytics)
+			rentalEquipment.GET("", spaHandler)
+			rentalEquipment.GET("/new", spaHandler)
+			rentalEquipment.GET("/:id/edit", spaHandler)
+			rentalEquipment.GET("/analytics", spaHandler)
 		}
 
 		// Cable routes - redirect to WarehouseCore
 		redirectToWarehouseCables := func(c *gin.Context) {
-			user, _ := handlers.GetCurrentUser(c)
 			target := buildWarehouseCablesURL(c.Request)
 			if target == "" {
-				c.HTML(http.StatusServiceUnavailable, "cables_redirect.html", gin.H{
-					"title":       "Cable Finder",
-					"user":        user,
-					"timestamp":   time.Now().Unix(),
-					"targetURL":   "",
-					"error":       "WarehouseCore domain not configured",
-					"message":     "Set WAREHOUSECORE_DOMAIN to enable cable search in WarehouseCore.",
-					"currentPage": "cables",
-				})
+				c.JSON(http.StatusServiceUnavailable, gin.H{"error": "WarehouseCore domain not configured"})
 				return
 			}
-			c.HTML(http.StatusOK, "cables_redirect.html", gin.H{
-				"title":       "Cable Finder",
-				"user":        user,
-				"timestamp":   time.Now().Unix(),
-				"targetURL":   target,
-				"currentPage": "cables",
-			})
+			c.Redirect(http.StatusTemporaryRedirect, target)
 		}
 
 		cables := protected.Group("/cables")
@@ -986,11 +955,11 @@ func setupRoutes(r *gin.Engine,
 		// Customer routes
 		customers := protected.Group("/customers")
 		{
-			customers.GET("", customerHandler.ListCustomers)
-			customers.GET("/new", customerHandler.NewCustomerForm)
+			customers.GET("", spaHandler)
+			customers.GET("/new", spaHandler)
 			customers.POST("", customerHandler.CreateCustomer)
-			customers.GET("/:id", customerHandler.GetCustomer)
-			customers.GET("/:id/edit", customerHandler.EditCustomerForm)
+			customers.GET("/:id", spaHandler)
+			customers.GET("/:id/edit", spaHandler)
 			customers.PUT("/:id", customerHandler.UpdateCustomer)
 			customers.DELETE("/:id", customerHandler.DeleteCustomer)
 		}
@@ -1036,7 +1005,7 @@ func setupRoutes(r *gin.Engine,
 		// Analytics routes
 		analytics := protected.Group("/analytics")
 		{
-			analytics.GET("", analyticsHandler.Dashboard)
+			analytics.GET("", spaHandler)
 			analytics.GET("/revenue", analyticsHandler.GetRevenueAPI)
 			analytics.GET("/equipment", analyticsHandler.GetEquipmentAPI)
 			analytics.GET("/devices/all", analyticsHandler.GetAllDeviceRevenuesAPI)
@@ -1096,7 +1065,7 @@ func setupRoutes(r *gin.Engine,
 		// Document routes
 		documents := protected.Group("/documents")
 		{
-			documents.GET("", documentHandler.ListDocuments)
+			documents.GET("", spaHandler)
 			documents.GET("/upload", documentHandler.UploadDocumentForm)
 			documents.POST("/upload", documentHandler.UploadDocument)
 			pool := documents.Group("/pool")
@@ -1173,12 +1142,7 @@ func setupRoutes(r *gin.Engine,
 		{
 			// Web interface routes
 			security.GET("/roles", func(c *gin.Context) {
-				user, _ := handlers.GetCurrentUser(c)
-				c.HTML(http.StatusOK, "security_roles_standalone.html", gin.H{
-					"title":       "Role Management",
-					"user":        user,
-					"currentPage": "security",
-				})
+				c.Redirect(http.StatusTemporaryRedirect, "/admin")
 			})
 			security.GET("/audit", securityHandler.SecurityAuditPage)
 
