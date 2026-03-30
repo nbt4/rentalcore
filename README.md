@@ -480,7 +480,18 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.1.5** (Latest) - Critical Database Sequence Fix
+### **v5.2.0** (Latest) - React SPA Frontend
+
+- 🎨 **Complete UI Rebuild**: Replaced Go-Template frontend with React 19 + Vite + Tailwind v4 SPA
+- 🔗 **Unified Design System**: Identical dark theme and glass morphism effects as WarehouseCore
+- ⚡ **JSON Auth API**: Added `/api/v1/auth/login|logout|me|change-password` endpoints
+- 📱 **Responsive Sidebar**: Collapsible navigation with cross-navigation to WarehouseCore
+- 📊 **Analytics Dashboard**: Monthly revenue chart + status distribution
+- 🔒 **Role Guards**: Protected admin routes with role-based access control
+
+---
+
+### **v5.1.5** - Critical Database Sequence Fix
 
 **🔧 DATABASE INTEGRITY FIX**
 

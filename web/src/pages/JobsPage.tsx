@@ -1,0 +1,400 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Plus, Search, RefreshCw, Briefcase, Calendar, User,
+  ArrowLeft, Trash2, Edit3, X, Check,
+} from 'lucide-react';
+import { jobsApi, customersApi, statusApi } from '../lib/api';
+import type { Job, Customer, JobStatus } from '../lib/api';
+
+function statusColor(status: string) {
+  const s = status.toLowerCase();
+  if (s.includes('aktiv') || s.includes('active') || s.includes('confirmed')) return 'bg-green-500/10 text-green-400 border-green-500/20';
+  if (s.includes('abgeschlossen') || s.includes('completed')) return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+  if (s.includes('abgebrochen') || s.includes('cancelled') || s.includes('canceled')) return 'bg-red-500/10 text-red-400 border-red-500/20';
+  if (s.includes('archiv')) return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return 'bg-accent-red/10 text-accent-red border-accent-red/20';
+}
+
+function customerName(c?: Customer) {
+  if (!c) return '—';
+  if (c.companyname) return c.companyname;
+  return `${c.firstname || ''} ${c.lastname || ''}`.trim() || '—';
+}
+
+function formatDate(d?: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('de-DE');
+}
+
+// ── Job Detail ────────────────────────────────────────────────
+
+function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    jobsApi.getById(id).then((r) => setJob(r.data)).catch(console.error).finally(() => setLoading(false));
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!confirm('Job wirklich löschen?')) return;
+    setDeleting(true);
+    try {
+      await jobsApi.delete(id);
+      onBack();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
+  if (!job) return <div className="text-center text-gray-400 py-20">Job nicht gefunden.</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold">{job.job_code}</h1>
+          {job.description && <p className="text-gray-400 text-sm mt-0.5">{job.description}</p>}
+        </div>
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => navigate(`/jobs/${id}/edit`)}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-sm transition-colors"
+          >
+            <Edit3 className="w-4 h-4" /> Bearbeiten
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Löschen
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="glass-dark rounded-xl border border-white/10 p-5 space-y-3">
+          <h3 className="font-semibold text-white mb-4">Jobdetails</h3>
+          <InfoRow label="Job-Code" value={job.job_code} />
+          <InfoRow label="Status" value={
+            job.status ? (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(job.status.status)}`}>
+                {job.status.status}
+              </span>
+            ) : '—'
+          } />
+          <InfoRow label="Startdatum" value={formatDate(job.startDate)} />
+          <InfoRow label="Enddatum" value={formatDate(job.endDate)} />
+          <InfoRow label="Umsatz" value={`€${(job.final_revenue ?? job.revenue ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`} />
+        </div>
+
+        <div className="glass-dark rounded-xl border border-white/10 p-5">
+          <h3 className="font-semibold text-white mb-4">Kunde</h3>
+          {job.customer ? (
+            <div className="space-y-3">
+              <InfoRow label="Name" value={customerName(job.customer)} />
+              {job.customer.email && <InfoRow label="E-Mail" value={job.customer.email} />}
+              {job.customer.phonenumber && <InfoRow label="Telefon" value={job.customer.phonenumber} />}
+              {job.customer.city && <InfoRow label="Stadt" value={job.customer.city} />}
+            </div>
+          ) : <p className="text-gray-500">Kein Kunde zugeordnet</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-white font-medium">{value}</span>
+    </div>
+  );
+}
+
+// ── Job Form ──────────────────────────────────────────────────
+
+function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: number) => void; onCancel: () => void }) {
+  const [form, setForm] = useState<Partial<Job>>({});
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [statuses, setStatuses] = useState<JobStatus[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      customersApi.getAll(),
+      statusApi.getAll(),
+      jobId ? jobsApi.getById(jobId) : Promise.resolve(null),
+    ]).then(([cRes, sRes, jRes]) => {
+      setCustomers(cRes.data.customers || []);
+      setStatuses(sRes.data.statuses || []);
+      if (jRes) setForm(jRes.data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [jobId]);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      if (jobId) {
+        await jobsApi.update(jobId, form);
+        onSaved(jobId);
+      } else {
+        const res = await jobsApi.create(form);
+        onSaved(res.data.jobID);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-2xl font-bold">{jobId ? 'Job bearbeiten' : 'Neuer Job'}</h1>
+      </div>
+
+      <div className="glass-dark rounded-xl border border-white/10 p-6 max-w-xl">
+        {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+        <form onSubmit={save} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Kunde *</label>
+            <select
+              value={form.customer_id || ''}
+              onChange={(e) => setForm({ ...form, customer_id: Number(e.target.value) })}
+              required
+              className="w-full px-3 py-2.5 rounded-lg"
+            >
+              <option value="">— Kunde wählen —</option>
+              {customers.map((c) => (
+                <option key={c.customer_id} value={c.customer_id}>{customerName(c)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Status</label>
+            <select
+              value={form.status_id || ''}
+              onChange={(e) => setForm({ ...form, status_id: Number(e.target.value) })}
+              className="w-full px-3 py-2.5 rounded-lg"
+            >
+              <option value="">— Status wählen —</option>
+              {statuses.map((s) => (
+                <option key={s.status_id} value={s.status_id}>{s.status}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Beschreibung</label>
+            <input
+              type="text"
+              value={form.description || ''}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Kurze Jobbeschreibung"
+              className="w-full px-3 py-2.5 rounded-lg"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Startdatum</label>
+              <input
+                type="date"
+                value={form.startDate?.slice(0, 10) || ''}
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Enddatum</label>
+              <input
+                type="date"
+                value={form.endDate?.slice(0, 10) || ''}
+                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-accent-red hover:bg-accent-red/80 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              {saving ? 'Wird gespeichert...' : 'Speichern'}
+            </button>
+            <button type="button" onClick={onCancel} className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 rounded-lg transition-colors">
+              <X className="w-4 h-4" /> Abbrechen
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Jobs List ─────────────────────────────────────────────────
+
+export function JobsPage() {
+  const { id: paramId } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'list' | 'detail' | 'new' | 'edit'>(
+    paramId ? 'detail' : 'list'
+  );
+
+  const detailId = paramId ? Number(paramId) : null;
+
+  const load = useCallback(() => {
+    setLoading(true);
+    jobsApi.getAll().then((r) => setJobs(r.data.jobs || [])).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setView(paramId ? 'detail' : 'list'); }, [paramId]);
+
+  const filtered = jobs.filter((j) => {
+    const q = search.toLowerCase();
+    return (
+      j.job_code.toLowerCase().includes(q) ||
+      (j.description || '').toLowerCase().includes(q) ||
+      customerName(j.customer).toLowerCase().includes(q)
+    );
+  });
+
+  if (view === 'detail' && detailId) {
+    return <JobDetail id={detailId} onBack={() => { navigate('/jobs'); load(); }} />;
+  }
+
+  if (view === 'new') {
+    return <JobForm onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => setView('list')} />;
+  }
+
+  if (view === 'edit' && detailId) {
+    return <JobForm jobId={detailId} onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => navigate(`/jobs/${detailId}`)} />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Briefcase className="w-6 h-6 text-accent-red" /> Jobs</h1>
+          <p className="text-gray-400 text-sm mt-1">Verwalte deine Aufträge und Projekte</p>
+        </div>
+        <button
+          onClick={() => setView('new')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-accent-red hover:bg-accent-red/80 text-white rounded-lg font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Neuer Job
+        </button>
+      </div>
+
+      <div className="glass-dark rounded-xl border border-white/10">
+        <div className="flex items-center gap-3 p-4 border-b border-white/10">
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Job suchen..."
+              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent-red"
+            />
+          </div>
+          <button onClick={load} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-4 border-accent-red/20 border-t-accent-red rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-gray-500">
+            <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>{search ? 'Keine Jobs gefunden' : 'Noch keine Jobs vorhanden'}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left px-6 py-3 font-medium">Job</th>
+                  <th className="text-left px-6 py-3 font-medium">Kunde</th>
+                  <th className="text-left px-6 py-3 font-medium hidden md:table-cell">Zeitraum</th>
+                  <th className="text-left px-6 py-3 font-medium hidden sm:table-cell">Status</th>
+                  <th className="text-right px-6 py-3 font-medium hidden lg:table-cell">Umsatz</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((job) => (
+                  <tr
+                    key={job.jobID}
+                    className="hover:bg-white/5 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/jobs/${job.jobID}`)}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-white">{job.job_code}</div>
+                      {job.description && <div className="text-gray-400 text-xs mt-0.5 truncate max-w-xs">{job.description}</div>}
+                    </td>
+                    <td className="px-6 py-4 text-gray-300">
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                        {customerName(job.customer)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-400 hidden md:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        {formatDate(job.startDate)} – {formatDate(job.endDate)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 hidden sm:table-cell">
+                      {job.status && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(job.status.status)}`}>
+                          {job.status.status}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right text-gray-300 hidden lg:table-cell">
+                      €{(job.final_revenue ?? job.revenue ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

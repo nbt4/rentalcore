@@ -1133,6 +1133,167 @@ func (h *AuthHandler) hasAdminPermission(user *models.User) bool {
 	return false
 }
 
+// LoginAPI handles JSON login requests from the React frontend.
+func (h *AuthHandler) LoginAPI(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Benutzername und Passwort erforderlich"})
+		return
+	}
+
+	var user models.User
+	if err := h.db.Where("username = ? AND is_active = ?", req.Username, true).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Ungültige Zugangsdaten"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Ungültige Zugangsdaten"})
+		return
+	}
+
+	sessionID := h.generateSessionID()
+	sessionTimeout := time.Duration(h.config.Security.SessionTimeout) * time.Second
+	session := models.Session{
+		SessionID: sessionID,
+		UserID:    user.UserID,
+		ExpiresAt: time.Now().Add(sessionTimeout),
+		CreatedAt: time.Now(),
+	}
+	if err := h.db.Create(&session).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Sitzung konnte nicht erstellt werden"})
+		return
+	}
+
+	now := time.Now()
+	user.LastLogin = &now
+	h.db.Save(&user)
+
+	cookieDomain := getCookieDomain(c)
+	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, false, true)
+
+	var userRoles []models.UserRole
+	h.db.Preload("Role").Where("user_id = ?", user.UserID).Find(&userRoles)
+
+	type roleResp struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+	roleList := make([]roleResp, 0, len(userRoles))
+	for _, ur := range userRoles {
+		if ur.Role.Name != "" {
+			roleList = append(roleList, roleResp{ID: ur.RoleID, Name: ur.Role.Name})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"user": gin.H{
+			"UserID":                user.UserID,
+			"Username":              user.Username,
+			"Email":                 user.Email,
+			"FirstName":             user.FirstName,
+			"LastName":              user.LastName,
+			"IsActive":              user.IsActive,
+			"Roles":                 roleList,
+			"force_password_change": user.ForcePasswordChange,
+		},
+		"force_password_change": user.ForcePasswordChange,
+	})
+}
+
+// LogoutAPI handles JSON logout requests from the React frontend.
+func (h *AuthHandler) LogoutAPI(c *gin.Context) {
+	if sessionID, err := c.Cookie("session_id"); err == nil {
+		h.db.Where("session_id = ?", sessionID).Delete(&models.Session{})
+	}
+	cookieDomain := getCookieDomain(c)
+	c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// MeAPI returns the currently authenticated user as JSON.
+func (h *AuthHandler) MeAPI(c *gin.Context) {
+	user, exists := GetCurrentUser(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "nicht authentifiziert"})
+		return
+	}
+
+	var userRoles []models.UserRole
+	h.db.Preload("Role").Where("user_id = ?", user.UserID).Find(&userRoles)
+
+	type roleResp struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+	roleList := make([]roleResp, 0, len(userRoles))
+	for _, ur := range userRoles {
+		if ur.Role.Name != "" {
+			roleList = append(roleList, roleResp{ID: ur.RoleID, Name: ur.Role.Name})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"UserID":                user.UserID,
+		"Username":              user.Username,
+		"Email":                 user.Email,
+		"FirstName":             user.FirstName,
+		"LastName":              user.LastName,
+		"IsActive":              user.IsActive,
+		"Roles":                 roleList,
+		"force_password_change": user.ForcePasswordChange,
+	})
+}
+
+// ChangePasswordAPI handles JSON password change requests from the React frontend.
+func (h *AuthHandler) ChangePasswordAPI(c *gin.Context) {
+	user, exists := GetCurrentUser(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "nicht authentifiziert"})
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Felder fehlen"})
+		return
+	}
+
+	var fullUser models.User
+	if err := h.db.First(&fullUser, user.UserID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Benutzer nicht gefunden"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(fullUser.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Aktuelles Passwort ist falsch"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Passwort konnte nicht gehasht werden"})
+		return
+	}
+
+	if err := h.db.Model(&fullUser).Updates(map[string]interface{}{
+		"password_hash":         string(hash),
+		"force_password_change": false,
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Passwort konnte nicht gespeichert werden"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Passwort erfolgreich geändert"})
+}
+
 // logAdminAction logs admin actions for auditing
 func (h *AuthHandler) logAdminAction(c *gin.Context, action, entityType, entityID string, adminUserID uint) {
 	auditLog := models.AuditLog{

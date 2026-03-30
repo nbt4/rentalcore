@@ -140,3 +140,6 @@ CLAUDE.md
 AGENTS.md
 .claude/
 .gemini/
+web/dist/
+check_products.py
+debug_roles.py

@@ -683,6 +683,9 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "service": "RentalCore"})
 	})
 
+	// Serve React SPA build assets
+	r.StaticFS("/assets", http.Dir("web/dist/assets"))
+
 	// Add caching for static files
 	r.StaticFS("/static", http.Dir("web/static"))
 	r.StaticFS("/uploads", http.Dir("uploads"))
@@ -738,8 +741,18 @@ func main() {
 		})
 	})
 
-	// Add 404 handler as the last route
-	r.NoRoute(handlers.NotFoundHandler())
+	// SPA fallback: serve React index.html for all non-API, non-static routes
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// API and legacy routes return JSON 404
+		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/static/") ||
+			strings.HasPrefix(path, "/uploads/") || strings.HasPrefix(path, "/assets/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		// Everything else: serve the SPA shell
+		c.File("web/dist/index.html")
+	})
 
 	// Start server
 	addr := cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)
@@ -823,6 +836,15 @@ func setupRoutes(r *gin.Engine,
 	r.GET("/login/2fa", authHandler.Login2FAForm)
 	r.POST("/login/2fa", authHandler.Login2FAVerify)
 	r.GET("/logout", authHandler.Logout)
+
+	// JSON API auth endpoints for React frontend (no session required)
+	apiAuth := r.Group("/api/v1/auth")
+	{
+		apiAuth.POST("/login", authHandler.LoginAPI)
+		apiAuth.POST("/logout", authHandler.LogoutAPI)
+		apiAuth.GET("/me", authHandler.AuthMiddleware(), authHandler.MeAPI)
+		apiAuth.POST("/change-password", authHandler.AuthMiddleware(), authHandler.ChangePasswordAPI)
+	}
 
 	// Passkey authentication routes (no auth required for login)
 	auth := r.Group("/auth")

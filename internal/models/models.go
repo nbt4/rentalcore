@@ -8,7 +8,7 @@ import (
 )
 
 type Customer struct {
-	CustomerID   uint    `json:"customerID" gorm:"primaryKey;column:customerid"`
+	CustomerID   uint    `json:"customer_id" gorm:"primaryKey;column:customerid"`
 	CompanyName  *string `json:"companyname" gorm:"column:companyname"`
 	LastName     *string `json:"lastname" gorm:"column:lastname"`
 	FirstName    *string `json:"firstname" gorm:"column:firstname"`
@@ -46,7 +46,7 @@ func (c Customer) GetDisplayName() string {
 }
 
 type Status struct {
-	StatusID uint   `json:"statusID" gorm:"primaryKey;column:statusid"`
+	StatusID uint   `json:"status_id" gorm:"primaryKey;column:statusid"`
 	Status   string `json:"status" gorm:"not null;column:status"`
 	Jobs     []Job  `json:"jobs,omitempty" gorm:"-"`
 }
@@ -58,9 +58,9 @@ func (Status) TableName() string {
 type Job struct {
 	JobID         uint         `json:"jobID" gorm:"primaryKey;column:jobid"`
 	JobCode       string       `json:"job_code" gorm:"column:job_code"`
-	CustomerID    uint         `json:"customerID" gorm:"not null;column:customerid"`
+	CustomerID    uint         `json:"customer_id" gorm:"not null;column:customerid"`
 	Customer      Customer     `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
-	StatusID      uint         `json:"statusID" gorm:"not null;column:statusid"`
+	StatusID      uint         `json:"status_id" gorm:"not null;column:statusid"`
 	Status        Status       `json:"status,omitempty" gorm:"foreignKey:StatusID"`
 	JobCategoryID *uint        `json:"jobcategoryID" gorm:"column:jobcategoryid"`
 	JobCategory   *JobCategory `json:"job_category,omitempty" gorm:"foreignKey:JobCategoryID"`
@@ -70,17 +70,17 @@ type Job struct {
 	UpdatedAt     *time.Time   `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP;index"`
 
 	// Relations
-	Creator *User `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
-	Description   *string      `json:"description" gorm:"column:description"`
-	Discount      float64      `json:"discount" gorm:"column:discount;default:0"`
-	DiscountType  string       `json:"discount_type" gorm:"column:discount_type;default:amount"`
-	Revenue       float64      `json:"revenue" gorm:"column:revenue;default:0"`
-	FinalRevenue  *float64     `json:"final_revenue" gorm:"column:final_revenue"`
-	StartDate     *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
-	EndDate       *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
-	JobDevices    []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
-	JobPackages   []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
-	DeviceCount   int          `json:"device_count" gorm:"-:all"`
+	Creator      *User        `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
+	Description  *string      `json:"description" gorm:"column:description"`
+	Discount     float64      `json:"discount" gorm:"column:discount;default:0"`
+	DiscountType string       `json:"discount_type" gorm:"column:discount_type;default:amount"`
+	Revenue      float64      `json:"revenue" gorm:"column:revenue;default:0"`
+	FinalRevenue *float64     `json:"final_revenue" gorm:"column:final_revenue"`
+	StartDate    *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
+	EndDate      *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
+	JobDevices   []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
+	JobPackages  []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
+	DeviceCount  int          `json:"device_count" gorm:"-:all"`
 }
 
 func (Job) TableName() string {
@@ -136,39 +136,39 @@ func (Device) TableName() string {
 }
 
 type Product struct {
-	ProductID           uint             `json:"productID" gorm:"primaryKey;column:productid"`
-	Name                string           `json:"name" gorm:"not null;column:name"`
-	CategoryID          *uint            `json:"categoryID" gorm:"column:categoryid"`
-	SubcategoryID       *string          `json:"subcategoryID" gorm:"column:subcategoryid"`
-	SubbiercategoryID   *string          `json:"subbiercategoryID" gorm:"column:subbiercategoryid"`
-	ManufacturerID      *uint            `json:"manufacturerID" gorm:"column:manufacturerID"`
-	BrandID             *uint            `json:"brandID" gorm:"column:brandID"`
-	Description         *string          `json:"description" gorm:"column:description"`
-	MaintenanceInterval *uint            `json:"maintenanceInterval" gorm:"column:maintenanceInterval"`
-	ItemCostPerDay      *float64         `json:"itemcostperday" gorm:"column:itemcostperday"`
-	Weight              *float64         `json:"weight" gorm:"column:weight"`
-	Height              *float64         `json:"height" gorm:"column:height"`
-	Width               *float64         `json:"width" gorm:"column:width"`
-	Depth               *float64         `json:"depth" gorm:"column:depth"`
-	PowerConsumption    *float64         `json:"powerconsumption" gorm:"column:powerconsumption"`
-	PosInCategory       *uint            `json:"pos_in_category" gorm:"column:pos_in_category"`
+	ProductID           uint     `json:"productID" gorm:"primaryKey;column:productid"`
+	Name                string   `json:"name" gorm:"not null;column:name"`
+	CategoryID          *uint    `json:"categoryID" gorm:"column:categoryid"`
+	SubcategoryID       *string  `json:"subcategoryID" gorm:"column:subcategoryid"`
+	SubbiercategoryID   *string  `json:"subbiercategoryID" gorm:"column:subbiercategoryid"`
+	ManufacturerID      *uint    `json:"manufacturerID" gorm:"column:\"manufacturerID\""`
+	BrandID             *uint    `json:"brandID" gorm:"column:\"brandID\""`
+	Description         *string  `json:"description" gorm:"column:description"`
+	MaintenanceInterval *uint    `json:"maintenanceInterval" gorm:"column:\"maintenanceInterval\""`
+	ItemCostPerDay      *float64 `json:"itemcostperday" gorm:"column:itemcostperday"`
+	Weight              *float64 `json:"weight" gorm:"column:weight"`
+	Height              *float64 `json:"height" gorm:"column:height"`
+	Width               *float64 `json:"width" gorm:"column:width"`
+	Depth               *float64 `json:"depth" gorm:"column:depth"`
+	PowerConsumption    *float64 `json:"powerconsumption" gorm:"column:powerconsumption"`
+	PosInCategory       *uint    `json:"pos_in_category" gorm:"column:pos_in_category"`
 
 	// Accessory and Consumable fields
-	IsAccessory      bool     `json:"is_accessory" gorm:"column:is_accessory;default:0;index"`
-	IsConsumable     bool     `json:"is_consumable" gorm:"column:is_consumable;default:0;index"`
-	CountTypeID      *uint    `json:"count_type_id" gorm:"column:count_type_id"`
-	StockQuantity    *float64 `json:"stock_quantity" gorm:"column:stock_quantity;type:decimal(10,3)"`
-	MinStockLevel    *float64 `json:"min_stock_level" gorm:"column:min_stock_level;type:decimal(10,3)"`
-	GenericBarcode   *string  `json:"generic_barcode" gorm:"column:generic_barcode;index"`
-	PricePerUnit     *float64 `json:"price_per_unit" gorm:"column:price_per_unit;type:decimal(10,2)"`
+	IsAccessory    bool     `json:"is_accessory" gorm:"column:is_accessory;default:0;index"`
+	IsConsumable   bool     `json:"is_consumable" gorm:"column:is_consumable;default:0;index"`
+	CountTypeID    *uint    `json:"count_type_id" gorm:"column:count_type_id"`
+	StockQuantity  *float64 `json:"stock_quantity" gorm:"column:stock_quantity;type:decimal(10,3)"`
+	MinStockLevel  *float64 `json:"min_stock_level" gorm:"column:min_stock_level;type:decimal(10,3)"`
+	GenericBarcode *string  `json:"generic_barcode" gorm:"column:generic_barcode;index"`
+	PricePerUnit   *float64 `json:"price_per_unit" gorm:"column:price_per_unit;type:decimal(10,2)"`
 
 	// Relations
-	Category            *Category        `json:"category,omitempty" gorm:"foreignKey:CategoryID;references:CategoryID"`
-	Subcategory         *Subcategory     `json:"subcategory,omitempty" gorm:"foreignKey:SubcategoryID;references:SubcategoryID"`
-	Subbiercategory     *Subbiercategory `json:"subbiercategory,omitempty" gorm:"foreignKey:SubbiercategoryID;references:SubbiercategoryID"`
-	Brand               *Brand           `json:"brand,omitempty" gorm:"foreignKey:BrandID"`
-	Manufacturer        *Manufacturer    `json:"manufacturer,omitempty" gorm:"foreignKey:ManufacturerID"`
-	CountType           *CountType       `json:"count_type,omitempty" gorm:"foreignKey:CountTypeID;references:CountTypeID"`
+	Category        *Category        `json:"category,omitempty" gorm:"foreignKey:CategoryID;references:CategoryID"`
+	Subcategory     *Subcategory     `json:"subcategory,omitempty" gorm:"foreignKey:SubcategoryID;references:SubcategoryID"`
+	Subbiercategory *Subbiercategory `json:"subbiercategory,omitempty" gorm:"foreignKey:SubbiercategoryID;references:SubbiercategoryID"`
+	Brand           *Brand           `json:"brand,omitempty" gorm:"foreignKey:BrandID"`
+	Manufacturer    *Manufacturer    `json:"manufacturer,omitempty" gorm:"foreignKey:ManufacturerID"`
+	CountType       *CountType       `json:"count_type,omitempty" gorm:"foreignKey:CountTypeID;references:CountTypeID"`
 }
 
 func (Product) TableName() string {
@@ -200,15 +200,15 @@ func (Subbiercategory) TableName() string {
 }
 
 type JobDevice struct {
-	JobID          int        `json:"jobID" gorm:"primaryKey;column:jobid"`
-	DeviceID       string     `json:"deviceID" gorm:"primaryKey;column:deviceid"`
-	Job            Job        `json:"job,omitempty" gorm:"foreignKey:JobID"`
-	Device         Device     `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
-	CustomPrice    *float64   `json:"custom_price" gorm:"column:custom_price"`
-	PackageID      *int       `json:"package_id" gorm:"column:package_id"`
-	IsPackageItem  bool       `json:"is_package_item" gorm:"column:is_package_item;default:false"`
-	PackStatus     string     `json:"pack_status" gorm:"column:pack_status;default:pending"`
-	PackTs         *time.Time `json:"pack_ts" gorm:"column:pack_ts"`
+	JobID         int        `json:"jobID" gorm:"primaryKey;column:jobid"`
+	DeviceID      string     `json:"deviceID" gorm:"primaryKey;column:deviceid"`
+	Job           Job        `json:"job,omitempty" gorm:"foreignKey:JobID"`
+	Device        Device     `json:"device,omitempty" gorm:"foreignKey:DeviceID"`
+	CustomPrice   *float64   `json:"custom_price" gorm:"column:custom_price"`
+	PackageID     *int       `json:"package_id" gorm:"column:package_id"`
+	IsPackageItem bool       `json:"is_package_item" gorm:"column:is_package_item;default:false"`
+	PackStatus    string     `json:"pack_status" gorm:"column:pack_status;default:pending"`
+	PackTs        *time.Time `json:"pack_ts" gorm:"column:pack_ts"`
 }
 
 func (JobDevice) TableName() string {
