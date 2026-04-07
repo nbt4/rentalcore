@@ -36,6 +36,20 @@ export interface JobStatus {
   status: string;
 }
 
+export interface JobDevice {
+  jobID: number;
+  deviceID: string;
+  device: {
+    deviceID: string;
+    serialno?: string;
+    product?: {
+      productname?: string;
+      ItemCostPerDay?: number;
+    };
+  };
+  custom_price?: number | null;
+}
+
 export interface Job {
   jobID: number;
   job_code: string;
@@ -67,6 +81,8 @@ export const jobsApi = {
     api.get<{ jobs: Job[] }>('/jobs', { params }),
   getById: (id: number) =>
     api.get<Job>(`/jobs/${id}`),
+  getDevices: (id: number) =>
+    api.get<{ devices: JobDevice[] }>(`/jobs/${id}/devices`),
   create: (data: Partial<Job>) =>
     api.post<{ jobID: number; job_code: string }>('/jobs', data),
   update: (id: number, data: Partial<Job>) =>

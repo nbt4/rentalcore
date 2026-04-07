@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Plus, Search, RefreshCw, Briefcase, Calendar, User,
-  ArrowLeft, Trash2, Edit3, X, Check,
+  ArrowLeft, Trash2, Edit3, X, Check, Monitor,
 } from 'lucide-react';
 import { jobsApi, customersApi, statusApi } from '../lib/api';
-import type { Job, Customer, JobStatus } from '../lib/api';
+import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -31,12 +31,19 @@ function formatDate(d?: string | null) {
 
 function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [job, setJob] = useState<Job | null>(null);
+  const [devices, setDevices] = useState<JobDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    jobsApi.getById(id).then((r) => setJob(r.data)).catch(console.error).finally(() => setLoading(false));
+    Promise.all([
+      jobsApi.getById(id),
+      jobsApi.getDevices(id),
+    ]).then(([jRes, dRes]) => {
+      setJob(jRes.data);
+      setDevices(dRes.data.devices || []);
+    }).catch(console.error).finally(() => setLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
@@ -109,6 +116,43 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
             </div>
           ) : <p className="text-gray-500">Kein Kunde zugeordnet</p>}
         </div>
+      </div>
+
+      <div className="glass-dark rounded-xl border border-white/10 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Monitor className="w-4 h-4 text-accent-red" />
+          <h3 className="font-semibold text-white">Geräte ({devices.length})</h3>
+        </div>
+        {devices.length === 0 ? (
+          <p className="text-gray-500 text-sm">Keine Geräte zugeordnet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-gray-400">
+                  <th className="text-left py-2 pr-4 font-medium">Gerät</th>
+                  <th className="text-left py-2 pr-4 font-medium">Seriennummer</th>
+                  <th className="text-right py-2 font-medium">Preis/Tag</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {devices.map((d) => (
+                  <tr key={d.deviceID}>
+                    <td className="py-2.5 pr-4 text-white">{d.device?.product?.productname || d.deviceID}</td>
+                    <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">{d.device?.serialno || '—'}</td>
+                    <td className="py-2.5 text-right text-gray-300">
+                      {d.custom_price != null
+                        ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
+                        : d.device?.product?.ItemCostPerDay != null
+                          ? `€${Number(d.device.product.ItemCostPerDay).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
+                          : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -263,13 +307,15 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
 export function JobsPage() {
   const { id: paramId } = useParams<{ id?: string }>();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'list' | 'detail' | 'new' | 'edit'>(
-    paramId ? 'detail' : 'list'
-  );
+
+  const isEdit = pathname.endsWith('/edit');
+  const initialView = isEdit ? 'edit' : paramId ? 'detail' : 'list';
+  const [view, setView] = useState<'list' | 'detail' | 'new' | 'edit'>(initialView);
 
   const detailId = paramId ? Number(paramId) : null;
 
@@ -279,7 +325,9 @@ export function JobsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setView(paramId ? 'detail' : 'list'); }, [paramId]);
+  useEffect(() => {
+    setView(pathname.endsWith('/edit') ? 'edit' : paramId ? 'detail' : 'list');
+  }, [paramId, pathname]);
 
   const filtered = jobs.filter((j) => {
     const q = search.toLowerCase();
