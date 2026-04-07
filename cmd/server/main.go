@@ -867,6 +867,7 @@ func setupRoutes(r *gin.Engine,
 		{
 			jobs.GET("", spaHandler)
 			jobs.GET("/new", spaHandler)
+			jobs.GET("/new/", spaHandler)
 			jobs.POST("", jobHandler.CreateJob)
 			jobs.GET("/:id", spaHandler)
 			jobs.GET("/:id/edit", spaHandler)

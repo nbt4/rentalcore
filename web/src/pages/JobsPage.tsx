@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import {
   Plus, Search, RefreshCw, Briefcase, Calendar, User,
   ArrowLeft, Trash2, Edit3, X, Check, Monitor,
@@ -335,15 +335,12 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
 export function JobsPage() {
   const { id: paramId } = useParams<{ id?: string }>();
-  const { pathname } = useLocation();
+  const matchEdit = useMatch('/jobs/:id/edit');
+  const matchNew = useMatch('/jobs/new');
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const isEdit = pathname.endsWith('/edit');
-  const initialView = isEdit ? 'edit' : paramId ? 'detail' : 'list';
-  const [view, setView] = useState<'list' | 'detail' | 'new' | 'edit'>(initialView);
 
   const detailId = paramId ? Number(paramId) : null;
 
@@ -353,9 +350,6 @@ export function JobsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    setView(pathname.endsWith('/edit') ? 'edit' : paramId ? 'detail' : 'list');
-  }, [paramId, pathname]);
 
   const filtered = jobs.filter((j) => {
     const q = search.toLowerCase();
@@ -366,16 +360,16 @@ export function JobsPage() {
     );
   });
 
-  if (view === 'detail' && detailId) {
-    return <JobDetail id={detailId} onBack={() => { navigate('/jobs'); load(); }} />;
-  }
-
-  if (view === 'new') {
-    return <JobForm onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => setView('list')} />;
-  }
-
-  if (view === 'edit' && detailId) {
+  if (matchEdit && detailId) {
     return <JobForm jobId={detailId} onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => navigate(`/jobs/${detailId}`)} />;
+  }
+
+  if (matchNew) {
+    return <JobForm onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => navigate('/jobs')} />;
+  }
+
+  if (detailId && !matchNew && !matchEdit) {
+    return <JobDetail id={detailId} onBack={() => { navigate('/jobs'); load(); }} />;
   }
 
   return (
@@ -386,7 +380,7 @@ export function JobsPage() {
           <p className="text-gray-400 text-sm mt-1">Verwalte deine Aufträge und Projekte</p>
         </div>
         <button
-          onClick={() => setView('new')}
+          onClick={() => navigate('/jobs/new')}
           className="flex items-center gap-2 px-4 py-2.5 bg-accent-red hover:bg-accent-red/80 text-white rounded-lg font-medium transition-colors"
         >
           <Plus className="w-4 h-4" /> Neuer Job
