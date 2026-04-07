@@ -1266,6 +1266,9 @@ func setupRoutes(r *gin.Engine,
 		// API routes
 		api := protected.Group("/api/v1")
 		{
+			// Statuses API
+			api.GET("/statuses", statusHandler.ListStatuses)
+
 			// Job API
 			apiJobs := api.Group("/jobs")
 			{

@@ -27,6 +27,69 @@ function formatDate(d?: string | null) {
   return new Date(d).toLocaleDateString('de-DE');
 }
 
+// ── Device List (grouped by product) ─────────────────────────
+
+function DeviceList({ devices }: { devices: JobDevice[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Group devices by product name
+  const groups = devices.reduce<Record<string, { name: string; devices: JobDevice[] }>>((acc, d) => {
+    const name = d.device?.product?.productname || 'Unbekanntes Produkt';
+    if (!acc[name]) acc[name] = { name, devices: [] };
+    acc[name].devices.push(d);
+    return acc;
+  }, {});
+
+  const toggle = (name: string) =>
+    setExpanded((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });
+
+  return (
+    <div className="glass-dark rounded-xl border border-white/10 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Monitor className="w-4 h-4 text-accent-red" />
+        <h3 className="font-semibold text-white">Geräte ({devices.length})</h3>
+      </div>
+      {devices.length === 0 ? (
+        <p className="text-gray-500 text-sm">Keine Geräte zugeordnet</p>
+      ) : (
+        <div className="space-y-1">
+          {Object.values(groups).map(({ name, devices: grpDevices }) => (
+            <div key={name} className="rounded-lg overflow-hidden border border-white/5">
+              <button
+                onClick={() => toggle(name)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <Monitor className="w-4 h-4 text-gray-400" />
+                  <span className="text-white text-sm font-medium">{name}</span>
+                  <span className="text-xs text-gray-400 bg-white/10 px-2 py-0.5 rounded-full">{grpDevices.length}×</span>
+                </div>
+                <span className="text-gray-500 text-xs">{expanded.has(name) ? '▲' : '▼'}</span>
+              </button>
+              {expanded.has(name) && (
+                <div className="border-t border-white/5 px-4 py-2 bg-white/2">
+                  {grpDevices.map((d) => (
+                    <div key={d.deviceID} className="flex items-center justify-between py-1.5 text-xs text-gray-400">
+                      <span className="font-mono">{d.device?.serialno || d.deviceID}</span>
+                      <span>
+                        {d.custom_price != null
+                          ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
+                          : d.device?.product?.ItemCostPerDay != null
+                            ? `€${Number(d.device.product.ItemCostPerDay).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
+                            : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Job Detail ────────────────────────────────────────────────
 
 function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
@@ -118,42 +181,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
         </div>
       </div>
 
-      <div className="glass-dark rounded-xl border border-white/10 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Monitor className="w-4 h-4 text-accent-red" />
-          <h3 className="font-semibold text-white">Geräte ({devices.length})</h3>
-        </div>
-        {devices.length === 0 ? (
-          <p className="text-gray-500 text-sm">Keine Geräte zugeordnet</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-gray-400">
-                  <th className="text-left py-2 pr-4 font-medium">Gerät</th>
-                  <th className="text-left py-2 pr-4 font-medium">Seriennummer</th>
-                  <th className="text-right py-2 font-medium">Preis/Tag</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {devices.map((d) => (
-                  <tr key={d.deviceID}>
-                    <td className="py-2.5 pr-4 text-white">{d.device?.product?.productname || d.deviceID}</td>
-                    <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">{d.device?.serialno || '—'}</td>
-                    <td className="py-2.5 text-right text-gray-300">
-                      {d.custom_price != null
-                        ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
-                        : d.device?.product?.ItemCostPerDay != null
-                          ? `€${Number(d.device.product.ItemCostPerDay).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
-                          : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <DeviceList devices={devices} />
     </div>
   );
 }
