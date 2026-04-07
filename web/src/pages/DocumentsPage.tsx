@@ -29,13 +29,14 @@ function mimeIcon(mime: string) {
   return '📎';
 }
 
-const ENTITY_TYPES = ['job', 'device', 'customer', 'user', 'system'] as const;
 const DOC_TYPES = ['contract', 'manual', 'photo', 'invoice', 'receipt', 'signature', 'other'] as const;
+const DOC_TYPE_LABELS: Record<string, string> = {
+  contract: 'Vertrag', manual: 'Handbuch', photo: 'Foto',
+  invoice: 'Rechnung', receipt: 'Quittung', signature: 'Unterschrift', other: 'Sonstiges',
+};
 
 function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [entityType, setEntityType] = useState<string>('job');
-  const [entityID, setEntityID] = useState('');
   const [docType, setDocType] = useState<string>('other');
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -50,8 +51,8 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
     try {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('entityType', entityType);
-      fd.append('entityID', entityID || '0');
+      fd.append('entityType', 'system');
+      fd.append('entityID', '0');
       fd.append('documentType', docType);
       fd.append('description', description);
       await fetch('/documents/upload', {
@@ -86,22 +87,10 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Datei *</label>
             <input ref={fileRef} type="file" required className="w-full text-sm text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-accent-red/20 file:text-accent-red file:text-sm file:cursor-pointer hover:file:bg-accent-red/30" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Entitätstyp</label>
-              <select value={entityType} onChange={(e) => setEntityType(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm">
-                {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Entitäts-ID</label>
-              <input type="text" value={entityID} onChange={(e) => setEntityID(e.target.value)} placeholder="z.B. 123" className="w-full px-3 py-2 rounded-lg text-sm" />
-            </div>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Dokumenttyp</label>
             <select value={docType} onChange={(e) => setDocType(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm">
-              {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {DOC_TYPES.map((t) => <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>)}
             </select>
           </div>
           <div>

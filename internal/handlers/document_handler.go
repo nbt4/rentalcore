@@ -43,15 +43,17 @@ func NewDocumentHandler(db *gorm.DB) *DocumentHandler {
 	}
 
 	allowedTypes := map[string]bool{
-		"application/pdf":    true,
-		"image/jpeg":         true,
-		"image/jpg":          true,
-		"image/png":          true,
-		"image/gif":          true,
-		"text/plain":         true,
-		"application/msword": true,
+		"application/pdf":                    true,
+		"application/octet-stream":           true, // generic fallback browsers often send
+		"image/jpeg":                         true,
+		"image/jpg":                          true,
+		"image/png":                          true,
+		"image/gif":                          true,
+		"image/webp":                         true,
+		"text/plain":                         true,
+		"application/msword":                 true,
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-		"application/vnd.ms-excel": true,
+		"application/vnd.ms-excel":           true,
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
 	}
 
