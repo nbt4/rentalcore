@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useParams, useMatch } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Plus, Search, RefreshCw, Briefcase, Calendar, User,
   ArrowLeft, Trash2, Edit3, X, Check, Monitor,
@@ -34,7 +34,7 @@ function DeviceList({ devices }: { devices: JobDevice[] }) {
 
   // Group devices by product name
   const groups = devices.reduce<Record<string, { name: string; devices: JobDevice[] }>>((acc, d) => {
-    const name = d.device?.product?.productname || 'Unbekanntes Produkt';
+    const name = d.device?.product?.name || 'Unbekanntes Produkt';
     if (!acc[name]) acc[name] = { name, devices: [] };
     acc[name].devices.push(d);
     return acc;
@@ -70,12 +70,12 @@ function DeviceList({ devices }: { devices: JobDevice[] }) {
                 <div className="border-t border-white/5 px-4 py-2 bg-white/2">
                   {grpDevices.map((d) => (
                     <div key={d.deviceID} className="flex items-center justify-between py-1.5 text-xs text-gray-400">
-                      <span className="font-mono">{d.device?.serialno || d.deviceID}</span>
+                      <span className="font-mono">{d.device?.serialnumber || d.deviceID}</span>
                       <span>
                         {d.custom_price != null
                           ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
-                          : d.device?.product?.ItemCostPerDay != null
-                            ? `€${Number(d.device.product.ItemCostPerDay).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
+                          : d.device?.product?.itemcostperday != null
+                            ? `€${Number(d.device.product.itemcostperday).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
                             : ''}
                       </span>
                     </div>
@@ -335,14 +335,14 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
 export function JobsPage() {
   const { id: paramId } = useParams<{ id?: string }>();
-  const matchEdit = useMatch('/jobs/:id/edit');
-  const matchNew = useMatch('/jobs/new');
+  const { pathname } = useLocation();
   const navigate = useNavigate();
+  const detailId = paramId ? Number(paramId) : null;
+  const isEdit = !!detailId && pathname === `/jobs/${paramId}/edit`;
+  const isNew = pathname === '/jobs/new';
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const detailId = paramId ? Number(paramId) : null;
 
   const load = useCallback(() => {
     setLoading(true);
@@ -360,15 +360,15 @@ export function JobsPage() {
     );
   });
 
-  if (matchEdit && detailId) {
+  if (isEdit && detailId) {
     return <JobForm jobId={detailId} onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => navigate(`/jobs/${detailId}`)} />;
   }
 
-  if (matchNew) {
+  if (isNew) {
     return <JobForm onSaved={(id) => { navigate(`/jobs/${id}`); load(); }} onCancel={() => navigate('/jobs')} />;
   }
 
-  if (detailId && !matchNew && !matchEdit) {
+  if (detailId && !isNew && !isEdit) {
     return <JobDetail id={detailId} onBack={() => { navigate('/jobs'); load(); }} />;
   }
 

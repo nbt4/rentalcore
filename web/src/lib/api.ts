@@ -41,10 +41,10 @@ export interface JobDevice {
   deviceID: string;
   device: {
     deviceID: string;
-    serialno?: string;
+    serialnumber?: string;
     product?: {
-      productname?: string;
-      ItemCostPerDay?: number;
+      name?: string;
+      itemcostperday?: number;
     };
   };
   custom_price?: number | null;
