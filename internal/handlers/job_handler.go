@@ -1080,14 +1080,22 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 
 	// Create job from request data
 	var job models.Job
-	if customerID, ok := requestData["customerid"]; ok {
-		if cid, ok := customerID.(float64); ok {
-			job.CustomerID = uint(cid)
+	// Accept both legacy "customerid" and API "customer_id"
+	for _, key := range []string{"customer_id", "customerid"} {
+		if customerID, ok := requestData[key]; ok {
+			if cid, ok := customerID.(float64); ok && cid > 0 {
+				job.CustomerID = uint(cid)
+				break
+			}
 		}
 	}
-	if statusID, ok := requestData["statusid"]; ok {
-		if sid, ok := statusID.(float64); ok {
-			job.StatusID = uint(sid)
+	// Accept both legacy "statusid" and API "status_id"
+	for _, key := range []string{"status_id", "statusid"} {
+		if statusID, ok := requestData[key]; ok {
+			if sid, ok := statusID.(float64); ok && sid > 0 {
+				job.StatusID = uint(sid)
+				break
+			}
 		}
 	}
 	// Job category (accept both snake_case and existing camel-like key)
@@ -1135,18 +1143,24 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		}
 	}
 
-	// Handle date fields manually
-	if startDateStr, ok := requestData["startdate"]; ok {
-		if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
-			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-				job.StartDate = &parsed
+	// Handle date fields manually — accept camelCase (frontend) and lowercase (legacy)
+	for _, key := range []string{"startDate", "startdate", "start_date"} {
+		if startDateStr, ok := requestData[key]; ok {
+			if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
+				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
+					job.StartDate = &parsed
+					break
+				}
 			}
 		}
 	}
-	if endDateStr, ok := requestData["enddate"]; ok {
-		if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
-			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-				job.EndDate = &parsed
+	for _, key := range []string{"endDate", "enddate", "end_date"} {
+		if endDateStr, ok := requestData[key]; ok {
+			if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
+				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
+					job.EndDate = &parsed
+					break
+				}
 			}
 		}
 	}
@@ -1258,14 +1272,22 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		StartDate:     existingJob.StartDate,
 		EndDate:       existingJob.EndDate,
 	}
-	if customerID, ok := requestData["customerid"]; ok {
-		if cid, ok := customerID.(float64); ok {
-			job.CustomerID = uint(cid)
+	// Accept both legacy "customerid" and API "customer_id"
+	for _, key := range []string{"customer_id", "customerid"} {
+		if customerID, ok := requestData[key]; ok {
+			if cid, ok := customerID.(float64); ok && cid > 0 {
+				job.CustomerID = uint(cid)
+				break
+			}
 		}
 	}
-	if statusID, ok := requestData["statusid"]; ok {
-		if sid, ok := statusID.(float64); ok {
-			job.StatusID = uint(sid)
+	// Accept both legacy "statusid" and API "status_id"
+	for _, key := range []string{"status_id", "statusid"} {
+		if statusID, ok := requestData[key]; ok {
+			if sid, ok := statusID.(float64); ok && sid > 0 {
+				job.StatusID = uint(sid)
+				break
+			}
 		}
 	}
 	if description, ok := requestData["description"]; ok {
@@ -1294,18 +1316,24 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		}
 	}
 
-	// Handle date fields manually
-	if startDateStr, ok := requestData["startdate"]; ok {
-		if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
-			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-				job.StartDate = &parsed
+	// Handle date fields manually — accept camelCase (frontend) and lowercase (legacy)
+	for _, key := range []string{"startDate", "startdate", "start_date"} {
+		if startDateStr, ok := requestData[key]; ok {
+			if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
+				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
+					job.StartDate = &parsed
+					break
+				}
 			}
 		}
 	}
-	if endDateStr, ok := requestData["enddate"]; ok {
-		if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
-			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-				job.EndDate = &parsed
+	for _, key := range []string{"endDate", "enddate", "end_date"} {
+		if endDateStr, ok := requestData[key]; ok {
+			if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
+				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
+					job.EndDate = &parsed
+					break
+				}
 			}
 		}
 	}
