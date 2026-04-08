@@ -63,7 +63,7 @@ type AnalyticsCache struct {
 // ================================================================
 
 type Document struct {
-	DocumentID       uint      `gorm:"column:documentID;primaryKey;autoIncrement" json:"documentID"`
+	DocumentID       uint      `gorm:"column:documentid;primaryKey;autoIncrement" json:"documentID"`
 	EntityType       string    `gorm:"type:enum('job','device','customer','user','system');not null" json:"entityType"`
 	EntityID         string    `gorm:"not null" json:"entityID"`
 	Filename         string    `gorm:"not null" json:"filename"`
@@ -77,7 +77,7 @@ type Document struct {
 	UploadedAt       time.Time `json:"uploadedAt"`
 	IsPublic         bool      `gorm:"default:false" json:"isPublic"`
 	Version          int       `gorm:"default:1" json:"version"`
-	ParentDocumentID *uint     `gorm:"column:parent_documentID" json:"parentDocumentID"`
+	ParentDocumentID *uint     `gorm:"column:parent_documentid" json:"parentDocumentID"`
 	Checksum         string    `json:"checksum"`
 
 	// Relationships
