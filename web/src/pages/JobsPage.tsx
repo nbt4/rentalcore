@@ -494,10 +494,16 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statuses, setStatuses] = useState<JobStatus[]>([]);
   const [selections, setSelections] = useState<ProductSelection[]>([]);
+  const [devices, setDevices] = useState<JobDevice[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const loadDevices = useCallback(() => {
+    if (!jobId) return;
+    jobsApi.getDevices(jobId).then((r) => setDevices(r.data.devices || [])).catch(console.error);
+  }, [jobId]);
 
   useEffect(() => {
     setLoading(true);
@@ -510,19 +516,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       setCustomers(cRes.data.customers || []);
       setStatuses(sRes.data.statuses || []);
       if (jRes) setForm(jRes.data);
-      // Pre-populate selections from existing devices
-      if (dRes) {
-        const devs: JobDevice[] = dRes.data.devices || [];
-        const counts = devs.reduce<Record<string, { name: string; count: number }>>((acc, d) => {
-          const pid = String(d.device?.product?.name || 'unknown');
-          if (!acc[pid]) acc[pid] = { name: d.device?.product?.name || 'Unbekannt', count: 0 };
-          acc[pid].count++;
-          return acc;
-        }, {});
-        // We can't recover product_ids from device list easily, so just show device count info
-        // The user can manage devices via the detail page remove buttons
-        void counts; // acknowledged but not used for selections (no product_id available)
-      }
+      if (dRes) setDevices(dRes.data.devices || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
 
@@ -724,11 +718,9 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
         </form>
       </div>
 
-      {/* Note for edit mode about removing existing devices */}
-      {jobId && (
-        <p className="text-xs text-gray-500 text-center">
-          Einzelne Geräte können in der Job-Detailansicht entfernt werden. Hier neue Produkte hinzufügen.
-        </p>
+      {/* Existing devices — only in edit mode */}
+      {jobId && devices.length > 0 && (
+        <DeviceList devices={devices} jobId={jobId} onChanged={loadDevices} />
       )}
     </div>
   );
