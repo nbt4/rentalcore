@@ -480,7 +480,14 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.10** (Latest) - Fix: PDF upload "Failed to save upload record" & PostgreSQL sequence sync
+### **v5.3.11** (Latest) - feat: add product mappings nav link, clear search input on cancel
+
+- Added "Produkt-Mappings" link in the user dropdown navigation menu
+- Fixed UX issue in mapping management: search input now clears when cancelling an edit
+
+---
+
+### **v5.3.10** - Fix: PDF upload "Failed to save upload record" & PostgreSQL sequence sync
 
 - **Bug Fix**: PDF uploads failed with "Failed to save upload record" due to PostgreSQL sequences being out of sync with actual table data (sequences reset to 1 after volume recreation)
 - Fixed all `pdf_*` table sequences by aligning them with current MAX ids
