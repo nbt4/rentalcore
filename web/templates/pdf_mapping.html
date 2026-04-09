@@ -256,6 +256,23 @@ function updateStats() {
         container.dataset.mappedCount = mapped;
         container.dataset.pendingCount = pending;
     }
+
+    // Hard-block finalize button and show warning when items are pending
+    const finishBtn = document.getElementById('finishMappingsBtn');
+    const warningBanner = document.getElementById('pendingWarningBanner');
+    const warningCount = document.getElementById('pendingWarningCount');
+    if (finishBtn) {
+        finishBtn.disabled = pending > 0;
+        finishBtn.title = pending > 0 ? (pending + ' Position(en) noch nicht gemappt') : '';
+        finishBtn.style.opacity = pending > 0 ? '0.45' : '';
+        finishBtn.style.cursor = pending > 0 ? 'not-allowed' : '';
+    }
+    if (warningBanner) {
+        warningBanner.style.display = pending > 0 ? '' : 'none';
+    }
+    if (warningCount) {
+        warningCount.textContent = pending;
+    }
 }
 
 function setItemFilter(filter, chip) {
@@ -1393,6 +1410,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="button" class="filter-chip" data-filter="mapped" onclick="setItemFilter('mapped', this)">Mapped</button>
         </div>
 
+        <!-- Pending-Warning Banner — direkt vor <div id="mappingContainer" ...> -->
+        <div id="pendingWarningBanner" style="display:none; margin-bottom: 12px;">
+            <div class="rc-alert rc-alert-warning" style="display:flex; align-items:center; gap:10px;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span><strong id="pendingWarningCount">0</strong> Position(en) noch nicht gemappt — Job kann erst erstellt werden wenn alle Positionen zugeordnet sind.</span>
+            </div>
+        </div>
+
         <!-- Mapping Items -->
         <div id="mappingContainer"
              data-total-items="{{.totalItems}}"
@@ -1544,9 +1569,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <!-- Footer Actions -->
         <div class="mapping-card" style="position: sticky; bottom: 20px; background: var(--rc-bg-card); box-shadow: 0 -4px 12px rgba(0,0,0,0.1);">
             <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
-                <button onclick="window.location.href='/pdf/review/{{.upload.UploadID}}'" class="rc-btn rc-btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Review
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="window.location.href='/pdf/review/{{.upload.UploadID}}'" class="rc-btn rc-btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Review
+                    </button>
+                    <a href="/settings/mappings" class="rc-btn rc-btn-outline rc-btn-sm" style="font-size:12px;">
+                        <i class="bi bi-database-gear"></i> Globale Mappings
+                    </a>
+                </div>
                 <div style="display: flex; gap: 10px;">
                     <button id="saveMappingsBtn" onclick="saveAndContinue()" class="rc-btn rc-btn-success">
                         <i class="bi bi-save"></i> Save Progress
