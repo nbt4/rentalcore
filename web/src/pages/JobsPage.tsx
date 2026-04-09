@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Plus, Search, RefreshCw, Briefcase, Calendar, User,
-  ArrowLeft, Trash2, Edit3, X, Check, Monitor,
+  ArrowLeft, Trash2, Edit3, X, Check, Monitor, Package,
+  ChevronRight, ChevronDown, FileText, Upload,
 } from 'lucide-react';
-import { jobsApi, customersApi, statusApi } from '../lib/api';
+import { jobsApi, customersApi, statusApi, api } from '../lib/api';
 import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
 
 function statusColor(status: string) {
@@ -16,7 +17,7 @@ function statusColor(status: string) {
   return 'bg-accent-red/10 text-accent-red border-accent-red/20';
 }
 
-function customerName(c?: Customer) {
+function customerName(c?: Customer | null) {
   if (!c) return '—';
   if (c.companyname) return c.companyname;
   return `${c.firstname || ''} ${c.lastname || ''}`.trim() || '—';
@@ -27,12 +28,115 @@ function formatDate(d?: string | null) {
   return new Date(d).toLocaleDateString('de-DE');
 }
 
+// ── Product Tree (availability) ───────────────────────────────
+
+interface ProductNode {
+  id: number;
+  name: string;
+  available_count?: number;
+  device_count?: number;
+  is_consumable?: boolean;
+  stock_quantity?: number;
+}
+interface TreeNode {
+  id: number;
+  name: string;
+  products?: ProductNode[];
+  subcategories?: TreeNode[];
+  subbiercategories?: TreeNode[];
+}
+
+function ProductPicker({
+  startDate, endDate, jobId, onSelect,
+}: {
+  startDate: string; endDate: string; jobId?: number;
+  onSelect: (productId: number, name: string, qty: number) => void;
+}) {
+  const [tree, setTree] = useState<TreeNode[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [qty, setQty] = useState<Record<number, number>>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!startDate || !endDate) return;
+    setLoading(true);
+    let url = `/api/v1/devices/tree/availability?start_date=${startDate}&end_date=${endDate}`;
+    if (jobId) url += `&job_id=${jobId}`;
+    api.get(url).then((r) => setTree(r.data.treeData || [])).catch(console.error).finally(() => setLoading(false));
+  }, [startDate, endDate, jobId]);
+
+  const toggle = (id: string) =>
+    setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const renderProducts = (products: ProductNode[]) =>
+    products.map((p) => {
+      const avail = p.available_count ?? 0;
+      const total = p.device_count ?? 0;
+      const cur = qty[p.id] ?? 0;
+      return (
+        <div key={p.id} className="flex items-center justify-between px-4 py-2 hover:bg-white/5 rounded-lg">
+          <div className="flex items-center gap-2 min-w-0">
+            <Package className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            <span className="text-sm text-white truncate">{p.name}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${avail > 0 ? 'bg-green-500/10 text-green-400' : total === 0 ? 'bg-gray-500/10 text-gray-400' : 'bg-red-500/10 text-red-400'}`}>
+              {avail}/{total} frei
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <input
+              type="number" min={0} max={avail} value={cur}
+              onChange={(e) => setQty((q) => ({ ...q, [p.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
+              className="w-16 px-2 py-1 text-center text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-red"
+            />
+            <button
+              onClick={() => { if (cur > 0) onSelect(p.id, p.name, cur); }}
+              disabled={cur === 0}
+              className="px-3 py-1 text-xs bg-accent-red/80 hover:bg-accent-red disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      );
+    });
+
+  const renderNode = (node: TreeNode, prefix: string): React.ReactNode => {
+    const key = `${prefix}-${node.id}`;
+    const open = expanded.has(key);
+    const children = [
+      ...(node.subcategories || []).map((s) => renderNode(s, `sub-${key}`)),
+      ...(node.subbiercategories || []).map((s) => renderNode(s, `subbier-${key}`)),
+      ...(open && node.products ? renderProducts(node.products) : []),
+    ];
+    return (
+      <div key={key}>
+        <button
+          onClick={() => toggle(key)}
+          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 rounded-lg text-left transition-colors"
+        >
+          {open ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+          <span className="text-sm font-medium text-gray-200">{node.name}</span>
+        </button>
+        {open && <div className="ml-4 border-l border-white/5 pl-2">{children}</div>}
+      </div>
+    );
+  };
+
+  if (!startDate || !endDate) return (
+    <p className="text-gray-500 text-sm text-center py-4">Bitte zuerst Start- und Enddatum setzen.</p>
+  );
+  if (loading) return <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
+  if (!tree.length) return <p className="text-gray-500 text-sm text-center py-4">Keine Produkte verfügbar.</p>;
+
+  return <div className="space-y-1 max-h-72 overflow-y-auto">{tree.map((n) => renderNode(n, 'cat'))}</div>;
+}
+
 // ── Device List (grouped by product) ─────────────────────────
 
-function DeviceList({ devices }: { devices: JobDevice[] }) {
+function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId?: number; onChanged?: () => void }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [removing, setRemoving] = useState<string | null>(null);
 
-  // Group devices by product name
   const groups = devices.reduce<Record<string, { name: string; devices: JobDevice[] }>>((acc, d) => {
     const name = d.device?.product?.name || 'Unbekanntes Produkt';
     if (!acc[name]) acc[name] = { name, devices: [] };
@@ -42,6 +146,19 @@ function DeviceList({ devices }: { devices: JobDevice[] }) {
 
   const toggle = (name: string) =>
     setExpanded((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });
+
+  const removeDevice = async (deviceId: string) => {
+    if (!jobId) return;
+    setRemoving(deviceId);
+    try {
+      await api.delete(`/api/v1/jobs/${jobId}/devices/${deviceId}`);
+      onChanged?.();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRemoving(null);
+    }
+  };
 
   return (
     <div className="glass-dark rounded-xl border border-white/10 p-5">
@@ -71,13 +188,25 @@ function DeviceList({ devices }: { devices: JobDevice[] }) {
                   {grpDevices.map((d) => (
                     <div key={d.deviceID} className="flex items-center justify-between py-1.5 text-xs text-gray-400">
                       <span className="font-mono">{d.device?.serialnumber || d.deviceID}</span>
-                      <span>
-                        {d.custom_price != null
-                          ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
-                          : d.device?.product?.itemcostperday != null
-                            ? `€${Number(d.device.product.itemcostperday).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
-                            : ''}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span>
+                          {d.custom_price != null
+                            ? `€${Number(d.custom_price).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
+                            : d.device?.product?.itemcostperday != null
+                              ? `€${Number(d.device.product.itemcostperday).toLocaleString('de-DE', { minimumFractionDigits: 2 })}/Tag`
+                              : ''}
+                        </span>
+                        {jobId && onChanged && (
+                          <button
+                            onClick={() => removeDevice(d.deviceID)}
+                            disabled={removing === d.deviceID}
+                            className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors disabled:opacity-40"
+                            title="Gerät entfernen"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -99,7 +228,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     Promise.all([
       jobsApi.getById(id),
       jobsApi.getDevices(id),
@@ -108,6 +237,8 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
       setDevices(dRes.data.devices || []);
     }).catch(console.error).finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleDelete = async () => {
     if (!confirm('Job wirklich löschen?')) return;
@@ -181,7 +312,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
         </div>
       </div>
 
-      <DeviceList devices={devices} />
+      <DeviceList devices={devices} jobId={id} onChanged={loadData} />
     </div>
   );
 }
@@ -195,12 +326,175 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// ── Selected Products Summary ─────────────────────────────────
+
+interface ProductSelection {
+  product_id: number;
+  name: string;
+  quantity: number;
+}
+
+function SelectedProductsSummary({
+  selections, onChange,
+}: {
+  selections: ProductSelection[];
+  onChange: (s: ProductSelection[]) => void;
+}) {
+  if (selections.length === 0) return (
+    <p className="text-gray-500 text-sm">Noch keine Produkte ausgewählt.</p>
+  );
+  return (
+    <div className="space-y-1">
+      {selections.map((s) => (
+        <div key={s.product_id} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg">
+          <span className="text-sm text-gray-200">{s.name}</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min={1} value={s.quantity}
+              onChange={(e) => {
+                const qty = Math.max(1, Number(e.target.value));
+                onChange(selections.map((x) => x.product_id === s.product_id ? { ...x, quantity: qty } : x));
+              }}
+              className="w-16 px-2 py-1 text-center text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-red"
+            />
+            <button
+              onClick={() => onChange(selections.filter((x) => x.product_id !== s.product_id))}
+              className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── PDF Upload ────────────────────────────────────────────────
+
+function PdfImportBanner({ onApply }: {
+  onApply: (data: { customer_id?: number; start_date?: string; end_date?: string; products: ProductSelection[] }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const upload = async () => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) { setError('Bitte eine PDF-Datei auswählen.'); return; }
+    setError(''); setStatus('Wird hochgeladen…');
+
+    const fd = new FormData();
+    fd.append('pdf', file);
+    try {
+      const up = await fetch('/api/pdf/upload', { method: 'POST', body: fd, credentials: 'include' });
+      const upData = await up.json();
+      if (!up.ok || !upData.upload_id) throw new Error(upData.error || 'Upload fehlgeschlagen');
+      setStatus('OCR läuft…');
+
+      // Poll for extraction
+      let extraction = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        const ex = await fetch(`/api/pdf/extraction/${upData.upload_id}`, { credentials: 'include' });
+        if (ex.ok) { const d = await ex.json(); if (d.extraction_id) { extraction = d; break; } }
+      }
+      if (!extraction) throw new Error('Zeitüberschreitung – OCR zu langsam');
+
+      setStatus('Auto-Mapping…');
+      await fetch(`/api/pdf/auto-map/${extraction.extraction_id}`, { method: 'POST', credentials: 'include' });
+      const final = await (await fetch(`/api/pdf/extraction/${upData.upload_id}`, { credentials: 'include' })).json();
+
+      // Build product selections from mapped items
+      const products: ProductSelection[] = (final.items || [])
+        .filter((it: { mapped_product_id: { Valid?: boolean; Int64?: number } | number | null; mapping_status: string }) => {
+          if (!it.mapped_product_id) return false;
+          if (typeof it.mapped_product_id === 'object') return it.mapped_product_id.Valid && (it.mapped_product_id.Int64 ?? 0) > 0;
+          return it.mapped_product_id > 0;
+        })
+        .filter((it: { mapping_status: string }) => it.mapping_status !== 'user_rejected')
+        .map((it: { mapped_product_id: { Int64?: number } | number; raw_product_text: string; quantity: { Valid?: boolean; Int64?: number } | number | null }) => ({
+          product_id: typeof it.mapped_product_id === 'object' ? (it.mapped_product_id?.Int64 ?? 0) : (it.mapped_product_id as number),
+          name: it.raw_product_text,
+          quantity: it.quantity
+            ? (typeof it.quantity === 'object' ? (it.quantity.Int64 ?? 1) : it.quantity)
+            : 1,
+        }));
+
+      onApply({
+        customer_id: final.customer_id ?? undefined,
+        start_date: final.start_date || undefined,
+        end_date: final.end_date || undefined,
+        products,
+      });
+
+      const unmapped = (final.items || []).filter((it: { mapped_product_id: null | { Valid?: boolean } }) =>
+        !it.mapped_product_id || (typeof it.mapped_product_id === 'object' && !it.mapped_product_id.Valid)
+      ).length;
+      setStatus(`Importiert. ${products.length} Produkt(e) übernommen.${unmapped > 0 ? ` ${unmapped} nicht zugeordnet.` : ''}`);
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler beim Import');
+      setStatus('');
+    }
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+        <div className="flex items-center gap-3">
+          <FileText className="w-4 h-4 text-blue-400" />
+          <div>
+            <p className="text-sm font-medium text-blue-300">Angebot / Rechnung als PDF?</p>
+            <p className="text-xs text-gray-500">Daten automatisch per OCR einlesen</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-sm transition-colors"
+        >
+          <Upload className="w-3.5 h-3.5" /> PDF hochladen
+        </button>
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-dark rounded-2xl border border-white/10 p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">PDF-Import (OCR)</h3>
+              <button onClick={() => { setOpen(false); setStatus(''); setError(''); }} className="p-1.5 hover:bg-white/10 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-400">Lade ein Angebot oder eine Rechnung als PDF hoch. Kunde, Datum und Produkte werden automatisch erkannt.</p>
+            <input ref={fileRef} type="file" accept="application/pdf" className="w-full text-sm text-gray-300 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white hover:file:bg-white/15 cursor-pointer" />
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            {status && <p className="text-sm text-green-400">{status}</p>}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={upload} className="flex items-center gap-2 px-4 py-2 bg-accent-red hover:bg-accent-red/80 text-white rounded-lg text-sm font-medium transition-colors">
+                <Upload className="w-4 h-4" /> Importieren
+              </button>
+              <button type="button" onClick={() => { setOpen(false); setStatus(''); setError(''); }} className="px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-sm transition-colors">
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Job Form ──────────────────────────────────────────────────
 
 function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: number) => void; onCancel: () => void }) {
   const [form, setForm] = useState<Partial<Job>>({});
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statuses, setStatuses] = useState<JobStatus[]>([]);
+  const [selections, setSelections] = useState<ProductSelection[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -211,23 +505,70 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       customersApi.getAll(),
       statusApi.getAll(),
       jobId ? jobsApi.getById(jobId) : Promise.resolve(null),
-    ]).then(([cRes, sRes, jRes]) => {
+      jobId ? jobsApi.getDevices(jobId) : Promise.resolve(null),
+    ]).then(([cRes, sRes, jRes, dRes]) => {
       setCustomers(cRes.data.customers || []);
       setStatuses(sRes.data.statuses || []);
       if (jRes) setForm(jRes.data);
+      // Pre-populate selections from existing devices
+      if (dRes) {
+        const devs: JobDevice[] = dRes.data.devices || [];
+        const counts = devs.reduce<Record<string, { name: string; count: number }>>((acc, d) => {
+          const pid = String(d.device?.product?.name || 'unknown');
+          if (!acc[pid]) acc[pid] = { name: d.device?.product?.name || 'Unbekannt', count: 0 };
+          acc[pid].count++;
+          return acc;
+        }, {});
+        // We can't recover product_ids from device list easily, so just show device count info
+        // The user can manage devices via the detail page remove buttons
+        void counts; // acknowledged but not used for selections (no product_id available)
+      }
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
+
+  const handlePdfApply = (data: { customer_id?: number; start_date?: string; end_date?: string; products: ProductSelection[] }) => {
+    setForm((f) => ({
+      ...f,
+      ...(data.customer_id ? { customer_id: data.customer_id } : {}),
+      ...(data.start_date ? { startDate: data.start_date } : {}),
+      ...(data.end_date ? { endDate: data.end_date } : {}),
+    }));
+    if (data.products.length > 0) {
+      setSelections((prev) => {
+        const merged = [...prev];
+        data.products.forEach((p) => {
+          const idx = merged.findIndex((x) => x.product_id === p.product_id);
+          if (idx >= 0) merged[idx] = { ...merged[idx], quantity: merged[idx].quantity + p.quantity };
+          else merged.push(p);
+        });
+        return merged;
+      });
+    }
+  };
+
+  const addProduct = (productId: number, name: string, qty: number) => {
+    setSelections((prev) => {
+      const idx = prev.findIndex((x) => x.product_id === productId);
+      if (idx >= 0) return prev.map((x, i) => i === idx ? { ...x, quantity: x.quantity + qty } : x);
+      return [...prev, { product_id: productId, name, quantity: qty }];
+    });
+    setShowPicker(false);
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = { ...form };
+      if (selections.length > 0) {
+        payload.selected_products = selections.map((s) => ({ product_id: s.product_id, quantity: s.quantity }));
+      }
       if (jobId) {
-        await jobsApi.update(jobId, form);
+        await api.put(`/api/v1/jobs/${jobId}`, payload);
         onSaved(jobId);
       } else {
-        const res = await jobsApi.create(form);
+        const res = await api.post<{ jobID: number; job_code: string }>('/api/v1/jobs', payload);
         onSaved(res.data.jobID);
       }
     } catch (err) {
@@ -239,8 +580,11 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
 
+  const startDate = form.startDate?.slice(0, 10) || '';
+  const endDate = form.endDate?.slice(0, 10) || '';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-4">
         <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -248,16 +592,20 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
         <h1 className="text-2xl font-bold">{jobId ? 'Job bearbeiten' : 'Neuer Job'}</h1>
       </div>
 
-      <div className="glass-dark rounded-xl border border-white/10 p-6 max-w-xl">
+      {/* PDF import — only for new jobs */}
+      {!jobId && <PdfImportBanner onApply={handlePdfApply} />}
+
+      <div className="glass-dark rounded-xl border border-white/10 p-6">
         {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
-        <form onSubmit={save} className="space-y-4">
+        <form onSubmit={save} className="space-y-5">
+          {/* Customer */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Kunde *</label>
             <select
               value={form.customer_id || ''}
               onChange={(e) => setForm({ ...form, customer_id: Number(e.target.value) })}
               required
-              className="w-full px-3 py-2.5 rounded-lg"
+              className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-red"
             >
               <option value="">— Kunde wählen —</option>
               {customers.map((c) => (
@@ -266,12 +614,13 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
             </select>
           </div>
 
+          {/* Status */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Status</label>
             <select
               value={form.status_id || ''}
               onChange={(e) => setForm({ ...form, status_id: Number(e.target.value) })}
-              className="w-full px-3 py-2.5 rounded-lg"
+              className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-red"
             >
               <option value="">— Status wählen —</option>
               {statuses.map((s) => (
@@ -280,6 +629,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
             </select>
           </div>
 
+          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Beschreibung</label>
             <input
@@ -287,29 +637,75 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
               value={form.description || ''}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Kurze Jobbeschreibung"
-              className="w-full px-3 py-2.5 rounded-lg"
+              className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:outline-none focus:border-accent-red"
             />
           </div>
 
+          {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Startdatum</label>
               <input
                 type="date"
-                value={form.startDate?.slice(0, 10) || ''}
+                value={startDate}
                 onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg"
+                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-red"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Enddatum</label>
               <input
                 type="date"
-                value={form.endDate?.slice(0, 10) || ''}
+                value={endDate}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-lg"
+                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-red"
               />
             </div>
+          </div>
+
+          {/* Revenue */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Umsatz (€)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={form.revenue || ''}
+              onChange={(e) => setForm({ ...form, revenue: Number(e.target.value) })}
+              placeholder="0.00"
+              className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-600 focus:outline-none focus:border-accent-red"
+            />
+          </div>
+
+          {/* Product Selection */}
+          <div className="border-t border-white/10 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="text-sm font-semibold text-white">Produkte / Geräte</h4>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {startDate && endDate ? 'Verfügbarkeit basiert auf dem gewählten Zeitraum.' : 'Bitte Zeitraum setzen für Verfügbarkeit.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPicker((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/15 rounded-lg text-sm transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Produkt hinzufügen
+              </button>
+            </div>
+
+            {showPicker && (
+              <div className="mb-4 p-4 bg-white/3 border border-white/10 rounded-xl">
+                <ProductPicker
+                  startDate={startDate}
+                  endDate={endDate}
+                  jobId={jobId}
+                  onSelect={addProduct}
+                />
+              </div>
+            )}
+
+            <SelectedProductsSummary selections={selections} onChange={setSelections} />
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -327,6 +723,13 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
           </div>
         </form>
       </div>
+
+      {/* Note for edit mode about removing existing devices */}
+      {jobId && (
+        <p className="text-xs text-gray-500 text-center">
+          Einzelne Geräte können in der Job-Detailansicht entfernt werden. Hier neue Produkte hinzufügen.
+        </p>
+      )}
     </div>
   );
 }
@@ -339,7 +742,7 @@ export function JobsPage() {
   const navigate = useNavigate();
   const detailId = paramId ? Number(paramId) : null;
   const isEdit = !!detailId && pathname === `/jobs/${paramId}/edit`;
-  const isNew = pathname === '/jobs/new';
+  const isNew = pathname === '/jobs/new' || pathname === '/jobs/new/';
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
