@@ -88,7 +88,7 @@
 
         <!-- Tools Dropdown -->
         <div class="rc-nav-dropdown">
-            <button class="rc-nav-dropdown-toggle {{if or (eq .currentPage "analytics") (eq .currentPage "financial") (eq .currentPage "documents_pool")}}active{{end}}" data-dropdown="tools">
+            <button class="rc-nav-dropdown-toggle {{if or (eq .currentPage "analytics") (eq .currentPage "financial") (eq .currentPage "documents_pool") (eq .currentPage "mappings")}}active{{end}}" data-dropdown="tools">
                 <i class="bi bi-tools"></i>
                 <span class="rc-nav-label">Tools</span>
                 <i class="bi bi-chevron-down rc-dropdown-icon"></i>
@@ -105,6 +105,10 @@
                 <a href="/documents/pool" class="rc-nav-dropdown-item {{if eq .currentPage "documents_pool"}}active{{end}}">
                     <i class="bi bi-folder2-open"></i>
                     <span class="rc-nav-label">File Pool</span>
+                </a>
+                <a href="/settings/mappings" class="rc-nav-dropdown-item {{if eq .currentPage "mappings"}}active{{end}}">
+                    <i class="bi bi-database-gear"></i>
+                    <span class="rc-nav-label">Produkt-Mappings</span>
                 </a>
             </div>
         </div>
