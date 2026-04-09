@@ -3175,3 +3175,273 @@ func (h *PDFHandler) GetPoolDocumentsForOCR(c *gin.Context) {
 		"count":     len(results),
 	})
 }
+
+// MappingRow is the enriched view model for the mapping management page and API.
+type MappingRow struct {
+	MappingID   uint64 `json:"mapping_id"`
+	OCRText     string `json:"ocr_text"`
+	TargetName  string `json:"target_name"`
+	TargetType  string `json:"target_type"` // "product" or "package"
+	TargetID    int    `json:"target_id"`
+	MappingType string `json:"mapping_type"`
+	UsageCount  int    `json:"usage_count"`
+}
+
+// buildMappingRows combines product and package mappings into enriched MappingRows.
+// productNames and packageNames are lookup maps (id -> name) used to resolve target names.
+func buildMappingRows(
+	productMappings []models.PDFProductMapping,
+	packageMappings []models.PDFPackageMapping,
+	productNames map[int]string,
+	packageNames map[int]string,
+) []MappingRow {
+	rows := make([]MappingRow, 0, len(productMappings)+len(packageMappings))
+	for _, m := range productMappings {
+		name, ok := productNames[m.ProductID]
+		if !ok {
+			name = fmt.Sprintf("Product #%d", m.ProductID)
+		}
+		rows = append(rows, MappingRow{
+			MappingID:   m.MappingID,
+			OCRText:     m.PDFProductText,
+			TargetName:  name,
+			TargetType:  "product",
+			TargetID:    m.ProductID,
+			MappingType: m.MappingType,
+			UsageCount:  m.UsageCount,
+		})
+	}
+	for _, m := range packageMappings {
+		name, ok := packageNames[m.PackageID]
+		if !ok {
+			name = fmt.Sprintf("Package #%d", m.PackageID)
+		}
+		rows = append(rows, MappingRow{
+			MappingID:   m.MappingID,
+			OCRText:     m.PDFPackageText,
+			TargetName:  name,
+			TargetType:  "package",
+			TargetID:    m.PackageID,
+			MappingType: m.MappingType,
+			UsageCount:  m.UsageCount,
+		})
+	}
+	return rows
+}
+
+// GetAllMappingsAPI returns all active product and package mappings as JSON.
+// GET /api/v1/pdf/mappings
+func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
+	productMappings, err := h.Mapper.GetAllMappings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product mappings"})
+		return
+	}
+
+	var packageMappings []models.PDFPackageMapping
+	if h.PackageMapper != nil {
+		packageMappings, err = h.PackageMapper.GetAllMappings()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package mappings"})
+			return
+		}
+	}
+
+	productIDSet := make(map[int]struct{})
+	for _, m := range productMappings {
+		productIDSet[m.ProductID] = struct{}{}
+	}
+	packageIDSet := make(map[int]struct{})
+	for _, m := range packageMappings {
+		packageIDSet[m.PackageID] = struct{}{}
+	}
+
+	productNames := make(map[int]string)
+	if len(productIDSet) > 0 {
+		ids := make([]int, 0, len(productIDSet))
+		for id := range productIDSet {
+			ids = append(ids, id)
+		}
+		var products []models.Product
+		h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products)
+		for _, p := range products {
+			productNames[int(p.ProductID)] = p.Name
+		}
+	}
+
+	packageNames := make(map[int]string)
+	if len(packageIDSet) > 0 {
+		ids := make([]int, 0, len(packageIDSet))
+		for id := range packageIDSet {
+			ids = append(ids, id)
+		}
+		var packages []models.ProductPackage
+		h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages)
+		for _, p := range packages {
+			packageNames[p.PackageID] = p.Name
+		}
+	}
+
+	rows := buildMappingRows(productMappings, packageMappings, productNames, packageNames)
+	c.JSON(http.StatusOK, gin.H{"mappings": rows})
+}
+
+// DeleteMappingAPI soft-deletes a mapping (sets is_active = false).
+// DELETE /api/v1/pdf/mappings/:id?type=product|package
+func (h *PDFHandler) DeleteMappingAPI(c *gin.Context) {
+	idParam := c.Param("id")
+	mappingID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+
+	mappingType := strings.ToLower(c.DefaultQuery("type", "product"))
+
+	switch mappingType {
+	case "product":
+		if err := h.Mapper.DeleteMapping(mappingID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete mapping"})
+			return
+		}
+	case "package":
+		if h.PackageMapper == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Package mapper not available"})
+			return
+		}
+		if err := h.PackageMapper.DeleteMapping(mappingID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete mapping"})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type must be 'product' or 'package'"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// UpdateMappingAPI changes the target product or package for an existing mapping.
+// PUT /api/v1/pdf/mappings/:id
+// Body: { "type": "product"|"package", "target_id": 15 }
+func (h *PDFHandler) UpdateMappingAPI(c *gin.Context) {
+	idParam := c.Param("id")
+	mappingID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+
+	var req struct {
+		Type     string `json:"type" binding:"required"`
+		TargetID int    `json:"target_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type and target_id are required"})
+		return
+	}
+
+	switch strings.ToLower(req.Type) {
+	case "product":
+		var product models.Product
+		if err := h.DB.First(&product, req.TargetID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+			return
+		}
+		if err := h.DB.Model(&models.PDFProductMapping{}).
+			Where("mapping_id = ?", mappingID).
+			Updates(map[string]interface{}{
+				"product_id":   req.TargetID,
+				"mapping_type": "manual",
+				"is_active":    true,
+			}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update mapping"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "target_name": product.Name})
+
+	case "package":
+		var pkg models.ProductPackage
+		if err := h.DB.First(&pkg, req.TargetID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
+			return
+		}
+		if err := h.DB.Model(&models.PDFPackageMapping{}).
+			Where("mapping_id = ?", mappingID).
+			Updates(map[string]interface{}{
+				"package_id":   req.TargetID,
+				"mapping_type": "manual",
+				"is_active":    true,
+			}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update mapping"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "target_name": pkg.Name})
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type must be 'product' or 'package'"})
+	}
+}
+
+// ShowMappingManagement renders the global mapping management page.
+// GET /settings/mappings
+func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
+	productMappings, err := h.Mapper.GetAllMappings()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": err.Error()})
+		return
+	}
+
+	var packageMappings []models.PDFPackageMapping
+	if h.PackageMapper != nil {
+		packageMappings, err = h.PackageMapper.GetAllMappings()
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	productIDSet := make(map[int]struct{})
+	for _, m := range productMappings {
+		productIDSet[m.ProductID] = struct{}{}
+	}
+	productNames := make(map[int]string)
+	if len(productIDSet) > 0 {
+		ids := make([]int, 0, len(productIDSet))
+		for id := range productIDSet {
+			ids = append(ids, id)
+		}
+		var products []models.Product
+		h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products)
+		for _, p := range products {
+			productNames[int(p.ProductID)] = p.Name
+		}
+	}
+
+	packageIDSet := make(map[int]struct{})
+	for _, m := range packageMappings {
+		packageIDSet[m.PackageID] = struct{}{}
+	}
+	packageNames := make(map[int]string)
+	if len(packageIDSet) > 0 {
+		ids := make([]int, 0, len(packageIDSet))
+		for id := range packageIDSet {
+			ids = append(ids, id)
+		}
+		var packages []models.ProductPackage
+		h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages)
+		for _, p := range packages {
+			packageNames[p.PackageID] = p.Name
+		}
+	}
+
+	rows := buildMappingRows(productMappings, packageMappings, productNames, packageNames)
+
+	user, _ := c.Get("user")
+	c.HTML(http.StatusOK, "mapping_management.html", gin.H{
+		"mappings":    rows,
+		"title":       "Produkt-Mappings",
+		"currentPage": "mappings",
+		"user":        user,
+	})
+}
