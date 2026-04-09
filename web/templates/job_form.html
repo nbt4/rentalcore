@@ -339,8 +339,9 @@
                                         <thead>
                                             <tr>
                                                 <th>Product</th>
-                                                <th style="width: 120px;">Quantity</th>
-                                                <th style="width: 140px;">Available</th>
+                                                <th style="width: 110px;">Quantity</th>
+                                                <th style="width: 130px;">Available</th>
+                                                <th style="width: 60px;"></th>
                                             </tr>
                                         </thead>
                                         <tbody></tbody>
@@ -2240,14 +2241,45 @@
             Array.from(productSelections.values()).sort((a, b) => a.name.localeCompare(b.name)).forEach(entry => {
                 const row = document.createElement('tr');
                 const warn = entry.quantity > entry.available;
-                row.innerHTML = `
-                    <td>${escapeHtml(entry.name)}</td>
-                    <td>${entry.quantity}</td>
-                    <td>${entry.available} / ${entry.total}</td>
-                `;
-                if (warn) {
-                    row.classList.add('rc-table-row-warning');
-                }
+                const productIdStr = String(entry.id);
+                if (warn) row.classList.add('rc-table-row-warning');
+
+                const tdName = document.createElement('td');
+                tdName.textContent = entry.name;
+                row.appendChild(tdName);
+
+                const tdQty = document.createElement('td');
+                const qtyInput = document.createElement('input');
+                qtyInput.type = 'number';
+                qtyInput.min = '0';
+                qtyInput.value = String(entry.quantity);
+                qtyInput.className = 'rc-input';
+                qtyInput.style.cssText = 'width:80px; padding:3px 6px; font-size:0.85rem;';
+                qtyInput.addEventListener('change', function() {
+                    const qty = Math.max(0, parseInt(this.value || '0', 10));
+                    this.value = qty;
+                    updateProductQtyFromSummary(productIdStr, qty);
+                });
+                tdQty.appendChild(qtyInput);
+                row.appendChild(tdQty);
+
+                const tdAvail = document.createElement('td');
+                tdAvail.textContent = entry.available + ' / ' + entry.total;
+                row.appendChild(tdAvail);
+
+                const tdRemove = document.createElement('td');
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'rc-btn rc-btn-ghost rc-btn-xs';
+                removeBtn.title = 'Remove';
+                removeBtn.style.cssText = 'color:var(--error); padding:2px 6px;';
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-trash';
+                removeBtn.appendChild(icon);
+                removeBtn.addEventListener('click', function() { removeProductFromSummary(productIdStr); });
+                tdRemove.appendChild(removeBtn);
+                row.appendChild(tdRemove);
+
                 tbody.appendChild(row);
             });
         }
@@ -2261,6 +2293,40 @@
                 .filter(entry => entry.quantity > 0)
                 .map(entry => ({ product_id: entry.id, quantity: entry.quantity }));
             input.value = JSON.stringify(payload);
+        }
+
+        function updateProductQtyFromSummary(productId, qty) {
+            const key = String(productId);
+            const entry = productSelections.get(key);
+            if (!entry) return;
+            if (qty <= 0) {
+                productSelections.delete(key);
+            } else {
+                entry.quantity = qty;
+                productSelections.set(key, entry);
+            }
+            // Sync quantity input in the product tree if it's visible
+            const treeCard = document.querySelector('[data-product-id="' + key + '"]');
+            if (treeCard) {
+                const treeInput = treeCard.querySelector('.wc-qty-input');
+                if (treeInput) treeInput.value = qty <= 0 ? 0 : qty;
+            }
+            updateSelectedProductsSummary();
+            updateHiddenProductInput();
+            validateProductSelections();
+        }
+
+        function removeProductFromSummary(productId) {
+            const key = String(productId);
+            productSelections.delete(key);
+            const treeCard = document.querySelector('[data-product-id="' + key + '"]');
+            if (treeCard) {
+                const treeInput = treeCard.querySelector('.wc-qty-input');
+                if (treeInput) treeInput.value = 0;
+            }
+            updateSelectedProductsSummary();
+            updateHiddenProductInput();
+            validateProductSelections();
         }
 
         function validateProductSelections() {
@@ -2782,21 +2848,39 @@
         }
 
         async function pollExtractionResults(uploadID, attempts = 0) {
-            if (attempts > 20) { // Max 20 attempts (10 seconds)
-                document.getElementById('pdfUploadStatus').innerHTML = '<div class="rc-alert rc-alert-error"><i class="bi bi-x-circle"></i> Processing timeout. Please try again.</div>';
+            if (attempts > 30) { // Max 30 attempts (15 seconds)
+                document.getElementById('pdfUploadStatus').textContent = 'Processing timeout. Please try again.';
+                document.getElementById('pdfUploadStatus').className = 'rc-alert rc-alert-error';
                 return;
             }
 
             try {
-                const response = await fetch(`/api/pdf/extraction/${uploadID}`);
+                const response = await fetch(`/api/pdf/extraction/${uploadID}`, { credentials: 'include' });
                 const data = await response.json();
 
                 if (response.ok && data.extraction_id) {
-                    // Redirect to review page immediately after successful extraction
-                    document.getElementById('pdfUploadStatus').innerHTML = '<div class="rc-alert rc-alert-success"><i class="bi bi-check-circle"></i> PDF processed! Redirecting to review page...</div>';
-                    setTimeout(() => {
-                        window.location.href = `/pdf/review/${uploadID}`;
-                    }, 800);
+                    const statusDiv = document.getElementById('pdfUploadStatus');
+                    statusDiv.textContent = 'Extraction complete. Running auto-mapping...';
+                    statusDiv.className = 'rc-alert rc-alert-info';
+
+                    // Run auto-mapping before applying to form
+                    try {
+                        await fetch(`/api/pdf/auto-map/${data.extraction_id}`, {
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                        // Re-fetch extraction with mapped items
+                        const mappedResp = await fetch(`/api/pdf/extraction/${uploadID}`, { credentials: 'include' });
+                        if (mappedResp.ok) {
+                            const mappedData = await mappedResp.json();
+                            applyPDFDataToForm(mappedData, uploadID);
+                        } else {
+                            applyPDFDataToForm(data, uploadID);
+                        }
+                    } catch (e) {
+                        // Auto-mapping failed, apply what we have
+                        applyPDFDataToForm(data, uploadID);
+                    }
                 } else {
                     // Still processing, try again
                     setTimeout(() => pollExtractionResults(uploadID, attempts + 1), 500);
@@ -2807,10 +2891,88 @@
             }
         }
 
-        function applyPDFDataToForm(data) {
-            // TODO: Implement form population with extracted data
-            alert('PDF data application coming soon! For now, please manually copy the data.');
-            closePDFUploadModal();
+        function applyPDFDataToForm(data, uploadID) {
+            const statusDiv = document.getElementById('pdfUploadStatus');
+            const applied = [];
+            const unmappedItems = [];
+
+            // Set customer dropdown
+            if (data.customer_id) {
+                const customerSelect = document.querySelector('[name="customer_id"]');
+                if (customerSelect) {
+                    customerSelect.value = String(data.customer_id);
+                    if (customerSelect.value === String(data.customer_id)) {
+                        applied.push('Kunde');
+                    }
+                }
+            }
+
+            // Set dates
+            if (data.start_date) {
+                const startInput = document.querySelector('[name="start_date"]');
+                if (startInput) { startInput.value = data.start_date; applied.push('Startdatum'); }
+            }
+            if (data.end_date) {
+                const endInput = document.querySelector('[name="end_date"]');
+                if (endInput) { endInput.value = data.end_date; applied.push('Enddatum'); }
+            }
+
+            // Apply mapped products
+            if (Array.isArray(data.items) && data.items.length > 0) {
+                let mappedCount = 0;
+                data.items.forEach(function(item) {
+                    const pid = item.mapped_product_id;
+                    const isValid = pid && (
+                        (typeof pid === 'object' && pid.Valid && pid.Int64 > 0) ||
+                        (typeof pid === 'number' && pid > 0)
+                    );
+                    if (isValid && item.mapping_status !== 'user_rejected') {
+                        const productId = String(typeof pid === 'object' ? pid.Int64 : pid);
+                        const qty = item.quantity && (
+                            (typeof item.quantity === 'object' && item.quantity.Valid) ? item.quantity.Int64 :
+                            (typeof item.quantity === 'number' ? item.quantity : 0)
+                        ) || 1;
+                        const existing = productSelections.get(productId) || {
+                            id: productId, name: item.raw_product_text,
+                            available: 9999, total: 9999, quantity: 0
+                        };
+                        existing.quantity = qty;
+                        productSelections.set(productId, existing);
+                        mappedCount++;
+                    } else {
+                        unmappedItems.push(item.raw_product_text);
+                    }
+                });
+                if (mappedCount > 0) applied.push(mappedCount + ' Produkt(e)');
+            }
+
+            // Reload product tree with the new dates so availability is updated
+            loadProductTree();
+
+            // Build status message
+            let msg = 'PDF importiert.';
+            if (applied.length > 0) {
+                msg += ' Übernommen: ' + applied.join(', ') + '.';
+            }
+            if (unmappedItems.length > 0) {
+                msg += ' ' + unmappedItems.length + ' Position(en) nicht zugeordnet.';
+            }
+
+            statusDiv.className = 'rc-alert rc-alert-success';
+            statusDiv.textContent = msg;
+
+            // Show review link for unmapped items
+            if (unmappedItems.length > 0 && uploadID) {
+                const link = document.createElement('a');
+                link.href = '/pdf/review/' + uploadID;
+                link.target = '_blank';
+                link.textContent = ' Nicht zugeordnete Positionen überprüfen';
+                link.style.marginLeft = '4px';
+                statusDiv.appendChild(link);
+            }
+
+            // Close modal after short delay
+            setTimeout(closePDFUploadModal, 2000);
         }
 
         // ===== JOB HISTORY MODAL FUNCTIONS =====
