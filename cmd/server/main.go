@@ -1134,6 +1134,7 @@ func setupRoutes(r *gin.Engine,
 			settings.PUT("/company/api", companyHandler.UpdateCompanySettings)
 			settings.POST("/company/logo", companyHandler.UploadCompanyLogo)
 			settings.DELETE("/company/logo", companyHandler.DeleteCompanyLogo)
+			settings.GET("/mappings", pdfHandler.ShowMappingManagement)
 
 		}
 
@@ -1481,6 +1482,9 @@ func setupRoutes(r *gin.Engine,
 				// File Pool integration routes
 				apiPDF.POST("/from-pool/:documentID", pdfHandler.ProcessPoolDocument)
 				apiPDF.GET("/pool-documents", pdfHandler.GetPoolDocumentsForOCR)
+				apiPDF.GET("/mappings", pdfHandler.GetAllMappingsAPI)
+				apiPDF.DELETE("/mappings/:id", pdfHandler.DeleteMappingAPI)
+				apiPDF.PUT("/mappings/:id", pdfHandler.UpdateMappingAPI)
 			}
 
 			// Financial API
@@ -1578,6 +1582,9 @@ func setupRoutes(r *gin.Engine,
 				// File Pool integration routes
 				pdfAPI.POST("/from-pool/:documentID", pdfHandler.ProcessPoolDocument)
 				pdfAPI.GET("/pool-documents", pdfHandler.GetPoolDocumentsForOCR)
+				pdfAPI.GET("/mappings", pdfHandler.GetAllMappingsAPI)
+				pdfAPI.DELETE("/mappings/:id", pdfHandler.DeleteMappingAPI)
+				pdfAPI.PUT("/mappings/:id", pdfHandler.UpdateMappingAPI)
 			}
 
 			// Company settings API - NOW ACTIVE
