@@ -43,6 +43,7 @@ COPY --from=builder /app/tools/ocr_parser tools/ocr_parser
 
 COPY --from=frontend-builder /app/web/dist web/dist
 COPY --from=builder /app/web/static web/static
+COPY --from=builder /app/web/templates web/templates
 COPY --chown=appuser:appgroup migrations/ migrations/
 COPY --chown=appuser:appgroup keys/ keys/
 
