@@ -158,6 +158,8 @@ function cancelEdit(mappingId) {
         resultsEl.style.display = 'none';
         while (resultsEl.firstChild) { resultsEl.removeChild(resultsEl.firstChild); }
     }
+    var searchInput = row.querySelector('.edit-search-input');
+    if (searchInput) { searchInput.value = ''; }
 }
 
 function onEditSearchInput(inputEl, mappingId) {

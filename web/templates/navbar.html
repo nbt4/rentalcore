@@ -131,6 +131,10 @@
                     <i class="bi bi-building-gear"></i>
                     <span class="rc-nav-label">Company Settings</span>
                 </a>
+                <a href="/settings/mappings" class="rc-user-dropdown-item {{if eq .currentPage "mappings"}}active{{end}}">
+                    <i class="bi bi-database-gear"></i>
+                    <span class="rc-nav-label">Produkt-Mappings</span>
+                </a>
                 {{if hasAnyRole .user "admin" "manager"}}
                 <a href="/users" class="rc-user-dropdown-item {{if eq .currentPage "users"}}active{{end}}">
                     <i class="bi bi-people-fill"></i>
