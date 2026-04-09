@@ -1,117 +1,138 @@
-{{template "base.html" .}}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <script>
+        (function() {
+            const t=(localStorage.getItem("rc-theme")||"dark");
+            document.documentElement.setAttribute("data-theme",t);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produkt-Mappings - RentalCore</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RentalCore">
+    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
+    <meta name="theme-color" content="#030712">
+    <meta name="msapplication-TileColor" content="#030712">
+    <link rel="stylesheet" href="/static/css/rental-core-design.css?v={{.timestamp}}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="rc-animate-fade-in">
+    {{template "navbar.html" .}}
 
-{{define "title"}}Produkt-Mappings{{end}}
-
-{{define "content"}}
-<div class="rc-container">
-    <div class="rc-page-header">
-        <div>
-            <h1 class="rc-page-title">
-                <i class="bi bi-database-gear"></i> Produkt-Mappings
-            </h1>
-            <p class="rc-text-muted">Gespeicherte Zuordnungen zwischen OCR-Texten und Produkten/Paketen.</p>
+    <main class="rc-container rc-mt-lg">
+        <div class="rc-page-header">
+            <div>
+                <h1 class="rc-page-title">
+                    <i class="bi bi-database-gear"></i> Produkt-Mappings
+                </h1>
+                <p class="rc-text-muted">Gespeicherte Zuordnungen zwischen OCR-Texten und Produkten/Paketen.</p>
+            </div>
         </div>
-    </div>
 
-    <div id="mappingStatusMsg"></div>
+        <div id="mappingStatusMsg"></div>
 
-    <div class="rc-card" style="margin-bottom: 16px;">
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-            <input type="text" class="rc-input" id="mappingSearchInput"
-                   placeholder="OCR-Text oder Produktname suchen..."
-                   style="flex:1; min-width:200px;"
-                   oninput="filterMappings()">
-            <select class="rc-input" id="mappingTypeFilter" style="width:auto;" onchange="filterMappings()">
-                <option value="">Alle Typen</option>
-                <option value="manual">manual</option>
-                <option value="fuzzy">fuzzy</option>
-                <option value="exact">exact</option>
-            </select>
-            <span class="rc-text-muted rc-text-sm" id="mappingCount">{{len .mappings}} Einträge</span>
+        <div class="rc-card" style="margin-bottom: 16px;">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <input type="text" class="rc-input" id="mappingSearchInput"
+                       placeholder="OCR-Text oder Produktname suchen..."
+                       style="flex:1; min-width:200px;"
+                       oninput="filterMappings()">
+                <select class="rc-input" id="mappingTypeFilter" style="width:auto;" onchange="filterMappings()">
+                    <option value="">Alle Typen</option>
+                    <option value="manual">manual</option>
+                    <option value="fuzzy">fuzzy</option>
+                    <option value="exact">exact</option>
+                </select>
+                <span class="rc-text-muted rc-text-sm" id="mappingCount">{{len .mappings}} Einträge</span>
+            </div>
         </div>
-    </div>
 
-    <div class="rc-card">
-        {{if .mappings}}
-        <div style="overflow-x:auto;">
-        <table class="rc-table" id="mappingsTable" style="width:100%;">
-            <thead>
-                <tr>
-                    <th>OCR-Text</th>
-                    <th>Produkt / Paket</th>
-                    <th>Typ</th>
-                    <th style="text-align:center;">Verwendet</th>
-                    <th style="text-align:right;">Aktionen</th>
-                </tr>
-            </thead>
-            <tbody>
-            {{range .mappings}}
-            <tr class="mapping-row"
-                data-mapping-id="{{.MappingID}}"
-                data-target-type="{{.TargetType}}"
-                data-target-id="{{.TargetID}}"
-                data-ocr-text="{{.OCRText}}"
-                data-target-name="{{.TargetName}}"
-                data-mapping-type="{{.MappingType}}">
-                <td style="max-width:280px; word-break:break-word;">
-                    <span class="rc-text-sm">{{.OCRText}}</span>
-                </td>
-                <td>
-                    <div class="mapping-target-view" style="display:flex; align-items:center; gap:6px;">
-                        {{if eq .TargetType "package"}}
-                        <i class="bi bi-box-seam" style="color:#ffc44d;"></i>
-                        {{else}}
-                        <i class="bi bi-tag" style="color:var(--rc-success);"></i>
-                        {{end}}
-                        <span class="target-name-text">{{.TargetName}}</span>
-                        <span class="rc-badge rc-badge-sm" style="background:var(--rc-bg-secondary);color:var(--rc-text-secondary);">{{.TargetType}}</span>
-                    </div>
-                    <div class="mapping-edit-form" style="display:none; position:relative;">
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="text" class="rc-input rc-input-sm edit-search-input"
-                                   placeholder="Produkt suchen..."
-                                   style="flex:1;"
-                                   oninput="onEditSearchInput(this, {{.MappingID}})">
-                            <button type="button" class="rc-btn rc-btn-sm rc-btn-secondary"
-                                    onclick="cancelEdit({{.MappingID}})">
-                                <i class="bi bi-x"></i>
+        <div class="rc-card">
+            {{if .mappings}}
+            <div style="overflow-x:auto;">
+            <table class="rc-table" id="mappingsTable" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>OCR-Text</th>
+                        <th>Produkt / Paket</th>
+                        <th>Typ</th>
+                        <th style="text-align:center;">Verwendet</th>
+                        <th style="text-align:right;">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {{range .mappings}}
+                <tr class="mapping-row"
+                    data-mapping-id="{{.MappingID}}"
+                    data-target-type="{{.TargetType}}"
+                    data-target-id="{{.TargetID}}"
+                    data-ocr-text="{{.OCRText}}"
+                    data-target-name="{{.TargetName}}"
+                    data-mapping-type="{{.MappingType}}">
+                    <td style="max-width:280px; word-break:break-word;">
+                        <span class="rc-text-sm">{{.OCRText}}</span>
+                    </td>
+                    <td>
+                        <div class="mapping-target-view" style="display:flex; align-items:center; gap:6px;">
+                            {{if eq .TargetType "package"}}
+                            <i class="bi bi-box-seam" style="color:#ffc44d;"></i>
+                            {{else}}
+                            <i class="bi bi-tag" style="color:var(--rc-success);"></i>
+                            {{end}}
+                            <span class="target-name-text">{{.TargetName}}</span>
+                            <span class="rc-badge rc-badge-sm" style="background:var(--rc-bg-secondary);color:var(--rc-text-secondary);">{{.TargetType}}</span>
+                        </div>
+                        <div class="mapping-edit-form" style="display:none; position:relative;">
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <input type="text" class="rc-input rc-input-sm edit-search-input"
+                                       placeholder="Produkt suchen..."
+                                       style="flex:1;"
+                                       oninput="onEditSearchInput(this, {{.MappingID}})">
+                                <button type="button" class="rc-btn rc-btn-sm rc-btn-secondary"
+                                        onclick="cancelEdit({{.MappingID}})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div class="edit-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:200; background:var(--rc-bg-card); border:1px solid var(--rc-border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="rc-badge rc-badge-sm {{if eq .MappingType "manual"}}rc-badge-success{{else if eq .MappingType "fuzzy"}}rc-badge-info{{else}}rc-badge-secondary{{end}}">
+                            {{.MappingType}}
+                        </span>
+                    </td>
+                    <td style="text-align:center; color:var(--rc-text-secondary);">{{.UsageCount}}&times;</td>
+                    <td style="text-align:right;">
+                        <div style="display:flex; gap:6px; justify-content:flex-end;">
+                            <button type="button" class="rc-btn rc-btn-sm rc-btn-outline edit-btn"
+                                    onclick="startEdit({{.MappingID}})">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <button type="button" class="rc-btn rc-btn-sm rc-btn-danger delete-btn"
+                                    onclick="deleteMapping({{.MappingID}}, '{{.TargetType}}')">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </div>
-                        <div class="edit-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:200; background:var(--rc-bg-card); border:1px solid var(--rc-border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.2);"></div>
-                    </div>
-                </td>
-                <td>
-                    <span class="rc-badge rc-badge-sm {{if eq .MappingType "manual"}}rc-badge-success{{else if eq .MappingType "fuzzy"}}rc-badge-info{{else}}rc-badge-secondary{{end}}">
-                        {{.MappingType}}
-                    </span>
-                </td>
-                <td style="text-align:center; color:var(--rc-text-secondary);">{{.UsageCount}}&times;</td>
-                <td style="text-align:right;">
-                    <div style="display:flex; gap:6px; justify-content:flex-end;">
-                        <button type="button" class="rc-btn rc-btn-sm rc-btn-outline edit-btn"
-                                onclick="startEdit({{.MappingID}})">
-                            <i class="bi bi-pencil"></i> Edit
-                        </button>
-                        <button type="button" class="rc-btn rc-btn-sm rc-btn-danger delete-btn"
-                                onclick="deleteMapping({{.MappingID}}, '{{.TargetType}}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
+            </div>
+            {{else}}
+            <div class="rc-empty-state" style="text-align:center; padding:40px;">
+                <i class="bi bi-database-slash" style="font-size:48px; color:var(--rc-text-secondary);"></i>
+                <p class="rc-text-muted" style="margin-top:12px;">Noch keine Mappings gespeichert.</p>
+                <p class="rc-text-sm rc-text-muted">Mappings entstehen automatisch wenn du im PDF-Workflow Positionen manuell zuordnest.</p>
+            </div>
             {{end}}
-            </tbody>
-        </table>
         </div>
-        {{else}}
-        <div class="rc-empty-state" style="text-align:center; padding:40px;">
-            <i class="bi bi-database-slash" style="font-size:48px; color:var(--rc-text-secondary);"></i>
-            <p class="rc-text-muted" style="margin-top:12px;">Noch keine Mappings gespeichert.</p>
-            <p class="rc-text-sm rc-text-muted">Mappings entstehen automatisch wenn du im PDF-Workflow Positionen manuell zuordnest.</p>
-        </div>
-        {{end}}
-    </div>
-</div>
+    </main>
 
 <script>
 var searchEditTimers = {};
@@ -297,4 +318,5 @@ function showMappingMsg(type, msg) {
     }, 4000);
 }
 </script>
-{{end}}
+</body>
+</html>
