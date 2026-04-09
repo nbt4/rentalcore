@@ -480,7 +480,16 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.6** (Latest) - Fix: DigitalSignature table name and column mapping
+### **v5.3.7** (Latest) - Feature: PDF/OCR inline import & editable product quantities
+
+- **PDF/OCR from job form**: Uploading a PDF now auto-maps products inline and populates customer, dates and quantities directly into the new job form — no redirect to the review page
+- Unmapped items show a link to open the review in a new tab
+- **Selected Products table**: Quantities are now editable inputs; each row has a remove button
+- Both the summary table and the product tree stay in sync
+
+---
+
+### **v5.3.6** - Fix: DigitalSignature table name and column mapping
 
 - **Bug Fix**: `GET /api/v1/documents` returned HTTP 500 due to GORM querying non-existent table `digital_signature` (singular)
 - Added `TableName()` method to `DigitalSignature` struct returning `"digital_signatures"` (plural)
