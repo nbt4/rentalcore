@@ -3264,7 +3264,10 @@ func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
 			ids = append(ids, id)
 		}
 		var products []models.Product
-		h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products)
+		if err := h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load mapping data"})
+			return
+		}
 		for _, p := range products {
 			productNames[int(p.ProductID)] = p.Name
 		}
@@ -3277,7 +3280,10 @@ func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
 			ids = append(ids, id)
 		}
 		var packages []models.ProductPackage
-		h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages)
+		if err := h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load mapping data"})
+			return
+		}
 		for _, p := range packages {
 			packageNames[p.PackageID] = p.Name
 		}
@@ -3349,6 +3355,10 @@ func (h *PDFHandler) UpdateMappingAPI(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "type and target_id are required"})
 		return
 	}
+	if req.TargetID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "target_id must be a positive integer"})
+		return
+	}
 
 	switch strings.ToLower(req.Type) {
 	case "product":
@@ -3375,6 +3385,10 @@ func (h *PDFHandler) UpdateMappingAPI(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true, "target_name": product.Name})
 
 	case "package":
+		if h.PackageMapper == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Package mapper not available"})
+			return
+		}
 		var pkg models.ProductPackage
 		if err := h.DB.First(&pkg, req.TargetID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
@@ -3431,7 +3445,10 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 			ids = append(ids, id)
 		}
 		var products []models.Product
-		h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products)
+		if err := h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products).Error; err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load mapping data")
+			return
+		}
 		for _, p := range products {
 			productNames[int(p.ProductID)] = p.Name
 		}
@@ -3448,7 +3465,10 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 			ids = append(ids, id)
 		}
 		var packages []models.ProductPackage
-		h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages)
+		if err := h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages).Error; err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load mapping data")
+			return
+		}
 		for _, p := range packages {
 			packageNames[p.PackageID] = p.Name
 		}
