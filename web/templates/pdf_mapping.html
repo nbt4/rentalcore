@@ -847,9 +847,9 @@ async function finalizeMappings(closeAfter = true) {
     } finally {
         finalizeInProgress = false;
         if (btn) {
-            btn.disabled = false;
             btn.innerHTML = original;
         }
+        updateStats();
     }
 }
 
