@@ -1,0 +1,298 @@
+{{template "base.html" .}}
+
+{{define "title"}}Produkt-Mappings{{end}}
+
+{{define "content"}}
+<div class="rc-container">
+    <div class="rc-page-header">
+        <div>
+            <h1 class="rc-page-title">
+                <i class="bi bi-database-gear"></i> Produkt-Mappings
+            </h1>
+            <p class="rc-text-muted">Gespeicherte Zuordnungen zwischen OCR-Texten und Produkten/Paketen.</p>
+        </div>
+    </div>
+
+    <div id="mappingStatusMsg"></div>
+
+    <div class="rc-card" style="margin-bottom: 16px;">
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <input type="text" class="rc-input" id="mappingSearchInput"
+                   placeholder="OCR-Text oder Produktname suchen..."
+                   style="flex:1; min-width:200px;"
+                   oninput="filterMappings()">
+            <select class="rc-input" id="mappingTypeFilter" style="width:auto;" onchange="filterMappings()">
+                <option value="">Alle Typen</option>
+                <option value="manual">manual</option>
+                <option value="fuzzy">fuzzy</option>
+                <option value="exact">exact</option>
+            </select>
+            <span class="rc-text-muted rc-text-sm" id="mappingCount">{{len .mappings}} Einträge</span>
+        </div>
+    </div>
+
+    <div class="rc-card">
+        {{if .mappings}}
+        <div style="overflow-x:auto;">
+        <table class="rc-table" id="mappingsTable" style="width:100%;">
+            <thead>
+                <tr>
+                    <th>OCR-Text</th>
+                    <th>Produkt / Paket</th>
+                    <th>Typ</th>
+                    <th style="text-align:center;">Verwendet</th>
+                    <th style="text-align:right;">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .mappings}}
+            <tr class="mapping-row"
+                data-mapping-id="{{.MappingID}}"
+                data-target-type="{{.TargetType}}"
+                data-target-id="{{.TargetID}}"
+                data-ocr-text="{{.OCRText}}"
+                data-target-name="{{.TargetName}}"
+                data-mapping-type="{{.MappingType}}">
+                <td style="max-width:280px; word-break:break-word;">
+                    <span class="rc-text-sm">{{.OCRText}}</span>
+                </td>
+                <td>
+                    <div class="mapping-target-view" style="display:flex; align-items:center; gap:6px;">
+                        {{if eq .TargetType "package"}}
+                        <i class="bi bi-box-seam" style="color:#ffc44d;"></i>
+                        {{else}}
+                        <i class="bi bi-tag" style="color:var(--rc-success);"></i>
+                        {{end}}
+                        <span class="target-name-text">{{.TargetName}}</span>
+                        <span class="rc-badge rc-badge-sm" style="background:var(--rc-bg-secondary);color:var(--rc-text-secondary);">{{.TargetType}}</span>
+                    </div>
+                    <div class="mapping-edit-form" style="display:none; position:relative;">
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="text" class="rc-input rc-input-sm edit-search-input"
+                                   placeholder="Produkt suchen..."
+                                   style="flex:1;"
+                                   oninput="onEditSearchInput(this, {{.MappingID}})">
+                            <button type="button" class="rc-btn rc-btn-sm rc-btn-secondary"
+                                    onclick="cancelEdit({{.MappingID}})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <div class="edit-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:200; background:var(--rc-bg-card); border:1px solid var(--rc-border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.2);"></div>
+                    </div>
+                </td>
+                <td>
+                    <span class="rc-badge rc-badge-sm {{if eq .MappingType "manual"}}rc-badge-success{{else if eq .MappingType "fuzzy"}}rc-badge-info{{else}}rc-badge-secondary{{end}}">
+                        {{.MappingType}}
+                    </span>
+                </td>
+                <td style="text-align:center; color:var(--rc-text-secondary);">{{.UsageCount}}&times;</td>
+                <td style="text-align:right;">
+                    <div style="display:flex; gap:6px; justify-content:flex-end;">
+                        <button type="button" class="rc-btn rc-btn-sm rc-btn-outline edit-btn"
+                                onclick="startEdit({{.MappingID}})">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                        <button type="button" class="rc-btn rc-btn-sm rc-btn-danger delete-btn"
+                                onclick="deleteMapping({{.MappingID}}, '{{.TargetType}}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+        </div>
+        {{else}}
+        <div class="rc-empty-state" style="text-align:center; padding:40px;">
+            <i class="bi bi-database-slash" style="font-size:48px; color:var(--rc-text-secondary);"></i>
+            <p class="rc-text-muted" style="margin-top:12px;">Noch keine Mappings gespeichert.</p>
+            <p class="rc-text-sm rc-text-muted">Mappings entstehen automatisch wenn du im PDF-Workflow Positionen manuell zuordnest.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<script>
+var searchEditTimers = {};
+
+function filterMappings() {
+    var query = (document.getElementById('mappingSearchInput').value || '').toLowerCase();
+    var typeFilter = (document.getElementById('mappingTypeFilter').value || '').toLowerCase();
+    var visibleCount = 0;
+
+    document.querySelectorAll('.mapping-row').forEach(function(row) {
+        var ocrText = (row.dataset.ocrText || '').toLowerCase();
+        var targetName = (row.dataset.targetName || '').toLowerCase();
+        var mappingType = (row.dataset.mappingType || '').toLowerCase();
+
+        var matchesQuery = !query || ocrText.includes(query) || targetName.includes(query);
+        var matchesType = !typeFilter || mappingType === typeFilter;
+
+        var visible = matchesQuery && matchesType;
+        row.style.display = visible ? '' : 'none';
+        if (visible) { visibleCount++; }
+    });
+
+    var countEl = document.getElementById('mappingCount');
+    if (countEl) { countEl.textContent = visibleCount + ' Einträge'; }
+}
+
+function startEdit(mappingId) {
+    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
+    if (!row) { return; }
+    row.querySelector('.mapping-target-view').style.display = 'none';
+    row.querySelector('.mapping-edit-form').style.display = '';
+    row.querySelector('.edit-btn').style.display = 'none';
+    row.querySelector('.edit-search-input').focus();
+}
+
+function cancelEdit(mappingId) {
+    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
+    if (!row) { return; }
+    row.querySelector('.mapping-target-view').style.display = '';
+    row.querySelector('.mapping-edit-form').style.display = 'none';
+    row.querySelector('.edit-btn').style.display = '';
+    var resultsEl = row.querySelector('.edit-search-results');
+    if (resultsEl) {
+        resultsEl.style.display = 'none';
+        while (resultsEl.firstChild) { resultsEl.removeChild(resultsEl.firstChild); }
+    }
+}
+
+function onEditSearchInput(inputEl, mappingId) {
+    var q = inputEl.value.trim();
+    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
+    var resultsEl = row ? row.querySelector('.edit-search-results') : null;
+    if (!resultsEl) { return; }
+
+    if (q.length < 2) {
+        resultsEl.style.display = 'none';
+        return;
+    }
+
+    clearTimeout(searchEditTimers[mappingId]);
+    searchEditTimers[mappingId] = setTimeout(function() {
+        Promise.all([
+            fetch('/api/v1/pdf/products/search?q=' + encodeURIComponent(q) + '&limit=4').then(function(r) { return r.ok ? r.json() : []; }),
+            fetch('/api/v1/pdf/packages/search?q=' + encodeURIComponent(q) + '&limit=3').then(function(r) { return r.ok ? r.json() : []; }),
+        ]).then(function(results) {
+            var products = results[0];
+            var packages = results[1];
+            var prodList = (products.products || products || []).slice(0, 4);
+            var pkgList = (packages.packages || packages || []).slice(0, 3);
+
+            while (resultsEl.firstChild) { resultsEl.removeChild(resultsEl.firstChild); }
+
+            var items = [];
+            prodList.forEach(function(p) {
+                items.push({ id: p.productID || p.ProductID, name: p.name || p.Name, type: 'product', sub: 'Produkt' });
+            });
+            pkgList.forEach(function(p) {
+                var code = p.package_code || p.PackageCode || '';
+                items.push({ id: p.package_id || p.PackageID, name: p.name || p.Name, type: 'package', sub: 'Paket' + (code ? ' \u00b7 ' + code : '') });
+            });
+
+            if (items.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'rc-text-muted';
+                empty.style.padding = '8px 12px';
+                empty.textContent = 'Keine Treffer';
+                resultsEl.appendChild(empty);
+            } else {
+                items.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.style.cssText = 'padding:8px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:13px;';
+                    div.addEventListener('mouseover', function() { div.style.background = 'var(--rc-bg-secondary)'; });
+                    div.addEventListener('mouseout', function() { div.style.background = ''; });
+
+                    var nameSpan = document.createElement('span');
+                    nameSpan.textContent = item.name;
+
+                    var subSpan = document.createElement('span');
+                    subSpan.className = 'rc-text-xs rc-text-muted';
+                    subSpan.textContent = item.sub;
+
+                    div.appendChild(nameSpan);
+                    div.appendChild(subSpan);
+                    div.addEventListener('click', function() {
+                        confirmEdit(mappingId, item.type, item.id, item.name);
+                    });
+                    resultsEl.appendChild(div);
+                });
+            }
+            resultsEl.style.display = '';
+        }).catch(function(e) {
+            console.error('Search error:', e);
+        });
+    }, 300);
+}
+
+function confirmEdit(mappingId, type, targetId, targetName) {
+    fetch('/api/v1/pdf/mappings/' + mappingId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: type, target_id: targetId }),
+    }).then(function(res) {
+        return res.json().then(function(data) {
+            if (!res.ok || !data.success) { throw new Error(data.error || 'Update fehlgeschlagen'); }
+            return data;
+        });
+    }).then(function() {
+        var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
+        if (row) {
+            var nameEl = row.querySelector('.target-name-text');
+            if (nameEl) { nameEl.textContent = targetName; }
+            row.dataset.targetType = type;
+            row.dataset.targetId = targetId;
+            row.dataset.targetName = targetName;
+        }
+        cancelEdit(mappingId);
+        showMappingMsg('success', 'Mapping auf "' + targetName + '" aktualisiert.');
+    }).catch(function(e) {
+        showMappingMsg('error', e.message);
+    });
+}
+
+function deleteMapping(mappingId, type) {
+    if (!confirm('Dieses Mapping wirklich löschen? Die nächste Rechnung mit diesem OCR-Text wird nicht mehr automatisch gemappt.')) { return; }
+    fetch('/api/v1/pdf/mappings/' + mappingId + '?type=' + type, { method: 'DELETE' })
+        .then(function(res) {
+            return res.json().then(function(data) {
+                if (!res.ok || !data.success) { throw new Error(data.error || 'Löschen fehlgeschlagen'); }
+            });
+        })
+        .then(function() {
+            var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
+            if (row) { row.parentNode.removeChild(row); }
+            showMappingMsg('success', 'Mapping gelöscht.');
+            filterMappings();
+        })
+        .catch(function(e) {
+            showMappingMsg('error', e.message);
+        });
+}
+
+function showMappingMsg(type, msg) {
+    var el = document.getElementById('mappingStatusMsg');
+    if (!el) { return; }
+    while (el.firstChild) { el.removeChild(el.firstChild); }
+
+    var div = document.createElement('div');
+    div.className = 'rc-alert ' + (type === 'success' ? 'rc-alert-success' : 'rc-alert-danger');
+    div.style.marginBottom = '12px';
+
+    var icon = document.createElement('i');
+    icon.className = 'bi ' + (type === 'success' ? 'bi-check-circle' : 'bi-x-circle');
+    div.appendChild(icon);
+
+    var text = document.createTextNode(' ' + msg);
+    div.appendChild(text);
+
+    el.appendChild(div);
+    setTimeout(function() {
+        if (el.contains(div)) { el.removeChild(div); }
+    }, 4000);
+}
+</script>
+{{end}}
