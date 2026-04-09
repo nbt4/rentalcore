@@ -692,7 +692,7 @@ func (h *DocumentHandler) GetDocumentStats(c *gin.Context) {
 
 	// Signed documents
 	h.db.Model(&models.Document{}).
-		Joins("INNER JOIN digital_signatures ON documents.documentID = digital_signatures.documentID").
+		Joins("INNER JOIN digital_signatures ON documents.documentid = digital_signatures.documentid").
 		Count(&stats.SignedDocuments)
 
 	// Recent uploads (last 7 days)

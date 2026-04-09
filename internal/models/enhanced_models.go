@@ -92,12 +92,12 @@ func (Document) TableName() string {
 }
 
 type DigitalSignature struct {
-	SignatureID      uint      `gorm:"primaryKey;autoIncrement" json:"signatureID"`
-	DocumentID       uint      `gorm:"not null" json:"documentID"`
+	SignatureID      uint      `gorm:"column:signatureid;primaryKey;autoIncrement" json:"signatureID"`
+	DocumentID       uint      `gorm:"column:documentid;not null" json:"documentID"`
 	SignerName       string    `gorm:"not null" json:"signerName"`
 	SignerEmail      string    `json:"signerEmail"`
 	SignerRole       string    `json:"signerRole"`
-	SignatureData    string    `gorm:"type:longtext;not null" json:"signatureData"`
+	SignatureData    string    `gorm:"type:text;not null" json:"signatureData"`
 	SignedAt         time.Time `json:"signedAt"`
 	IPAddress        string    `json:"ipAddress"`
 	VerificationCode string    `json:"verificationCode"`
@@ -105,6 +105,11 @@ type DigitalSignature struct {
 
 	// Relationships
 	Document *Document `gorm:"foreignKey:DocumentID" json:"document,omitempty"`
+}
+
+// TableName maps to the existing plural table name in the database.
+func (DigitalSignature) TableName() string {
+	return "digital_signatures"
 }
 
 // ================================================================

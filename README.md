@@ -480,7 +480,17 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.2.0** (Latest) - React SPA Frontend
+### **v5.3.6** (Latest) - Fix: DigitalSignature table name and column mapping
+
+- **Bug Fix**: `GET /api/v1/documents` returned HTTP 500 due to GORM querying non-existent table `digital_signature` (singular)
+- Added `TableName()` method to `DigitalSignature` struct returning `"digital_signatures"` (plural)
+- Fixed GORM column tags on `SignatureID` (`signatureid`) and `DocumentID` (`documentid`) to match actual DB columns
+- Fixed raw SQL JOIN in `GetDocumentStats()` to use lowercase `documentid` column name
+- Fixed `SignatureData` field type tag from `longtext` (MySQL) to `text` (PostgreSQL)
+
+---
+
+### **v5.2.0** - React SPA Frontend
 
 - 🎨 **Complete UI Rebuild**: Replaced Go-Template frontend with React 19 + Vite + Tailwind v4 SPA
 - 🔗 **Unified Design System**: Identical dark theme and glass morphism effects as WarehouseCore
