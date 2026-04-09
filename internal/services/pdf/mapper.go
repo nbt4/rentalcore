@@ -157,9 +157,16 @@ func (m *ProductMapper) GetAllMappings() ([]models.PDFProductMapping, error) {
 
 // DeleteMapping deletes or deactivates a mapping
 func (m *ProductMapper) DeleteMapping(mappingID uint64) error {
-	return m.DB.Model(&models.PDFProductMapping{}).
+	result := m.DB.Model(&models.PDFProductMapping{}).
 		Where("mapping_id = ?", mappingID).
-		Update("is_active", false).Error
+		Update("is_active", false)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (m *ProductMapper) markMappingUsage(mapping *models.PDFProductMapping) (*models.PDFProductMapping, *models.Product, float64, error) {

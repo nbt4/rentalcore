@@ -67,9 +67,16 @@ func (m *PackageMapper) GetAllMappings() ([]models.PDFPackageMapping, error) {
 
 // DeleteMapping deletes or deactivates a package mapping
 func (m *PackageMapper) DeleteMapping(mappingID uint64) error {
-	return m.DB.Model(&models.PDFPackageMapping{}).
+	result := m.DB.Model(&models.PDFPackageMapping{}).
 		Where("mapping_id = ?", mappingID).
-		Update("is_active", false).Error
+		Update("is_active", false)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // LookupSavedMapping finds an existing saved mapping for the given text

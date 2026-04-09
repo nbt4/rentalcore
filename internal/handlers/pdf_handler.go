@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -3301,6 +3302,10 @@ func (h *PDFHandler) DeleteMappingAPI(c *gin.Context) {
 	switch mappingType {
 	case "product":
 		if err := h.Mapper.DeleteMapping(mappingID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete mapping"})
 			return
 		}
@@ -3310,6 +3315,10 @@ func (h *PDFHandler) DeleteMappingAPI(c *gin.Context) {
 			return
 		}
 		if err := h.PackageMapper.DeleteMapping(mappingID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete mapping"})
 			return
 		}
@@ -3348,14 +3357,19 @@ func (h *PDFHandler) UpdateMappingAPI(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return
 		}
-		if err := h.DB.Model(&models.PDFProductMapping{}).
+		result := h.DB.Model(&models.PDFProductMapping{}).
 			Where("mapping_id = ?", mappingID).
 			Updates(map[string]interface{}{
 				"product_id":   req.TargetID,
 				"mapping_type": "manual",
 				"is_active":    true,
-			}).Error; err != nil {
+			})
+		if result.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update mapping"})
+			return
+		}
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "target_name": product.Name})
@@ -3366,14 +3380,19 @@ func (h *PDFHandler) UpdateMappingAPI(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
 			return
 		}
-		if err := h.DB.Model(&models.PDFPackageMapping{}).
+		result := h.DB.Model(&models.PDFPackageMapping{}).
 			Where("mapping_id = ?", mappingID).
 			Updates(map[string]interface{}{
 				"package_id":   req.TargetID,
 				"mapping_type": "manual",
 				"is_active":    true,
-			}).Error; err != nil {
+			})
+		if result.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update mapping"})
+			return
+		}
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "target_name": pkg.Name})
