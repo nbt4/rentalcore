@@ -480,7 +480,33 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.7** (Latest) - Feature: PDF/OCR inline import & editable product quantities
+### **v5.3.10** (Latest) - Fix: PDF upload "Failed to save upload record" & PostgreSQL sequence sync
+
+- **Bug Fix**: PDF uploads failed with "Failed to save upload record" due to PostgreSQL sequences being out of sync with actual table data (sequences reset to 1 after volume recreation)
+- Fixed all `pdf_*` table sequences by aligning them with current MAX ids
+- Fixed `ensurePackageMappingColumn/Index/FK` functions: replaced MySQL-specific `AFTER` column syntax and `information_schema.statistics` with PostgreSQL equivalents
+- Added proper error logging to the upload handler for easier future debugging
+
+---
+
+### **v5.3.9** - Fix: Existing devices visible in job edit form
+
+- **Bug Fix**: Opening an existing job in the edit (Bearbeiten) window now shows the devices already assigned to that job
+- Each device row has a remove button (×) to unassign it directly from the edit form
+- Device list refreshes automatically after removal
+
+---
+
+### **v5.3.8** - Feature: Product selection & device management in job form
+
+- **Product Picker**: Collapsible category tree with availability counts and quantity input per product
+- **Selected Products Summary**: Editable quantity inputs, remove button per selection
+- Products are sent as `selected_products` to the backend on save
+- DeviceList now supports removal of individual devices via DELETE API
+
+---
+
+### **v5.3.7** - Feature: PDF/OCR inline import & editable product quantities
 
 - **PDF/OCR from job form**: Uploading a PDF now auto-maps products inline and populates customer, dates and quantities directly into the new job form — no redirect to the review page
 - Unmapped items show a link to open the review in a new tab

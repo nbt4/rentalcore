@@ -100,7 +100,7 @@ func ensurePackageMappingColumn(db *sql.DB) error {
 	const query = `
 		SELECT COUNT(*)
 		FROM information_schema.columns
-		WHERE table_schema = current_database()
+		WHERE table_schema = 'public'
 		  AND table_name = 'pdf_extraction_items'
 		  AND column_name = 'mapped_package_id'
 	`
@@ -111,17 +111,17 @@ func ensurePackageMappingColumn(db *sql.DB) error {
 	if count > 0 {
 		return nil
 	}
-	_, err := db.Exec(`ALTER TABLE pdf_extraction_items ADD COLUMN mapped_package_id INT NULL AFTER mapped_product_id`)
+	_, err := db.Exec(`ALTER TABLE pdf_extraction_items ADD COLUMN mapped_package_id INTEGER`)
 	return err
 }
 
 func ensurePackageMappingIndex(db *sql.DB) error {
 	const query = `
 		SELECT COUNT(*)
-		FROM information_schema.statistics
-		WHERE table_schema = current_database()
-		  AND table_name = 'pdf_extraction_items'
-		  AND index_name = 'idx_pdf_items_package'
+		FROM pg_indexes
+		WHERE schemaname = 'public'
+		  AND tablename = 'pdf_extraction_items'
+		  AND indexname = 'idx_pdf_items_package'
 	`
 	var count int
 	if err := db.QueryRow(query).Scan(&count); err != nil {
@@ -130,7 +130,7 @@ func ensurePackageMappingIndex(db *sql.DB) error {
 	if count > 0 {
 		return nil
 	}
-	_, err := db.Exec(`ALTER TABLE pdf_extraction_items ADD KEY idx_pdf_items_package (mapped_package_id)`)
+	_, err := db.Exec(`CREATE INDEX idx_pdf_items_package ON pdf_extraction_items (mapped_package_id)`)
 	return err
 }
 
@@ -138,7 +138,7 @@ func ensurePackageMappingFK(db *sql.DB) error {
 	const query = `
 		SELECT COUNT(*)
 		FROM information_schema.table_constraints
-		WHERE table_schema = current_database()
+		WHERE table_schema = 'public'
 		  AND table_name = 'pdf_extraction_items'
 		  AND constraint_name = 'fk_pdf_items_package'
 	`
@@ -312,7 +312,8 @@ func (h *PDFHandler) UploadPDF(c *gin.Context) {
 
 	// Save upload record to database
 	if err := h.DB.Create(upload).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save upload record"})
+		log.Printf("ERROR: Failed to save upload record: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save upload record: %v", err)})
 		return
 	}
 
