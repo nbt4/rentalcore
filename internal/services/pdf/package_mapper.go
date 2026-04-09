@@ -30,20 +30,19 @@ func (m *PackageMapper) SaveMapping(pdfText string, packageID int, userID int64)
 	normalizedVal := nullStringPtr(sql.NullString{String: normalized, Valid: normalized != ""})
 	createdBy := nullIntPtr(sql.NullInt64{Int64: userID, Valid: userID > 0})
 
-	// Note: No UNIQUE constraint on pdf_package_text, so multiple aliases can map to same package
 	query := `
 		INSERT INTO pdf_package_mappings
 			(pdf_package_text, normalized_text, package_id, mapping_type, confidence_score, usage_count, last_used_at, created_by, is_active)
 		VALUES
-			(?, ?, ?, 'manual', ?, 1, ?, ?, 1)
-		ON DUPLICATE KEY UPDATE
-			normalized_text = VALUES(normalized_text),
-			package_id = VALUES(package_id),
+			($1, $2, $3, 'manual', $4, 1, $5, $6, true)
+		ON CONFLICT (pdf_package_text) DO UPDATE SET
+			normalized_text = EXCLUDED.normalized_text,
+			package_id = EXCLUDED.package_id,
 			mapping_type = 'manual',
-			confidence_score = VALUES(confidence_score),
-			usage_count = usage_count + 1,
-			last_used_at = VALUES(last_used_at),
-			is_active = 1
+			confidence_score = EXCLUDED.confidence_score,
+			usage_count = pdf_package_mappings.usage_count + 1,
+			last_used_at = EXCLUDED.last_used_at,
+			is_active = true
 	`
 
 	return m.DB.Exec(query,

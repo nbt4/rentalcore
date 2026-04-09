@@ -125,15 +125,15 @@ func (m *ProductMapper) SaveMapping(pdfText string, productID int, userID int64)
 		INSERT INTO pdf_product_mappings
 			(pdf_product_text, normalized_text, product_id, mapping_type, confidence_score, usage_count, last_used_at, created_by, is_active)
 		VALUES
-			(?, ?, ?, 'manual', ?, 1, ?, ?, 1)
-		ON DUPLICATE KEY UPDATE
-			normalized_text = VALUES(normalized_text),
-			product_id = VALUES(product_id),
+			($1, $2, $3, 'manual', $4, 1, $5, $6, true)
+		ON CONFLICT (pdf_product_text) DO UPDATE SET
+			normalized_text = EXCLUDED.normalized_text,
+			product_id = EXCLUDED.product_id,
 			mapping_type = 'manual',
-			confidence_score = VALUES(confidence_score),
-			usage_count = usage_count + 1,
-			last_used_at = VALUES(last_used_at),
-			is_active = 1
+			confidence_score = EXCLUDED.confidence_score,
+			usage_count = pdf_product_mappings.usage_count + 1,
+			last_used_at = EXCLUDED.last_used_at,
+			is_active = true
 	`
 
 	return m.DB.Exec(query,
