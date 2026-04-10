@@ -88,8 +88,9 @@ class OCRParser:
         if "\\n" in text and text.count("\\n") > text.count("\n"):
             text = text.replace("\\n", "\n")
         # Insert line breaks before quantity+unit blocks to split descriptor from numeric rows.
+        # Lookahead (?=\s|$|\d) ensures "st" doesn't match mid-word (e.g., "Stative", "Steuerung")
         pattern = re.compile(
-            r"(\d+)\s+(" + "|".join(UNIT_KEYWORDS) + r")",
+            r"(\d+)\s+(" + "|".join(UNIT_KEYWORDS) + r")(?=\s|$|\d)",
             flags=re.IGNORECASE,
         )
         text = pattern.sub(r"\n\1 \2", text)
@@ -159,6 +160,30 @@ class OCRParser:
                     if current:
                         current["numeric_parts"].append(line)
                     continue
+
+                # If we have a current item, save it first
+                if current:
+                    segments.append(current)
+
+                current = {
+                    "line_number": line_number,
+                    "description_parts": [remainder],
+                    "numeric_parts": [],
+                }
+                continue
+
+            # Numeric lines always go to current item's numeric_parts — check BEFORE pos_long_match
+            # to avoid treating "1 Stück130,00 130,00" as a new position segment
+            if current is not None and self._is_numeric_value(line):
+                current["numeric_parts"].append(line)
+                continue
+
+            # Check for "number + multi-word description" (e.g., "1 Akku Ambientebeleuchtung11 Akkuspots...")
+            # The description must start with a letter (rules out numeric-only lines like "4 20,00 20,00 64,00")
+            pos_long_match = re.match(r"^([1-9]|[1-9][0-9]|100)\s+([A-Za-zäöüÄÖÜß].+)$", line)
+            if pos_long_match and not self._is_numeric_value(line):
+                line_number = int(pos_long_match.group(1))
+                remainder = pos_long_match.group(2).strip()
 
                 # If we have a current item, save it first
                 if current:
@@ -406,6 +431,11 @@ class OCRParser:
                                 continue
                             # Check if this is not a field label
                             if ":" not in candidate and not any(skip in candidate.lower() for skip in ["angebot", "rechnung", "datum", "gültig", "seite"]):
+                                # Strip salutation prefix
+                                for salutation in ("Herrn ", "Frau ", "Herr "):
+                                    if candidate.startswith(salutation):
+                                        candidate = candidate[len(salutation):].strip()
+                                        break
                                 return candidate
 
         return None
@@ -430,7 +460,8 @@ class OCRParser:
                         last_zwischensumme = numbers[-1]
 
             # Extract discount: "abzgl. 20,00 % Rabatt" or "abzgl. 20%" followed by amount
-            if "abzgl" in lower or "rabatt" in lower:
+            # Skip column headers like "Pos. Bezeichnung Menge Einheit Einzel € Rabatt % Gesamt €"
+            if ("abzgl" in lower or "rabatt" in lower) and not self._looks_like_header(line):
                 # Try to extract discount percentage
                 percent_match = re.search(r"(\d+(?:,\d+)?)\s*%", line)
                 if percent_match:
