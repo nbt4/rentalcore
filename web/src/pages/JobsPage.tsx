@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { jobsApi, customersApi, statusApi, api } from '../lib/api';
 import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
+import MappingModal from '../components/MappingModal';
+import type { MappedItem } from '../components/MappingModal';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -372,8 +374,8 @@ function SelectedProductsSummary({
 
 // ── PDF Upload ────────────────────────────────────────────────
 
-function PdfImportBanner({ onApply }: {
-  onApply: (data: { customer_id?: number; start_date?: string; end_date?: string; products: ProductSelection[] }) => void;
+function PdfImportBanner({ onUploadReady }: {
+  onUploadReady: (uploadId: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState('');
@@ -391,49 +393,9 @@ function PdfImportBanner({ onApply }: {
       const up = await fetch('/api/pdf/upload', { method: 'POST', body: fd, credentials: 'include' });
       const upData = await up.json();
       if (!up.ok || !upData.upload_id) throw new Error(upData.error || 'Upload fehlgeschlagen');
-      setStatus('OCR läuft…');
-
-      // Poll for extraction
-      let extraction = null;
-      for (let i = 0; i < 30; i++) {
-        await new Promise((r) => setTimeout(r, 500));
-        const ex = await fetch(`/api/pdf/extraction/${upData.upload_id}`, { credentials: 'include' });
-        if (ex.ok) { const d = await ex.json(); if (d.extraction_id) { extraction = d; break; } }
-      }
-      if (!extraction) throw new Error('Zeitüberschreitung – OCR zu langsam');
-
-      setStatus('Auto-Mapping…');
-      await fetch(`/api/pdf/auto-map/${extraction.extraction_id}`, { method: 'POST', credentials: 'include' });
-      const final = await (await fetch(`/api/pdf/extraction/${upData.upload_id}`, { credentials: 'include' })).json();
-
-      // Build product selections from mapped items
-      const products: ProductSelection[] = (final.items || [])
-        .filter((it: { mapped_product_id: { Valid?: boolean; Int64?: number } | number | null; mapping_status: string }) => {
-          if (!it.mapped_product_id) return false;
-          if (typeof it.mapped_product_id === 'object') return it.mapped_product_id.Valid && (it.mapped_product_id.Int64 ?? 0) > 0;
-          return it.mapped_product_id > 0;
-        })
-        .filter((it: { mapping_status: string }) => it.mapping_status !== 'user_rejected')
-        .map((it: { mapped_product_id: { Int64?: number } | number; raw_product_text: string; quantity: { Valid?: boolean; Int64?: number } | number | null }) => ({
-          product_id: typeof it.mapped_product_id === 'object' ? (it.mapped_product_id?.Int64 ?? 0) : (it.mapped_product_id as number),
-          name: it.raw_product_text,
-          quantity: it.quantity
-            ? (typeof it.quantity === 'object' ? (it.quantity.Int64 ?? 1) : it.quantity)
-            : 1,
-        }));
-
-      onApply({
-        customer_id: final.customer_id ?? undefined,
-        start_date: final.start_date || undefined,
-        end_date: final.end_date || undefined,
-        products,
-      });
-
-      const unmapped = (final.items || []).filter((it: { mapped_product_id: null | { Valid?: boolean } }) =>
-        !it.mapped_product_id || (typeof it.mapped_product_id === 'object' && !it.mapped_product_id.Valid)
-      ).length;
-      setStatus(`Importiert. ${products.length} Produkt(e) übernommen.${unmapped > 0 ? ` ${unmapped} nicht zugeordnet.` : ''}`);
       setOpen(false);
+      setStatus('');
+      onUploadReady(upData.upload_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Import');
       setStatus('');
@@ -499,6 +461,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pendingUploadId, setPendingUploadId] = useState<number | null>(null);
 
   const loadDevices = useCallback(() => {
     if (!jobId) return;
@@ -520,20 +483,15 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
 
-  const handlePdfApply = (data: { customer_id?: number; start_date?: string; end_date?: string; products: ProductSelection[] }) => {
-    setForm((f) => ({
-      ...f,
-      ...(data.customer_id ? { customer_id: data.customer_id } : {}),
-      ...(data.start_date ? { startDate: data.start_date } : {}),
-      ...(data.end_date ? { endDate: data.end_date } : {}),
-    }));
-    if (data.products.length > 0) {
+  const handleMappingComplete = (items: MappedItem[]) => {
+    setPendingUploadId(null);
+    if (items.length > 0) {
       setSelections((prev) => {
         const merged = [...prev];
-        data.products.forEach((p) => {
-          const idx = merged.findIndex((x) => x.product_id === p.product_id);
-          if (idx >= 0) merged[idx] = { ...merged[idx], quantity: merged[idx].quantity + p.quantity };
-          else merged.push(p);
+        items.forEach((item) => {
+          const idx = merged.findIndex((x) => x.product_id === item.product_id);
+          if (idx >= 0) merged[idx] = { ...merged[idx], quantity: merged[idx].quantity + item.quantity };
+          else merged.push({ product_id: item.product_id, name: item.name, quantity: item.quantity });
         });
         return merged;
       });
@@ -587,7 +545,15 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       </div>
 
       {/* PDF import — only for new jobs */}
-      {!jobId && <PdfImportBanner onApply={handlePdfApply} />}
+      {!jobId && <PdfImportBanner onUploadReady={setPendingUploadId} />}
+
+      {pendingUploadId !== null && (
+        <MappingModal
+          uploadId={pendingUploadId}
+          onComplete={(items: MappedItem[]) => handleMappingComplete(items)}
+          onClose={() => setPendingUploadId(null)}
+        />
+      )}
 
       <div className="glass-dark rounded-xl border border-white/10 p-6">
         {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
