@@ -3294,11 +3294,7 @@ func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer names"}); return
 		}
 		for _, cu := range customers {
-			name := ""
-			if cu.FirstName != nil { name = strings.TrimSpace(*cu.FirstName) }
-			if cu.LastName != nil { name = strings.TrimSpace(name + " " + *cu.LastName) }
-			if cu.CompanyName != nil && *cu.CompanyName != "" { name = *cu.CompanyName }
-			customerNames[int(cu.CustomerID)] = name
+			customerNames[int(cu.CustomerID)] = cu.GetDisplayName()
 		}
 	}
 
@@ -3489,7 +3485,9 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 
 	var customerMappings []models.PDFCustomerMapping
 	if h.CustomerMapper != nil {
-		h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings)
+		if err := h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings).Error; err != nil {
+			log.Printf("warning: failed to load customer mappings for management page: %v", err)
+		}
 	}
 	customerIDSet := make(map[int]struct{})
 	for _, m := range customerMappings { customerIDSet[m.CustomerID] = struct{}{} }
@@ -3500,11 +3498,7 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 		var customers []models.Customer
 		if err := h.DB.Select("customerid, firstname, lastname, companyname").Where("customerid IN ?", cids).Find(&customers).Error; err == nil {
 			for _, cu := range customers {
-				name := ""
-				if cu.FirstName != nil { name = strings.TrimSpace(*cu.FirstName) }
-				if cu.LastName != nil { name = strings.TrimSpace(name + " " + *cu.LastName) }
-				if cu.CompanyName != nil && *cu.CompanyName != "" { name = *cu.CompanyName }
-				customerNames[int(cu.CustomerID)] = name
+				customerNames[int(cu.CustomerID)] = cu.GetDisplayName()
 			}
 		}
 	}
