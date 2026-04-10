@@ -1485,6 +1485,12 @@ func setupRoutes(r *gin.Engine,
 				apiPDF.GET("/mappings", pdfHandler.GetAllMappingsAPI)
 				apiPDF.DELETE("/mappings/:id", pdfHandler.DeleteMappingAPI)
 				apiPDF.PUT("/mappings/:id", pdfHandler.UpdateMappingAPI)
+				apiPDF.GET("/extractions/:extraction_id/preview", pdfHandler.GetExtractionPreview)
+				apiPDF.POST("/mappings-create", pdfHandler.CreateMappingAPI)
+				apiPDF.PUT("/package-mappings/:id", pdfHandler.UpdatePackageMappingAPI)
+				apiPDF.DELETE("/package-mappings/:id", pdfHandler.DeletePackageMappingAPI)
+				apiPDF.PUT("/customer-mappings/:id", pdfHandler.UpdateCustomerMappingAPI)
+				apiPDF.DELETE("/customer-mappings/:id", pdfHandler.DeleteCustomerMappingAPI)
 			}
 
 			// Financial API
@@ -1585,6 +1591,12 @@ func setupRoutes(r *gin.Engine,
 				pdfAPI.GET("/mappings", pdfHandler.GetAllMappingsAPI)
 				pdfAPI.DELETE("/mappings/:id", pdfHandler.DeleteMappingAPI)
 				pdfAPI.PUT("/mappings/:id", pdfHandler.UpdateMappingAPI)
+				pdfAPI.GET("/extractions/:extraction_id/preview", pdfHandler.GetExtractionPreview)
+				pdfAPI.POST("/mappings-create", pdfHandler.CreateMappingAPI)
+				pdfAPI.PUT("/package-mappings/:id", pdfHandler.UpdatePackageMappingAPI)
+				pdfAPI.DELETE("/package-mappings/:id", pdfHandler.DeletePackageMappingAPI)
+				pdfAPI.PUT("/customer-mappings/:id", pdfHandler.UpdateCustomerMappingAPI)
+				pdfAPI.DELETE("/customer-mappings/:id", pdfHandler.DeleteCustomerMappingAPI)
 			}
 
 			// Company settings API - NOW ACTIVE
