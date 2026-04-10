@@ -3523,7 +3523,10 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		return
 	}
 	var items []models.PDFExtractionItem
-	h.DB.Where("extraction_id = ? AND (mapped_product_id IS NOT NULL OR mapped_package_id IS NOT NULL)", extractionID).Find(&items)
+	if err := h.DB.Where("extraction_id = ? AND (mapped_product_id IS NOT NULL OR mapped_package_id IS NOT NULL)", extractionID).Find(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load extraction items"})
+		return
+	}
 
 	type PreviewItem struct {
 		ItemID     uint64  `json:"item_id"`

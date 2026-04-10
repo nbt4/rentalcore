@@ -75,6 +75,7 @@ function InlineSearch({ initialQuery, onSelect }: { initialQuery: string; onSele
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   const search = useCallback((q: string) => {
     if (q.trim().length < 2) { setResults([]); return; }
@@ -183,12 +184,13 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
       const body = result.type === 'package'
         ? { package_id: result.id, status: 'user_confirmed' }
         : { product_id: result.id, status: 'user_confirmed' };
-      await fetch(`/api/pdf/items/${item.item_id}/mapping`, {
+      const res = await fetch(`/api/pdf/items/${item.item_id}/mapping`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body),
       });
+      if (!res.ok) return;
       setItems((prev) => prev.map((it) => it.item_id !== item.item_id ? it : {
         ...it,
         mapped_product_id: result.type === 'product' ? result.id : null,
@@ -201,25 +203,37 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
   const handleProceedToPreview = async () => {
     if (!extractionId) return;
-    const res = await fetch(`/api/pdf/extractions/${extractionId}/preview`, { credentials: 'include' });
-    const data = await res.json();
-    setPreviewItems(data.items || []);
-    setTotalAmount(data.total_amount || 0);
-    setPhase('preview');
+    try {
+      const res = await fetch(`/api/pdf/extractions/${extractionId}/preview`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Vorschau konnte nicht geladen werden');
+      const data = await res.json();
+      setPreviewItems(data.items || []);
+      setTotalAmount(data.total_amount || 0);
+      setPhase('preview');
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Fehler beim Laden der Vorschau');
+      setPhase('error');
+    }
   };
 
   const handleConfirm = async () => {
     if (!extractionId) return;
-    await fetch(`/api/pdf/extractions/${extractionId}/finalize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({}),
-    });
-    const mapped: MappedItem[] = previewItems
-      .filter((pi) => pi.target_type === 'product')
-      .map((pi) => ({ product_id: pi.target_id, name: pi.name, quantity: pi.quantity }));
-    onComplete(mapped);
+    try {
+      const res = await fetch(`/api/pdf/extractions/${extractionId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error('Finalisierung fehlgeschlagen');
+      const mapped: MappedItem[] = previewItems
+        .filter((pi) => pi.target_type === 'product')
+        .map((pi) => ({ product_id: pi.target_id, name: pi.name, quantity: pi.quantity }));
+      onComplete(mapped);
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Fehler beim Speichern');
+      setPhase('error');
+    }
   };
 
   return (
