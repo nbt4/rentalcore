@@ -480,7 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.15** (Latest) - Fix: PDF mapping upsert broken on PostgreSQL (ON DUPLICATE KEY UPDATE is MySQL-only)
+### **v5.3.16** (Latest) - Feature: Interactive PDF mapping modal with OCR review, confidence bars, 3-tab mapping management
+### **v5.3.15** - Fix: PDF mapping upsert broken on PostgreSQL (ON DUPLICATE KEY UPDATE is MySQL-only)
 ### **v5.3.14** - Fix: move Produkt-Mappings to Tools dropdown in sidebar
 ### **v5.3.13** - Fix: standalone mapping_management template, base.html nav link
 ### **v5.3.12** - Fix: add web/templates to Docker image (resolves nil HTMLRender panic)
