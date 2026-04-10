@@ -3512,3 +3512,219 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 		"user":        user,
 	})
 }
+
+// GetExtractionPreview returns mapped items with resolved product names for preview step.
+// GET /api/v1/pdf/extractions/:extraction_id/preview
+func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
+	extractionID := c.Param("extraction_id")
+	var extraction models.PDFExtraction
+	if err := h.DB.First(&extraction, extractionID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Extraction not found"})
+		return
+	}
+	var items []models.PDFExtractionItem
+	h.DB.Where("extraction_id = ? AND (mapped_product_id IS NOT NULL OR mapped_package_id IS NOT NULL)", extractionID).Find(&items)
+
+	type PreviewItem struct {
+		ItemID     uint64  `json:"item_id"`
+		Name       string  `json:"name"`
+		RawText    string  `json:"raw_text"`
+		Quantity   int     `json:"quantity"`
+		UnitPrice  float64 `json:"unit_price"`
+		LineTotal  float64 `json:"line_total"`
+		TargetType string  `json:"target_type"`
+		TargetID   int     `json:"target_id"`
+	}
+
+	productIDs, packageIDs := []int{}, []int{}
+	for _, it := range items {
+		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
+		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
+	}
+	productNames := make(map[int]string)
+	if len(productIDs) > 0 {
+		var products []models.Product
+		h.DB.Select("productid, name").Where("productid IN ?", productIDs).Find(&products)
+		for _, p := range products { productNames[int(p.ProductID)] = p.Name }
+	}
+	packageNames := make(map[int]string)
+	if len(packageIDs) > 0 {
+		var packages []models.ProductPackage
+		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&packages)
+		for _, p := range packages { packageNames[p.PackageID] = p.Name }
+	}
+
+	result := make([]PreviewItem, 0, len(items))
+	for _, it := range items {
+		qty := 1
+		if it.Quantity.Valid { qty = int(it.Quantity.Int64) }
+		up := 0.0
+		if it.UnitPrice.Valid { up = it.UnitPrice.Float64 }
+		lt := 0.0
+		if it.LineTotal.Valid { lt = it.LineTotal.Float64 }
+		pi := PreviewItem{ItemID: it.ItemID, RawText: it.RawProductText, Quantity: qty, UnitPrice: up, LineTotal: lt}
+		if it.MappedProductID.Valid {
+			pi.TargetType = "product"
+			pi.TargetID = int(it.MappedProductID.Int64)
+			pi.Name = productNames[pi.TargetID]
+			if pi.Name == "" { pi.Name = fmt.Sprintf("Produkt #%d", pi.TargetID) }
+		} else if it.MappedPackageID.Valid {
+			pi.TargetType = "package"
+			pi.TargetID = int(it.MappedPackageID.Int64)
+			pi.Name = packageNames[pi.TargetID]
+			if pi.Name == "" { pi.Name = fmt.Sprintf("Paket #%d", pi.TargetID) }
+		}
+		result = append(result, pi)
+	}
+	totalAmount := 0.0
+	if extraction.TotalAmount.Valid { totalAmount = extraction.TotalAmount.Float64 }
+	c.JSON(http.StatusOK, gin.H{
+		"extraction_id": extraction.ExtractionID,
+		"items":         result,
+		"total_amount":  totalAmount,
+		"item_count":    len(result),
+	})
+}
+
+// CreateMappingAPI creates a standalone product mapping (no extraction context).
+// POST /api/v1/pdf/mappings-create
+// Body: { "pdf_text": "...", "product_id": 42 }
+func (h *PDFHandler) CreateMappingAPI(c *gin.Context) {
+	var req struct {
+		PDFText   string `json:"pdf_text" binding:"required"`
+		ProductID int    `json:"product_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.ProductID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pdf_text and product_id are required"})
+		return
+	}
+	var product models.Product
+	if err := h.DB.First(&product, req.ProductID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		return
+	}
+	userID := int64(0)
+	if uid, exists := c.Get("userid"); exists {
+		if id, ok := uid.(int64); ok { userID = id }
+	}
+	if err := h.Mapper.SaveMapping(req.PDFText, req.ProductID, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save mapping"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"success": true, "product_name": product.Name})
+}
+
+// UpdatePackageMappingAPI updates the target package for a package mapping.
+// PUT /api/v1/pdf/package-mappings/:id
+// Body: { "package_id": 7 }
+func (h *PDFHandler) UpdatePackageMappingAPI(c *gin.Context) {
+	mappingID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+	var req struct {
+		PackageID int `json:"package_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.PackageID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "package_id is required"})
+		return
+	}
+	var pkg models.ProductPackage
+	if err := h.DB.First(&pkg, req.PackageID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
+		return
+	}
+	result := h.DB.Model(&models.PDFPackageMapping{}).
+		Where("mapping_id = ?", mappingID).
+		Updates(map[string]interface{}{"package_id": req.PackageID, "mapping_type": "manual", "is_active": true})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "target_name": pkg.Name})
+}
+
+// DeletePackageMappingAPI soft-deletes a package mapping.
+// DELETE /api/v1/pdf/package-mappings/:id
+func (h *PDFHandler) DeletePackageMappingAPI(c *gin.Context) {
+	mappingID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+	if h.PackageMapper == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Package mapper not available"})
+		return
+	}
+	if err := h.PackageMapper.DeleteMapping(mappingID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// UpdateCustomerMappingAPI updates the target customer for a customer mapping.
+// PUT /api/v1/pdf/customer-mappings/:id
+// Body: { "customer_id": 3 }
+func (h *PDFHandler) UpdateCustomerMappingAPI(c *gin.Context) {
+	mappingID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+	var req struct {
+		CustomerID int `json:"customer_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.CustomerID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "customer_id is required"})
+		return
+	}
+	var customer models.Customer
+	if err := h.DB.First(&customer, req.CustomerID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Customer not found"})
+		return
+	}
+	result := h.DB.Model(&models.PDFCustomerMapping{}).
+		Where("mapping_id = ?", mappingID).
+		Updates(map[string]interface{}{"customer_id": req.CustomerID, "mapping_type": "manual", "is_active": true})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "target_name": customer.GetDisplayName()})
+}
+
+// DeleteCustomerMappingAPI soft-deletes a customer mapping.
+// DELETE /api/v1/pdf/customer-mappings/:id
+func (h *PDFHandler) DeleteCustomerMappingAPI(c *gin.Context) {
+	mappingID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping ID"})
+		return
+	}
+	result := h.DB.Model(&models.PDFCustomerMapping{}).
+		Where("mapping_id = ?", mappingID).
+		Update("is_active", false)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Mapping not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
