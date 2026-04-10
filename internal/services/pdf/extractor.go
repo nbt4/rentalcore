@@ -95,6 +95,7 @@ func (e *PDFExtractor) SaveUploadedFile(file *multipart.FileHeader) (*models.PDF
 
 	// Create upload record
 	upload := &models.PDFUpload{
+		Filename:         file.Filename,
 		OriginalFilename: file.Filename,
 		StoredFilename:   storedFilename,
 		FilePath:         filePath,

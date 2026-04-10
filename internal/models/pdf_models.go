@@ -10,6 +10,7 @@ type PDFUpload struct {
 	UploadID              uint64         `gorm:"primaryKey;column:upload_id;autoIncrement" json:"upload_id"`
 	JobID                 sql.NullInt64  `gorm:"column:job_id" json:"job_id"`
 	DocumentID            sql.NullInt64  `gorm:"column:document_id" json:"document_id"`
+	Filename              string         `gorm:"column:filename;not null" json:"filename"`
 	OriginalFilename      string         `gorm:"column:original_filename;not null" json:"original_filename"`
 	StoredFilename        string         `gorm:"column:stored_filename;not null" json:"stored_filename"`
 	FilePath              string         `gorm:"column:file_path;not null" json:"file_path"`
