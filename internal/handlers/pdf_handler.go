@@ -3179,117 +3179,130 @@ func (h *PDFHandler) GetPoolDocumentsForOCR(c *gin.Context) {
 
 // MappingRow is the enriched view model for the mapping management page and API.
 type MappingRow struct {
-	MappingID   uint64 `json:"mapping_id"`
-	OCRText     string `json:"ocr_text"`
-	TargetName  string `json:"target_name"`
-	TargetType  string `json:"target_type"` // "product" or "package"
-	TargetID    int    `json:"target_id"`
-	MappingType string `json:"mapping_type"`
-	UsageCount  int    `json:"usage_count"`
+	MappingID       uint64  `json:"mapping_id"`
+	OCRText         string  `json:"ocr_text"`
+	TargetName      string  `json:"target_name"`
+	TargetType      string  `json:"target_type"` // "product", "package", or "customer"
+	TargetID        int     `json:"target_id"`
+	MappingType     string  `json:"mapping_type"`
+	ConfidenceScore float64 `json:"confidence_score"`
+	UsageCount      int     `json:"usage_count"`
 }
 
-// buildMappingRows combines product and package mappings into enriched MappingRows.
-// productNames and packageNames are lookup maps (id -> name) used to resolve target names.
-func buildMappingRows(
+// buildAllMappingRows combines product, package, and customer mappings into enriched MappingRows.
+func buildAllMappingRows(
 	productMappings []models.PDFProductMapping,
 	packageMappings []models.PDFPackageMapping,
+	customerMappings []models.PDFCustomerMapping,
 	productNames map[int]string,
 	packageNames map[int]string,
+	customerNames map[int]string,
 ) []MappingRow {
-	rows := make([]MappingRow, 0, len(productMappings)+len(packageMappings))
+	rows := make([]MappingRow, 0, len(productMappings)+len(packageMappings)+len(customerMappings))
 	for _, m := range productMappings {
 		name, ok := productNames[m.ProductID]
-		if !ok {
-			name = fmt.Sprintf("Product #%d", m.ProductID)
-		}
+		if !ok { name = fmt.Sprintf("Product #%d", m.ProductID) }
+		conf := 0.0
+		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
 		rows = append(rows, MappingRow{
-			MappingID:   m.MappingID,
-			OCRText:     m.PDFProductText,
-			TargetName:  name,
-			TargetType:  "product",
-			TargetID:    m.ProductID,
-			MappingType: m.MappingType,
-			UsageCount:  m.UsageCount,
+			MappingID: m.MappingID, OCRText: m.PDFProductText, TargetName: name,
+			TargetType: "product", TargetID: m.ProductID, MappingType: m.MappingType,
+			ConfidenceScore: conf, UsageCount: m.UsageCount,
 		})
 	}
 	for _, m := range packageMappings {
 		name, ok := packageNames[m.PackageID]
-		if !ok {
-			name = fmt.Sprintf("Package #%d", m.PackageID)
-		}
+		if !ok { name = fmt.Sprintf("Package #%d", m.PackageID) }
+		conf := 0.0
+		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
 		rows = append(rows, MappingRow{
-			MappingID:   m.MappingID,
-			OCRText:     m.PDFPackageText,
-			TargetName:  name,
-			TargetType:  "package",
-			TargetID:    m.PackageID,
-			MappingType: m.MappingType,
-			UsageCount:  m.UsageCount,
+			MappingID: m.MappingID, OCRText: m.PDFPackageText, TargetName: name,
+			TargetType: "package", TargetID: m.PackageID, MappingType: m.MappingType,
+			ConfidenceScore: conf, UsageCount: m.UsageCount,
+		})
+	}
+	for _, m := range customerMappings {
+		name, ok := customerNames[m.CustomerID]
+		if !ok { name = fmt.Sprintf("Customer #%d", m.CustomerID) }
+		conf := 0.0
+		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
+		rows = append(rows, MappingRow{
+			MappingID: m.MappingID, OCRText: m.PDFCustomerText, TargetName: name,
+			TargetType: "customer", TargetID: m.CustomerID, MappingType: m.MappingType,
+			ConfidenceScore: conf, UsageCount: m.UsageCount,
 		})
 	}
 	return rows
 }
 
-// GetAllMappingsAPI returns all active product and package mappings as JSON.
-// GET /api/v1/pdf/mappings
+// GetAllMappingsAPI returns active mappings as JSON.
+// GET /api/v1/pdf/mappings?type=product|package|customer  (omit for all)
 func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
-	productMappings, err := h.Mapper.GetAllMappings()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product mappings"})
-		return
-	}
+	typeFilter := strings.ToLower(c.DefaultQuery("type", ""))
 
+	var productMappings []models.PDFProductMapping
 	var packageMappings []models.PDFPackageMapping
-	if h.PackageMapper != nil {
-		packageMappings, err = h.PackageMapper.GetAllMappings()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package mappings"})
-			return
+	var customerMappings []models.PDFCustomerMapping
+	var err error
+
+	if typeFilter == "" || typeFilter == "product" {
+		productMappings, err = h.Mapper.GetAllMappings()
+		if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product mappings"}); return }
+	}
+	if typeFilter == "" || typeFilter == "package" {
+		if h.PackageMapper != nil {
+			packageMappings, err = h.PackageMapper.GetAllMappings()
+			if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package mappings"}); return }
 		}
 	}
-
-	productIDSet := make(map[int]struct{})
-	for _, m := range productMappings {
-		productIDSet[m.ProductID] = struct{}{}
-	}
-	packageIDSet := make(map[int]struct{})
-	for _, m := range packageMappings {
-		packageIDSet[m.PackageID] = struct{}{}
+	if typeFilter == "" || typeFilter == "customer" {
+		if h.CustomerMapper != nil {
+			if err := h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer mappings"}); return
+			}
+		}
 	}
 
 	productNames := make(map[int]string)
-	if len(productIDSet) > 0 {
-		ids := make([]int, 0, len(productIDSet))
-		for id := range productIDSet {
-			ids = append(ids, id)
-		}
+	if len(productMappings) > 0 {
+		ids := make([]int, 0, len(productMappings))
+		for _, m := range productMappings { ids = append(ids, m.ProductID) }
 		var products []models.Product
 		if err := h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load mapping data"})
-			return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product names"}); return
 		}
-		for _, p := range products {
-			productNames[int(p.ProductID)] = p.Name
-		}
+		for _, p := range products { productNames[int(p.ProductID)] = p.Name }
 	}
 
 	packageNames := make(map[int]string)
-	if len(packageIDSet) > 0 {
-		ids := make([]int, 0, len(packageIDSet))
-		for id := range packageIDSet {
-			ids = append(ids, id)
-		}
+	if len(packageMappings) > 0 {
+		ids := make([]int, 0, len(packageMappings))
+		for _, m := range packageMappings { ids = append(ids, m.PackageID) }
 		var packages []models.ProductPackage
 		if err := h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load mapping data"})
-			return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package names"}); return
 		}
-		for _, p := range packages {
-			packageNames[p.PackageID] = p.Name
+		for _, p := range packages { packageNames[p.PackageID] = p.Name }
+	}
+
+	customerNames := make(map[int]string)
+	if len(customerMappings) > 0 {
+		ids := make([]int, 0, len(customerMappings))
+		for _, m := range customerMappings { ids = append(ids, m.CustomerID) }
+		var customers []models.Customer
+		if err := h.DB.Select("customerid, firstname, lastname, companyname").Where("customerid IN ?", ids).Find(&customers).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer names"}); return
+		}
+		for _, cu := range customers {
+			name := ""
+			if cu.FirstName != nil { name = strings.TrimSpace(*cu.FirstName) }
+			if cu.LastName != nil { name = strings.TrimSpace(name + " " + *cu.LastName) }
+			if cu.CompanyName != nil && *cu.CompanyName != "" { name = *cu.CompanyName }
+			customerNames[int(cu.CustomerID)] = name
 		}
 	}
 
-	rows := buildMappingRows(productMappings, packageMappings, productNames, packageNames)
+	rows := buildAllMappingRows(productMappings, packageMappings, customerMappings, productNames, packageNames, customerNames)
 	c.JSON(http.StatusOK, gin.H{"mappings": rows})
 }
 
@@ -3474,7 +3487,28 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 		}
 	}
 
-	rows := buildMappingRows(productMappings, packageMappings, productNames, packageNames)
+	var customerMappings []models.PDFCustomerMapping
+	if h.CustomerMapper != nil {
+		h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings)
+	}
+	customerIDSet := make(map[int]struct{})
+	for _, m := range customerMappings { customerIDSet[m.CustomerID] = struct{}{} }
+	customerNames := make(map[int]string)
+	if len(customerIDSet) > 0 {
+		cids := make([]int, 0, len(customerIDSet))
+		for id := range customerIDSet { cids = append(cids, id) }
+		var customers []models.Customer
+		if err := h.DB.Select("customerid, firstname, lastname, companyname").Where("customerid IN ?", cids).Find(&customers).Error; err == nil {
+			for _, cu := range customers {
+				name := ""
+				if cu.FirstName != nil { name = strings.TrimSpace(*cu.FirstName) }
+				if cu.LastName != nil { name = strings.TrimSpace(name + " " + *cu.LastName) }
+				if cu.CompanyName != nil && *cu.CompanyName != "" { name = *cu.CompanyName }
+				customerNames[int(cu.CustomerID)] = name
+			}
+		}
+	}
+	rows := buildAllMappingRows(productMappings, packageMappings, customerMappings, productNames, packageNames, customerNames)
 
 	user, _ := c.Get("user")
 	c.HTML(http.StatusOK, "mapping_management.html", gin.H{
