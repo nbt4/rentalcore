@@ -1,322 +1,281 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="de" data-theme="dark">
 <head>
-    <script>
-        (function() {
-            const t=(localStorage.getItem("rc-theme")||"dark");
-            document.documentElement.setAttribute("data-theme",t);
-        })();
-    </script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produkt-Mappings - RentalCore</title>
+    <script>(function(){const t=localStorage.getItem("rc-theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapping-Verwaltung - RentalCore</title>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="RentalCore">
-    <link rel="apple-touch-icon" href="/static/images/icon-180.png">
     <meta name="theme-color" content="#030712">
-    <meta name="msapplication-TileColor" content="#030712">
     <link rel="stylesheet" href="/static/css/rental-core-design.css?v={{.timestamp}}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body class="rc-animate-fade-in">
-    {{template "navbar.html" .}}
+{{template "navbar.html" .}}
+<main class="rc-container rc-mt-lg">
+  <div class="rc-page-header" style="margin-bottom:20px;">
+    <div>
+      <h1 class="rc-page-title"><i class="bi bi-database-gear"></i> Mapping-Verwaltung</h1>
+      <p class="rc-text-muted">Gespeicherte Zuordnungen zwischen OCR-Texten und Produkten, Paketen und Kunden.</p>
+    </div>
+  </div>
+  <div id="statusMsg"></div>
 
-    <main class="rc-container rc-mt-lg">
-        <div class="rc-page-header">
-            <div>
-                <h1 class="rc-page-title">
-                    <i class="bi bi-database-gear"></i> Produkt-Mappings
-                </h1>
-                <p class="rc-text-muted">Gespeicherte Zuordnungen zwischen OCR-Texten und Produkten/Paketen.</p>
-            </div>
-        </div>
+  <!-- Tabs -->
+  <div style="display:flex;border-bottom:2px solid var(--rc-border);margin-bottom:20px;">
+    <button class="tab-btn" id="tab-product" onclick="switchTab('product')"
+      style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;cursor:pointer;font-weight:500;">
+      <i class="bi bi-tag"></i> Produkte (<span id="count-product">0</span>)
+    </button>
+    <button class="tab-btn" id="tab-package" onclick="switchTab('package')"
+      style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;cursor:pointer;">
+      <i class="bi bi-box-seam"></i> Pakete (<span id="count-package">0</span>)
+    </button>
+    <button class="tab-btn" id="tab-customer" onclick="switchTab('customer')"
+      style="padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;cursor:pointer;">
+      <i class="bi bi-person"></i> Kunden (<span id="count-customer">0</span>)
+    </button>
+  </div>
 
-        <div id="mappingStatusMsg"></div>
+  <!-- Toolbar -->
+  <div class="rc-card" style="margin-bottom:16px;padding:12px 16px;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <input type="text" class="rc-input" id="searchInput" placeholder="OCR-Text oder Ziel suchen…"
+             style="flex:1;min-width:180px;" oninput="renderTable()">
+      <button type="button" class="rc-btn rc-btn-secondary rc-btn-sm" id="sortUnsureBtn"
+              onclick="toggleSortUnsure()"><i class="bi bi-exclamation-triangle"></i> Unsichere zuerst</button>
+      <button type="button" class="rc-btn rc-btn-sm" onclick="toggleNewForm()"
+              style="background:var(--rc-primary);color:#fff;white-space:nowrap;"><i class="bi bi-plus"></i> Neu</button>
+    </div>
+  </div>
 
-        <div class="rc-card" style="margin-bottom: 16px;">
-            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                <input type="text" class="rc-input" id="mappingSearchInput"
-                       placeholder="OCR-Text oder Produktname suchen..."
-                       style="flex:1; min-width:200px;"
-                       oninput="filterMappings()">
-                <select class="rc-input" id="mappingTypeFilter" style="width:auto;" onchange="filterMappings()">
-                    <option value="">Alle Typen</option>
-                    <option value="manual">manual</option>
-                    <option value="fuzzy">fuzzy</option>
-                    <option value="exact">exact</option>
-                </select>
-                <span class="rc-text-muted rc-text-sm" id="mappingCount">{{len .mappings}} Einträge</span>
-            </div>
-        </div>
+  <!-- New product mapping form -->
+  <div id="newForm" class="rc-card" style="display:none;margin-bottom:16px;padding:16px;">
+    <p style="font-size:12px;font-weight:600;color:var(--rc-text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Neues Produkt-Mapping anlegen</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+      <div>
+        <label style="font-size:12px;color:var(--rc-text-secondary);display:block;margin-bottom:4px;">OCR-Text</label>
+        <input type="text" class="rc-input" id="newOcrText" placeholder="z.B. Akku Ambientebeleuchtung">
+      </div>
+      <div style="position:relative;">
+        <label style="font-size:12px;color:var(--rc-text-secondary);display:block;margin-bottom:4px;">Produkt</label>
+        <input type="text" class="rc-input" id="newProductSearch" placeholder="Produkt suchen…" oninput="onNewProductSearch(this.value)">
+        <div id="newProductResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--rc-bg-card);border:1px solid var(--rc-border);border-radius:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
+        <input type="hidden" id="newProductId">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="rc-btn rc-btn-sm" onclick="submitNewMapping()" style="background:var(--rc-primary);color:#fff;"><i class="bi bi-check"></i> Anlegen</button>
+        <button type="button" class="rc-btn rc-btn-sm rc-btn-secondary" onclick="toggleNewForm()"><i class="bi bi-x"></i></button>
+      </div>
+    </div>
+  </div>
 
-        <div class="rc-card">
-            {{if .mappings}}
-            <div style="overflow-x:auto;">
-            <table class="rc-table" id="mappingsTable" style="width:100%;">
-                <thead>
-                    <tr>
-                        <th>OCR-Text</th>
-                        <th>Produkt / Paket</th>
-                        <th>Typ</th>
-                        <th style="text-align:center;">Verwendet</th>
-                        <th style="text-align:right;">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {{range .mappings}}
-                <tr class="mapping-row"
-                    data-mapping-id="{{.MappingID}}"
-                    data-target-type="{{.TargetType}}"
-                    data-target-id="{{.TargetID}}"
-                    data-ocr-text="{{.OCRText}}"
-                    data-target-name="{{.TargetName}}"
-                    data-mapping-type="{{.MappingType}}">
-                    <td style="max-width:280px; word-break:break-word;">
-                        <span class="rc-text-sm">{{.OCRText}}</span>
-                    </td>
-                    <td>
-                        <div class="mapping-target-view" style="display:flex; align-items:center; gap:6px;">
-                            {{if eq .TargetType "package"}}
-                            <i class="bi bi-box-seam" style="color:#ffc44d;"></i>
-                            {{else}}
-                            <i class="bi bi-tag" style="color:var(--rc-success);"></i>
-                            {{end}}
-                            <span class="target-name-text">{{.TargetName}}</span>
-                            <span class="rc-badge rc-badge-sm" style="background:var(--rc-bg-secondary);color:var(--rc-text-secondary);">{{.TargetType}}</span>
-                        </div>
-                        <div class="mapping-edit-form" style="display:none; position:relative;">
-                            <div style="display:flex; gap:6px; align-items:center;">
-                                <input type="text" class="rc-input rc-input-sm edit-search-input"
-                                       placeholder="Produkt suchen..."
-                                       style="flex:1;"
-                                       oninput="onEditSearchInput(this, {{.MappingID}})">
-                                <button type="button" class="rc-btn rc-btn-sm rc-btn-secondary"
-                                        onclick="cancelEdit({{.MappingID}})">
-                                    <i class="bi bi-x"></i>
-                                </button>
-                            </div>
-                            <div class="edit-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:200; background:var(--rc-bg-card); border:1px solid var(--rc-border); border-radius:6px; max-height:200px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.2);"></div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="rc-badge rc-badge-sm {{if eq .MappingType "manual"}}rc-badge-success{{else if eq .MappingType "fuzzy"}}rc-badge-info{{else}}rc-badge-secondary{{end}}">
-                            {{.MappingType}}
-                        </span>
-                    </td>
-                    <td style="text-align:center; color:var(--rc-text-secondary);">{{.UsageCount}}&times;</td>
-                    <td style="text-align:right;">
-                        <div style="display:flex; gap:6px; justify-content:flex-end;">
-                            <button type="button" class="rc-btn rc-btn-sm rc-btn-outline edit-btn"
-                                    onclick="startEdit({{.MappingID}})">
-                                <i class="bi bi-pencil"></i> Edit
-                            </button>
-                            <button type="button" class="rc-btn rc-btn-sm rc-btn-danger delete-btn"
-                                    onclick="deleteMapping({{.MappingID}}, '{{.TargetType}}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {{end}}
-                </tbody>
-            </table>
-            </div>
-            {{else}}
-            <div class="rc-empty-state" style="text-align:center; padding:40px;">
-                <i class="bi bi-database-slash" style="font-size:48px; color:var(--rc-text-secondary);"></i>
-                <p class="rc-text-muted" style="margin-top:12px;">Noch keine Mappings gespeichert.</p>
-                <p class="rc-text-sm rc-text-muted">Mappings entstehen automatisch wenn du im PDF-Workflow Positionen manuell zuordnest.</p>
-            </div>
-            {{end}}
-        </div>
-    </main>
-
+  <!-- Table -->
+  <div class="rc-card">
+    <div style="overflow-x:auto;">
+      <table class="rc-table" style="width:100%;">
+        <thead><tr>
+          <th>OCR-Text</th><th>Ziel</th>
+          <th style="width:140px;">Konfidenz</th><th style="width:80px;">Typ</th>
+          <th style="width:70px;text-align:center;">Nutzung</th><th style="width:100px;text-align:right;">Aktionen</th>
+        </tr></thead>
+        <tbody id="mappingTbody"></tbody>
+      </table>
+      <div id="emptyState" style="display:none;text-align:center;padding:40px;color:var(--rc-text-secondary);">
+        <i class="bi bi-database-slash" style="font-size:36px;"></i>
+        <p style="margin-top:10px;font-size:14px;">Keine Mappings gefunden.</p>
+      </div>
+    </div>
+  </div>
+</main>
 <script>
-var searchEditTimers = {};
+var ALL_MAPPINGS=[{{range .mappings}}{mapping_id:{{.MappingID}},ocr_text:{{printf "%q" .OCRText}},target_name:{{printf "%q" .TargetName}},target_type:{{printf "%q" .TargetType}},target_id:{{.TargetID}},mapping_type:{{printf "%q" .MappingType}},confidence_score:{{.ConfidenceScore}},usage_count:{{.UsageCount}}},{{end}}];
+var currentTab='product',sortUnsure=false,editTimers={};
 
-function filterMappings() {
-    var query = (document.getElementById('mappingSearchInput').value || '').toLowerCase();
-    var typeFilter = (document.getElementById('mappingTypeFilter').value || '').toLowerCase();
-    var visibleCount = 0;
-
-    document.querySelectorAll('.mapping-row').forEach(function(row) {
-        var ocrText = (row.dataset.ocrText || '').toLowerCase();
-        var targetName = (row.dataset.targetName || '').toLowerCase();
-        var mappingType = (row.dataset.mappingType || '').toLowerCase();
-
-        var matchesQuery = !query || ocrText.includes(query) || targetName.includes(query);
-        var matchesType = !typeFilter || mappingType === typeFilter;
-
-        var visible = matchesQuery && matchesType;
-        row.style.display = visible ? '' : 'none';
-        if (visible) { visibleCount++; }
+function switchTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.style.color='var(--rc-text-secondary)';b.style.borderBottomColor='transparent';});
+  var a=document.getElementById('tab-'+t);
+  if(a){a.style.color='var(--rc-primary)';a.style.borderBottomColor='var(--rc-primary)';}
+  renderTable();
+}
+function toggleSortUnsure(){
+  sortUnsure=!sortUnsure;
+  var b=document.getElementById('sortUnsureBtn');
+  b.style.background=sortUnsure?'var(--rc-warning)':'';b.style.color=sortUnsure?'#000':'';
+  renderTable();
+}
+function toggleNewForm(){var f=document.getElementById('newForm');f.style.display=f.style.display==='none'?'':'none';}
+function matchQ(m,q){return !q||m.ocr_text.toLowerCase().includes(q)||m.target_name.toLowerCase().includes(q);}
+function updateCounts(){
+  var q=(document.getElementById('searchInput').value||'').toLowerCase();
+  ['product','package','customer'].forEach(function(t){
+    var el=document.getElementById('count-'+t);
+    if(el)el.textContent=ALL_MAPPINGS.filter(function(m){return m.target_type===t&&matchQ(m,q);}).length;
+  });
+}
+function confBar(s){
+  var p=Math.round(s),c=p>=80?'var(--rc-success)':p>=60?'var(--rc-warning)':'var(--rc-danger)';
+  return '<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;height:6px;background:var(--rc-bg-secondary);border-radius:3px;overflow:hidden;"><div style="width:'+p+'%;height:100%;background:'+c+';border-radius:3px;"></div></div><span style="font-size:11px;color:'+c+';">'+p+'%</span></div>';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderTable(){
+  var q=(document.getElementById('searchInput').value||'').toLowerCase();
+  var rows=ALL_MAPPINGS.filter(function(m){return m.target_type===currentTab&&matchQ(m,q);});
+  if(sortUnsure)rows.sort(function(a,b){return a.confidence_score-b.confidence_score;});
+  updateCounts();
+  var tb=document.getElementById('mappingTbody'),em=document.getElementById('emptyState');
+  if(rows.length===0){tb.textContent='';em.style.display='';return;}
+  em.style.display='none';
+  var bc=currentTab==='package'?'rc-badge-info':currentTab==='customer'?'rc-badge-secondary':'rc-badge-success';
+  var icon=currentTab==='package'?'<i class="bi bi-box-seam" style="color:var(--rc-warning);"></i>':currentTab==='customer'?'<i class="bi bi-person" style="color:var(--rc-info);"></i>':'<i class="bi bi-tag" style="color:var(--rc-success);"></i>';
+  tb.textContent='';
+  rows.forEach(function(m){
+    var tc=m.mapping_type==='manual'?'rc-badge-success':m.mapping_type==='fuzzy'?'rc-badge-info':'rc-badge-secondary';
+    var tr=document.createElement('tr');tr.dataset.id=m.mapping_id;
+    tr.innerHTML='<td style="max-width:260px;word-break:break-word;"><span style="font-size:13px;">'+esc(m.ocr_text)+'</span></td>'
+      +'<td>'
+        +'<div id="view-'+m.mapping_id+'" style="display:flex;align-items:center;gap:6px;">'+icon+' <span id="vname-'+m.mapping_id+'" style="font-size:13px;">'+esc(m.target_name)+'</span></div>'
+        +'<div id="edit-'+m.mapping_id+'" style="display:none;position:relative;">'
+          +'<input class="rc-input rc-input-sm" style="width:100%;" placeholder="Suchen…" oninput="onEditSearch(this,'+m.mapping_id+',\''+m.target_type+'\')">'
+          +'<div id="eres-'+m.mapping_id+'" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--rc-bg-card);border:1px solid var(--rc-border);border-radius:6px;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>'
+        +'</div>'
+      +'</td>'
+      +'<td>'+(m.confidence_score>0?confBar(m.confidence_score):'<span style="color:var(--rc-text-secondary);font-size:12px;">—</span>')+'</td>'
+      +'<td><span class="rc-badge rc-badge-sm '+tc+'">'+esc(m.mapping_type)+'</span></td>'
+      +'<td style="text-align:center;color:var(--rc-text-secondary);font-size:13px;">'+m.usage_count+'×</td>'
+      +'<td style="text-align:right;">'
+        +'<div style="display:flex;gap:4px;justify-content:flex-end;">'
+          +'<button id="ebtn-'+m.mapping_id+'" class="rc-btn rc-btn-sm rc-btn-outline" onclick="startEdit('+m.mapping_id+')"><i class="bi bi-pencil"></i></button>'
+          +'<button class="rc-btn rc-btn-sm rc-btn-danger" onclick="deleteMapping('+m.mapping_id+',\''+m.target_type+'\')"><i class="bi bi-trash"></i></button>'
+        +'</div>'
+      +'</td>';
+    tb.appendChild(tr);
+  });
+}
+function startEdit(id){
+  document.getElementById('view-'+id).style.display='none';
+  document.getElementById('edit-'+id).style.display='';
+  document.getElementById('ebtn-'+id).style.display='none';
+  document.getElementById('edit-'+id).querySelector('input').focus();
+}
+function cancelEdit(id){
+  document.getElementById('view-'+id).style.display='';
+  var e=document.getElementById('edit-'+id);e.style.display='none';e.querySelector('input').value='';
+  document.getElementById('ebtn-'+id).style.display='';
+  var r=document.getElementById('eres-'+id);r.style.display='none';r.textContent='';
+}
+function onEditSearch(inp,id,tt){
+  var q=inp.value.trim(),re=document.getElementById('eres-'+id);
+  if(q.length<2){re.style.display='none';return;}
+  clearTimeout(editTimers[id]);
+  editTimers[id]=setTimeout(function(){
+    var ep=tt==='customer'
+      ?[fetch('/api/pdf/customers/search?q='+encodeURIComponent(q)+'&limit=6').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})]
+      :[fetch('/api/pdf/products/search?q='+encodeURIComponent(q)+'&limit=4').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};}),
+        fetch('/api/pdf/packages/search?q='+encodeURIComponent(q)+'&limit=3').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})];
+    Promise.all(ep).then(function(res){
+      var items=[];
+      if(tt==='customer'){
+        (res[0].customers||res[0]||[]).slice(0,6).forEach(function(c){
+          var n=c.company||(((c.first_name||'')+' '+(c.last_name||'')).trim());
+          items.push({id:c.customer_id||c.CustomerID,name:n,type:'customer',sub:'Kunde'});
+        });
+      }else{
+        (res[0].products||[]).slice(0,4).forEach(function(p){items.push({id:p.productID||p.ProductID,name:p.name||p.Name,type:'product',sub:'Produkt'});});
+        if(res[1])(res[1].packages||[]).slice(0,3).forEach(function(p){items.push({id:p.package_id||p.PackageID,name:p.name||p.Name,type:'package',sub:'Paket'});});
+      }
+      re.textContent='';
+      if(items.length===0){var d=document.createElement('div');d.style.padding='8px 12px';d.style.fontSize='13px';d.style.color='var(--rc-text-secondary)';d.textContent='Keine Treffer';re.appendChild(d);}
+      else items.forEach(function(item){
+        var d=document.createElement('div');
+        d.style.cssText='padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;';
+        d.addEventListener('mouseover',function(){d.style.background='var(--rc-bg-secondary)';});
+        d.addEventListener('mouseout',function(){d.style.background='';});
+        var ns=document.createElement('span');ns.textContent=item.name;
+        var ss=document.createElement('span');ss.style.cssText='font-size:11px;color:var(--rc-text-secondary);';ss.textContent=item.sub;
+        d.appendChild(ns);d.appendChild(ss);
+        d.addEventListener('click',function(){confirmEdit(id,item.type,item.id,item.name);});
+        re.appendChild(d);
+      });
+      re.style.display='';
     });
-
-    var countEl = document.getElementById('mappingCount');
-    if (countEl) { countEl.textContent = visibleCount + ' Einträge'; }
+  },300);
 }
-
-function startEdit(mappingId) {
-    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
-    if (!row) { return; }
-    row.querySelector('.mapping-target-view').style.display = 'none';
-    row.querySelector('.mapping-edit-form').style.display = '';
-    row.querySelector('.edit-btn').style.display = 'none';
-    row.querySelector('.edit-search-input').focus();
+function confirmEdit(id,tt,tid,tname){
+  var url,body;
+  if(tt==='product'){url='/api/v1/pdf/mappings/'+id;body=JSON.stringify({type:'product',target_id:tid});}
+  else if(tt==='package'){url='/api/v1/pdf/package-mappings/'+id;body=JSON.stringify({package_id:tid});}
+  else{url='/api/v1/pdf/customer-mappings/'+id;body=JSON.stringify({customer_id:tid});}
+  fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:body})
+    .then(function(r){return r.json().then(function(d){if(!r.ok||!d.success)throw new Error(d.error||'Fehler');return d;});})
+    .then(function(){
+      var m=ALL_MAPPINGS.find(function(m){return m.mapping_id===id;});
+      if(m){m.target_name=tname;m.target_id=tid;m.mapping_type='manual';}
+      cancelEdit(id);renderTable();showMsg('success','Mapping aktualisiert.');
+    }).catch(function(e){showMsg('error',e.message);});
 }
-
-function cancelEdit(mappingId) {
-    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
-    if (!row) { return; }
-    row.querySelector('.mapping-target-view').style.display = '';
-    row.querySelector('.mapping-edit-form').style.display = 'none';
-    row.querySelector('.edit-btn').style.display = '';
-    var resultsEl = row.querySelector('.edit-search-results');
-    if (resultsEl) {
-        resultsEl.style.display = 'none';
-        while (resultsEl.firstChild) { resultsEl.removeChild(resultsEl.firstChild); }
-    }
-    var searchInput = row.querySelector('.edit-search-input');
-    if (searchInput) { searchInput.value = ''; }
+function deleteMapping(id,tt){
+  if(!confirm('Mapping löschen?'))return;
+  var url=tt==='package'?'/api/v1/pdf/package-mappings/'+id:tt==='customer'?'/api/v1/pdf/customer-mappings/'+id:'/api/v1/pdf/mappings/'+id+'?type=product';
+  fetch(url,{method:'DELETE'}).then(function(r){return r.json().then(function(d){if(!r.ok||!d.success)throw new Error(d.error||'Fehler');});})
+    .then(function(){ALL_MAPPINGS=ALL_MAPPINGS.filter(function(m){return m.mapping_id!==id;});renderTable();showMsg('success','Mapping gelöscht.');})
+    .catch(function(e){showMsg('error',e.message);});
 }
-
-function onEditSearchInput(inputEl, mappingId) {
-    var q = inputEl.value.trim();
-    var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
-    var resultsEl = row ? row.querySelector('.edit-search-results') : null;
-    if (!resultsEl) { return; }
-
-    if (q.length < 2) {
-        resultsEl.style.display = 'none';
-        return;
-    }
-
-    clearTimeout(searchEditTimers[mappingId]);
-    searchEditTimers[mappingId] = setTimeout(function() {
-        Promise.all([
-            fetch('/api/v1/pdf/products/search?q=' + encodeURIComponent(q) + '&limit=4').then(function(r) { return r.ok ? r.json() : []; }),
-            fetch('/api/v1/pdf/packages/search?q=' + encodeURIComponent(q) + '&limit=3').then(function(r) { return r.ok ? r.json() : []; }),
-        ]).then(function(results) {
-            var products = results[0];
-            var packages = results[1];
-            var prodList = (products.products || products || []).slice(0, 4);
-            var pkgList = (packages.packages || packages || []).slice(0, 3);
-
-            while (resultsEl.firstChild) { resultsEl.removeChild(resultsEl.firstChild); }
-
-            var items = [];
-            prodList.forEach(function(p) {
-                items.push({ id: p.productID || p.ProductID, name: p.name || p.Name, type: 'product', sub: 'Produkt' });
-            });
-            pkgList.forEach(function(p) {
-                var code = p.package_code || p.PackageCode || '';
-                items.push({ id: p.package_id || p.PackageID, name: p.name || p.Name, type: 'package', sub: 'Paket' + (code ? ' \u00b7 ' + code : '') });
-            });
-
-            if (items.length === 0) {
-                var empty = document.createElement('div');
-                empty.className = 'rc-text-muted';
-                empty.style.padding = '8px 12px';
-                empty.textContent = 'Keine Treffer';
-                resultsEl.appendChild(empty);
-            } else {
-                items.forEach(function(item) {
-                    var div = document.createElement('div');
-                    div.style.cssText = 'padding:8px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:13px;';
-                    div.addEventListener('mouseover', function() { div.style.background = 'var(--rc-bg-secondary)'; });
-                    div.addEventListener('mouseout', function() { div.style.background = ''; });
-
-                    var nameSpan = document.createElement('span');
-                    nameSpan.textContent = item.name;
-
-                    var subSpan = document.createElement('span');
-                    subSpan.className = 'rc-text-xs rc-text-muted';
-                    subSpan.textContent = item.sub;
-
-                    div.appendChild(nameSpan);
-                    div.appendChild(subSpan);
-                    div.addEventListener('click', function() {
-                        confirmEdit(mappingId, item.type, item.id, item.name);
-                    });
-                    resultsEl.appendChild(div);
-                });
-            }
-            resultsEl.style.display = '';
-        }).catch(function(e) {
-            console.error('Search error:', e);
+var newProdTimer;
+function onNewProductSearch(q){
+  var re=document.getElementById('newProductResults');
+  document.getElementById('newProductId').value='';
+  if(q.trim().length<2){re.style.display='none';return;}
+  clearTimeout(newProdTimer);
+  newProdTimer=setTimeout(function(){
+    fetch('/api/pdf/products/search?q='+encodeURIComponent(q)+'&limit=6').then(function(r){return r.ok?r.json():{};})
+      .then(function(data){
+        var prods=data.products||[];
+        re.textContent='';
+        if(prods.length===0){var d=document.createElement('div');d.style.padding='8px 12px';d.style.fontSize='13px';d.style.color='var(--rc-text-secondary)';d.textContent='Keine Treffer';re.appendChild(d);}
+        else prods.forEach(function(p){
+          var d=document.createElement('div');d.style.cssText='padding:8px 12px;cursor:pointer;font-size:13px;';
+          d.textContent=p.name||p.Name;
+          d.addEventListener('mouseover',function(){d.style.background='var(--rc-bg-secondary)';});
+          d.addEventListener('mouseout',function(){d.style.background='';});
+          d.addEventListener('click',function(){
+            document.getElementById('newProductSearch').value=p.name||p.Name;
+            document.getElementById('newProductId').value=p.productID||p.ProductID;
+            re.style.display='none';
+          });
+          re.appendChild(d);
         });
-    }, 300);
+        re.style.display='';
+      });
+  },300);
 }
-
-function confirmEdit(mappingId, type, targetId, targetName) {
-    fetch('/api/v1/pdf/mappings/' + mappingId, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: type, target_id: targetId }),
-    }).then(function(res) {
-        return res.json().then(function(data) {
-            if (!res.ok || !data.success) { throw new Error(data.error || 'Update fehlgeschlagen'); }
-            return data;
-        });
-    }).then(function() {
-        var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
-        if (row) {
-            var nameEl = row.querySelector('.target-name-text');
-            if (nameEl) { nameEl.textContent = targetName; }
-            row.dataset.targetType = type;
-            row.dataset.targetId = targetId;
-            row.dataset.targetName = targetName;
-        }
-        cancelEdit(mappingId);
-        showMappingMsg('success', 'Mapping auf "' + targetName + '" aktualisiert.');
-    }).catch(function(e) {
-        showMappingMsg('error', e.message);
-    });
+function submitNewMapping(){
+  var ocrText=(document.getElementById('newOcrText').value||'').trim();
+  var pid=parseInt(document.getElementById('newProductId').value||'0',10);
+  if(!ocrText){showMsg('error','OCR-Text ist erforderlich.');return;}
+  if(!pid){showMsg('error','Bitte ein Produkt auswählen.');return;}
+  fetch('/api/v1/pdf/mappings-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdf_text:ocrText,product_id:pid})})
+    .then(function(r){return r.json().then(function(d){if(!r.ok||!d.success)throw new Error(d.error||'Fehler');return d;});})
+    .then(function(d){
+      showMsg('success','Mapping "'+d.product_name+'" angelegt.');
+      document.getElementById('newOcrText').value='';
+      document.getElementById('newProductSearch').value='';
+      document.getElementById('newProductId').value='';
+      document.getElementById('newForm').style.display='none';
+      setTimeout(function(){window.location.reload();},800);
+    }).catch(function(e){showMsg('error',e.message);});
 }
-
-function deleteMapping(mappingId, type) {
-    if (!confirm('Dieses Mapping wirklich löschen? Die nächste Rechnung mit diesem OCR-Text wird nicht mehr automatisch gemappt.')) { return; }
-    fetch('/api/v1/pdf/mappings/' + mappingId + '?type=' + type, { method: 'DELETE' })
-        .then(function(res) {
-            return res.json().then(function(data) {
-                if (!res.ok || !data.success) { throw new Error(data.error || 'Löschen fehlgeschlagen'); }
-            });
-        })
-        .then(function() {
-            var row = document.querySelector('[data-mapping-id="' + mappingId + '"]');
-            if (row) { row.parentNode.removeChild(row); }
-            showMappingMsg('success', 'Mapping gelöscht.');
-            filterMappings();
-        })
-        .catch(function(e) {
-            showMappingMsg('error', e.message);
-        });
+function showMsg(type,msg){
+  var el=document.getElementById('statusMsg');
+  var d=document.createElement('div');
+  d.className='rc-alert '+(type==='success'?'rc-alert-success':'rc-alert-danger');
+  d.style.marginBottom='12px';
+  d.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+  el.appendChild(d);
+  setTimeout(function(){if(el.contains(d))el.removeChild(d);},4000);
 }
-
-function showMappingMsg(type, msg) {
-    var el = document.getElementById('mappingStatusMsg');
-    if (!el) { return; }
-    while (el.firstChild) { el.removeChild(el.firstChild); }
-
-    var div = document.createElement('div');
-    div.className = 'rc-alert ' + (type === 'success' ? 'rc-alert-success' : 'rc-alert-danger');
-    div.style.marginBottom = '12px';
-
-    var icon = document.createElement('i');
-    icon.className = 'bi ' + (type === 'success' ? 'bi-check-circle' : 'bi-x-circle');
-    div.appendChild(icon);
-
-    var text = document.createTextNode(' ' + msg);
-    div.appendChild(text);
-
-    el.appendChild(div);
-    setTimeout(function() {
-        if (el.contains(div)) { el.removeChild(div); }
-    }, 4000);
-}
+switchTab('product');
 </script>
-</body>
-</html>
+</body></html>
