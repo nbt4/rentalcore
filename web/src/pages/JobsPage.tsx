@@ -8,7 +8,7 @@ import {
 import { jobsApi, customersApi, statusApi, api } from '../lib/api';
 import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
 import MappingModal from '../components/MappingModal';
-import type { MappedItem } from '../components/MappingModal';
+import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -483,8 +483,16 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
 
-  const handleMappingComplete = (items: MappedItem[]) => {
+  const handleMappingComplete = (items: MappedItem[], meta: ExtractionMeta) => {
     setPendingUploadId(null);
+    if (meta.customer_id || meta.start_date || meta.end_date) {
+      setForm(f => ({
+        ...f,
+        ...(meta.customer_id ? { customer_id: meta.customer_id } : {}),
+        ...(meta.start_date ? { startDate: meta.start_date } : {}),
+        ...(meta.end_date ? { endDate: meta.end_date } : {}),
+      }));
+    }
     if (items.length > 0) {
       setSelections((prev) => {
         const merged = [...prev];
@@ -550,7 +558,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       {pendingUploadId !== null && (
         <MappingModal
           uploadId={pendingUploadId}
-          onComplete={(items: MappedItem[]) => handleMappingComplete(items)}
+          onComplete={(items: MappedItem[], meta: ExtractionMeta) => handleMappingComplete(items, meta)}
           onClose={() => setPendingUploadId(null)}
         />
       )}

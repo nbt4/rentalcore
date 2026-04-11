@@ -482,11 +482,59 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	var items []models.PDFExtractionItem
 	h.DB.Where("extraction_id = ?", extraction.ExtractionID).Find(&items)
 
+	// Resolve product/package names for mapped items
+	type ItemWithName struct {
+		models.PDFExtractionItem
+		MappedName string `json:"mapped_name,omitempty"`
+	}
+	productIDs, packageIDs := []int{}, []int{}
+	for _, it := range items {
+		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
+		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
+	}
+	productNames := make(map[int]string)
+	if len(productIDs) > 0 {
+		var prods []models.Product
+		h.DB.Select("productid, name").Where("productid IN ?", productIDs).Find(&prods)
+		for _, p := range prods { productNames[int(p.ProductID)] = p.Name }
+	}
+	packageNames := make(map[int]string)
+	if len(packageIDs) > 0 {
+		var pkgs []models.ProductPackage
+		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&pkgs)
+		for _, p := range pkgs { packageNames[p.PackageID] = p.Name }
+	}
+	enrichedItems := make([]ItemWithName, 0, len(items))
+	for _, it := range items {
+		iwn := ItemWithName{PDFExtractionItem: it}
+		if it.MappedProductID.Valid {
+			iwn.MappedName = productNames[int(it.MappedProductID.Int64)]
+		} else if it.MappedPackageID.Valid {
+			iwn.MappedName = packageNames[int(it.MappedPackageID.Int64)]
+		}
+		enrichedItems = append(enrichedItems, iwn)
+	}
+
 	// Build response
-	response := models.PDFExtractionResponse{
+	type ExtractionResponseWithNames struct {
+		UploadID        uint64         `json:"upload_id"`
+		ExtractionID    uint64         `json:"extraction_id"`
+		CustomerName    string         `json:"customer_name,omitempty"`
+		CustomerID      *int           `json:"customer_id,omitempty"`
+		DocumentNumber  string         `json:"document_number,omitempty"`
+		DocumentDate    string         `json:"document_date,omitempty"`
+		StartDate       string         `json:"start_date,omitempty"`
+		EndDate         string         `json:"end_date,omitempty"`
+		TotalAmount     float64        `json:"total_amount,omitempty"`
+		DiscountAmount  float64        `json:"discount_amount,omitempty"`
+		RawText         string         `json:"raw_text,omitempty"`
+		ConfidenceScore float64        `json:"confidence_score,omitempty"`
+		Items           []ItemWithName `json:"items"`
+	}
+	response := ExtractionResponseWithNames{
 		UploadID:     upload.UploadID,
 		ExtractionID: extraction.ExtractionID,
-		Items:        items,
+		Items:        enrichedItems,
 	}
 
 	if extraction.CustomerName.Valid {
@@ -3730,4 +3778,62 @@ func (h *PDFHandler) DeleteCustomerMappingAPI(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// CreateProductQuick creates a product and optionally N device stubs.
+// POST /api/v1/pdf/product-quick-create
+// Body: { "name": "...", "device_count": 3 }
+func (h *PDFHandler) CreateProductQuick(c *gin.Context) {
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		DeviceCount int    `json:"device_count"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	product := models.Product{Name: req.Name}
+	if err := h.DB.Create(&product).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
+		return
+	}
+	devicesCreated := 0
+	if req.DeviceCount > 0 && req.DeviceCount <= 500 {
+		for i := 1; i <= req.DeviceCount; i++ {
+			deviceID := fmt.Sprintf("P%d-%04d", product.ProductID, i)
+			if err := h.DB.Exec("INSERT INTO devices (deviceid, productid, status) VALUES (?, ?, 'free')", deviceID, product.ProductID).Error; err == nil {
+				devicesCreated++
+			}
+		}
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"product_id":      product.ProductID,
+		"name":            product.Name,
+		"devices_created": devicesCreated,
+	})
+}
+
+// CreatePackageQuick creates a product package with just a name.
+// POST /api/v1/pdf/package-quick-create
+// Body: { "name": "..." }
+func (h *PDFHandler) CreatePackageQuick(c *gin.Context) {
+	var req struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	type pkgRow struct {
+		ID int `gorm:"column:id"`
+	}
+	var row pkgRow
+	if err := h.DB.Raw("INSERT INTO product_packages (name, package_code) VALUES (?, '') RETURNING id", req.Name).Scan(&row).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create package"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"package_id": row.ID,
+		"name":       req.Name,
+	})
 }
