@@ -400,11 +400,16 @@ func (h *PDFHandler) processUploadAsync(uploadID uint64) {
 		extraction.DocumentDate = sql.NullTime{Time: parsedDoc.DocumentDate, Valid: true}
 	}
 
-	// Store metadata from Python parser
-	if parsedDoc.Metadata != nil {
-		if metaBytes, err := json.Marshal(parsedDoc.Metadata); err == nil {
-			extraction.Metadata = sql.NullString{String: string(metaBytes), Valid: true}
-		}
+	// Store metadata from Python parser; seed start_date from DocumentDate if not set
+	meta := parsedDoc.Metadata
+	if meta == nil {
+		meta = make(map[string]interface{})
+	}
+	if _, hasStart := meta["start_date"]; !hasStart && !parsedDoc.DocumentDate.IsZero() {
+		meta["start_date"] = parsedDoc.DocumentDate.Format(time.RFC3339)
+	}
+	if metaBytes, err := json.Marshal(meta); err == nil {
+		extraction.Metadata = sql.NullString{String: string(metaBytes), Valid: true}
 	}
 
 	// Save extraction
@@ -553,11 +558,19 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	if extraction.Metadata.Valid {
 		var meta map[string]string
 		if err := json.Unmarshal([]byte(extraction.Metadata.String), &meta); err == nil {
+			formatMetaDate := func(s string) string {
+				for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z07:00", "2006-01-02"} {
+					if t, err := time.Parse(layout, s); err == nil {
+						return t.Format("2006-01-02")
+					}
+				}
+				return s
+			}
 			if start, ok := meta["start_date"]; ok {
-				response.StartDate = start
+				response.StartDate = formatMetaDate(start)
 			}
 			if end, ok := meta["end_date"]; ok {
-				response.EndDate = end
+				response.EndDate = formatMetaDate(end)
 			}
 		}
 	}
