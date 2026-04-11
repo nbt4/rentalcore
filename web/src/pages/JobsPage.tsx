@@ -483,14 +483,16 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
 
+  const isValidDateStr = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
   const handleMappingComplete = (items: MappedItem[], meta: ExtractionMeta) => {
     setPendingUploadId(null);
-    if (meta.customer_id || meta.start_date || meta.end_date) {
+    if (meta.customer_id || isValidDateStr(meta.start_date) || isValidDateStr(meta.end_date)) {
       setForm(f => ({
         ...f,
         ...(meta.customer_id ? { customer_id: meta.customer_id } : {}),
-        ...(meta.start_date ? { startDate: meta.start_date } : {}),
-        ...(meta.end_date ? { endDate: meta.end_date } : {}),
+        ...(isValidDateStr(meta.start_date) ? { startDate: meta.start_date } : {}),
+        ...(isValidDateStr(meta.end_date) ? { endDate: meta.end_date } : {}),
       }));
     }
     if (items.length > 0) {

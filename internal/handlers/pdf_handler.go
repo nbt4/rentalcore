@@ -564,7 +564,7 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 						return t.Format("2006-01-02")
 					}
 				}
-				return s
+				return "" // unparseable → omit, don't pass garbage to frontend
 			}
 			if start, ok := meta["start_date"]; ok {
 				response.StartDate = formatMetaDate(start)
