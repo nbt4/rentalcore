@@ -480,7 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.18** (Latest) - Feature: PDF import fills customer/dates into job form; RC color theme in MappingModal; show matched product name; create product/package inline
+### **v5.3.19** (Latest) - Fix: remove global RC CSS link; scope rc-* classes to index.css to prevent app-wide style breakage
+### **v5.3.18** - Feature: PDF import fills customer/dates into job form; RC color theme in MappingModal; show matched product name; create product/package inline
 ### **v5.3.17** - Fix: populate legacy filename column in pdf_uploads (NOT NULL violation on upload)
 ### **v5.3.16** - Feature: Interactive PDF mapping modal with OCR review, confidence bars, 3-tab mapping management
 ### **v5.3.15** - Fix: PDF mapping upsert broken on PostgreSQL (ON DUPLICATE KEY UPDATE is MySQL-only)
