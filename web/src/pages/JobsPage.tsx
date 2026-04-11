@@ -62,7 +62,7 @@ function ProductPicker({
   useEffect(() => {
     if (!startDate || !endDate) return;
     setLoading(true);
-    let url = `/api/v1/devices/tree/availability?start_date=${startDate}&end_date=${endDate}`;
+    let url = `/devices/tree/availability?start_date=${startDate}&end_date=${endDate}`;
     if (jobId) url += `&job_id=${jobId}`;
     api.get(url).then((r) => setTree(r.data.treeData || [])).catch(console.error).finally(() => setLoading(false));
   }, [startDate, endDate, jobId]);
@@ -153,7 +153,7 @@ function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId
     if (!jobId) return;
     setRemoving(deviceId);
     try {
-      await api.delete(`/api/v1/jobs/${jobId}/devices/${deviceId}`);
+      await api.delete(`/jobs/${jobId}/devices/${deviceId}`);
       onChanged?.();
     } catch (e) {
       console.error(e);
@@ -525,10 +525,10 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
         payload.selected_products = selections.map((s) => ({ product_id: s.product_id, quantity: s.quantity }));
       }
       if (jobId) {
-        await api.put(`/api/v1/jobs/${jobId}`, payload);
+        await api.put(`/jobs/${jobId}`, payload);
         onSaved(jobId);
       } else {
-        const res = await api.post<{ jobID: number; job_code: string }>('/api/v1/jobs', payload);
+        const res = await api.post<{ jobID: number; job_code: string }>('/jobs', payload);
         onSaved(res.data.jobID);
       }
     } catch (err) {
