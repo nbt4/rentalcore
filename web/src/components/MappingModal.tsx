@@ -390,7 +390,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <h2 className="rc-page-title" style={{ fontSize: '16px', margin: 0 }}>
+            <h2 style={{ fontSize: '16px', margin: 0, fontWeight: 600, color: 'var(--rc-text-primary)' }}>
               {phase === 'preview' ? 'Vorschau — Items zum Job' : 'PDF Mapping'}
             </h2>
           </div>

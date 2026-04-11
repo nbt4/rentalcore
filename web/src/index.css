@@ -11,6 +11,96 @@
   --color-light-200: #EAEAEA;
 }
 
+/* RC design system variables (modal/component use only — no global overrides) */
+:root {
+  --rc-primary: #c0552c;
+  --rc-danger: #D0021B;
+  --rc-success: #22c55e;
+  --rc-warning: #eab308;
+  --rc-text-primary: #ffffff;
+  --rc-text-secondary: rgba(255,255,255,0.55);
+  --rc-bg-card: rgba(17,17,17,0.97);
+  --rc-bg-secondary: rgba(255,255,255,0.04);
+  --rc-border: rgba(255,255,255,0.08);
+}
+
+/* RC component classes — used in MappingModal */
+.rc-card {
+  background: #111111;
+  border: 1px solid var(--rc-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.rc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rc-btn-primary {
+  background: #D0021B;
+  color: #fff;
+  border: none;
+}
+.rc-btn-primary:hover { background: #a00115; }
+.rc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.rc-btn-secondary {
+  background: #1f1f1f;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.rc-btn-secondary:hover { background: #2a2a2a; border-color: rgba(255,255,255,0.2); }
+
+.rc-btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.rc-btn-outline:hover { background: rgba(255,255,255,0.05); border-color: #D0021B; }
+
+.rc-btn-sm {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  min-height: unset;
+  height: 1.75rem;
+}
+
+.rc-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 0.5rem;
+  color: #fff;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.rc-input:focus {
+  outline: none;
+  border-color: #D0021B;
+  background: rgba(255,255,255,0.1);
+}
+.rc-input::placeholder { color: rgba(255,255,255,0.35); }
+
+.rc-input-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
