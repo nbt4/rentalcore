@@ -518,6 +518,10 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selections.length > 0 && (!form.startDate || !form.endDate)) {
+      setError('Bitte Zeitraum setzen bevor Produkte gespeichert werden können.');
+      return;
+    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...form };
@@ -531,8 +535,9 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
         const res = await api.post<{ jobID: number; job_code: string }>('/jobs', payload);
         onSaved(res.data.jobID);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(axiosErr.response?.data?.error || axiosErr.message || 'Speichern fehlgeschlagen');
     } finally {
       setSaving(false);
     }

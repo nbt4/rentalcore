@@ -480,7 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
-### **v5.3.21** (Latest) - Fix: double /api/v1 prefix on job save/delete/device-tree requests (404 errors)
+### **v5.3.22** (Latest) - Fix: show backend error message on job save; validate dates required when products selected
+### **v5.3.21** - Fix: double /api/v1 prefix on job save/delete/device-tree requests (404 errors)
 ### **v5.3.20** - Fix: PDF date (DocumentDate) now seeds start_date in metadata; formatted as YYYY-MM-DD before response
 ### **v5.3.19** - Fix: remove global RC CSS link; scope rc-* classes to index.css to prevent app-wide style breakage
 ### **v5.3.18** - Feature: PDF import fills customer/dates into job form; RC color theme in MappingModal; show matched product name; create product/package inline
