@@ -656,33 +656,36 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 		jobIDVal = *jobID
 	}
 
-	query := r.db.Table("devices d").
-		Select(`d.deviceid, d.productid, d.status,
+	query := r.db.
+		Table("devices").
+		Select(`devices.deviceid, devices.productid, devices.status,
 			dc.caseid AS case_id,
 			c.name AS case_name,
 			CASE WHEN jd_current.jobid IS NOT NULL THEN TRUE ELSE FALSE END AS assigned_to_job`).
-		Joins("LEFT JOIN devicescases dc ON dc.deviceid = d.deviceid").
+		Joins("LEFT JOIN devicescases dc ON dc.deviceid = devices.deviceid").
 		Joins("LEFT JOIN cases c ON c.caseid = dc.caseid").
-		Joins("LEFT JOIN job_devices jd_current ON jd_current.deviceid = d.deviceid AND jd_current.jobid = ?", jobIDVal).
-		Where("d.productid = ?", productID)
+		Joins("LEFT JOIN job_devices jd_current ON jd_current.deviceid = devices.deviceid AND jd_current.jobid = ?", jobIDVal).
+		Where("devices.productid = ?", productID)
 
 	if err := query.Scan(&rows).Error; err != nil {
+		log.Printf("[availability] query error for product %d: %v", productID, err)
 		return nil, err
 	}
+	log.Printf("[availability] product %d job %d: found %d device rows", productID, jobIDVal, len(rows))
 
 	conflicts := make(map[string]bool)
 	if startDate != nil && endDate != nil {
 		start := *startDate
 		end := *endDate
 		conflictRows := []struct {
-			DeviceID string `gorm:"column:device_id"`
+			DeviceID string `gorm:"column:deviceid"`
 		}{}
 
+		// No status filter — any job with overlapping dates blocks the device,
+		// consistent with the tree-picker conflict check.
 		conflictQuery := r.db.Table("job_devices jd").
-			Select("CAST(jd.deviceid AS CHAR) AS device_id").
+			Select("jd.deviceid").
 			Joins("JOIN jobs j ON jd.jobid = j.jobid").
-			Joins("JOIN status s ON s.statusid = j.statusid").
-			Where("s.status IN ?", []string{"open", "in_progress"}).
 			Where("NOT (COALESCE(j.enddate, j.startdate) < ? OR j.startdate > ?)", end, start)
 
 		if jobIDVal != 0 {
@@ -690,8 +693,10 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 		}
 
 		if err := conflictQuery.Scan(&conflictRows).Error; err != nil {
+			log.Printf("[availability] conflict query error for product %d: %v", productID, err)
 			return nil, err
 		}
+		log.Printf("[availability] product %d: %d conflicting devices in period %s–%s", productID, len(conflictRows), start.Format("2006-01-02"), end.Format("2006-01-02"))
 
 		for _, row := range conflictRows {
 			conflicts[row.DeviceID] = true
