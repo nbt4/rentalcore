@@ -252,12 +252,6 @@ func (r *JobRepository) Delete(id uint) error {
 		return fmt.Errorf("failed to remove devices from job: %v", err)
 	}
 
-	// Second, remove all employee-job assignments
-	if err := tx.Exec("DELETE FROM employeejob WHERE jobID = ?", id).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to remove employee assignments from job: %v", err)
-	}
-
 	// Then delete the job itself
 	if err := tx.Delete(&models.Job{}, id).Error; err != nil {
 		tx.Rollback()
