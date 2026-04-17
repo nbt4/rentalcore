@@ -480,6 +480,7 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.28** - Feature: two-stage device availability — job form saves requirements, job detail assigns specific devices
 ### **v5.3.25** (Latest) - Fix: job delete 500 (employeejob table missing in live DB)
 ### **v5.3.24** - Fix: job create FK violation on statusid; default to status 1 (Planung) when not provided
 ### **v5.3.23** - Fix: job detail 404 (job_packages table missing in live DB); bad OCR dates silently discarded
