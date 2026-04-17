@@ -43,6 +43,7 @@ export interface ExtractionMeta {
   start_date?: string;
   end_date?: string;
   document_date?: string;
+  job_id?: number;
 }
 
 export interface MappedItem {
@@ -361,10 +362,11 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         body: JSON.stringify({}),
       });
       if (!res.ok) throw new Error('Finalisierung fehlgeschlagen');
+      const data = await res.json();
       const mapped: MappedItem[] = previewItems
         .filter((pi) => pi.target_type === 'product')
         .map((pi) => ({ product_id: pi.target_id, name: pi.name, quantity: pi.quantity }));
-      onComplete(mapped, meta);
+      onComplete(mapped, { ...meta, job_id: data.job_id });
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Fehler beim Speichern');
       setPhase('error');

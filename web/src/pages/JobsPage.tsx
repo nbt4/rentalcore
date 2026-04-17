@@ -628,6 +628,10 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
   const handleMappingComplete = (items: MappedItem[], meta: ExtractionMeta) => {
     setPendingUploadId(null);
+    if (meta.job_id) {
+      onSaved(meta.job_id);
+      return;
+    }
     if (meta.customer_id || isValidDateStr(meta.start_date) || isValidDateStr(meta.end_date)) {
       setForm(f => ({
         ...f,
