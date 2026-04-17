@@ -319,18 +319,33 @@ function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDevic
               </div>
             ) : availableDevices.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4">
-                Keine verfügbaren Geräte im gewählten Zeitraum.
+                Keine Geräte für dieses Produkt vorhanden.
               </p>
             ) : (
               <div className="space-y-1 max-h-64 overflow-y-auto">
                 {availableDevices.map((d) => (
                   <button
                     key={d.DeviceID}
-                    onClick={() => assignDevice(d.DeviceID)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/10 rounded-lg text-left transition-colors"
+                    onClick={() => d.Available && assignDevice(d.DeviceID)}
+                    disabled={!d.Available}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${
+                      d.Available
+                        ? 'hover:bg-white/10 cursor-pointer'
+                        : 'opacity-40 cursor-not-allowed'
+                    }`}
                   >
-                    <span className="text-sm font-mono text-white">{d.DeviceID}</span>
-                    <span className="text-xs text-gray-400">{d.CaseName || 'Lose'}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${d.Available ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <span className={`text-sm font-mono ${d.Available ? 'text-white' : 'text-gray-500 line-through'}`}>{d.DeviceID}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {!d.Available && (
+                        <span className="text-xs text-red-400">
+                          {d.AssignedToJob ? 'Bereits zugewiesen' : 'Nicht verfügbar'}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400">{d.CaseName || 'Lose'}</span>
+                    </div>
                   </button>
                 ))}
               </div>

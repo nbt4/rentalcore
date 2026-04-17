@@ -1312,14 +1312,7 @@ func (h *JobHandler) GetAvailableDevicesForRequirementAPI(c *gin.Context) {
 		return
 	}
 
-	available := make([]repository.ProductDeviceAvailability, 0)
-	for _, d := range availability {
-		if d.Available {
-			available = append(available, d)
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"devices": available})
+	c.JSON(http.StatusOK, gin.H{"devices": availability})
 }
 
 func (h *JobHandler) RemoveDeviceAPI(c *gin.Context) {
