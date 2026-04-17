@@ -86,13 +86,13 @@ function ProductPicker({
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <input
-              type="number" min={0} max={avail} value={cur}
-              onChange={(e) => setQty((q) => ({ ...q, [p.id]: Math.min(avail, Math.max(0, Number(e.target.value))) }))}
+              type="number" min={0} value={cur}
+              onChange={(e) => setQty((q) => ({ ...q, [p.id]: Math.max(0, Number(e.target.value)) }))}
               className="w-16 px-2 py-1 text-center text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-red"
             />
             <button
               onClick={() => { if (cur > 0) onSelect(p.id, p.name, cur); }}
-              disabled={cur === 0}
+              disabled={cur === 0 || total === 0}
               className="px-3 py-1 text-xs bg-accent-red/80 hover:bg-accent-red disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               +
@@ -221,6 +221,127 @@ function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId
   );
 }
 
+// ── Requirements Panel (Stage 2 device assignment) ────────────
+
+function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDeviceAssigned: () => void }) {
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [assigning, setAssigning] = useState<number | null>(null);
+  const [availableDevices, setAvailableDevices] = useState<AvailableDevice[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [assignError, setAssignError] = useState('');
+
+  const load = useCallback(() => {
+    api.get(`/jobs/${jobId}/requirements`)
+      .then((r) => setRequirements(r.data.requirements || []))
+      .catch(console.error);
+  }, [jobId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAssignModal = async (productId: number) => {
+    setAssigning(productId);
+    setAssignError('');
+    setLoadingDevices(true);
+    try {
+      const r = await api.get(`/jobs/${jobId}/products/${productId}/available-devices`);
+      setAvailableDevices(r.data.devices || []);
+    } catch {
+      setAssignError('Fehler beim Laden der verfügbaren Geräte');
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  const assignDevice = async (deviceId: string) => {
+    try {
+      await api.post(`/jobs/${jobId}/devices/${deviceId}`, {});
+      setAssigning(null);
+      load();
+      onDeviceAssigned();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } };
+      setAssignError(err.response?.data?.error || 'Zuweisung fehlgeschlagen');
+    }
+  };
+
+  if (requirements.length === 0) return null;
+
+  return (
+    <div className="glass-dark rounded-xl border border-white/10 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Package className="w-4 h-4 text-accent-red" />
+        <h3 className="font-semibold text-white">Produktbedarf ({requirements.length})</h3>
+      </div>
+      <div className="space-y-2">
+        {requirements.map((req) => {
+          const done = req.assigned_count >= req.quantity;
+          const productName = req.product?.name || `Produkt ${req.product_id}`;
+          return (
+            <div key={req.id} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-lg">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${done ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                <span className="text-sm text-white truncate">{productName}</span>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${done ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                  {req.assigned_count}/{req.quantity}
+                </span>
+                {!done && (
+                  <button
+                    onClick={() => openAssignModal(req.product_id)}
+                    className="px-3 py-1 text-xs bg-accent-red/80 hover:bg-accent-red text-white rounded-lg transition-colors"
+                  >
+                    Zuweisen
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {assigning !== null && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-dark rounded-2xl border border-white/10 p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Gerät zuweisen</h3>
+              <button
+                onClick={() => { setAssigning(null); setAssignError(''); }}
+                className="p-1.5 hover:bg-white/10 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {assignError && <p className="text-sm text-red-400">{assignError}</p>}
+            {loadingDevices ? (
+              <div className="flex justify-center py-6">
+                <div className="w-6 h-6 border-2 border-accent-red/20 border-t-accent-red rounded-full animate-spin" />
+              </div>
+            ) : availableDevices.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                Keine verfügbaren Geräte im gewählten Zeitraum.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {availableDevices.map((d) => (
+                  <button
+                    key={d.DeviceID}
+                    onClick={() => assignDevice(d.DeviceID)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/10 rounded-lg text-left transition-colors"
+                  >
+                    <span className="text-sm font-mono text-white">{d.DeviceID}</span>
+                    <span className="text-xs text-gray-400">{d.CaseName || 'Lose'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Job Detail ────────────────────────────────────────────────
 
 function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
@@ -314,6 +435,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
         </div>
       </div>
 
+      <RequirementsPanel jobId={id} onDeviceAssigned={loadData} />
       <DeviceList devices={devices} jobId={id} onChanged={loadData} />
     </div>
   );
@@ -334,6 +456,25 @@ interface ProductSelection {
   product_id: number;
   name: string;
   quantity: number;
+}
+
+interface Requirement {
+  id: number;
+  job_id: number;
+  product_id: number;
+  quantity: number;
+  assigned_count: number;
+  product?: { name: string; productid: number };
+}
+
+interface AvailableDevice {
+  DeviceID: string;
+  ProductID: number;
+  Status: string;
+  CaseID?: number;
+  CaseName?: string;
+  AssignedToJob: boolean;
+  Available: boolean;
 }
 
 function SelectedProductsSummary({
@@ -520,10 +661,6 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (selections.length > 0 && (!form.startDate || !form.endDate)) {
-      setError('Bitte Zeitraum setzen bevor Produkte gespeichert werden können.');
-      return;
-    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...form };
