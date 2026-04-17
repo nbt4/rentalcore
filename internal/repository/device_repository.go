@@ -518,95 +518,19 @@ func (r *DeviceRepository) CountDevicesAssignedToJobs(targetDate time.Time) (int
 	return count, err
 }
 
-// IsDeviceAvailableForJob checks if a device is available for a specific job's date range
-func (r *DeviceRepository) IsDeviceAvailableForJob(deviceID string, jobID uint, startDate, endDate *time.Time) (bool, *models.JobDevice, error) {
-	deviceDebugLog("IsDeviceAvailableForJob: checking device %s for job %d", deviceID, jobID)
-
-	if startDate != nil && endDate != nil {
-		deviceDebugLog("IsDeviceAvailableForJob: date range %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	} else {
-		deviceDebugLog("IsDeviceAvailableForJob: no dates specified")
+// IsDeviceAvailableForJob returns true if the device has no confirmed job overlap
+// in the given date range, excluding the specified job (use 0 to exclude none).
+func (r *DeviceRepository) IsDeviceAvailableForJob(deviceID string, excludeJobID uint, start, end time.Time) (bool, error) {
+	var count int64
+	q := r.db.Table("job_devices jd").
+		Joins("JOIN jobs j ON jd.jobid = j.jobid").
+		Where("jd.deviceid = ?", deviceID).
+		Where("NOT (COALESCE(j.enddate, j.startdate) < ? OR j.startdate > ?)", end, start)
+	if excludeJobID != 0 {
+		q = q.Where("j.jobid != ?", excludeJobID)
 	}
-
-	// First, check if device exists at all
-	var deviceExists models.Device
-	err := r.db.Where("deviceID = ?", deviceID).First(&deviceExists).Error
-	if err != nil {
-		log.Printf("❌ IsDeviceAvailableForJob: Device %s does not exist: %v", deviceID, err)
-		return false, nil, fmt.Errorf("device %s not found: %v", deviceID, err)
-	}
-	deviceDebugLog("IsDeviceAvailableForJob: device %s exists with status %s, productID %v", deviceExists.DeviceID, deviceExists.Status, deviceExists.ProductID)
-
-	// If no dates specified, use basic availability check
-	if startDate == nil || endDate == nil {
-		deviceDebugLog("IsDeviceAvailableForJob: using basic availability check (no dates)")
-
-		// Check if device has 'free' status
-		if deviceExists.Status != "free" {
-			deviceDebugLog("IsDeviceAvailableForJob: device %s status is %s (not free)", deviceID, deviceExists.Status)
-			return false, nil, fmt.Errorf("device %s is not available (status: %s)", deviceID, deviceExists.Status)
-		}
-
-		// Check if already assigned to this specific job
-		var existingAssignment models.JobDevice
-		err = r.db.Where("deviceID = ? AND jobID = ?", deviceID, jobID).First(&existingAssignment).Error
-		if err == nil {
-			deviceDebugLog("IsDeviceAvailableForJob: device %s already assigned to job %d", deviceID, jobID)
-			return false, &existingAssignment, nil // Already assigned to this job
-		}
-
-		// Check if assigned to any other active job
-		var anyActiveAssignment models.JobDevice
-		err = r.db.Joins("JOIN jobs ON job_devices.jobid = jobs.jobid").
-			Where(`job_devices.deviceid = ? AND jobs.statusid IN (
-				SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-			)`, deviceID).First(&anyActiveAssignment).Error
-		if err == nil {
-			deviceDebugLog("IsDeviceAvailableForJob: device %s assigned to active job %d", deviceID, anyActiveAssignment.JobID)
-			return false, &anyActiveAssignment, nil // Assigned to another active job
-		}
-
-		deviceDebugLog("IsDeviceAvailableForJob: device %s available (basic check)", deviceID)
-		return true, nil, nil
-	}
-
-	// Check if device has 'free' status for date-specific check
-	if deviceExists.Status != "free" {
-		deviceDebugLog("IsDeviceAvailableForJob: device %s status %s not free for date range check", deviceID, deviceExists.Status)
-		return false, nil, fmt.Errorf("device %s is not available (status: %s)", deviceID, deviceExists.Status)
-	}
-
-	// Check for overlapping job assignments
-	deviceDebugLog("IsDeviceAvailableForJob: checking for overlapping assignments")
-	var conflictingJob models.JobDevice
-	err = r.db.Joins("JOIN jobs ON job_devices.jobid = jobs.jobid").
-		Where(`job_devices.deviceid = ?
-			AND jobs.jobid != ?
-			AND jobs.startdate <= ?
-			AND jobs.enddate >= ?
-			AND jobs.statusid IN (
-				SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-			)`, deviceID, jobID, endDate, startDate).
-		First(&conflictingJob).Error
-
-	if err == nil {
-		// Found a conflicting assignment, get the job details
-		var job models.Job
-		r.db.Where("jobID = ?", conflictingJob.JobID).First(&job)
-		conflictingJob.Job = job
-		deviceDebugLog("IsDeviceAvailableForJob: device %s conflicting assignment job %d (%s to %s)",
-			deviceID, conflictingJob.JobID, job.StartDate, job.EndDate)
-		return false, &conflictingJob, nil
-	}
-
-	// Check if error is something other than "not found" - must check err != nil first
-	if err != nil && err.Error() != "record not found" {
-		log.Printf("❌ IsDeviceAvailableForJob: Database error checking conflicts: %v", err)
-		return false, nil, fmt.Errorf("database error checking device availability: %v", err)
-	}
-
-	deviceDebugLog("IsDeviceAvailableForJob: device %s available for job %d", deviceID, jobID)
-	return true, nil, nil
+	err := q.Count(&count).Error
+	return count == 0, err
 }
 
 // GetTotalCount returns the total number of devices
