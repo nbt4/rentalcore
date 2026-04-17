@@ -346,6 +346,7 @@ func main() {
 	// Initialize repositories
 	jobRepo := repository.NewJobRepository(db)
 	deviceRepo := repository.NewDeviceRepository(db)
+	requirementRepo := repository.NewRequirementRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	statusRepo := repository.NewStatusRepository(db)
 	productRepo := repository.NewProductRepository(db)
@@ -372,7 +373,7 @@ func main() {
 	accessoriesConsumablesRepo := repository.NewAccessoriesConsumablesRepository(db)
 
 	// Initialize handlers
-	jobHandler := handlers.NewJobHandler(jobRepo, jobPackageRepo, deviceRepo, customerRepo, statusRepo, jobCategoryRepo, jobEditSessionRepo, jobHistoryService, rentalEquipmentRepo)
+	jobHandler := handlers.NewJobHandler(jobRepo, jobPackageRepo, deviceRepo, requirementRepo, customerRepo, statusRepo, jobCategoryRepo, jobEditSessionRepo, jobHistoryService, rentalEquipmentRepo)
 	jobHistoryHandler := handlers.NewJobHistoryHandler(db.DB)
 	deviceHandler := handlers.NewDeviceHandler(deviceRepo, barcodeService, productRepo)
 	customerHandler := handlers.NewCustomerHandler(customerRepo)
@@ -1283,6 +1284,8 @@ func setupRoutes(r *gin.Engine,
 				apiJobs.POST("/:id/devices/:deviceId", jobHandler.AssignDeviceAPI)
 				apiJobs.PUT("/:id/devices/:deviceId", jobHandler.UpdateDevicePriceAPI)
 				apiJobs.DELETE("/:id/devices/:deviceId", jobHandler.RemoveDeviceAPI)
+				apiJobs.GET("/:id/requirements", jobHandler.GetJobRequirementsAPI)
+				apiJobs.GET("/:id/products/:product_id/available-devices", jobHandler.GetAvailableDevicesForRequirementAPI)
 				apiJobs.POST("/:id/editing", jobHandler.StartJobEditingSession)
 				apiJobs.DELETE("/:id/editing", jobHandler.StopJobEditingSession)
 				apiJobs.GET("/:id/editing", jobHandler.GetJobEditingSessions)
