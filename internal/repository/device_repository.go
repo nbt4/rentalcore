@@ -629,7 +629,7 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 
 	results := make([]ProductDeviceAvailability, 0, len(rows))
 	for _, row := range rows {
-		available := !conflicts[row.DeviceID]
+		available := !conflicts[row.DeviceID] && !row.AssignedToJob
 		statusValue := strings.ToLower(strings.TrimSpace(row.Status))
 		if !row.AssignedToJob {
 			if strings.Contains(statusValue, "retired") ||
