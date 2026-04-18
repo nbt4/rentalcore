@@ -64,25 +64,29 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-dark">
       {/* Header */}
-      <header className={`fixed top-0 right-0 z-50 glass-dark border-b border-white/10 transition-all duration-300 ${
-        !isMobile && sidebarOpen ? 'left-64' : !isMobile ? 'left-20' : 'left-0'
-      }`}>
-        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-4">
+      <header
+        className={`fixed top-0 right-0 z-50 glass-dark transition-all duration-300 ${
+          !isMobile && sidebarOpen ? 'left-64' : !isMobile ? 'left-20' : 'left-0'
+        }`}
+        style={{ height: '60px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex items-center justify-between px-4 sm:px-6 h-full">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors cursor-pointer"
+              style={{ background: 'none', border: 'none', color: '#A0A0A0' }}
             >
               {!isMobile
                 ? (sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)
                 : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-lg sm:text-2xl font-bold">
-              <span className="text-accent-red">Rental</span>
-              <span className="text-white">Core</span>
+            <h1 className="font-bold" style={{ fontSize: '1.125rem' }}>
+              <span style={{ color: '#D0021B' }}>Rental</span>
+              <span style={{ color: '#ffffff' }}>Core</span>
             </h1>
           </div>
-          <div className="text-xs sm:text-sm text-gray-400 hidden sm:block">{companyName}</div>
+          <div className="text-sm hidden sm:block" style={{ color: '#606060' }}>{companyName}</div>
         </div>
       </header>
 
@@ -97,28 +101,48 @@ export function Layout({ children }: LayoutProps) {
       } ${isMobile ? 'w-64' : sidebarOpen ? 'w-64' : 'w-20'}`}>
 
         {/* Mobile header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10 md:hidden">
-          <h2 className="text-lg font-bold">
-            <span className="text-accent-red">Rental</span>
-            <span className="text-white">Core</span>
+        <div
+          className="flex items-center justify-between px-4 py-4 md:hidden"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <h2 className="font-bold" style={{ fontSize: '1.125rem' }}>
+            <span style={{ color: '#D0021B' }}>Rental</span>
+            <span style={{ color: '#ffffff' }}>Core</span>
           </h2>
-          <button onClick={close} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+          <button
+            onClick={close}
+            className="p-2 rounded-lg cursor-pointer"
+            style={{ background: 'none', border: 'none', color: '#A0A0A0' }}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav className={`flex-1 overflow-y-auto p-4 space-y-2 ${isMobile ? 'mt-12' : 'mt-20'}`}>
+        <nav
+          className={`flex-1 overflow-y-auto p-3 space-y-1 ${isMobile ? 'mt-12' : 'mt-[60px]'}`}
+          style={{ scrollbarWidth: 'none' }}
+        >
           {/* Cross-nav to WarehouseCore */}
           <a
             href={warehouseURL}
-            className={`flex items-center rounded-lg transition-all bg-accent-red/10 text-accent-red hover:bg-accent-red hover:text-white border border-accent-red/20 ${
-              sidebarOpen || isMobile ? 'gap-3 px-4 py-3' : 'justify-center p-3'
+            className={`flex items-center rounded-lg transition-all ${
+              sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5' : 'justify-center p-3'
             }`}
+            style={{
+              background: 'rgba(208,2,27,0.08)',
+              color: '#D0021B',
+              border: '1px solid rgba(208,2,27,0.15)',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
             title="Zu WarehouseCore wechseln"
           >
-            <Warehouse className="w-5 h-5 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && <span className="font-semibold">WarehouseCore</span>}
+            <Warehouse className="w-4 h-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && <span>WarehouseCore</span>}
           </a>
+
+          <div style={{ height: '4px' }} />
 
           {navItems.map(({ path, icon: Icon, label, exact }) => (
             <Link
@@ -126,14 +150,20 @@ export function Layout({ children }: LayoutProps) {
               to={path}
               onClick={close}
               className={`flex items-center rounded-lg transition-all ${
-                isActive(path, exact)
-                  ? 'bg-accent-red text-white shadow-lg shadow-accent-red/20'
-                  : 'text-gray-400 hover:bg-white/10 hover:text-white'
-              } ${sidebarOpen || isMobile ? 'gap-3 px-4 py-3' : 'justify-center p-3'}`}
+                sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5' : 'justify-center p-3'
+              }`}
+              style={{
+                background: isActive(path, exact) ? '#D0021B' : 'transparent',
+                color: isActive(path, exact) ? '#ffffff' : '#A0A0A0',
+                textDecoration: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                boxShadow: isActive(path, exact) ? '0 2px 8px rgba(208,2,27,0.3)' : 'none',
+              }}
               title={!sidebarOpen && !isMobile ? label : ''}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {(sidebarOpen || isMobile) && <span className="font-medium">{label}</span>}
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {(sidebarOpen || isMobile) && <span>{label}</span>}
             </Link>
           ))}
 
@@ -142,51 +172,67 @@ export function Layout({ children }: LayoutProps) {
               to="/admin"
               onClick={close}
               className={`flex items-center rounded-lg transition-all ${
-                location.pathname.startsWith('/admin')
-                  ? 'bg-accent-red text-white shadow-lg shadow-accent-red/20'
-                  : 'text-gray-400 hover:bg-white/10 hover:text-white'
-              } ${sidebarOpen || isMobile ? 'gap-3 px-4 py-3' : 'justify-center p-3'}`}
+                sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5' : 'justify-center p-3'
+              }`}
+              style={{
+                background: location.pathname.startsWith('/admin') ? '#D0021B' : 'transparent',
+                color: location.pathname.startsWith('/admin') ? '#ffffff' : '#A0A0A0',
+                textDecoration: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                boxShadow: location.pathname.startsWith('/admin') ? '0 2px 8px rgba(208,2,27,0.3)' : 'none',
+              }}
               title={!sidebarOpen && !isMobile ? 'Admin' : ''}
             >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {(sidebarOpen || isMobile) && <span className="font-medium">Admin</span>}
+              <Settings className="w-4 h-4 flex-shrink-0" />
+              {(sidebarOpen || isMobile) && <span>Admin</span>}
             </Link>
           )}
         </nav>
 
         {/* User / Logout */}
-        <div className={`p-4 border-t border-white/10 bg-dark/50 ${!sidebarOpen && !isMobile ? 'flex flex-col items-center' : ''}`}>
+        <div
+          className={`p-3 flex flex-col gap-1 ${!sidebarOpen && !isMobile ? 'items-center' : ''}`}
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+        >
           {user && (sidebarOpen || isMobile) && (
             <button
               onClick={() => { close(); navigate('/profile'); }}
-              className="mb-3 px-4 py-2 rounded-lg bg-white/5 text-left w-full hover:bg-white/10"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg w-full text-left cursor-pointer transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#ffffff' }}
             >
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4 text-accent-red" />
-                <span className="text-gray-300 font-medium underline underline-offset-2">{user.Username}</span>
-              </div>
+              <User className="w-4 h-4 flex-shrink-0" style={{ color: '#D0021B' }} />
+              <span className="text-sm font-medium truncate">{user.Username}</span>
             </button>
           )}
           {user && !sidebarOpen && !isMobile && (
-            <div className="mb-3 p-2 rounded-lg bg-white/5 flex justify-center">
-              <User className="w-5 h-5 text-accent-red" />
+            <div
+              className="p-2.5 rounded-lg flex justify-center cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.04)' }}
+              onClick={() => navigate('/profile')}
+            >
+              <User className="w-4 h-4" style={{ color: '#D0021B' }} />
             </div>
           )}
           <button
             onClick={handleLogout}
-            className={`flex items-center rounded-lg transition-all text-gray-400 hover:bg-red-500/10 hover:text-red-400 ${
-              sidebarOpen || isMobile ? 'gap-3 px-4 py-3 w-full' : 'justify-center p-3'
+            className={`flex items-center rounded-lg transition-all cursor-pointer ${
+              sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5 w-full' : 'justify-center p-3'
             }`}
+            style={{ background: 'none', border: 'none', color: '#A0A0A0', fontSize: '0.875rem', fontWeight: 500 }}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && <span className="font-medium">Abmelden</span>}
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && <span>Abmelden</span>}
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className={`pt-14 sm:pt-16 transition-all duration-300 ${isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <div className="p-3 sm:p-6">{children}</div>
+      <main
+        className={`transition-all duration-300 ${isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-20'}`}
+        style={{ paddingTop: '60px' }}
+      >
+        <div className="p-4 sm:p-6">{children}</div>
       </main>
     </div>
   );
