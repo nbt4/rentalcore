@@ -255,9 +255,14 @@ function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDevic
   const assignDevice = async (deviceId: string) => {
     try {
       await api.post(`/jobs/${jobId}/devices/${deviceId}`, {});
-      setAssigning(null);
       load();
       onDeviceAssigned();
+      // Reload device list in-place so user can keep assigning without reopening
+      if (assigning !== null) {
+        const r = await api.get(`/jobs/${jobId}/products/${assigning}/available-devices`);
+        setAvailableDevices(r.data.devices || []);
+      }
+      setAssignError('');
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } };
       setAssignError(err.response?.data?.error || 'Zuweisung fehlgeschlagen');
