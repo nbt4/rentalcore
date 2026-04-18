@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { RoleGuard } from './components/RoleGuard';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
@@ -10,7 +9,6 @@ import { JobsPage } from './pages/JobsPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { DocumentsPage } from './pages/DocumentsPage';
-import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 function App() {
@@ -34,18 +32,6 @@ function App() {
           <Route path="/analytics" element={<ProtectedRoute><Layout><AnalyticsPage /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><DocumentsPage /></Layout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <RoleGuard requiredRoles={['admin', 'manager']}>
-                    <AdminPage />
-                  </RoleGuard>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

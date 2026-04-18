@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Briefcase, Users, BarChart2, FileText, Settings,
-  Menu, X, LogOut, User, ChevronLeft, ChevronRight, Warehouse,
+  Home, Briefcase, Users, BarChart2, FileText,
+  Menu, X, LogOut, User, ChevronLeft, ChevronRight, Warehouse, LayoutDashboard,
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps { children: ReactNode }
@@ -44,11 +44,13 @@ export function Layout({ children }: LayoutProps) {
 
   const warehouseURL = getWarehouseCoreURL();
 
-  const userRoles = (user?.Roles ?? user?.roles ?? []) as { name?: string; Name?: string }[];
-  const isAdmin = useMemo(() =>
-    userRoles.some((r) => ['admin', 'manager'].includes((r?.name || r?.Name || '').toLowerCase())),
-    [userRoles]
-  );
+  const getCoresDashboardURL = () => {
+    const { hostname, port, protocol } = window.location;
+    if (port === '8081') return `${protocol}//${hostname}:8080`;
+    if (hostname.startsWith('rent.')) return `${protocol}//${hostname.replace(/^rent\./, 'cores.')}`;
+    return `${protocol}//${hostname}:8080`;
+  };
+  const dashboardURL = getCoresDashboardURL();
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard', exact: true },
@@ -122,6 +124,15 @@ export function Layout({ children }: LayoutProps) {
           className={`flex-1 overflow-y-auto p-3 space-y-1 ${isMobile ? 'mt-12' : 'mt-[60px]'}`}
           style={{ scrollbarWidth: 'none' }}
         >
+          {/* Cores Dashboard link */}
+          <a
+            href={dashboardURL}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-accent-red hover:bg-accent-red/10 transition-colors mb-2"
+          >
+            <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+            {(sidebarOpen || isMobile) && <span>← Cores</span>}
+          </a>
+
           {/* Cross-nav to WarehouseCore */}
           <a
             href={warehouseURL}
@@ -167,27 +178,6 @@ export function Layout({ children }: LayoutProps) {
             </Link>
           ))}
 
-          {isAdmin && (
-            <Link
-              to="/admin"
-              onClick={close}
-              className={`flex items-center rounded-lg transition-all ${
-                sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5' : 'justify-center p-3'
-              }`}
-              style={{
-                background: location.pathname.startsWith('/admin') ? '#D0021B' : 'transparent',
-                color: location.pathname.startsWith('/admin') ? '#ffffff' : '#A0A0A0',
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                boxShadow: location.pathname.startsWith('/admin') ? '0 2px 8px rgba(208,2,27,0.3)' : 'none',
-              }}
-              title={!sidebarOpen && !isMobile ? 'Admin' : ''}
-            >
-              <Settings className="w-4 h-4 flex-shrink-0" />
-              {(sidebarOpen || isMobile) && <span>Admin</span>}
-            </Link>
-          )}
         </nav>
 
         {/* User / Logout */}
