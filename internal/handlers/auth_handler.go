@@ -16,6 +16,7 @@ import (
 	"go-barcode-webapp/internal/models"
 
 	"github.com/gin-gonic/gin"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -411,6 +412,16 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 
 		sessionID, err := c.Cookie("session_id")
 		if err != nil || sessionID == "" {
+			// 2. Try cores_token JWT cookie (SSO from cores-dashboard)
+			if coresToken, cookieErr := c.Cookie("cores_token"); cookieErr == nil && coresToken != "" {
+				if user, ok := h.validateCoresToken(coresToken); ok {
+					c.Set("user", user)
+					c.Set("userid", user.UserID)
+					c.Next()
+					return
+				}
+			}
+
 			if isAPI {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "code": "NO_SESSION"})
 			} else {
@@ -473,6 +484,38 @@ func (h *AuthHandler) validateSession(sessionID string) bool {
 	// Also check if the user is still active
 	var user models.User
 	return h.db.Where("userID = ? AND is_active = ?", session.UserID, true).First(&user).Error == nil
+}
+
+// validateCoresToken checks a cores_token JWT cookie issued by cores-dashboard.
+func (h *AuthHandler) validateCoresToken(tokenStr string) (*models.User, bool) {
+	coresSecret := os.Getenv("CORES_JWT_SECRET")
+	if coresSecret == "" {
+		return nil, false
+	}
+
+	type coresClaims struct {
+		UserID   uint   `json:"uid"`
+		Username string `json:"username"`
+		IsAdmin  bool   `json:"is_admin"`
+		jwt.RegisteredClaims
+	}
+
+	token, err := jwt.ParseWithClaims(tokenStr, &coresClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(coresSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, false
+	}
+
+	claims := token.Claims.(*coresClaims)
+	var user models.User
+	if err := h.db.Where("userID = ? AND is_active = ?", claims.UserID, true).First(&user).Error; err != nil {
+		return nil, false
+	}
+	return &user, true
 }
 
 // generateSessionID creates a new session ID
