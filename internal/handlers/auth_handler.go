@@ -410,67 +410,54 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			c.GetHeader("Accept") == "application/json" ||
 			c.ContentType() == "application/json"
 
+		// 1. Try session_id
 		sessionID, err := c.Cookie("session_id")
-		if err != nil || sessionID == "" {
-			// 2. Try cores_token JWT cookie (SSO from cores-dashboard)
-			if coresToken, cookieErr := c.Cookie("cores_token"); cookieErr == nil && coresToken != "" {
-				if user, ok := h.validateCoresToken(coresToken); ok {
-					c.Set("user", user)
-					c.Set("userid", user.UserID)
+		if err == nil && sessionID != "" {
+			// Validate session
+			var session models.Session
+			if err := h.db.Where("session_id = ? AND expires_at > ?", sessionID, time.Now()).First(&session).Error; err != nil {
+				log.Printf("DEBUG: AuthMiddleware: Session validation failed for %s: %v", sessionID, err)
+				// Clean up invalid session cookie and fall through to cores_token
+				cookieDomain := getCookieDomain(c)
+				c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+			} else {
+				// Load the user and verify they are still active
+				var user models.User
+				if err := h.db.Where("userID = ? AND is_active = ?", session.UserID, true).First(&user).Error; err != nil {
+					log.Printf("DEBUG: AuthMiddleware: User not found or inactive for session %s (UserID: %d): %v", sessionID, session.UserID, err)
+					// Delete the session since user is inactive/deleted and fall through to cores_token
+					cookieDomain := getCookieDomain(c)
+					h.db.Where("session_id = ?", sessionID).Delete(&models.Session{})
+					c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+				} else {
+					// Session valid and user active — authenticated
+					c.Set("user", &user)
+					c.Set("userid", session.UserID)
 					c.Next()
 					return
 				}
 			}
-
-			if isAPI {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "code": "NO_SESSION"})
-			} else {
-				log.Printf("DEBUG: AuthMiddleware: No session cookie found for %s, redirecting to /login", c.Request.URL.Path)
-				c.Redirect(http.StatusSeeOther, "/login")
-				c.Abort()
-			}
-			return
 		}
 
-		// Validate session
-		var session models.Session
-		if err := h.db.Where("session_id = ? AND expires_at > ?", sessionID, time.Now()).First(&session).Error; err != nil {
-			log.Printf("DEBUG: AuthMiddleware: Session validation failed for %s: %v", sessionID, err)
-			// Clean up invalid session cookie
-			cookieDomain := getCookieDomain(c)
-			c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
-			
-			if isAPI {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session expired", "code": "SESSION_EXPIRED"})
-			} else {
-				c.Redirect(http.StatusSeeOther, "/login")
-				c.Abort()
+		// 2. Try cores_token JWT cookie (SSO from cores-dashboard)
+		// Reaches here if: no session_id, OR expired/invalid session, OR inactive user
+		if coresToken, cookieErr := c.Cookie("cores_token"); cookieErr == nil && coresToken != "" {
+			if user, ok := h.validateCoresToken(coresToken); ok {
+				c.Set("user", user)
+				c.Set("userid", user.UserID)
+				c.Next()
+				return
 			}
-			return
 		}
 
-		// Load the user and verify they are still active
-		var user models.User
-		if err := h.db.Where("userID = ? AND is_active = ?", session.UserID, true).First(&user).Error; err != nil {
-			log.Printf("DEBUG: AuthMiddleware: User not found or inactive for session %s (UserID: %d): %v", sessionID, session.UserID, err)
-			// Delete the session since user is inactive/deleted
-			cookieDomain := getCookieDomain(c)
-			h.db.Where("session_id = ?", sessionID).Delete(&models.Session{})
-			c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
-			
-			if isAPI {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User inactive", "code": "USER_INACTIVE"})
-			} else {
-				c.Redirect(http.StatusSeeOther, "/login")
-				c.Abort()
-			}
-			return
+		// 3. Unauthorized — both cookie checks failed
+		if isAPI {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "code": "NO_SESSION"})
+		} else {
+			log.Printf("DEBUG: AuthMiddleware: No valid session or cores_token for %s, redirecting to /login", c.Request.URL.Path)
+			c.Redirect(http.StatusSeeOther, "/login")
+			c.Abort()
 		}
-
-		// Store user in context (as pointer for downstream middlewares)
-		c.Set("user", &user)
-		c.Set("userid", session.UserID)
-		c.Next()
 	}
 }
 
