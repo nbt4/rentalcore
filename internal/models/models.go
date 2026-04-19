@@ -354,6 +354,7 @@ type User struct {
 	PasswordHash        string     `json:"-" gorm:"not null;column:password_hash"`
 	FirstName           string     `json:"firstName" gorm:"column:first_name"`
 	LastName            string     `json:"lastName" gorm:"column:last_name"`
+	IsAdmin             bool       `json:"isAdmin" gorm:"default:false;column:is_admin"`
 	IsActive            bool       `json:"isActive" gorm:"default:true;column:is_active"`
 	CreatedAt           time.Time  `json:"createdAt" gorm:"column:created_at"`
 	UpdatedAt           time.Time  `json:"updatedAt" gorm:"column:updated_at"`

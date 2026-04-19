@@ -1543,6 +1543,10 @@ func setupRoutes(r *gin.Engine,
 				authAPI := apiSecurity.Group("/auth")
 				{
 					authAPI.GET("/users", authHandler.ListUsersAPI)
+					authAPI.POST("/users", authHandler.CreateUserAPI)
+					authAPI.GET("/users/:id", authHandler.GetUserAPI)
+					authAPI.PUT("/users/:id", authHandler.UpdateUserAPI)
+					authAPI.DELETE("/users/:id", authHandler.DeleteUserAPI)
 				}
 			}
 		}

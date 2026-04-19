@@ -949,6 +949,130 @@ func (h *AuthHandler) ListUsersAPI(c *gin.Context) {
 	})
 }
 
+// GetUserAPI returns a single user by ID in JSON format
+func (h *AuthHandler) GetUserAPI(c *gin.Context) {
+	userID := c.Param("id")
+	var user models.User
+	if err := h.db.Where("userid = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	user.PasswordHash = ""
+	c.JSON(http.StatusOK, user)
+}
+
+// CreateUserAPI creates a new user via JSON API
+func (h *AuthHandler) CreateUserAPI(c *gin.Context) {
+	var req struct {
+		Username            string `json:"username"`
+		Email               string `json:"email"`
+		Password            string `json:"password"`
+		FirstName           string `json:"firstName"`
+		LastName            string `json:"lastName"`
+		IsAdmin             bool   `json:"isAdmin"`
+		IsActive            bool   `json:"isActive"`
+		ForcePasswordChange bool   `json:"forcePasswordChange"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	if req.Username == "" || req.Email == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username, email and password are required"})
+		return
+	}
+	hashed, err := HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+	user := models.User{
+		Username:            req.Username,
+		Email:               req.Email,
+		PasswordHash:        hashed,
+		FirstName:           req.FirstName,
+		LastName:            req.LastName,
+		IsAdmin:             req.IsAdmin,
+		IsActive:            req.IsActive,
+		ForcePasswordChange: req.ForcePasswordChange,
+	}
+	if err := h.db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
+		return
+	}
+	user.PasswordHash = ""
+	c.JSON(http.StatusCreated, user)
+}
+
+// UpdateUserAPI updates a user via JSON API
+func (h *AuthHandler) UpdateUserAPI(c *gin.Context) {
+	userID := c.Param("id")
+	var user models.User
+	if err := h.db.Where("userid = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	var req struct {
+		Username            string `json:"username"`
+		Email               string `json:"email"`
+		Password            string `json:"password"`
+		FirstName           string `json:"firstName"`
+		LastName            string `json:"lastName"`
+		IsAdmin             bool   `json:"isAdmin"`
+		IsActive            bool   `json:"isActive"`
+		ForcePasswordChange bool   `json:"forcePasswordChange"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+	if req.Username == "" || req.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and email are required"})
+		return
+	}
+	user.Username = req.Username
+	user.Email = req.Email
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
+	user.IsAdmin = req.IsAdmin
+	user.IsActive = req.IsActive
+	user.ForcePasswordChange = req.ForcePasswordChange
+	if req.Password != "" {
+		hashed, err := HashPassword(req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		user.PasswordHash = hashed
+	}
+	if err := h.db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
+		return
+	}
+	user.PasswordHash = ""
+	c.JSON(http.StatusOK, user)
+}
+
+// DeleteUserAPI deletes a user via JSON API
+func (h *AuthHandler) DeleteUserAPI(c *gin.Context) {
+	userID := c.Param("id")
+	currentUser, exists := GetCurrentUser(c)
+	if exists && fmt.Sprintf("%d", currentUser.UserID) == userID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete your own account"})
+		return
+	}
+	result := h.db.Where("userid = ?", userID).Delete(&models.User{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
+}
+
 // Helper function to parse user ID
 func parseUserID(userIDStr string) uint {
 	if userIDStr == "" {
