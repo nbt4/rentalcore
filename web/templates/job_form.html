@@ -442,6 +442,19 @@
                                                                data-equipment-id="{{.EquipmentID}}">
                                                     </td>
                                                 </tr>
+                                                {{if .FieldValues}}
+                                                <tr>
+                                                  <td colspan="7" style="padding: 0 12px 8px; border: none;">
+                                                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                                      {{range .FieldValues}}
+                                                      <span style="font-size: 11px; color: #9ca3af; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px 8px;">
+                                                        {{if .Definition}}{{.Definition.Name}}{{else}}Feld {{.FieldDefinitionID}}{{end}}: {{.Value}}{{if .Definition}}{{if .Definition.Unit}} {{.Definition.Unit}}{{end}}{{end}}
+                                                      </span>
+                                                      {{end}}
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                                {{end}}
                                                 {{end}}
                                             </tbody>
                                         </table>
