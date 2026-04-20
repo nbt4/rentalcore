@@ -10,16 +10,32 @@ import (
 	"time"
 )
 
+// RentalFieldDef describes a custom field definition from WarehouseCore
+type RentalFieldDef struct {
+	Name      string  `json:"name"`
+	FieldType string  `json:"field_type"`
+	Unit      *string `json:"unit"`
+}
+
+// RentalFieldValue is a custom field value attached to a rental equipment item
+type RentalFieldValue struct {
+	FieldDefinitionID int             `json:"field_definition_id"`
+	Value             string          `json:"value"`
+	SortOrder         int             `json:"sort_order"`
+	Definition        *RentalFieldDef `json:"definition"`
+}
+
 // RentalEquipmentItem represents a rental equipment item from WarehouseCore
 type RentalEquipmentItem struct {
-	EquipmentID   uint    `json:"equipment_id"`
-	ProductName   string  `json:"product_name"`
-	SupplierName  string  `json:"supplier_name"`
-	RentalPrice   float64 `json:"rental_price"`
-	CustomerPrice float64 `json:"customer_price"`
-	Category      string  `json:"category"`
-	Description   string  `json:"description"`
-	IsActive      bool    `json:"is_active"`
+	EquipmentID   uint               `json:"equipment_id"`
+	ProductName   string             `json:"product_name"`
+	SupplierName  string             `json:"supplier_name"`
+	RentalPrice   float64            `json:"rental_price"`
+	CustomerPrice float64            `json:"customer_price"`
+	Category      string             `json:"category"`
+	Description   string             `json:"description"`
+	IsActive      bool               `json:"is_active"`
+	FieldValues   []RentalFieldValue `json:"field_values"`
 }
 
 // Client is a client for communicating with WarehouseCore API
