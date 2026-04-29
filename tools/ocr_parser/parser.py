@@ -27,8 +27,14 @@ UNIT_KEYWORDS = [
     "hours",
 ]
 
-TOTAL_STOP_WORDS = (
+# Hard stop: marks the absolute end of the items section
+HARD_STOP_WORDS = (
     "gesamtbetrag",
+)
+
+# Soft skip: footer/page-break lines that should be ignored without interrupting
+# a partially-parsed item (e.g. prices that appear on the next page after a footer)
+PAGE_SKIP_WORDS = (
     "bruttosumme",
     "zahlung",
     "wir freuen",
@@ -113,19 +119,23 @@ class OCRParser:
         for line in lines[start_idx:]:
             lower = line.lower()
 
-            if self._is_stop_line(lower):
+            # Hard stop: end of items section
+            if any(stop in lower for stop in HARD_STOP_WORDS):
                 if current:
                     segments.append(current)
                     current = None
-                if "gesamtbetrag" in lower:
-                    break
+                break
+
+            # Soft skip: footer/page-break lines — skip without touching current item
+            # so prices that appear after a page footer are still assigned correctly
+            if any(skip in lower for skip in PAGE_SKIP_WORDS):
                 continue
 
             if self._looks_like_header(line) or lower.startswith("übertrag"):
                 continue
 
-            # Check if line is ONLY a position number (1-100)
-            only_num_match = re.match(r"^([1-9]|[1-9][0-9]|100)$", line)
+            # Check if line is ONLY a position number (1-9999)
+            only_num_match = re.match(r"^([1-9]\d{0,3})$", line)
             if only_num_match:
                 line_number = int(only_num_match.group(1))
                 
@@ -149,7 +159,7 @@ class OCRParser:
             # Check for "number word" pattern (like "6 Personal", "9 Personal") - but be very strict
             # Only match if word is short (not a long description) and alphanumeric only
             # BUT exclude unit keywords like "2 Stück" - those are quantity, not position+description
-            pos_text_match = re.match(r"^([1-9]|[1-9][0-9]|100)\s+([A-Za-zäöüÄÖÜß]{3,15})$", line)
+            pos_text_match = re.match(r"^([1-9]\d{0,3})\s+([A-Za-zäöüÄÖÜß]{3,15})$", line)
             if pos_text_match:
                 line_number = int(pos_text_match.group(1))
                 remainder = pos_text_match.group(2).strip()
@@ -180,7 +190,7 @@ class OCRParser:
 
             # Check for "number + multi-word description" (e.g., "1 Akku Ambientebeleuchtung11 Akkuspots...")
             # The description must start with a letter (rules out numeric-only lines like "4 20,00 20,00 64,00")
-            pos_long_match = re.match(r"^([1-9]|[1-9][0-9]|100)\s+([A-Za-zäöüÄÖÜß].+)$", line)
+            pos_long_match = re.match(r"^([1-9]\d{0,3})\s+([A-Za-zäöüÄÖÜß].+)$", line)
             if pos_long_match and not self._is_numeric_value(line):
                 line_number = int(pos_long_match.group(1))
                 remainder = pos_long_match.group(2).strip()
@@ -233,7 +243,7 @@ class OCRParser:
         return decimal_count < 2
 
     def _is_stop_line(self, lower: str) -> bool:
-        return any(stop in lower for stop in TOTAL_STOP_WORDS)
+        return any(stop in lower for stop in HARD_STOP_WORDS)
 
     def _find_table_start(self, lines: List[str]) -> int:
         """Find the start of the invoice items table."""
@@ -247,12 +257,13 @@ class OCRParser:
         for idx in range(len(lines) - 2):
             window = " ".join(lines[idx:idx+5]).lower()
             if all(keyword in window for keyword in HEADER_KEYWORDS):
-                # Find the first line that is ONLY a number (1-100) after the header
+                # Find the first line that is ONLY a position number after the header
                 for j in range(idx, min(idx + 10, len(lines))):
-                    if re.match(r"^([1-9]|[1-9][0-9]|100)$", lines[j]):
+                    if re.match(r"^([1-9]\d{0,3})$", lines[j]):
                         return j
                 return idx + 5
 
+        # No table header found — start from beginning but caller handles -1 safely
         return 0
 
     def _looks_like_header(self, line: str) -> bool:

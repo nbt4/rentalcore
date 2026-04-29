@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.29** - Fix: OCR parser now correctly handles multi-page invoices — footer lines (Seite, IBAN, company name) no longer interrupt item parsing; position numbers up to 9999 supported
+
 ### **v5.3.28** - Feature: two-stage device availability — job form saves requirements, job detail assigns specific devices
 ### **v5.3.25** (Latest) - Fix: job delete 500 (employeejob table missing in live DB)
 ### **v5.3.24** - Fix: job create FK violation on statusid; default to status 1 (Planung) when not provided
