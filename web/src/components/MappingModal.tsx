@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2 } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2, UserRound, Pencil } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -305,6 +305,106 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
   );
 }
 
+// ── CustomerPicker ───────────────────────────────────────────────────────────
+
+interface CustomerResult {
+  customerid: number;
+  displayName: string;
+}
+
+interface CustomerPickerProps {
+  extractionId: number;
+  currentName?: string;
+  currentId?: number;
+  onChanged: (id: number, name: string) => void;
+}
+
+function CustomerPicker({ extractionId, currentName, currentId, onChanged }: CustomerPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CustomerResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { if (open) { setQuery(''); setResults([]); setTimeout(() => inputRef.current?.focus(), 50); } }, [open]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const search = useCallback((q: string) => {
+    if (q.trim().length < 2) { setResults([]); return; }
+    setLoading(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/pdf/customers/search?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+        const d = res.ok ? await res.json() : {};
+        setResults((d.customers || []).slice(0, 8));
+      } finally { setLoading(false); }
+    }, 250);
+  }, []);
+
+  const select = async (customer: CustomerResult) => {
+    setOpen(false);
+    await fetch(`/api/pdf/customer-map/${extractionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ customer_id: customer.customerid, customer_text: customer.displayName }),
+    });
+    onChanged(customer.customerid, customer.displayName);
+  };
+
+  const hasCustomer = !!currentId;
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs transition-colors group"
+        style={{ color: hasCustomer ? 'var(--rc-text-secondary)' : 'var(--rc-warning)' }}>
+        <UserRound className="w-3.5 h-3.5 flex-shrink-0" style={{ color: hasCustomer ? 'var(--rc-text-secondary)' : 'var(--rc-warning)' }} />
+        <span>Kunde:</span>
+        {hasCustomer
+          ? <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{currentName}</span>
+          : <span style={{ color: 'var(--rc-warning)', fontWeight: 500 }}>Nicht ausgewählt — bitte wählen</span>
+        }
+        <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-lg overflow-hidden w-72"
+          style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+          <div className="p-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--rc-text-secondary)' }} />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={e => { setQuery(e.target.value); search(e.target.value); }}
+                placeholder="Kunde suchen…"
+                className="rc-input rc-input-sm w-full"
+                style={{ paddingLeft: '2rem' }}
+              />
+            </div>
+          </div>
+          {loading && <div className="px-3 pb-2 text-xs" style={{ color: 'var(--rc-text-secondary)' }}>Suche…</div>}
+          {results.map(r => (
+            <button key={r.customerid} type="button" onClick={() => select(r)}
+              className="w-full text-left px-3 py-2 text-sm transition-colors"
+              style={{ borderTop: '1px solid var(--rc-border)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--rc-bg-secondary)')}
+              onMouseLeave={e => (e.currentTarget.style.background = '')}>
+              <span style={{ color: 'var(--rc-text-primary)' }}>{r.displayName}</span>
+            </button>
+          ))}
+          <div className="p-2 flex justify-end" style={{ borderTop: results.length > 0 ? '1px solid var(--rc-border)' : undefined }}>
+            <button type="button" onClick={() => setOpen(false)} className="rc-btn rc-btn-secondary rc-btn-sm text-xs">Schließen</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── InlineSearch ────────────────────────────────────────────────────────────
 
 interface InlineSearchProps {
@@ -459,6 +559,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
   const mappedCount = items.filter(isMapped).length;
   const totalCount = items.length;
   const allMapped = mappedCount === totalCount && totalCount > 0;
+  const hasCustomer = !!meta.customer_id;
 
   const handleSelect = async (item: ExtractionItem, result: SearchResult) => {
     setSavingItem(item.item_id);
@@ -577,26 +678,27 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
           {phase === 'mapping' && (
             <>
-              {/* Meta row: customer + dates */}
-              {(meta.customer_name || meta.start_date) && (
-                <div className="rc-card mb-4 px-3 py-2 flex flex-wrap gap-4 text-xs" style={{ background: 'var(--rc-bg-secondary)' }}>
-                  {meta.customer_name && (
-                    <span style={{ color: 'var(--rc-text-secondary)' }}>
-                      Kunde: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.customer_name}</span>
-                    </span>
-                  )}
-                  {meta.start_date && (
-                    <span style={{ color: 'var(--rc-text-secondary)' }}>
-                      Von: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.start_date}</span>
-                    </span>
-                  )}
-                  {meta.end_date && (
-                    <span style={{ color: 'var(--rc-text-secondary)' }}>
-                      Bis: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.end_date}</span>
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Meta row: customer picker + dates — always visible */}
+              <div className="rc-card mb-4 px-3 py-2 flex flex-wrap gap-4 items-center text-xs" style={{ background: 'var(--rc-bg-secondary)' }}>
+                {extractionId && (
+                  <CustomerPicker
+                    extractionId={extractionId}
+                    currentId={meta.customer_id}
+                    currentName={meta.customer_name}
+                    onChanged={(id, name) => setMeta(m => ({ ...m, customer_id: id, customer_name: name }))}
+                  />
+                )}
+                {meta.start_date && (
+                  <span style={{ color: 'var(--rc-text-secondary)' }}>
+                    Von: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.start_date}</span>
+                  </span>
+                )}
+                {meta.end_date && (
+                  <span style={{ color: 'var(--rc-text-secondary)' }}>
+                    Bis: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.end_date}</span>
+                  </span>
+                )}
+              </div>
 
               {/* Progress bar */}
               <div className="flex items-center gap-3 mb-4">
@@ -730,9 +832,10 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
           {phase === 'mapping' && (
             <>
               <span className="text-xs" style={{ color: 'var(--rc-text-secondary)' }}>
+                {!hasCustomer && <span style={{ color: 'var(--rc-warning)' }}>Kunden auswählen · </span>}
                 {!allMapped && `${totalCount - mappedCount} Item(s) noch offen`}
               </span>
-              <button type="button" onClick={handleProceedToPreview} disabled={!allMapped}
+              <button type="button" onClick={handleProceedToPreview} disabled={!allMapped || !hasCustomer}
                 className="rc-btn rc-btn-primary rc-btn-sm flex items-center gap-2">
                 Weiter <ChevronRight className="w-4 h-4" />
               </button>

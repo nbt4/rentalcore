@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.31** - Fix: OCR finalize 400-Fehler — Kundenpicker in MappingModal; normalized_text Schema-Fix
+
 ### **v5.3.30** - Fix: OCR mapping product-quick-create 500 error; full create modal with Produkt/Paket/Mietprodukt tabs
 
 ### **v5.3.29** - Fix: OCR parser now correctly handles multi-page invoices — footer lines (Seite, IBAN, company name) no longer interrupt item parsing; position numbers up to 9999 supported
