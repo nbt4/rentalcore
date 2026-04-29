@@ -1496,6 +1496,7 @@ func setupRoutes(r *gin.Engine,
 				apiPDF.DELETE("/customer-mappings/:id", pdfHandler.DeleteCustomerMappingAPI)
 				apiPDF.POST("/product-quick-create", pdfHandler.CreateProductQuick)
 				apiPDF.POST("/package-quick-create", pdfHandler.CreatePackageQuick)
+				apiPDF.POST("/rental-equipment-quick-create", pdfHandler.CreateRentalEquipmentQuick)
 			}
 
 			// Financial API
@@ -1608,6 +1609,7 @@ func setupRoutes(r *gin.Engine,
 				pdfAPI.DELETE("/customer-mappings/:id", pdfHandler.DeleteCustomerMappingAPI)
 				pdfAPI.POST("/product-quick-create", pdfHandler.CreateProductQuick)
 				pdfAPI.POST("/package-quick-create", pdfHandler.CreatePackageQuick)
+				pdfAPI.POST("/rental-equipment-quick-create", pdfHandler.CreateRentalEquipmentQuick)
 			}
 
 			// Company settings API - NOW ACTIVE

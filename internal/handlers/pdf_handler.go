@@ -1961,13 +1961,8 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 		}
 
 		if len(selections) > 0 {
-			if err := h.JobHandler.ApplyProductSelections(job, selections); err != nil {
-				lower := strings.ToLower(err.Error())
-				if strings.Contains(lower, "not enough available devices") {
-					warnings = append(warnings, err.Error())
-				} else {
-					warnings = append(warnings, fmt.Sprintf("Could not auto-assign devices: %s", err.Error()))
-				}
+			if err := h.JobHandler.saveRequirements(job.JobID, selections); err != nil {
+				warnings = append(warnings, fmt.Sprintf("Could not save product requirements: %s", err.Error()))
 			}
 		}
 	}
@@ -3795,43 +3790,60 @@ func (h *PDFHandler) DeleteCustomerMappingAPI(c *gin.Context) {
 
 // CreateProductQuick creates a product and optionally N device stubs.
 // POST /api/v1/pdf/product-quick-create
-// Body: { "name": "...", "device_count": 3 }
+// Body: { "name": "...", "description": "...", "category_id": 1, "item_cost_per_day": 25.00, "device_count": 3 }
 func (h *PDFHandler) CreateProductQuick(c *gin.Context) {
 	var req struct {
-		Name        string `json:"name" binding:"required"`
-		DeviceCount int    `json:"device_count"`
+		Name           string  `json:"name" binding:"required"`
+		Description    string  `json:"description"`
+		CategoryID     *int    `json:"category_id"`
+		ItemCostPerDay float64 `json:"item_cost_per_day"`
+		DeviceCount    int     `json:"device_count"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	product := models.Product{Name: req.Name}
-	if err := h.DB.Create(&product).Error; err != nil {
+
+	// Use raw SQL to avoid GORM column-name quoting issues with the products table
+	type productRow struct {
+		ProductID int `gorm:"column:productid"`
+	}
+	var row productRow
+	var desc *string
+	if req.Description != "" {
+		desc = &req.Description
+	}
+	if err := h.DB.Raw(
+		"INSERT INTO products (name, categoryid, description, itemcostperday) VALUES (?, ?, ?, ?) RETURNING productid",
+		req.Name, req.CategoryID, desc, req.ItemCostPerDay,
+	).Scan(&row).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 		return
 	}
+
 	devicesCreated := 0
 	if req.DeviceCount > 0 && req.DeviceCount <= 500 {
 		for i := 1; i <= req.DeviceCount; i++ {
-			deviceID := fmt.Sprintf("P%d-%04d", product.ProductID, i)
-			if err := h.DB.Exec("INSERT INTO devices (deviceid, productid, status) VALUES (?, ?, 'free')", deviceID, product.ProductID).Error; err == nil {
-				devicesCreated++
-			}
+			deviceID := fmt.Sprintf("P%d-%04d", row.ProductID, i)
+			h.DB.Exec("INSERT INTO devices (deviceid, productid, status) VALUES (?, ?, 'free')", deviceID, row.ProductID)
+			devicesCreated++
 		}
 	}
 	c.JSON(http.StatusCreated, gin.H{
-		"product_id":      product.ProductID,
-		"name":            product.Name,
+		"product_id":      row.ProductID,
+		"name":            req.Name,
 		"devices_created": devicesCreated,
 	})
 }
 
-// CreatePackageQuick creates a product package with just a name.
+// CreatePackageQuick creates a product package.
 // POST /api/v1/pdf/package-quick-create
-// Body: { "name": "..." }
+// Body: { "name": "...", "description": "...", "code": "..." }
 func (h *PDFHandler) CreatePackageQuick(c *gin.Context) {
 	var req struct {
-		Name string `json:"name" binding:"required"`
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		Code        string `json:"code"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -3841,12 +3853,58 @@ func (h *PDFHandler) CreatePackageQuick(c *gin.Context) {
 		ID int `gorm:"column:id"`
 	}
 	var row pkgRow
-	if err := h.DB.Raw("INSERT INTO product_packages (name, package_code) VALUES (?, '') RETURNING id", req.Name).Scan(&row).Error; err != nil {
+	var desc *string
+	if req.Description != "" {
+		desc = &req.Description
+	}
+	if err := h.DB.Raw(
+		"INSERT INTO product_packages (name, description, package_code) VALUES (?, ?, ?) RETURNING id",
+		req.Name, desc, req.Code,
+	).Scan(&row).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create package"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
 		"package_id": row.ID,
 		"name":       req.Name,
+	})
+}
+
+// CreateRentalEquipmentQuick creates a rental equipment entry (Mietprodukt).
+// POST /api/v1/pdf/rental-equipment-quick-create
+// Body: { "name": "...", "supplier": "...", "rental_price": 0, "customer_price": 0, "category": "...", "description": "...", "notes": "..." }
+func (h *PDFHandler) CreateRentalEquipmentQuick(c *gin.Context) {
+	var req struct {
+		Name          string  `json:"name" binding:"required"`
+		Supplier      string  `json:"supplier" binding:"required"`
+		RentalPrice   float64 `json:"rental_price"`
+		CustomerPrice float64 `json:"customer_price"`
+		Category      string  `json:"category"`
+		Description   string  `json:"description"`
+		Notes         string  `json:"notes"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	type reRow struct {
+		ID int `gorm:"column:id"`
+	}
+	var row reRow
+	var desc, notes, category *string
+	if req.Description != "" { desc = &req.Description }
+	if req.Notes != "" { notes = &req.Notes }
+	if req.Category != "" { category = &req.Category }
+	if err := h.DB.Raw(
+		`INSERT INTO rental_equipment (name, supplier, rental_price, customer_price, category, description, notes, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, true) RETURNING id`,
+		req.Name, req.Supplier, req.RentalPrice, req.CustomerPrice, category, desc, notes,
+	).Scan(&row).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create rental equipment"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"rental_equipment_id": row.ID,
+		"name":                req.Name,
 	})
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Plus } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -75,44 +75,90 @@ function isMapped(item: ExtractionItem): boolean {
     && (getNullInt(item.mapped_product_id) > 0 || getNullInt(item.mapped_package_id) > 0);
 }
 
-// ── CreateNewForm ───────────────────────────────────────────────────────────
+// ── FullCreateModal ─────────────────────────────────────────────────────────
 
-interface CreateNewFormProps {
+type CreateTab = 'product' | 'package' | 'rental';
+
+interface FullCreateModalProps {
   prefill: string;
-  createType: 'product' | 'package';
+  defaultTab?: CreateTab;
   onCreated: (result: SearchResult) => void;
-  onCancel: () => void;
+  onClose: () => void;
 }
 
-function CreateNewForm({ prefill, createType, onCreated, onCancel }: CreateNewFormProps) {
-  const [name, setName] = useState(prefill);
-  const [deviceCount, setDeviceCount] = useState('');
+function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }: FullCreateModalProps) {
+  const [tab, setTab] = useState<CreateTab>(defaultTab);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  // Produkt fields
+  const [prodName, setProdName] = useState(prefill);
+  const [prodDesc, setProdDesc] = useState('');
+  const [prodPrice, setProdPrice] = useState('');
+  const [prodDevices, setProdDevices] = useState('');
+
+  // Paket fields
+  const [pkgName, setPkgName] = useState(prefill);
+  const [pkgCode, setPkgCode] = useState('');
+  const [pkgDesc, setPkgDesc] = useState('');
+
+  // Mietprodukt fields
+  const [rentName, setRentName] = useState(prefill);
+  const [rentSupplier, setRentSupplier] = useState('');
+  const [rentPrice, setRentPrice] = useState('');
+  const [rentCustomer, setRentCustomer] = useState('');
+  const [rentCategory, setRentCategory] = useState('');
+  const [rentDesc, setRentDesc] = useState('');
+  const [rentNotes, setRentNotes] = useState('');
+
   const submit = async () => {
-    if (!name.trim()) { setErr('Name ist erforderlich.'); return; }
     setSaving(true); setErr('');
     try {
-      const url = createType === 'product' ? '/api/pdf/product-quick-create' : '/api/pdf/package-quick-create';
-      const body: Record<string, unknown> = { name: name.trim() };
-      if (createType === 'product' && deviceCount) body.device_count = parseInt(deviceCount, 10) || 0;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Fehler');
-      onCreated({
-        id: createType === 'product' ? d.product_id : d.package_id,
-        name: d.name,
-        type: createType,
-        sub: createType === 'product'
-          ? `Produkt${d.devices_created ? ` · ${d.devices_created} Geräte angelegt` : ''}`
-          : 'Paket',
-      });
+      if (tab === 'product') {
+        if (!prodName.trim()) { setErr('Name ist erforderlich.'); return; }
+        const res = await fetch('/api/pdf/product-quick-create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({
+            name: prodName.trim(),
+            description: prodDesc.trim() || undefined,
+            item_cost_per_day: parseFloat(prodPrice) || 0,
+            device_count: parseInt(prodDevices, 10) || 0,
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Fehler');
+        onCreated({ id: d.product_id, name: d.name, type: 'product',
+          sub: `Produkt${d.devices_created ? ` · ${d.devices_created} Geräte` : ''}` });
+
+      } else if (tab === 'package') {
+        if (!pkgName.trim()) { setErr('Name ist erforderlich.'); return; }
+        const res = await fetch('/api/pdf/package-quick-create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ name: pkgName.trim(), description: pkgDesc.trim() || undefined, code: pkgCode.trim() || undefined }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Fehler');
+        onCreated({ id: d.package_id, name: d.name, type: 'package', sub: 'Paket' });
+
+      } else {
+        if (!rentName.trim()) { setErr('Name ist erforderlich.'); return; }
+        if (!rentSupplier.trim()) { setErr('Lieferant ist erforderlich.'); return; }
+        const res = await fetch('/api/pdf/rental-equipment-quick-create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({
+            name: rentName.trim(),
+            supplier: rentSupplier.trim(),
+            rental_price: parseFloat(rentPrice) || 0,
+            customer_price: parseFloat(rentCustomer) || 0,
+            category: rentCategory.trim() || undefined,
+            description: rentDesc.trim() || undefined,
+            notes: rentNotes.trim() || undefined,
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Fehler');
+        onCreated({ id: d.rental_equipment_id, name: d.name, type: 'product', sub: 'Mietprodukt' });
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -120,36 +166,140 @@ function CreateNewForm({ prefill, createType, onCreated, onCancel }: CreateNewFo
     }
   };
 
+  const tabs: { id: CreateTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'product', label: 'Produkt', icon: <Box className="w-3.5 h-3.5" /> },
+    { id: 'package', label: 'Paket', icon: <Package className="w-3.5 h-3.5" /> },
+    { id: 'rental', label: 'Mietprodukt', icon: <Building2 className="w-3.5 h-3.5" /> },
+  ];
+
+  const inputCls = "rc-input rc-input-sm w-full";
+  const labelCls = "block text-xs font-medium mb-1";
+
   return (
-    <div className="mt-2 p-3 rounded-lg border" style={{ background: 'var(--rc-bg-card)', borderColor: 'var(--rc-border)' }}>
-      <p className="text-xs font-semibold mb-2" style={{ color: 'var(--rc-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Neues {createType === 'product' ? 'Produkt' : 'Paket'} anlegen
-      </p>
-      <input
-        autoFocus
-        value={name}
-        onChange={e => setName(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && submit()}
-        placeholder="Name…"
-        className="rc-input rc-input-sm w-full mb-2"
-      />
-      {createType === 'product' && (
-        <input
-          type="number"
-          min="0"
-          max="500"
-          value={deviceCount}
-          onChange={e => setDeviceCount(e.target.value)}
-          placeholder="Anzahl Geräte (optional)"
-          className="rc-input rc-input-sm w-full mb-2"
-        />
-      )}
-      {err && <p className="text-xs mb-2" style={{ color: 'var(--rc-danger)' }}>{err}</p>}
-      <div className="flex gap-2">
-        <button type="button" onClick={submit} disabled={saving} className="rc-btn rc-btn-primary rc-btn-sm" style={{ flex: 1 }}>
-          {saving ? '…' : 'Anlegen'}
-        </button>
-        <button type="button" onClick={onCancel} className="rc-btn rc-btn-secondary rc-btn-sm">Abbrechen</button>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+      <div className="rc-card w-full max-w-lg flex flex-col"
+        style={{ borderRadius: '16px', border: '1px solid var(--rc-border)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)', maxHeight: '90vh' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--rc-border)' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: 'var(--rc-text-primary)' }}>Neu anlegen</h3>
+          <button type="button" onClick={onClose} className="rc-btn rc-btn-secondary rc-btn-sm" style={{ padding: '4px 8px' }}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex px-5 pt-4 gap-1">
+          {tabs.map(t => (
+            <button key={t.id} type="button" onClick={() => { setTab(t.id); setErr(''); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={{
+                background: tab === t.id ? 'var(--rc-primary)' : 'var(--rc-bg-secondary)',
+                color: tab === t.id ? '#fff' : 'var(--rc-text-secondary)',
+                border: `1px solid ${tab === t.id ? 'var(--rc-primary)' : 'var(--rc-border)'}`,
+              }}>
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+
+          {tab === 'product' && (
+            <>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Name <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
+                <input autoFocus value={prodName} onChange={e => setProdName(e.target.value)} placeholder="z.B. Shure SM58" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Beschreibung</label>
+                <textarea value={prodDesc} onChange={e => setProdDesc(e.target.value)} rows={2} placeholder="Optionale Beschreibung…" className={inputCls} style={{ resize: 'none' }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Preis/Tag (€)</label>
+                  <input type="number" min="0" step="0.01" value={prodPrice} onChange={e => setProdPrice(e.target.value)} placeholder="0.00" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Geräte anlegen</label>
+                  <input type="number" min="0" max="500" value={prodDevices} onChange={e => setProdDevices(e.target.value)} placeholder="0" className={inputCls} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === 'package' && (
+            <>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Name <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
+                <input autoFocus value={pkgName} onChange={e => setPkgName(e.target.value)} placeholder="z.B. PA-Set Klein" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Kürzel / Code</label>
+                <input value={pkgCode} onChange={e => setPkgCode(e.target.value)} placeholder="z.B. PA-S" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Beschreibung</label>
+                <textarea value={pkgDesc} onChange={e => setPkgDesc(e.target.value)} rows={2} placeholder="Optionale Beschreibung…" className={inputCls} style={{ resize: 'none' }} />
+              </div>
+            </>
+          )}
+
+          {tab === 'rental' && (
+            <>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Produktname <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
+                <input autoFocus value={rentName} onChange={e => setRentName(e.target.value)} placeholder="z.B. Bühnenpodest 2×1m" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Lieferant <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
+                <input value={rentSupplier} onChange={e => setRentSupplier(e.target.value)} placeholder="z.B. Stagetec GmbH" className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Mietpreis intern (€)</label>
+                  <input type="number" min="0" step="0.01" value={rentPrice} onChange={e => setRentPrice(e.target.value)} placeholder="0.00" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Kundenpreis (€)</label>
+                  <input type="number" min="0" step="0.01" value={rentCustomer} onChange={e => setRentCustomer(e.target.value)} placeholder="0.00" className={inputCls} />
+                </div>
+              </div>
+              {parseFloat(rentPrice) > 0 && parseFloat(rentCustomer) > 0 && (
+                <div className="rounded-lg px-3 py-2 text-center text-xs" style={{ background: 'var(--rc-bg-secondary)', color: 'var(--rc-text-secondary)' }}>
+                  Marge: <span style={{ color: parseFloat(rentCustomer) >= parseFloat(rentPrice) ? 'var(--rc-success)' : 'var(--rc-danger)', fontWeight: 600 }}>
+                    {((parseFloat(rentCustomer) - parseFloat(rentPrice)) / parseFloat(rentPrice) * 100).toFixed(1)}%
+                  </span>
+                  {' '}· +{(parseFloat(rentCustomer) - parseFloat(rentPrice)).toFixed(2)} €
+                </div>
+              )}
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Kategorie</label>
+                <input value={rentCategory} onChange={e => setRentCategory(e.target.value)} placeholder="z.B. Bühne, Audio, Licht" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Beschreibung</label>
+                <textarea value={rentDesc} onChange={e => setRentDesc(e.target.value)} rows={2} placeholder="Optionale Beschreibung…" className={inputCls} style={{ resize: 'none' }} />
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Interne Notizen</label>
+                <textarea value={rentNotes} onChange={e => setRentNotes(e.target.value)} rows={2} placeholder="Lieferzeiten, Kontaktperson…" className={inputCls} style={{ resize: 'none' }} />
+              </div>
+            </>
+          )}
+
+          {err && <p className="text-xs" style={{ color: 'var(--rc-danger)' }}>{err}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--rc-border)' }}>
+          <button type="button" onClick={submit} disabled={saving} className="rc-btn rc-btn-primary rc-btn-sm" style={{ flex: 1 }}>
+            {saving ? '…' : 'Anlegen & zuweisen'}
+          </button>
+          <button type="button" onClick={onClose} className="rc-btn rc-btn-secondary rc-btn-sm">Abbrechen</button>
+        </div>
       </div>
     </div>
   );
@@ -160,7 +310,7 @@ function CreateNewForm({ prefill, createType, onCreated, onCancel }: CreateNewFo
 interface InlineSearchProps {
   initialQuery: string;
   onSelect: (r: SearchResult) => void;
-  onCreateNew: (type: 'product' | 'package', query: string) => void;
+  onCreateNew: (type: CreateTab, query: string) => void;
 }
 
 function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps) {
@@ -235,14 +385,18 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           {noResults && (
             <div>
               <div className="px-3 py-2 text-xs" style={{ color: 'var(--rc-text-secondary)' }}>Keine Treffer für „{query}"</div>
-              <div className="flex gap-1 px-2 pb-2">
+              <div className="flex gap-1 px-2 pb-2 flex-wrap">
                 <button type="button" onClick={() => onCreateNew('product', query)}
-                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: 1, fontSize: '11px' }}>
-                  <Plus className="w-3 h-3" /> Produkt anlegen
+                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: '1 1 auto', fontSize: '11px' }}>
+                  <Box className="w-3 h-3" /> Produkt
                 </button>
                 <button type="button" onClick={() => onCreateNew('package', query)}
-                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: 1, fontSize: '11px' }}>
-                  <Plus className="w-3 h-3" /> Paket anlegen
+                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: '1 1 auto', fontSize: '11px' }}>
+                  <Package className="w-3 h-3" /> Paket
+                </button>
+                <button type="button" onClick={() => onCreateNew('rental', query)}
+                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: '1 1 auto', fontSize: '11px' }}>
+                  <Building2 className="w-3 h-3" /> Mietprodukt
                 </button>
               </div>
             </div>
@@ -261,7 +415,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
   const [items, setItems] = useState<ExtractionItem[]>([]);
   const [meta, setMeta] = useState<ExtractionMeta>({});
   const [activeSearch, setActiveSearch] = useState<number | null>(null);
-  const [activeCreate, setActiveCreate] = useState<{ itemId: number; type: 'product' | 'package'; prefill: string } | null>(null);
+  const [activeCreate, setActiveCreate] = useState<{ itemId: number; type: CreateTab; prefill: string } | null>(null);
   const [previewItems, setPreviewItems] = useState<PreviewItem[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -332,9 +486,9 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
     } finally { setSavingItem(null); }
   };
 
-  const handleCreateNew = (itemId: number, type: 'product' | 'package', query: string) => {
+  const handleCreateNew = (itemId: number, type: CreateTab, prefill: string) => {
     setActiveSearch(null);
-    setActiveCreate({ itemId, type, prefill: query });
+    setActiveCreate({ itemId, type, prefill });
   };
 
   const handleProceedToPreview = async () => {
@@ -461,7 +615,6 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                   const conf = getNullFloat(item.mapping_confidence);
                   const mapped = isMapped(item);
                   const isSearchOpen = activeSearch === item.item_id;
-                  const isCreating = activeCreate?.itemId === item.item_id;
                   const saving = savingItem === item.item_id;
 
                   let borderColor = 'var(--rc-border)';
@@ -494,13 +647,6 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                                 style={{ borderColor: 'var(--rc-primary)', borderTopColor: 'transparent' }} />
                               <span className="text-xs" style={{ color: 'var(--rc-text-secondary)' }}>Speichert…</span>
                             </div>
-                          ) : isCreating ? (
-                            <CreateNewForm
-                              prefill={activeCreate.prefill}
-                              createType={activeCreate.type}
-                              onCreated={(r) => handleSelect(item, r)}
-                              onCancel={() => setActiveCreate(null)}
-                            />
                           ) : mapped && !isSearchOpen ? (
                             <button type="button" onClick={() => setActiveSearch(item.item_id)}
                               className="flex items-center gap-2 group w-full text-left">
@@ -604,6 +750,20 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
           )}
         </div>
       </div>
+
+      {/* Full create modal — rendered as overlay on top of MappingModal */}
+      {activeCreate && (
+        <FullCreateModal
+          prefill={activeCreate.prefill}
+          defaultTab={activeCreate.type}
+          onCreated={(result) => {
+            const item = items.find(it => it.item_id === activeCreate.itemId);
+            if (item) handleSelect(item, result);
+            setActiveCreate(null);
+          }}
+          onClose={() => setActiveCreate(null)}
+        />
+      )}
     </div>
   );
 }
