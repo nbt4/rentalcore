@@ -1174,6 +1174,37 @@ func (h *PDFHandler) SearchPackages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"packages": results})
 }
 
+// SearchRentalEquipment searches rental equipment for OCR mapping
+// GET /api/v1/pdf/rental-equipment/search?q=term
+func (h *PDFHandler) SearchRentalEquipment(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter required"})
+		return
+	}
+
+	type rentalResult struct {
+		ID       int64  `json:"id"`
+		Name     string `json:"name"`
+		Supplier string `json:"supplier"`
+	}
+
+	pattern := "%" + query + "%"
+	var results []rentalResult
+	if err := h.DB.Raw(
+		`SELECT id, name, COALESCE(supplier, '') AS supplier
+		 FROM rental_equipment
+		 WHERE is_active = true AND (name ILIKE ? OR supplier ILIKE ?)
+		 ORDER BY name LIMIT 5`,
+		pattern, pattern,
+	).Scan(&results).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"rental_equipment": results})
+}
+
 // SearchCustomers searches customers for manual mapping
 // GET /api/v1/pdf/customers/search?q=term
 func (h *PDFHandler) SearchCustomers(c *gin.Context) {
