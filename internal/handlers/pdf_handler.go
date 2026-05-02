@@ -1214,11 +1214,16 @@ func (h *PDFHandler) SearchCustomers(c *gin.Context) {
 		return
 	}
 
+	role := c.Query("role")
 	pattern := "%" + query + "%"
 	var customers []models.Customer
-	if err := h.DB.Where("companyname LIKE ? OR lastname LIKE ? OR firstname LIKE ?", pattern, pattern, pattern).
-		Limit(20).
-		Find(&customers).Error; err != nil {
+	db := h.DB.Where("companyname LIKE ? OR lastname LIKE ? OR firstname LIKE ?", pattern, pattern, pattern)
+	if role == "supplier" {
+		db = db.Where("is_supplier = true")
+	} else if role == "customer" {
+		db = db.Where("is_customer = true")
+	}
+	if err := db.Limit(20).Find(&customers).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Customer search failed"})
 		return
 	}
@@ -3908,6 +3913,7 @@ func (h *PDFHandler) CreateRentalEquipmentQuick(c *gin.Context) {
 	var req struct {
 		Name          string  `json:"name" binding:"required"`
 		Supplier      string  `json:"supplier" binding:"required"`
+		SupplierID    *int64  `json:"supplier_id"`
 		RentalPrice   float64 `json:"rental_price"`
 		CustomerPrice float64 `json:"customer_price"`
 		Category      string  `json:"category"`
@@ -3927,9 +3933,9 @@ func (h *PDFHandler) CreateRentalEquipmentQuick(c *gin.Context) {
 	if req.Notes != "" { notes = &req.Notes }
 	if req.Category != "" { category = &req.Category }
 	if err := h.DB.Raw(
-		`INSERT INTO rental_equipment (name, supplier, rental_price, customer_price, category, description, notes, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, true) RETURNING id`,
-		req.Name, req.Supplier, req.RentalPrice, req.CustomerPrice, category, desc, notes,
+		`INSERT INTO rental_equipment (name, supplier, supplier_id, rental_price, customer_price, category, description, notes, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, true) RETURNING id`,
+		req.Name, req.Supplier, req.SupplierID, req.RentalPrice, req.CustomerPrice, category, desc, notes,
 	).Scan(&row).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create rental equipment"})
 		return

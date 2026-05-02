@@ -104,12 +104,25 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
 
   // Mietprodukt fields
   const [rentName, setRentName] = useState(prefill);
-  const [rentSupplier, setRentSupplier] = useState('');
+  const [supplierQuery, setSupplierQuery] = useState('');
+  const [supplierResults, setSupplierResults] = useState<{ id: number; name: string }[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<{ id: number; name: string } | null>(null);
   const [rentPrice, setRentPrice] = useState('');
   const [rentCustomer, setRentCustomer] = useState('');
   const [rentCategory, setRentCategory] = useState('');
   const [rentDesc, setRentDesc] = useState('');
   const [rentNotes, setRentNotes] = useState('');
+
+  const searchSuppliers = async (q: string) => {
+    if (q.trim().length < 2) { setSupplierResults([]); return; }
+    const res = await fetch(`/api/pdf/customers/search?q=${encodeURIComponent(q)}&role=supplier`, { credentials: 'include' });
+    if (!res.ok) return;
+    const d = await res.json();
+    setSupplierResults((d.customers || []).map((c: Record<string, unknown>) => ({
+      id: c.customerid as number,
+      name: (c.displayName || c.companyname || `${c.firstname || ''} ${c.lastname || ''}`.trim()) as string,
+    })));
+  };
 
   const submit = async () => {
     setSaving(true); setErr('');
@@ -142,12 +155,13 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
 
       } else {
         if (!rentName.trim()) { setErr('Name ist erforderlich.'); return; }
-        if (!rentSupplier.trim()) { setErr('Lieferant ist erforderlich.'); return; }
+        if (!selectedSupplier) { setErr('Lieferant ist erforderlich.'); return; }
         const res = await fetch('/api/pdf/rental-equipment-quick-create', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             name: rentName.trim(),
-            supplier: rentSupplier.trim(),
+            supplier: selectedSupplier.name,
+            supplier_id: selectedSupplier.id,
             rental_price: parseFloat(rentPrice) || 0,
             customer_price: parseFloat(rentCustomer) || 0,
             category: rentCategory.trim() || undefined,
@@ -253,9 +267,42 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
                 <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Produktname <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
                 <input autoFocus value={rentName} onChange={e => setRentName(e.target.value)} placeholder="z.B. Bühnenpodest 2×1m" className={inputCls} />
               </div>
-              <div>
-                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Lieferant <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
-                <input value={rentSupplier} onChange={e => setRentSupplier(e.target.value)} placeholder="z.B. Stagetec GmbH" className={inputCls} />
+              <div className="relative">
+                <label className="block text-xs mb-1" style={{ color: 'var(--rc-text-secondary)' }}>
+                  Lieferant *
+                </label>
+                <input
+                  value={selectedSupplier ? selectedSupplier.name : supplierQuery}
+                  onChange={e => {
+                    setSelectedSupplier(null);
+                    setSupplierQuery(e.target.value);
+                    searchSuppliers(e.target.value);
+                  }}
+                  placeholder="Lieferant suchen…"
+                  className="rc-input rc-input-sm w-full"
+                />
+                {supplierResults.length > 0 && !selectedSupplier && (
+                  <div className="absolute top-full left-0 right-0 mt-1 rounded-lg overflow-hidden z-50"
+                    style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+                    {supplierResults.map(s => (
+                      <button key={s.id} type="button"
+                        onClick={() => { setSelectedSupplier(s); setSupplierResults([]); setSupplierQuery(''); }}
+                        className="w-full flex items-center px-3 py-2 text-sm text-left"
+                        style={{ borderBottom: '1px solid var(--rc-border)', color: 'var(--rc-text-primary)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--rc-bg-secondary)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedSupplier && (
+                  <button type="button" onClick={() => { setSelectedSupplier(null); setSupplierQuery(''); }}
+                    className="absolute right-2 top-7 text-xs"
+                    style={{ color: 'var(--rc-text-secondary)' }}>
+                    ✕
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
