@@ -22,6 +22,8 @@ export interface Customer {
   phonenumber?: string | null;
   email?: string | null;
   customertype?: string | null;
+  is_customer?: boolean;
+  is_supplier?: boolean;
   notes?: string | null;
 }
 

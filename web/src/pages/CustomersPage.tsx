@@ -44,6 +44,14 @@ function CustomerDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <div>
           <h1 className="text-2xl font-bold">{customerDisplayName(customer)}</h1>
           {customer.customertype && <p className="text-gray-400 text-sm">{customer.customertype}</p>}
+          <div className="flex gap-2 mt-1">
+            {customer.is_customer && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Kunde</span>
+            )}
+            {customer.is_supplier && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30">Lieferant</span>
+            )}
+          </div>
         </div>
         <div className="ml-auto flex gap-2">
           <button onClick={() => navigate(`/customers/${id}/edit`)} className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-sm transition-colors">
@@ -174,6 +182,26 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Notizen</label>
             <textarea value={form.notes || ''} onChange={f('notes')} rows={3} className="w-full px-3 py-2.5 rounded-lg resize-none" />
           </div>
+          <div className="flex gap-6 pt-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_customer ?? true}
+                onChange={e => setForm(f => ({ ...f, is_customer: e.target.checked }))}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-gray-300">Kunde</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_supplier ?? false}
+                onChange={e => setForm(f => ({ ...f, is_supplier: e.target.checked }))}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-gray-300">Lieferant</span>
+            </label>
+          </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-accent-red hover:bg-accent-red/80 disabled:opacity-50 text-white rounded-lg font-medium transition-colors">
               <Check className="w-4 h-4" />{saving ? 'Wird gespeichert...' : 'Speichern'}
@@ -188,17 +216,21 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
   );
 }
 
+type RoleFilter = 'all' | 'customer' | 'supplier';
+
 export function CustomersPage() {
   const { id: paramId } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
   const load = useCallback(() => {
     setLoading(true);
-    customersApi.getAll().then((r) => setCustomers(r.data.customers || [])).catch(console.error).finally(() => setLoading(false));
-  }, []);
+    customersApi.getAll(roleFilter === 'all' ? {} : { role: roleFilter })
+      .then((r) => setCustomers(r.data.customers || [])).catch(console.error).finally(() => setLoading(false));
+  }, [roleFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -231,6 +263,26 @@ export function CustomersPage() {
         </button>
       </div>
 
+      <div className="flex gap-1 mb-4">
+        {([
+          { key: 'all', label: 'Alle' },
+          { key: 'customer', label: 'Kunden' },
+          { key: 'supplier', label: 'Lieferanten' },
+        ] as { key: RoleFilter; label: string }[]).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setRoleFilter(tab.key)}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              roleFilter === tab.key
+                ? 'bg-accent-red text-white'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <div className="glass-dark rounded-xl border border-white/10">
         <div className="flex items-center gap-3 p-4 border-b border-white/10">
           <div className="flex-1 relative">
@@ -257,6 +309,10 @@ export function CustomersPage() {
                     {c.email && <span className="flex items-center gap-1 text-xs text-gray-400"><Mail className="w-3 h-3" />{c.email}</span>}
                     {c.phonenumber && <span className="flex items-center gap-1 text-xs text-gray-400"><Phone className="w-3 h-3" />{c.phonenumber}</span>}
                     {c.city && <span className="flex items-center gap-1 text-xs text-gray-400"><MapPin className="w-3 h-3" />{c.city}</span>}
+                  </div>
+                  <div className="flex gap-1 mt-0.5">
+                    {c.is_customer && <span className="text-xs text-blue-400">Kunde</span>}
+                    {c.is_supplier && <span className="text-xs text-green-400">Lieferant</span>}
                   </div>
                 </div>
                 {c.customertype && (
