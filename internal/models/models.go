@@ -21,6 +21,8 @@ type Customer struct {
 	PhoneNumber  *string `json:"phonenumber" gorm:"column:phonenumber"`
 	Email        *string `json:"email" gorm:"column:email"`
 	CustomerType *string `json:"customertype" gorm:"column:customertype"`
+	IsCustomer   bool    `json:"is_customer" gorm:"column:is_customer;default:true"`
+	IsSupplier   bool    `json:"is_supplier" gorm:"column:is_supplier;default:false"`
 	Notes        *string `json:"notes" gorm:"column:notes"`
 	Jobs         []Job   `json:"jobs,omitempty" gorm:"-"`
 }

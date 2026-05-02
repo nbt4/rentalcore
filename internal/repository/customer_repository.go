@@ -60,3 +60,35 @@ func (r *CustomerRepository) List(params *models.FilterParams) ([]models.Custome
 	err := query.Find(&customers).Error
 	return customers, err
 }
+
+// ListByRole returns customers filtered by role ("customer", "supplier", or "" for all).
+func (r *CustomerRepository) ListByRole(params *models.FilterParams, role string) ([]models.Customer, error) {
+	var customers []models.Customer
+
+	query := r.db.Model(&models.Customer{})
+
+	switch role {
+	case "customer":
+		query = query.Where("is_customer = true")
+	case "supplier":
+		query = query.Where("is_supplier = true")
+	// empty string: no filter — return all
+	}
+
+	if params.SearchTerm != "" {
+		searchPattern := "%" + params.SearchTerm + "%"
+		query = query.Where("companyname LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR email LIKE ?", searchPattern, searchPattern, searchPattern, searchPattern)
+	}
+
+	if params.Limit > 0 {
+		query = query.Limit(params.Limit)
+	}
+	if params.Offset > 0 {
+		query = query.Offset(params.Offset)
+	}
+
+	query = query.Order("companyname ASC")
+
+	err := query.Find(&customers).Error
+	return customers, err
+}

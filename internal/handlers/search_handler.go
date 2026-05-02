@@ -383,8 +383,18 @@ func (h *SearchHandler) advancedSearchCustomers(query string, filters map[string
 	// Apply text search
 	if query != "" {
 		searchTerm := "%" + strings.ToLower(query) + "%"
-		db = db.Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ?", 
+		db = db.Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ?",
 			searchTerm, searchTerm, searchTerm, searchTerm)
+	}
+
+	// Apply role filter
+	if role, ok := filters["role"]; ok {
+		switch role {
+		case "customer":
+			db = db.Where("is_customer = true")
+		case "supplier":
+			db = db.Where("is_supplier = true")
+		}
 	}
 
 	// Apply filters

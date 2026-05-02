@@ -302,7 +302,8 @@ func (h *CustomerHandler) ListCustomersAPI(c *gin.Context) {
 		return
 	}
 
-	customers, err := h.customerRepo.List(params)
+	role := c.Query("role")
+	customers, err := h.customerRepo.ListByRole(params, role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
