@@ -430,12 +430,14 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
-        const [pRes, pkgRes] = await Promise.all([
+        const [pRes, pkgRes, reRes] = await Promise.all([
           fetch(`/api/pdf/products/search?q=${encodeURIComponent(q)}&limit=5`, { credentials: 'include' }),
           fetch(`/api/pdf/packages/search?q=${encodeURIComponent(q)}&limit=3`, { credentials: 'include' }),
+          fetch(`/api/pdf/rental-equipment/search?q=${encodeURIComponent(q)}`, { credentials: 'include' }),
         ]);
         const pd = pRes.ok ? await pRes.json() : {};
         const pkd = pkgRes.ok ? await pkgRes.json() : {};
+        const red = reRes.ok ? await reRes.json() : {};
         const products: SearchResult[] = (pd.products || []).slice(0, 5).map((p: Record<string, unknown>) => ({
           id: (p.productID || p.ProductID) as number,
           name: (p.name || p.Name) as string,
@@ -448,7 +450,13 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           type: 'package' as const,
           sub: `Paket${p.package_code ? ' · ' + p.package_code : ''}`,
         }));
-        setResults([...products, ...packages]);
+        const rentals: SearchResult[] = (red.rental_equipment || []).slice(0, 3).map((r: Record<string, unknown>) => ({
+          id: r.id as number,
+          name: r.name as string,
+          type: 'product' as const,
+          sub: `Mietprodukt${r.supplier ? ' · ' + r.supplier : ''}`,
+        }));
+        setResults([...products, ...packages, ...rentals]);
       } finally { setLoading(false); setSearched(true); }
     }, 300);
   }, []);
@@ -463,7 +471,7 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           ref={inputRef}
           value={query}
           onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
-          placeholder="Produkt oder Paket suchen…"
+          placeholder="Produkt, Paket oder Mietprodukt suchen…"
           className="rc-input rc-input-sm w-full"
           style={{ paddingLeft: '2rem' }}
         />
