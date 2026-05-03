@@ -307,16 +307,45 @@ class OCRParser:
             if numbers and abs(numbers[0] - quantity) < 0.0001:
                 numbers = numbers[1:]
         elif re.match(r"^\d+\s", numeric_blob):
-            quantity = float(re.match(r"^(\d+)", numeric_blob).group(1))
-            if numbers:
-                numbers = numbers[1:]
+            candidate_qty = float(re.match(r"^(\d+)", numeric_blob).group(1))
+            # Only treat as quantity if it's a small integer (<=200) and
+            # remaining numbers could form a valid price pattern
+            if candidate_qty <= 200 and not re.match(r"^\d+,\d{2}", numeric_blob):
+                quantity = candidate_qty
+                if numbers and abs(numbers[0] - candidate_qty) < 0.0001:
+                    numbers = numbers[1:]
+            else:
+                quantity = 1.0
         else:
             quantity = 1.0
 
         if len(numbers) >= 3:
-            unit_price = numbers[0]
-            discount_percent = numbers[1]
-            line_total = numbers[2]
+            # Heuristic: decide if numbers[1] is discount or something else
+            # Pattern A: [unit_price, discount_%, line_total]
+            # Pattern B: [unit_price, line_total, ???] (discount looks wrong)
+            a_price, a_disc, a_total = numbers[0], numbers[1], numbers[2]
+
+            # Validate pattern A: total ≈ qty * price * (1 - disc/100)
+            expected_a = quantity * a_price * (1.0 - a_disc / 100.0) if a_disc < 100 else 0
+            a_plausible = abs(expected_a - a_total) < max(a_total * 0.05, 1.0) if a_total > 0 else False
+
+            # Validate simple: total ≈ qty * price (no discount)
+            expected_simple = quantity * a_price
+            simple_plausible = abs(expected_simple - numbers[-1]) < max(numbers[-1] * 0.05, 1.0) if numbers[-1] > 0 else False
+
+            if a_plausible and a_disc > 0:
+                unit_price = a_price
+                discount_percent = a_disc
+                line_total = a_total
+            elif simple_plausible:
+                unit_price = a_price
+                discount_percent = 0.0
+                line_total = numbers[-1]
+            else:
+                # Fallback: take first as unit_price, last as total, ignore middle
+                unit_price = numbers[0]
+                discount_percent = 0.0
+                line_total = numbers[-1]
         elif len(numbers) == 2:
             unit_price = numbers[0]
             discount_percent = 0.0
@@ -327,6 +356,14 @@ class OCRParser:
             line_total = numbers[0]
         else:
             return None
+
+        # Plausibility: if qty * unit_price is way off from line_total, try to fix
+        if quantity > 0 and unit_price > 0 and line_total > 0 and discount_percent == 0:
+            expected = quantity * unit_price
+            if abs(expected - line_total) > line_total * 0.05 + 1.0:
+                # Maybe unit_price IS the line_total and real unit_price = total / qty
+                if abs(unit_price * quantity - line_total) > abs(line_total - line_total):
+                    unit_price = line_total / max(quantity, 1)
 
         description = " ".join(row.get("description_parts", [])).strip()
         if not description:

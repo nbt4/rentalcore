@@ -1056,9 +1056,9 @@ func (h *PDFHandler) ShowMappingScreen(c *gin.Context) {
 func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 	extractionID := c.Param("extraction_id")
 
-	// Get all items for this extraction
+	// Get all items — re-evaluate pending AND auto_mapped (skip user_confirmed)
 	var items []models.PDFExtractionItem
-	if err := h.DB.Where("extraction_id = ? AND mapping_status = ?", extractionID, "pending").Find(&items).Error; err != nil {
+	if err := h.DB.Where("extraction_id = ? AND mapping_status != ?", extractionID, "user_confirmed").Find(&items).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load items"})
 		return
 	}
@@ -1066,15 +1066,12 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 	autoMappedCount := 0
 	lowConfidenceCount := 0
 
-	// Run auto-mapping for each item
 	for _, item := range items {
-		// First check for saved package mapping
 		var packageMatch *models.ProductPackage
 		if h.PackageMapper != nil {
 			packageMatch, _ = h.PackageMapper.LookupSavedMapping(item.RawProductText)
 		}
 
-		// If package found, use it
 		if packageMatch != nil {
 			updates := map[string]interface{}{
 				"mapped_package_id":  packageMatch.PackageID,
@@ -1090,7 +1087,6 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 			continue
 		}
 
-		// Otherwise check for product mapping
 		suggestion, err := h.Mapper.FindBestMatch(item.RawProductText)
 		if err != nil || suggestion == nil {
 			continue
