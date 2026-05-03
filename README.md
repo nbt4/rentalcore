@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.34** - refactor: remove Kontakte page from RentalCore — now managed globally in Cores Dashboard
+
 ### **v5.3.33** - feat: rename "Kunden" to "Kontakte" in navigation and all UI texts
 
 ### **v5.3.32** - feat: supplier autocomplete picker in rental equipment form; contact role badges, filter tabs, and role checkboxes in Kontakte UI; IsCustomer/IsSupplier to Customer model; rental equipment in OCR inline search; rental-equipment search endpoint for OCR mapping
