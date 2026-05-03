@@ -34,6 +34,7 @@ type PDFHandler struct {
 	Extractor       *pdf.PDFExtractor
 	Mapper          *pdf.ProductMapper
 	PackageMapper   *pdf.PackageMapper
+	RentalMapper    *pdf.RentalMapper
 	CustomerMapper  *pdf.CustomerMapper
 	JobHandler      *JobHandler
 	AttachmentRepo  *repository.JobAttachmentRepository
@@ -259,6 +260,7 @@ func NewPDFHandler(db *gorm.DB, uploadDir string, jobHandler *JobHandler, attach
 		Extractor:       pdf.NewPDFExtractor(uploadDir),
 		Mapper:          pdf.NewProductMapper(db, aliasCache),
 		PackageMapper:   pdf.NewPackageMapper(db),
+		RentalMapper:    pdf.NewRentalMapper(db),
 		CustomerMapper:  pdf.NewCustomerMapper(db),
 		JobHandler:      jobHandler,
 		AttachmentRepo:  attachmentRepo,
@@ -430,19 +432,25 @@ func (h *PDFHandler) processUploadAsync(uploadID uint64) {
 			MappingStatus:  "pending",
 		}
 
-		// First check for saved package mapping
+		// Check saved mappings: package → rental → product
 		var packageMatch *models.ProductPackage
 		if h.PackageMapper != nil {
 			packageMatch, _ = h.PackageMapper.LookupSavedMapping(item.ProductName)
 		}
 
-		// If package found, use it with high confidence
 		if packageMatch != nil {
 			extractionItem.MappedPackageID = sql.NullInt64{Int64: int64(packageMatch.PackageID), Valid: true}
 			extractionItem.MappingConfidence = sql.NullFloat64{Float64: 100.0, Valid: true}
 			extractionItem.MappingStatus = "auto_mapped"
+		} else if rentalMatch, err := h.RentalMapper.LookupSavedMapping(item.ProductName); err == nil && rentalMatch != nil {
+			extractionItem.MappedRentalEquipmentID = sql.NullInt64{Int64: rentalMatch.ID, Valid: true}
+			extractionItem.MappingConfidence = sql.NullFloat64{Float64: 100.0, Valid: true}
+			extractionItem.MappingStatus = "auto_mapped"
+		} else if rentalMatch, confidence, err := h.RentalMapper.FindBestMatch(item.ProductName); err == nil && rentalMatch != nil && confidence >= 80 {
+			extractionItem.MappedRentalEquipmentID = sql.NullInt64{Int64: rentalMatch.ID, Valid: true}
+			extractionItem.MappingConfidence = sql.NullFloat64{Float64: confidence, Valid: true}
+			extractionItem.MappingStatus = "auto_mapped"
 		} else {
-			// Try to find product mapping
 			if suggestion, err := h.Mapper.FindBestMatch(item.ProductName); err == nil && suggestion != nil {
 				applySuggestionToNewItem(&extractionItem, suggestion)
 			}
@@ -492,10 +500,11 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 		models.PDFExtractionItem
 		MappedName string `json:"mapped_name,omitempty"`
 	}
-	productIDs, packageIDs := []int{}, []int{}
+	productIDs, packageIDs, rentalIDs := []int{}, []int{}, []int{}
 	for _, it := range items {
 		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
 		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
+		if it.MappedRentalEquipmentID.Valid { rentalIDs = append(rentalIDs, int(it.MappedRentalEquipmentID.Int64)) }
 	}
 	productNames := make(map[int]string)
 	if len(productIDs) > 0 {
@@ -509,6 +518,13 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&pkgs)
 		for _, p := range pkgs { packageNames[p.PackageID] = p.Name }
 	}
+	rentalNames := make(map[int]string)
+	if len(rentalIDs) > 0 {
+		type rentalRow struct { ID int; Name string }
+		var rows []rentalRow
+		h.DB.Raw("SELECT id, name FROM rental_equipment WHERE id IN ?", rentalIDs).Scan(&rows)
+		for _, r := range rows { rentalNames[r.ID] = r.Name }
+	}
 	enrichedItems := make([]ItemWithName, 0, len(items))
 	for _, it := range items {
 		iwn := ItemWithName{PDFExtractionItem: it}
@@ -516,6 +532,8 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 			iwn.MappedName = productNames[int(it.MappedProductID.Int64)]
 		} else if it.MappedPackageID.Valid {
 			iwn.MappedName = packageNames[int(it.MappedPackageID.Int64)]
+		} else if it.MappedRentalEquipmentID.Valid {
+			iwn.MappedName = rentalNames[int(it.MappedRentalEquipmentID.Int64)]
 		}
 		enrichedItems = append(enrichedItems, iwn)
 	}
@@ -642,9 +660,10 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	itemID := c.Param("item_id")
 
 	var req struct {
-		ProductID *int   `json:"product_id"`
-		PackageID *int   `json:"package_id"`
-		Status    string `json:"status"` // 'user_confirmed', 'user_rejected', etc.
+		ProductID          *int   `json:"product_id"`
+		PackageID          *int   `json:"package_id"`
+		RentalEquipmentID  *int   `json:"rental_equipment_id"`
+		Status             string `json:"status"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -652,8 +671,12 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 		return
 	}
 
-	if (req.ProductID == nil || *req.ProductID <= 0) && (req.PackageID == nil || *req.PackageID <= 0) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid product_id or package_id is required"})
+	hasProduct := req.ProductID != nil && *req.ProductID > 0
+	hasPackage := req.PackageID != nil && *req.PackageID > 0
+	hasRental := req.RentalEquipmentID != nil && *req.RentalEquipmentID > 0
+
+	if !hasProduct && !hasPackage && !hasRental {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid product_id, package_id, or rental_equipment_id is required"})
 		return
 	}
 
@@ -663,21 +686,40 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{
-		"mapping_status":     status,
-		"mapping_confidence": 100.0,
+		"mapping_status":              status,
+		"mapping_confidence":          100.0,
+		"mapped_product_id":           nil,
+		"mapped_package_id":           nil,
+		"mapped_rental_equipment_id":  nil,
 	}
 
-	if req.PackageID != nil && *req.PackageID > 0 {
+	if hasPackage {
 		updates["mapped_package_id"] = *req.PackageID
-		updates["mapped_product_id"] = nil
-	} else if req.ProductID != nil && *req.ProductID > 0 {
+	} else if hasRental {
+		updates["mapped_rental_equipment_id"] = *req.RentalEquipmentID
+	} else if hasProduct {
 		updates["mapped_product_id"] = *req.ProductID
-		updates["mapped_package_id"] = nil
 	}
 
 	if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", itemID).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update mapping"})
 		return
+	}
+
+	// Persist mapping for future auto-mapping
+	var item models.PDFExtractionItem
+	if err := h.DB.First(&item, itemID).Error; err == nil && item.RawProductText != "" {
+		userID := int64(1)
+		if uid, exists := c.Get("userid"); exists {
+			if id, ok := uid.(int64); ok { userID = id }
+		}
+		if hasRental {
+			_ = h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID)
+		} else if hasProduct {
+			_ = h.Mapper.SaveMapping(item.RawProductText, *req.ProductID, userID)
+		} else if hasPackage && h.PackageMapper != nil {
+			_ = h.PackageMapper.SaveMapping(item.RawProductText, *req.PackageID, userID)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Mapping updated successfully"})
@@ -1074,15 +1116,39 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 
 		if packageMatch != nil {
 			updates := map[string]interface{}{
-				"mapped_package_id":  packageMatch.PackageID,
-				"mapped_product_id":  nil,
-				"mapping_status":     "auto_mapped",
-				"mapping_confidence": 100.0,
+				"mapped_package_id":           packageMatch.PackageID,
+				"mapped_product_id":           nil,
+				"mapped_rental_equipment_id":  nil,
+				"mapping_status":              "auto_mapped",
+				"mapping_confidence":          100.0,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
 				log.Printf("warning: failed to update package mapping for item %d: %v", item.ItemID, err)
 			} else {
 				autoMappedCount++
+			}
+			continue
+		}
+
+		// Check rental equipment mapping
+		if rentalMatch, confidence, err := h.RentalMapper.FindBestMatch(item.RawProductText); err == nil && rentalMatch != nil && confidence >= 75 {
+			status := "auto_mapped"
+			if confidence < 80 {
+				status = "pending"
+			}
+			updates := map[string]interface{}{
+				"mapped_rental_equipment_id":  rentalMatch.ID,
+				"mapped_product_id":           nil,
+				"mapped_package_id":           nil,
+				"mapping_status":              status,
+				"mapping_confidence":          confidence,
+			}
+			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
+				log.Printf("warning: failed to update rental mapping for item %d: %v", item.ItemID, err)
+			} else if status == "auto_mapped" {
+				autoMappedCount++
+			} else {
+				lowConfidenceCount++
 			}
 			continue
 		}
@@ -1310,9 +1376,10 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	itemID := c.Param("item_id")
 
 	var req struct {
-		ProductID *int   `json:"product_id"`
-		PackageID *int   `json:"package_id"`
-		ItemType  string `json:"item_type"`
+		ProductID          *int   `json:"product_id"`
+		PackageID          *int   `json:"package_id"`
+		RentalEquipmentID  *int   `json:"rental_equipment_id"`
+		ItemType           string `json:"item_type"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1322,8 +1389,9 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 
 	targetPackage := req.PackageID != nil && *req.PackageID > 0
 	targetProduct := req.ProductID != nil && *req.ProductID > 0
-	if !targetPackage && !targetProduct {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id or package_id is required"})
+	targetRental := req.RentalEquipmentID != nil && *req.RentalEquipmentID > 0
+	if !targetPackage && !targetProduct && !targetRental {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id, package_id, or rental_equipment_id is required"})
 		return
 	}
 
@@ -1334,8 +1402,11 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{
-		"mapping_status":     "user_confirmed",
-		"mapping_confidence": 100.0,
+		"mapping_status":              "user_confirmed",
+		"mapping_confidence":          100.0,
+		"mapped_product_id":           nil,
+		"mapped_package_id":           nil,
+		"mapped_rental_equipment_id":  nil,
 	}
 
 	var resultProduct *models.Product
@@ -1343,23 +1414,18 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 
 	if targetPackage {
 		updates["mapped_package_id"] = *req.PackageID
-		updates["mapped_product_id"] = nil
-
 		var pkg models.ProductPackage
 		if err := h.DB.First(&pkg, *req.PackageID).Error; err == nil {
 			resultPackage = sanitizePackage(&pkg)
 		}
+	} else if targetRental {
+		updates["mapped_rental_equipment_id"] = *req.RentalEquipmentID
 	} else if targetProduct {
 		updates["mapped_product_id"] = *req.ProductID
-		updates["mapped_package_id"] = nil
-
 		var product models.Product
 		if err := h.DB.First(&product, *req.ProductID).Error; err == nil {
 			resultProduct = &product
 		}
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mapping payload"})
-		return
 	}
 
 	if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", itemID).Updates(updates).Error; err != nil {
@@ -1374,7 +1440,11 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 		}
 	}
 
-	if targetProduct && req.ProductID != nil {
+	if targetRental && req.RentalEquipmentID != nil {
+		if err := h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID); err != nil {
+			log.Printf("warning: failed to persist rental mapping for item %d: %v", item.ItemID, err)
+		}
+	} else if targetProduct && req.ProductID != nil {
 		if err := h.Mapper.SaveMapping(item.RawProductText, *req.ProductID, userID); err != nil {
 			log.Printf("warning: failed to persist manual mapping for item %d: %v", item.ItemID, err)
 		}

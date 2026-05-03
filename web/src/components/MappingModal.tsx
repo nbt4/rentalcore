@@ -14,6 +14,7 @@ interface ExtractionItem {
   line_total: NullFloat64 | number | null;
   mapped_product_id: NullInt64 | number | null;
   mapped_package_id: NullInt64 | number | null;
+  mapped_rental_equipment_id: NullInt64 | number | null;
   mapping_status: 'pending' | 'auto_mapped' | 'user_confirmed' | 'user_rejected' | 'needs_creation';
   mapping_confidence: NullFloat64 | number | null;
   mapped_name?: string;
@@ -33,7 +34,7 @@ interface PreviewItem {
 interface SearchResult {
   id: number;
   name: string;
-  type: 'product' | 'package';
+  type: 'product' | 'package' | 'rental';
   sub: string;
 }
 
@@ -72,7 +73,7 @@ function getNullFloat(v: NullFloat64 | number | null | undefined): number {
 
 function isMapped(item: ExtractionItem): boolean {
   return (item.mapping_status === 'auto_mapped' || item.mapping_status === 'user_confirmed')
-    && (getNullInt(item.mapped_product_id) > 0 || getNullInt(item.mapped_package_id) > 0);
+    && (getNullInt(item.mapped_product_id) > 0 || getNullInt(item.mapped_package_id) > 0 || getNullInt(item.mapped_rental_equipment_id) > 0);
 }
 
 // ── FullCreateModal ─────────────────────────────────────────────────────────
@@ -171,7 +172,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error || 'Fehler');
-        onCreated({ id: d.rental_equipment_id, name: d.name, type: 'product', sub: 'Mietprodukt' });
+        onCreated({ id: d.rental_equipment_id, name: d.name, type: 'rental', sub: 'Mietprodukt' });
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Fehler');
@@ -500,7 +501,7 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
         const rentals: SearchResult[] = (red.rental_equipment || []).slice(0, 3).map((r: Record<string, unknown>) => ({
           id: r.id as number,
           name: r.name as string,
-          type: 'product' as const,
+          type: 'rental' as const,
           sub: `Mietprodukt${r.supplier ? ' · ' + r.supplier : ''}`,
         }));
         setResults([...products, ...packages, ...rentals]);
@@ -623,6 +624,8 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
     try {
       const body = result.type === 'package'
         ? { package_id: result.id, status: 'user_confirmed' }
+        : result.type === 'rental'
+        ? { rental_equipment_id: result.id, status: 'user_confirmed' }
         : { product_id: result.id, status: 'user_confirmed' };
       const res = await fetch(`/api/pdf/items/${item.item_id}/mapping`, {
         method: 'PUT',
@@ -635,6 +638,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         ...it,
         mapped_product_id: result.type === 'product' ? result.id : null,
         mapped_package_id: result.type === 'package' ? result.id : null,
+        mapped_rental_equipment_id: result.type === 'rental' ? result.id : null,
         mapping_status: 'user_confirmed',
         mapping_confidence: 100,
         mapped_name: result.name,
