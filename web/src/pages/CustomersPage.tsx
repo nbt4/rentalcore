@@ -29,13 +29,13 @@ function CustomerDetail({ id, onBack }: { id: number; onBack: () => void }) {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!confirm('Kunden wirklich löschen?')) return;
+    if (!confirm('Kontakt wirklich löschen?')) return;
     await customersApi.delete(id);
     onBack();
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
-  if (!customer) return <div className="text-center text-gray-400 py-20">Kunde nicht gefunden.</div>;
+  if (!customer) return <div className="text-center text-gray-400 py-20">Kontakt nicht gefunden.</div>;
 
   return (
     <div className="space-y-6">
@@ -123,7 +123,7 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-        <h1 className="text-2xl font-bold">{customerId ? 'Kunde bearbeiten' : 'Neuer Kunde'}</h1>
+        <h1 className="text-2xl font-bold">{customerId ? 'Kontakt bearbeiten' : 'Neuer Kontakt'}</h1>
       </div>
       <div className="glass-dark rounded-xl border border-white/10 p-6 max-w-xl">
         {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
@@ -255,11 +255,11 @@ export function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-accent-red" /> Kunden</h1>
-          <p className="text-gray-400 text-sm mt-1">{customers.length} Kunden insgesamt</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-accent-red" /> Kontakte</h1>
+          <p className="text-gray-400 text-sm mt-1">{customers.length} Kontakte insgesamt</p>
         </div>
         <button onClick={() => navigate('/customers/new')} className="flex items-center gap-2 px-4 py-2.5 bg-accent-red hover:bg-accent-red/80 text-white rounded-lg font-medium transition-colors">
-          <Plus className="w-4 h-4" /> Neuer Kunde
+          <Plus className="w-4 h-4" /> Neuer Kontakt
         </button>
       </div>
 
@@ -287,7 +287,7 @@ export function CustomersPage() {
         <div className="flex items-center gap-3 p-4 border-b border-white/10">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Kunde suchen..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent-red" />
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Kontakt suchen..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-accent-red" />
           </div>
           <button onClick={load} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400"><RefreshCw className="w-4 h-4" /></button>
         </div>
@@ -297,7 +297,7 @@ export function CustomersPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>{search ? 'Keine Kunden gefunden' : 'Noch keine Kunden vorhanden'}</p>
+            <p>{search ? 'Keine Kontakte gefunden' : 'Noch keine Kontakte vorhanden'}</p>
           </div>
         ) : (
           <div className="divide-y divide-white/5">

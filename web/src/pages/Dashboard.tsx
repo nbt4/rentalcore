@@ -54,7 +54,7 @@ export function Dashboard() {
   const statCards = [
     { label: 'Aktive Jobs', value: stats.active_jobs ?? 0, icon: Briefcase, color: 'text-accent-red', link: '/jobs' },
     { label: 'Gesamt Jobs', value: stats.total_jobs ?? 0, icon: Calendar, color: 'text-blue-400', link: '/jobs' },
-    { label: 'Kunden', value: stats.total_customers ?? 0, icon: Users, color: 'text-green-400', link: '/customers' },
+    { label: 'Kontakte', value: stats.total_customers ?? 0, icon: Users, color: 'text-green-400', link: '/customers' },
     {
       label: 'Umsatz (Monat)',
       value: `€${(stats.revenue_month ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -118,8 +118,8 @@ export function Dashboard() {
                   <div className="font-medium text-white">{job.job_code}</div>
                   <div className="text-sm text-gray-400">
                     {job.customer
-                      ? (job.customer.companyname || `${job.customer.firstname || ''} ${job.customer.lastname || ''}`.trim() || 'Kein Kunde')
-                      : 'Kein Kunde'}
+                      ? (job.customer.companyname || `${job.customer.firstname || ''} ${job.customer.lastname || ''}`.trim() || 'Kein Kontakt')
+                      : 'Kein Kontakt'}
                     {job.description && ` · ${job.description}`}
                   </div>
                 </div>

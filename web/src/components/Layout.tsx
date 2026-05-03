@@ -55,7 +55,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard', exact: true },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
-    { path: '/customers', icon: Users, label: 'Kunden' },
+    { path: '/customers', icon: Users, label: 'Kontakte' },
     { path: '/analytics', icon: BarChart2, label: 'Analyse' },
     { path: '/documents', icon: FileText, label: 'Dokumente' },
   ];
