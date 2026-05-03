@@ -54,7 +54,7 @@ export function Dashboard() {
   const statCards = [
     { label: 'Aktive Jobs', value: stats.active_jobs ?? 0, icon: Briefcase, color: 'text-accent-red', link: '/jobs' },
     { label: 'Gesamt Jobs', value: stats.total_jobs ?? 0, icon: Calendar, color: 'text-blue-400', link: '/jobs' },
-    { label: 'Kontakte', value: stats.total_customers ?? 0, icon: Users, color: 'text-green-400', link: '/customers' },
+    { label: 'Kontakte', value: stats.total_customers ?? 0, icon: Users, color: 'text-green-400' },
     {
       label: 'Umsatz (Monat)',
       value: `€${(stats.revenue_month ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -81,19 +81,21 @@ export function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map(({ label, value, icon: Icon, color, link }) => (
-          <Link
-            key={label}
-            to={link}
-            className="glass-dark rounded-xl p-5 border border-white/10 hover:border-white/20 transition-all hover:bg-white/5"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-400 text-sm">{label}</span>
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <div className="text-2xl font-bold text-white">{value}</div>
-          </Link>
-        ))}
+        {statCards.map(({ label, value, icon: Icon, color, link }) => {
+          const cls = "glass-dark rounded-xl p-5 border border-white/10 hover:border-white/20 transition-all hover:bg-white/5";
+          const inner = (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-gray-400 text-sm">{label}</span>
+                <Icon className={`w-5 h-5 ${color}`} />
+              </div>
+              <div className="text-2xl font-bold text-white">{value}</div>
+            </>
+          );
+          return link
+            ? <Link key={label} to={link} className={cls}>{inner}</Link>
+            : <div key={label} className={cls}>{inner}</div>;
+        })}
       </div>
 
       {/* Recent jobs */}

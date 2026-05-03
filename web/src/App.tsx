@@ -6,7 +6,7 @@ import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
 import { Dashboard } from './pages/Dashboard';
 import { JobsPage } from './pages/JobsPage';
-import { CustomersPage } from './pages/CustomersPage';
+
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -26,9 +26,7 @@ function App() {
           <Route path="/jobs/new" element={<ProtectedRoute><Layout><JobsPage /></Layout></ProtectedRoute>} />
           <Route path="/jobs/:id" element={<ProtectedRoute><Layout><JobsPage /></Layout></ProtectedRoute>} />
           <Route path="/jobs/:id/edit" element={<ProtectedRoute><Layout><JobsPage /></Layout></ProtectedRoute>} />
-          <Route path="/customers" element={<ProtectedRoute><Layout><CustomersPage /></Layout></ProtectedRoute>} />
-          <Route path="/customers/:id" element={<ProtectedRoute><Layout><CustomersPage /></Layout></ProtectedRoute>} />
-          <Route path="/customers/:id/edit" element={<ProtectedRoute><Layout><CustomersPage /></Layout></ProtectedRoute>} />
+
           <Route path="/analytics" element={<ProtectedRoute><Layout><AnalyticsPage /></Layout></ProtectedRoute>} />
           <Route path="/documents" element={<ProtectedRoute><Layout><DocumentsPage /></Layout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />

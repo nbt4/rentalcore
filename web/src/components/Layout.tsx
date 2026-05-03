@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Briefcase, Users, BarChart2, FileText,
+  Home, Briefcase, BarChart2, FileText,
   Menu, X, LogOut, User, ChevronLeft, ChevronRight, Warehouse, LayoutDashboard,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -55,7 +55,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard', exact: true },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
-    { path: '/customers', icon: Users, label: 'Kontakte' },
+
     { path: '/analytics', icon: BarChart2, label: 'Analyse' },
     { path: '/documents', icon: FileText, label: 'Dokumente' },
   ];
