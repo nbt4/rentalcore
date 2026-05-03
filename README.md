@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.36** - feat: rental equipment auto-mapping in OCR — saved mappings, fuzzy match, proper type tracking
+
 ### **v5.3.35** - fix: OCR parser price/qty plausibility checks; auto-mapping re-evaluates all non-confirmed items on re-upload
 
 ### **v5.3.34** - refactor: remove Kontakte page from RentalCore — now managed globally in Cores Dashboard
