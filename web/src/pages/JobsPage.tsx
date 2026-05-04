@@ -636,11 +636,20 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       statusApi.getAll(),
       jobId ? jobsApi.getById(jobId) : Promise.resolve(null),
       jobId ? jobsApi.getDevices(jobId) : Promise.resolve(null),
-    ]).then(([cRes, sRes, jRes, dRes]) => {
+      jobId ? api.get(`/jobs/${jobId}/requirements`) : Promise.resolve(null),
+    ]).then(([cRes, sRes, jRes, dRes, rRes]) => {
       setCustomers(cRes.data.customers || []);
       setStatuses(sRes.data.statuses || []);
       if (jRes) setForm(jRes.data);
       if (dRes) setDevices(dRes.data.devices || []);
+      if (rRes) {
+        const reqs: Requirement[] = rRes.data.requirements || [];
+        setSelections(reqs.map((r) => ({
+          product_id: r.product_id,
+          name: r.product?.name || `Produkt #${r.product_id}`,
+          quantity: r.quantity,
+        })));
+      }
     }).catch(console.error).finally(() => setLoading(false));
   }, [jobId]);
 
@@ -688,9 +697,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...form };
-      if (selections.length > 0) {
-        payload.selected_products = selections.map((s) => ({ product_id: s.product_id, quantity: s.quantity }));
-      }
+      payload.selected_products = selections.map((s) => ({ product_id: s.product_id, quantity: s.quantity }));
       if (jobId) {
         await api.put(`/jobs/${jobId}`, payload);
         onSaved(jobId);
