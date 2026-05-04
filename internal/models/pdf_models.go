@@ -69,6 +69,7 @@ type PDFExtractionItem struct {
 	MappedProductID          sql.NullInt64   `gorm:"column:mapped_product_id;index:idx_pdf_items_product" json:"mapped_product_id"`
 	MappedPackageID          sql.NullInt64   `gorm:"column:mapped_package_id;index:idx_pdf_items_package" json:"mapped_package_id"`
 	MappedRentalEquipmentID  sql.NullInt64   `gorm:"column:mapped_rental_equipment_id" json:"mapped_rental_equipment_id"`
+	MappedServiceItemID      sql.NullInt64   `gorm:"column:mapped_service_item_id" json:"mapped_service_item_id"`
 	MappingConfidence sql.NullFloat64 `gorm:"column:mapping_confidence" json:"mapping_confidence"`
 	MappingStatus     string          `gorm:"column:mapping_status;type:enum('pending','auto_mapped','user_confirmed','user_rejected','needs_creation');default:'pending';index:idx_pdf_items_status" json:"mapping_status"`
 	UserNotes         sql.NullString  `gorm:"column:user_notes;type:text" json:"user_notes"`
@@ -141,6 +142,26 @@ type PDFRentalMapping struct {
 
 func (PDFRentalMapping) TableName() string {
 	return "pdf_rental_mappings"
+}
+
+// PDFServiceMapping represents saved mappings between PDF text and service items
+type PDFServiceMapping struct {
+	MappingID      uint64          `gorm:"primaryKey;column:mapping_id;autoIncrement" json:"mapping_id"`
+	PDFServiceText string          `gorm:"column:pdf_service_text;not null;uniqueIndex:unique_pdf_service_text" json:"pdf_service_text"`
+	NormalizedText sql.NullString  `gorm:"column:normalized_text;index:idx_pdf_service_mappings_normalized" json:"normalized_text"`
+	ServiceItemID  int             `gorm:"column:service_item_id;not null" json:"service_item_id"`
+	MappingType    string          `gorm:"column:mapping_type;default:'manual'" json:"mapping_type"`
+	ConfidenceScore sql.NullFloat64 `gorm:"column:confidence_score" json:"confidence_score"`
+	UsageCount     int             `gorm:"column:usage_count;default:0" json:"usage_count"`
+	LastUsedAt     sql.NullTime    `gorm:"column:last_used_at" json:"last_used_at"`
+	CreatedBy      sql.NullInt64   `gorm:"column:created_by" json:"created_by"`
+	IsActive       bool            `gorm:"column:is_active;default:true" json:"is_active"`
+	CreatedAt      time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt      time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+func (PDFServiceMapping) TableName() string {
+	return "pdf_service_mappings"
 }
 
 // PDFCustomerMapping represents saved mappings between PDF text and customers

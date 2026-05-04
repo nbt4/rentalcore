@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2, UserRound, Pencil } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2, UserRound, Pencil, Wrench } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,7 @@ interface ExtractionItem {
   mapped_product_id: NullInt64 | number | null;
   mapped_package_id: NullInt64 | number | null;
   mapped_rental_equipment_id: NullInt64 | number | null;
+  mapped_service_item_id: NullInt64 | number | null;
   mapping_status: 'pending' | 'auto_mapped' | 'user_confirmed' | 'user_rejected' | 'needs_creation';
   mapping_confidence: NullFloat64 | number | null;
   mapped_name?: string;
@@ -34,7 +35,7 @@ interface PreviewItem {
 interface SearchResult {
   id: number;
   name: string;
-  type: 'product' | 'package' | 'rental';
+  type: 'product' | 'package' | 'rental' | 'service';
   sub: string;
 }
 
@@ -73,12 +74,12 @@ function getNullFloat(v: NullFloat64 | number | null | undefined): number {
 
 function isMapped(item: ExtractionItem): boolean {
   return (item.mapping_status === 'auto_mapped' || item.mapping_status === 'user_confirmed')
-    && (getNullInt(item.mapped_product_id) > 0 || getNullInt(item.mapped_package_id) > 0 || getNullInt(item.mapped_rental_equipment_id) > 0);
+    && (getNullInt(item.mapped_product_id) > 0 || getNullInt(item.mapped_package_id) > 0 || getNullInt(item.mapped_rental_equipment_id) > 0 || getNullInt(item.mapped_service_item_id) > 0);
 }
 
 // ── FullCreateModal ─────────────────────────────────────────────────────────
 
-type CreateTab = 'product' | 'package' | 'rental';
+type CreateTab = 'product' | 'package' | 'rental' | 'service';
 
 interface FullCreateModalProps {
   prefill: string;
@@ -113,6 +114,12 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
   const [rentCategory, setRentCategory] = useState('');
   const [rentDesc, setRentDesc] = useState('');
   const [rentNotes, setRentNotes] = useState('');
+
+  // Service fields
+  const [svcName, setSvcName] = useState(prefill);
+  const [svcPrice, setSvcPrice] = useState('');
+  const [svcCategory, setSvcCategory] = useState('');
+  const [svcUnit, setSvcUnit] = useState('pauschal');
 
   const searchSuppliers = async (q: string) => {
     if (q.trim().length < 2) { setSupplierResults([]); return; }
@@ -154,7 +161,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
         if (!res.ok) throw new Error(d.error || 'Fehler');
         onCreated({ id: d.package_id, name: d.name, type: 'package', sub: 'Paket' });
 
-      } else {
+      } else if (tab === 'rental') {
         if (!rentName.trim()) { setErr('Name ist erforderlich.'); return; }
         if (!selectedSupplier) { setErr('Lieferant ist erforderlich.'); return; }
         const res = await fetch('/api/pdf/rental-equipment-quick-create', {
@@ -173,6 +180,20 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
         const d = await res.json();
         if (!res.ok) throw new Error(d.error || 'Fehler');
         onCreated({ id: d.rental_equipment_id, name: d.name, type: 'rental', sub: 'Mietprodukt' });
+      } else if (tab === 'service') {
+        if (!svcName.trim()) { setErr('Name ist erforderlich.'); return; }
+        const res = await fetch('/api/pdf/service-items', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({
+            name: svcName.trim(),
+            default_price: parseFloat(svcPrice) || 0,
+            category: svcCategory.trim() || undefined,
+            unit: svcUnit || 'pauschal',
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Fehler');
+        onCreated({ id: d.service_item_id, name: d.name, type: 'service', sub: 'Dienstleistung' });
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Fehler');
@@ -185,6 +206,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
     { id: 'product', label: 'Produkt', icon: <Box className="w-3.5 h-3.5" /> },
     { id: 'package', label: 'Paket', icon: <Package className="w-3.5 h-3.5" /> },
     { id: 'rental', label: 'Mietprodukt', icon: <Building2 className="w-3.5 h-3.5" /> },
+    { id: 'service', label: 'Dienstleistung', icon: <Wrench className="w-3.5 h-3.5" /> },
   ];
 
   const inputCls = "rc-input rc-input-sm w-full";
@@ -338,6 +360,35 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
             </>
           )}
 
+          {tab === 'service' && (
+            <>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Name <span style={{ color: 'var(--rc-danger)' }}>*</span></label>
+                <input autoFocus value={svcName} onChange={e => setSvcName(e.target.value)} placeholder="z.B. Fahrtkosten, Personal (Techniker)" className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Standardpreis (€)</label>
+                  <input type="number" min="0" step="0.01" value={svcPrice} onChange={e => setSvcPrice(e.target.value)} placeholder="0.00" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Einheit</label>
+                  <select value={svcUnit} onChange={e => setSvcUnit(e.target.value)} className={inputCls}>
+                    <option value="pauschal">Pauschal</option>
+                    <option value="pro Stunde">Pro Stunde</option>
+                    <option value="pro Tag">Pro Tag</option>
+                    <option value="pro km">Pro km</option>
+                    <option value="pro Person">Pro Person</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Kategorie</label>
+                <input value={svcCategory} onChange={e => setSvcCategory(e.target.value)} placeholder="z.B. Transport, Personal, Sonstiges" className={inputCls} />
+              </div>
+            </>
+          )}
+
           {err && <p className="text-xs" style={{ color: 'var(--rc-danger)' }}>{err}</p>}
         </div>
 
@@ -478,14 +529,16 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
-        const [pRes, pkgRes, reRes] = await Promise.all([
+        const [pRes, pkgRes, reRes, sRes] = await Promise.all([
           fetch(`/api/pdf/products/search?q=${encodeURIComponent(q)}&limit=5`, { credentials: 'include' }),
           fetch(`/api/pdf/packages/search?q=${encodeURIComponent(q)}&limit=3`, { credentials: 'include' }),
           fetch(`/api/pdf/rental-equipment/search?q=${encodeURIComponent(q)}`, { credentials: 'include' }),
+          fetch(`/api/pdf/service-items/search?q=${encodeURIComponent(q)}`, { credentials: 'include' }),
         ]);
         const pd = pRes.ok ? await pRes.json() : {};
         const pkd = pkgRes.ok ? await pkgRes.json() : {};
         const red = reRes.ok ? await reRes.json() : {};
+        const sd = sRes.ok ? await sRes.json() : {};
         const products: SearchResult[] = (pd.products || []).slice(0, 5).map((p: Record<string, unknown>) => ({
           id: (p.productID || p.ProductID) as number,
           name: (p.name || p.Name) as string,
@@ -504,7 +557,13 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           type: 'rental' as const,
           sub: `Mietprodukt${r.supplier ? ' · ' + r.supplier : ''}`,
         }));
-        setResults([...products, ...packages, ...rentals]);
+        const services: SearchResult[] = (sd.service_items || []).slice(0, 3).map((s: Record<string, unknown>) => ({
+          id: s.id as number,
+          name: s.name as string,
+          type: 'service' as const,
+          sub: `Dienstleistung${s.category ? ' · ' + s.category : ''}`,
+        }));
+        setResults([...products, ...packages, ...rentals, ...services]);
       } finally { setLoading(false); setSearched(true); }
     }, 300);
   }, []);
@@ -519,7 +578,7 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           ref={inputRef}
           value={query}
           onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
-          placeholder="Produkt, Paket oder Mietprodukt suchen…"
+          placeholder="Produkt, Paket, Mietprodukt oder Dienstleistung suchen…"
           className="rc-input rc-input-sm w-full"
           style={{ paddingLeft: '2rem' }}
         />
@@ -553,6 +612,10 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
                 <button type="button" onClick={() => onCreateNew('rental', query)}
                   className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: '1 1 auto', fontSize: '11px' }}>
                   <Building2 className="w-3 h-3" /> Mietprodukt
+                </button>
+                <button type="button" onClick={() => onCreateNew('service', query)}
+                  className="rc-btn rc-btn-sm rc-btn-outline flex items-center gap-1" style={{ flex: '1 1 auto', fontSize: '11px' }}>
+                  <Wrench className="w-3 h-3" /> Dienstleistung
                 </button>
               </div>
             </div>
@@ -626,6 +689,8 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         ? { package_id: result.id, status: 'user_confirmed' }
         : result.type === 'rental'
         ? { rental_equipment_id: result.id, status: 'user_confirmed' }
+        : result.type === 'service'
+        ? { service_item_id: result.id, status: 'user_confirmed' }
         : { product_id: result.id, status: 'user_confirmed' };
       const res = await fetch(`/api/pdf/items/${item.item_id}/mapping`, {
         method: 'PUT',
@@ -639,6 +704,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         mapped_product_id: result.type === 'product' ? result.id : null,
         mapped_package_id: result.type === 'package' ? result.id : null,
         mapped_rental_equipment_id: result.type === 'rental' ? result.id : null,
+        mapped_service_item_id: result.type === 'service' ? result.id : null,
         mapping_status: 'user_confirmed',
         mapping_confidence: 100,
         mapped_name: result.name,

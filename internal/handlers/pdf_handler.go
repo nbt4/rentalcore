@@ -35,6 +35,7 @@ type PDFHandler struct {
 	Mapper          *pdf.ProductMapper
 	PackageMapper   *pdf.PackageMapper
 	RentalMapper    *pdf.RentalMapper
+	ServiceMapper   *pdf.ServiceMapper
 	CustomerMapper  *pdf.CustomerMapper
 	JobHandler      *JobHandler
 	AttachmentRepo  *repository.JobAttachmentRepository
@@ -261,6 +262,7 @@ func NewPDFHandler(db *gorm.DB, uploadDir string, jobHandler *JobHandler, attach
 		Mapper:          pdf.NewProductMapper(db, aliasCache),
 		PackageMapper:   pdf.NewPackageMapper(db),
 		RentalMapper:    pdf.NewRentalMapper(db),
+		ServiceMapper:   pdf.NewServiceMapper(db),
 		CustomerMapper:  pdf.NewCustomerMapper(db),
 		JobHandler:      jobHandler,
 		AttachmentRepo:  attachmentRepo,
@@ -450,6 +452,10 @@ func (h *PDFHandler) processUploadAsync(uploadID uint64) {
 			extractionItem.MappedRentalEquipmentID = sql.NullInt64{Int64: rentalMatch.ID, Valid: true}
 			extractionItem.MappingConfidence = sql.NullFloat64{Float64: confidence, Valid: true}
 			extractionItem.MappingStatus = "auto_mapped"
+		} else if serviceMatch, serviceConf, err := h.ServiceMapper.FindBestMatch(item.ProductName); err == nil && serviceMatch != nil && serviceConf >= 80 {
+			extractionItem.MappedServiceItemID = sql.NullInt64{Int64: serviceMatch.ID, Valid: true}
+			extractionItem.MappingConfidence = sql.NullFloat64{Float64: serviceConf, Valid: true}
+			extractionItem.MappingStatus = "auto_mapped"
 		} else {
 			if suggestion, err := h.Mapper.FindBestMatch(item.ProductName); err == nil && suggestion != nil {
 				applySuggestionToNewItem(&extractionItem, suggestion)
@@ -500,11 +506,12 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 		models.PDFExtractionItem
 		MappedName string `json:"mapped_name,omitempty"`
 	}
-	productIDs, packageIDs, rentalIDs := []int{}, []int{}, []int{}
+	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
 	for _, it := range items {
 		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
 		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
 		if it.MappedRentalEquipmentID.Valid { rentalIDs = append(rentalIDs, int(it.MappedRentalEquipmentID.Int64)) }
+		if it.MappedServiceItemID.Valid { serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64)) }
 	}
 	productNames := make(map[int]string)
 	if len(productIDs) > 0 {
@@ -525,6 +532,13 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 		h.DB.Raw("SELECT id, name FROM rental_equipment WHERE id IN ?", rentalIDs).Scan(&rows)
 		for _, r := range rows { rentalNames[r.ID] = r.Name }
 	}
+	serviceNames := make(map[int]string)
+	if len(serviceIDs) > 0 {
+		type serviceRow struct { ID int; Name string }
+		var sRows []serviceRow
+		h.DB.Raw("SELECT id, name FROM service_items WHERE id IN ?", serviceIDs).Scan(&sRows)
+		for _, s := range sRows { serviceNames[s.ID] = s.Name }
+	}
 	enrichedItems := make([]ItemWithName, 0, len(items))
 	for _, it := range items {
 		iwn := ItemWithName{PDFExtractionItem: it}
@@ -534,6 +548,8 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 			iwn.MappedName = packageNames[int(it.MappedPackageID.Int64)]
 		} else if it.MappedRentalEquipmentID.Valid {
 			iwn.MappedName = rentalNames[int(it.MappedRentalEquipmentID.Int64)]
+		} else if it.MappedServiceItemID.Valid {
+			iwn.MappedName = serviceNames[int(it.MappedServiceItemID.Int64)]
 		}
 		enrichedItems = append(enrichedItems, iwn)
 	}
@@ -663,6 +679,7 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 		ProductID          *int   `json:"product_id"`
 		PackageID          *int   `json:"package_id"`
 		RentalEquipmentID  *int   `json:"rental_equipment_id"`
+		ServiceItemID      *int   `json:"service_item_id"`
 		Status             string `json:"status"`
 	}
 
@@ -674,9 +691,10 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	hasProduct := req.ProductID != nil && *req.ProductID > 0
 	hasPackage := req.PackageID != nil && *req.PackageID > 0
 	hasRental := req.RentalEquipmentID != nil && *req.RentalEquipmentID > 0
+	hasService := req.ServiceItemID != nil && *req.ServiceItemID > 0
 
-	if !hasProduct && !hasPackage && !hasRental {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid product_id, package_id, or rental_equipment_id is required"})
+	if !hasProduct && !hasPackage && !hasRental && !hasService {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid product_id, package_id, rental_equipment_id, or service_item_id is required"})
 		return
 	}
 
@@ -691,12 +709,15 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 		"mapped_product_id":           nil,
 		"mapped_package_id":           nil,
 		"mapped_rental_equipment_id":  nil,
+		"mapped_service_item_id":      nil,
 	}
 
 	if hasPackage {
 		updates["mapped_package_id"] = *req.PackageID
 	} else if hasRental {
 		updates["mapped_rental_equipment_id"] = *req.RentalEquipmentID
+	} else if hasService {
+		updates["mapped_service_item_id"] = *req.ServiceItemID
 	} else if hasProduct {
 		updates["mapped_product_id"] = *req.ProductID
 	}
@@ -715,6 +736,8 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 		}
 		if hasRental {
 			_ = h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID)
+		} else if hasService {
+			_ = h.ServiceMapper.SaveMapping(item.RawProductText, *req.ServiceItemID, userID)
 		} else if hasProduct {
 			_ = h.Mapper.SaveMapping(item.RawProductText, *req.ProductID, userID)
 		} else if hasPackage && h.PackageMapper != nil {
@@ -1140,11 +1163,36 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				"mapped_rental_equipment_id":  rentalMatch.ID,
 				"mapped_product_id":           nil,
 				"mapped_package_id":           nil,
+				"mapped_service_item_id":      nil,
 				"mapping_status":              status,
 				"mapping_confidence":          confidence,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
 				log.Printf("warning: failed to update rental mapping for item %d: %v", item.ItemID, err)
+			} else if status == "auto_mapped" {
+				autoMappedCount++
+			} else {
+				lowConfidenceCount++
+			}
+			continue
+		}
+
+		// Check service item mapping
+		if serviceMatch, serviceConf, err := h.ServiceMapper.FindBestMatch(item.RawProductText); err == nil && serviceMatch != nil && serviceConf >= 75 {
+			status := "auto_mapped"
+			if serviceConf < 80 {
+				status = "pending"
+			}
+			updates := map[string]interface{}{
+				"mapped_service_item_id":      serviceMatch.ID,
+				"mapped_product_id":           nil,
+				"mapped_package_id":           nil,
+				"mapped_rental_equipment_id":  nil,
+				"mapping_status":              status,
+				"mapping_confidence":          serviceConf,
+			}
+			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
+				log.Printf("warning: failed to update service mapping for item %d: %v", item.ItemID, err)
 			} else if status == "auto_mapped" {
 				autoMappedCount++
 			} else {
@@ -1379,6 +1427,7 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 		ProductID          *int   `json:"product_id"`
 		PackageID          *int   `json:"package_id"`
 		RentalEquipmentID  *int   `json:"rental_equipment_id"`
+		ServiceItemID      *int   `json:"service_item_id"`
 		ItemType           string `json:"item_type"`
 	}
 
@@ -1390,8 +1439,9 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	targetPackage := req.PackageID != nil && *req.PackageID > 0
 	targetProduct := req.ProductID != nil && *req.ProductID > 0
 	targetRental := req.RentalEquipmentID != nil && *req.RentalEquipmentID > 0
-	if !targetPackage && !targetProduct && !targetRental {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id, package_id, or rental_equipment_id is required"})
+	targetService := req.ServiceItemID != nil && *req.ServiceItemID > 0
+	if !targetPackage && !targetProduct && !targetRental && !targetService {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id, package_id, rental_equipment_id, or service_item_id is required"})
 		return
 	}
 
@@ -1407,6 +1457,7 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 		"mapped_product_id":           nil,
 		"mapped_package_id":           nil,
 		"mapped_rental_equipment_id":  nil,
+		"mapped_service_item_id":      nil,
 	}
 
 	var resultProduct *models.Product
@@ -1420,6 +1471,8 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 		}
 	} else if targetRental {
 		updates["mapped_rental_equipment_id"] = *req.RentalEquipmentID
+	} else if targetService {
+		updates["mapped_service_item_id"] = *req.ServiceItemID
 	} else if targetProduct {
 		updates["mapped_product_id"] = *req.ProductID
 		var product models.Product
@@ -1443,6 +1496,10 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	if targetRental && req.RentalEquipmentID != nil {
 		if err := h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID); err != nil {
 			log.Printf("warning: failed to persist rental mapping for item %d: %v", item.ItemID, err)
+		}
+	} else if targetService && req.ServiceItemID != nil {
+		if err := h.ServiceMapper.SaveMapping(item.RawProductText, *req.ServiceItemID, userID); err != nil {
+			log.Printf("warning: failed to persist service mapping for item %d: %v", item.ItemID, err)
 		}
 	} else if targetProduct && req.ProductID != nil {
 		if err := h.Mapper.SaveMapping(item.RawProductText, *req.ProductID, userID); err != nil {
@@ -4009,5 +4066,103 @@ func (h *PDFHandler) CreateRentalEquipmentQuick(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"rental_equipment_id": row.ID,
 		"name":                req.Name,
+	})
+}
+
+// ListServiceItems returns all active service items
+// GET /api/v1/pdf/service-items
+func (h *PDFHandler) ListServiceItems(c *gin.Context) {
+	type serviceItem struct {
+		ID           int64   `json:"id"`
+		Name         string  `json:"name"`
+		Description  *string `json:"description,omitempty"`
+		DefaultPrice float64 `json:"default_price"`
+		Category     *string `json:"category,omitempty"`
+		Unit         string  `json:"unit"`
+	}
+	var items []serviceItem
+	if err := h.DB.Raw(
+		`SELECT id, name, description, COALESCE(default_price, 0) AS default_price, category, COALESCE(unit, 'pauschal') AS unit
+		 FROM service_items WHERE is_active = true ORDER BY name`,
+	).Scan(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load service items"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"service_items": items})
+}
+
+// SearchServiceItems searches service items by name/category
+// GET /api/v1/pdf/service-items/search?q=term
+func (h *PDFHandler) SearchServiceItems(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter required"})
+		return
+	}
+
+	type serviceResult struct {
+		ID       int64  `json:"id"`
+		Name     string `json:"name"`
+		Category string `json:"category"`
+	}
+
+	pattern := "%" + query + "%"
+	var results []serviceResult
+	if err := h.DB.Raw(
+		`SELECT id, name, COALESCE(category, '') AS category
+		 FROM service_items
+		 WHERE is_active = true AND (name ILIKE ? OR category ILIKE ? OR description ILIKE ?)
+		 ORDER BY name LIMIT 5`,
+		pattern, pattern, pattern,
+	).Scan(&results).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"service_items": results})
+}
+
+// CreateServiceItemQuick creates a new service item inline
+// POST /api/v1/pdf/service-items
+func (h *PDFHandler) CreateServiceItemQuick(c *gin.Context) {
+	var req struct {
+		Name         string  `json:"name" binding:"required"`
+		DefaultPrice float64 `json:"default_price"`
+		Category     string  `json:"category"`
+		Unit         string  `json:"unit"`
+		Description  string  `json:"description"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	unit := req.Unit
+	if unit == "" {
+		unit = "pauschal"
+	}
+
+	type siRow struct {
+		ID int `gorm:"column:id"`
+	}
+	var row siRow
+	var desc, category *string
+	if req.Description != "" {
+		desc = &req.Description
+	}
+	if req.Category != "" {
+		category = &req.Category
+	}
+	if err := h.DB.Raw(
+		`INSERT INTO service_items (name, description, default_price, category, unit, is_active)
+		 VALUES (?, ?, ?, ?, ?, true) RETURNING id`,
+		req.Name, desc, req.DefaultPrice, category, unit,
+	).Scan(&row).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create service item"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"service_item_id": row.ID,
+		"name":            req.Name,
 	})
 }
