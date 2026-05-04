@@ -4166,3 +4166,42 @@ func (h *PDFHandler) CreateServiceItemQuick(c *gin.Context) {
 		"name":            req.Name,
 	})
 }
+
+// UpdateServiceItem updates an existing service item
+// PUT /api/v1/pdf/service-items/:id
+func (h *PDFHandler) UpdateServiceItem(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name         string  `json:"name"`
+		DefaultPrice float64 `json:"default_price"`
+		Category     string  `json:"category"`
+		Unit         string  `json:"unit"`
+		Description  string  `json:"description"`
+		IsActive     *bool   `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := h.DB.Exec(
+		`UPDATE service_items SET name = COALESCE(NULLIF(?, ''), name), description = ?, default_price = ?, category = ?, unit = COALESCE(NULLIF(?, ''), unit), is_active = COALESCE(?, is_active), updated_at = NOW() WHERE id = ?`,
+		req.Name, req.Description, req.DefaultPrice, req.Category, req.Unit, req.IsActive, id,
+	)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update service item"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// DeleteServiceItem deactivates a service item
+// DELETE /api/v1/pdf/service-items/:id
+func (h *PDFHandler) DeleteServiceItem(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.DB.Exec("UPDATE service_items SET is_active = false, updated_at = NOW() WHERE id = ?", id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete service item"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

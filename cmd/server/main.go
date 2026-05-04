@@ -1481,6 +1481,8 @@ func setupRoutes(r *gin.Engine,
 				apiPDF.GET("/service-items", pdfHandler.ListServiceItems)
 				apiPDF.GET("/service-items/search", pdfHandler.SearchServiceItems)
 				apiPDF.POST("/service-items", pdfHandler.CreateServiceItemQuick)
+				apiPDF.PUT("/service-items/:id", pdfHandler.UpdateServiceItem)
+				apiPDF.DELETE("/service-items/:id", pdfHandler.DeleteServiceItem)
 				apiPDF.GET("/customers/search", pdfHandler.SearchCustomers)
 				apiPDF.GET("/extractions/:extraction_id/duplicates", pdfHandler.GetDuplicateJobCandidates)
 				apiPDF.POST("/customer-map/:extraction_id", pdfHandler.SaveCustomerMapping)
