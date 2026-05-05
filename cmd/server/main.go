@@ -417,6 +417,8 @@ func main() {
 
 	pdfHandler := handlers.NewPDFHandler(db.DB, "uploads", jobHandler, jobAttachmentRepo, packageAliasCache, documentHandler)
 	accessoriesConsumablesHandler := handlers.NewAccessoriesConsumablesHandler(accessoriesConsumablesRepo)
+	positionRepo := repository.NewPositionRepository(db)
+	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo)
 
 	// Initialize RBAC middleware for role-based access control
 	rbacMiddleware := middleware.NewRBACMiddleware(db.DB)
@@ -720,7 +722,7 @@ func main() {
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, rbacMiddleware, complianceMiddleware)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -807,6 +809,7 @@ func setupRoutes(r *gin.Engine,
 	jobAttachmentHandler *handlers.JobAttachmentHandler,
 	pdfHandler *handlers.PDFHandler,
 	accessoriesConsumablesHandler *handlers.AccessoriesConsumablesHandler,
+	positionHandler *handlers.PositionHandler,
 	rbacMiddleware *middleware.RBACMiddleware,
 	complianceMiddleware *compliance.ComplianceMiddleware) {
 
@@ -1304,6 +1307,17 @@ func setupRoutes(r *gin.Engine,
 				apiJobs.DELETE("/attachments/:id", jobAttachmentHandler.DeleteAttachment)
 				apiJobs.PUT("/attachments/:id/description", jobAttachmentHandler.UpdateAttachmentDescription)
 			}
+
+			// Job position routes
+			apiJobs.GET("/:id/positions", positionHandler.GetPositions)
+			apiJobs.POST("/:id/positions", positionHandler.CreatePosition)
+			apiJobs.PUT("/:id/positions/:posId", positionHandler.UpdatePosition)
+			apiJobs.DELETE("/:id/positions/:posId", positionHandler.DeletePosition)
+			apiJobs.PATCH("/:id/positions/reorder", positionHandler.ReorderPositions)
+			apiJobs.POST("/:id/positions/:posId/devices", positionHandler.AssignDevice)
+			apiJobs.DELETE("/:id/positions/:posId/devices/:devId", positionHandler.RemoveDevice)
+			apiJobs.GET("/:id/totals", positionHandler.GetTotals)
+			apiJobs.GET("/:id/picklist", positionHandler.GetPicklist)
 
 			// Job package management routes
 			apiJobPackages := api.Group("/jobs/packages")
