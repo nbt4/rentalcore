@@ -120,3 +120,61 @@ export const analyticsApi = {
 export const usersApi = {
   getAll: () => api.get('/security/auth/users'),
 };
+
+// ── Position Types ────────────────────────────────────────
+
+export interface JobPositionDevice {
+  id: number;
+  position_id: number;
+  device_id: string;
+  scanned_at: string;
+  scanned_by: string;
+}
+
+export interface JobPosition {
+  position_id: number;
+  job_id: number;
+  position_type: 'product' | 'service';
+  product_id: number | null;
+  service_item_id: number | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  follow_day_factor: number;
+  discount_percent: number;
+  discount_amount: number;
+  sort_order: number;
+  product?: { productID: number; name: string; itemcostperday?: number } | null;
+  service_item?: { id: number; name: string; default_price?: number; unit?: string } | null;
+  devices?: JobPositionDevice[];
+}
+
+export interface JobTotals {
+  event_days: number;
+  subtotal: number;
+  global_discount: number;
+  netto: number;
+  tax_rate: number;
+  tax: number;
+  brutto: number;
+}
+
+export const positionsApi = {
+  getByJob: (jobId: number) =>
+    api.get<{ positions: JobPosition[] }>(`/jobs/${jobId}/positions`),
+  create: (jobId: number, data: Partial<JobPosition>) =>
+    api.post<{ position: JobPosition }>(`/jobs/${jobId}/positions`, data),
+  update: (jobId: number, posId: number, data: Partial<JobPosition>) =>
+    api.put<{ position: JobPosition }>(`/jobs/${jobId}/positions/${posId}`, data),
+  delete: (jobId: number, posId: number) =>
+    api.delete(`/jobs/${jobId}/positions/${posId}`),
+  reorder: (jobId: number, positionIds: number[]) =>
+    api.patch(`/jobs/${jobId}/positions/reorder`, { position_ids: positionIds }),
+  assignDevice: (jobId: number, posId: number, deviceId: string, scannedBy?: string) =>
+    api.post(`/jobs/${jobId}/positions/${posId}/devices`, { device_id: deviceId, scanned_by: scannedBy || '' }),
+  removeDevice: (jobId: number, posId: number, deviceId: string) =>
+    api.delete(`/jobs/${jobId}/positions/${posId}/devices/${deviceId}`),
+  getTotals: (jobId: number) =>
+    api.get<JobTotals>(`/jobs/${jobId}/totals`),
+};

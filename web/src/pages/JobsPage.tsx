@@ -9,6 +9,7 @@ import { jobsApi, customersApi, statusApi, api } from '../lib/api';
 import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
 import MappingModal from '../components/MappingModal';
 import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
+import JobPositionsPanel from '../components/JobPositionsPanel';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -135,7 +136,7 @@ function ProductPicker({
 
 // ── Device List (grouped by product) ─────────────────────────
 
-function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId?: number; onChanged?: () => void }) {
+export function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId?: number; onChanged?: () => void }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [removing, setRemoving] = useState<string | null>(null);
 
@@ -223,7 +224,7 @@ function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]; jobId
 
 // ── Requirements Panel (Stage 2 device assignment) ────────────
 
-function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDeviceAssigned: () => void }) {
+export function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDeviceAssigned: () => void }) {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [assigning, setAssigning] = useState<number | null>(null);
   const [availableDevices, setAvailableDevices] = useState<AvailableDevice[]>([]);
@@ -366,7 +367,7 @@ function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; onDevic
 
 function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [job, setJob] = useState<Job | null>(null);
-  const [devices, setDevices] = useState<JobDevice[]>([]);
+  const [, setDevices] = useState<JobDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
@@ -455,8 +456,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
         </div>
       </div>
 
-      <RequirementsPanel jobId={id} onDeviceAssigned={loadData} />
-      <DeviceList devices={devices} jobId={id} onChanged={loadData} />
+      <JobPositionsPanel jobId={id} onChanged={loadData} />
     </div>
   );
 }
