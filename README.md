@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.39** - feat: job positions API (quote-style line items with degressive pricing)
+
 ### **v5.3.38** - fix: load existing product requirements when editing a job
 
 ### **v5.3.37** - feat: service items for non-physical cost positions (Fahrtkosten, Personal etc.) with OCR auto-mapping
