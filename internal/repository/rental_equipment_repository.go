@@ -53,14 +53,15 @@ func (r *RentalEquipmentRepository) DeleteRentalEquipment(equipmentID uint) erro
 
 // AddRentalToJob adds rental equipment to a job
 func (r *RentalEquipmentRepository) AddRentalToJob(jobRental *models.JobRentalEquipment) error {
-	// Get rental equipment to calculate total cost
-	var equipment models.RentalEquipment
-	if err := r.db.First(&equipment, jobRental.EquipmentID).Error; err != nil {
+	// Use raw SQL because live DB uses column "id" not "equipment_id"
+	var rentalPrice float64
+	if err := r.db.Raw("SELECT rental_price FROM rental_equipment WHERE id = ?", jobRental.EquipmentID).
+		Scan(&rentalPrice).Error; err != nil {
 		return fmt.Errorf("rental equipment not found: %v", err)
 	}
 
 	// Calculate total cost
-	jobRental.TotalCost = equipment.RentalPrice * float64(jobRental.Quantity) * float64(jobRental.DaysUsed)
+	jobRental.TotalCost = rentalPrice * float64(jobRental.Quantity) * float64(jobRental.DaysUsed)
 
 	// Check if already exists, then update or create
 	var existingRental models.JobRentalEquipment
