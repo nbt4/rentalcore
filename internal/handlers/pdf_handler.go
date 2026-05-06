@@ -1940,7 +1940,13 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 	packagePriceContribution := make(map[uint]float64)
 	packageQtyContribution := make(map[uint]int)
 
-	// Categorize items: products vs packages
+	// Categorize items: products vs packages vs rental equipment
+	type rentalAggregate struct {
+		quantity int
+		daysUsed int
+	}
+	rentalCounts := make(map[uint]*rentalAggregate)
+
 	for _, item := range items {
 		switch {
 		case item.MappedProductID.Valid:
@@ -1976,6 +1982,45 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 			if lineTotal, hasPrice := resolveLinePricing(&item, qty); hasPrice {
 				agg.totalAmount += lineTotal
 				agg.hasPrice = true
+			}
+
+		case item.MappedRentalEquipmentID.Valid:
+			eid := uint(item.MappedRentalEquipmentID.Int64)
+			qty := getItemQuantity(&item)
+			if qty <= 0 {
+				qty = 1
+			}
+			if rentalCounts[eid] == nil {
+				rentalCounts[eid] = &rentalAggregate{daysUsed: 1}
+			}
+			rentalCounts[eid].quantity += qty
+		}
+	}
+
+	// Calculate event days for rental equipment pricing
+	eventDays := 1
+	if job.StartDate != nil && job.EndDate != nil {
+		d := int(job.EndDate.Sub(*job.StartDate).Hours() / 24)
+		if d > 1 {
+			eventDays = d
+		}
+	}
+
+	// Assign rental equipment to job
+	if len(rentalCounts) > 0 && h.JobHandler != nil && h.JobHandler.rentalEquipRepo != nil {
+		for eid, agg := range rentalCounts {
+			daysUsed := eventDays
+			if agg.daysUsed > 1 {
+				daysUsed = agg.daysUsed
+			}
+			jobRental := &models.JobRentalEquipment{
+				JobID:       job.JobID,
+				EquipmentID: eid,
+				Quantity:    uint(agg.quantity),
+				DaysUsed:    uint(daysUsed),
+			}
+			if err := h.JobHandler.rentalEquipRepo.AddRentalToJob(jobRental); err != nil {
+				log.Printf("Warning: failed to add rental equipment %d to job %d: %v", eid, job.JobID, err)
 			}
 		}
 	}
