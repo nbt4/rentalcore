@@ -240,25 +240,37 @@ func (r *JobRepository) RemoveAllDevicesFromJob(jobID uint) error {
 }
 
 func (r *JobRepository) Delete(id uint) error {
-	// Start a transaction to ensure all deletions succeed or fail together
 	tx := r.db.Begin()
 	if tx.Error != nil {
 		return tx.Error
 	}
 
-	// First, remove all devices from the job to avoid foreign key constraint issues
+	// Collect device IDs before removing them, so we can reset their status
+	var deviceIDs []string
+	tx.Model(&models.JobDevice{}).Where("jobID = ?", id).Pluck("deviceID", &deviceIDs)
+
+	// Reset on_job devices back to in_storage
+	if len(deviceIDs) > 0 {
+		if err := tx.Model(&models.Device{}).
+			Where("deviceID IN ? AND status = ?", deviceIDs, "on_job").
+			Update("status", "in_storage").Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to reset device statuses: %v", err)
+		}
+	}
+
+	// Remove all job_devices rows
 	if err := tx.Where("jobID = ?", id).Delete(&models.JobDevice{}).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to remove devices from job: %v", err)
 	}
 
-	// Then delete the job itself
+	// Delete the job itself
 	if err := tx.Delete(&models.Job{}, id).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Commit the transaction
 	return tx.Commit().Error
 }
 
