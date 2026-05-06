@@ -367,7 +367,7 @@ export function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; 
 
 function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [job, setJob] = useState<Job | null>(null);
-  const [, setDevices] = useState<JobDevice[]>([]);
+  const [devices, setDevices] = useState<JobDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
@@ -457,6 +457,8 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
       </div>
 
       <JobPositionsPanel jobId={id} onChanged={loadData} />
+      <RequirementsPanel jobId={id} onDeviceAssigned={loadData} />
+      <DeviceList devices={devices} jobId={id} onChanged={loadData} />
     </div>
   );
 }
