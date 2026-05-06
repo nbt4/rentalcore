@@ -3783,7 +3783,12 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		return
 	}
 	var items []models.PDFExtractionItem
-	if err := h.DB.Where("extraction_id = ? AND (mapped_product_id IS NOT NULL OR mapped_package_id IS NOT NULL)", extractionID).Find(&items).Error; err != nil {
+	if err := h.DB.Where(`extraction_id = ? AND (
+		mapped_product_id IS NOT NULL OR
+		mapped_package_id IS NOT NULL OR
+		mapped_rental_equipment_id IS NOT NULL OR
+		mapped_service_item_id IS NOT NULL
+	)`, extractionID).Find(&items).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load extraction items"})
 		return
 	}
@@ -3799,10 +3804,12 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		TargetID   int     `json:"target_id"`
 	}
 
-	productIDs, packageIDs := []int{}, []int{}
+	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
 	for _, it := range items {
-		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
-		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
+		if it.MappedProductID.Valid          { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
+		if it.MappedPackageID.Valid          { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
+		if it.MappedRentalEquipmentID.Valid  { rentalIDs  = append(rentalIDs,  int(it.MappedRentalEquipmentID.Int64)) }
+		if it.MappedServiceItemID.Valid      { serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64)) }
 	}
 	productNames := make(map[int]string)
 	if len(productIDs) > 0 {
@@ -3816,6 +3823,26 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&packages)
 		for _, p := range packages { packageNames[p.PackageID] = p.Name }
 	}
+	rentalNames := make(map[int]string)
+	if len(rentalIDs) > 0 {
+		type rentalRow struct {
+			ID   int
+			Name string
+		}
+		var rows []rentalRow
+		h.DB.Raw("SELECT id, name FROM rental_equipment WHERE id IN ?", rentalIDs).Scan(&rows)
+		for _, r := range rows { rentalNames[r.ID] = r.Name }
+	}
+	serviceNames := make(map[int]string)
+	if len(serviceIDs) > 0 {
+		type svcRow struct {
+			ID   int
+			Name string
+		}
+		var rows []svcRow
+		h.DB.Raw("SELECT id, name FROM service_items WHERE id IN ?", serviceIDs).Scan(&rows)
+		for _, r := range rows { serviceNames[r.ID] = r.Name }
+	}
 
 	result := make([]PreviewItem, 0, len(items))
 	for _, it := range items {
@@ -3826,16 +3853,27 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		lt := 0.0
 		if it.LineTotal.Valid { lt = it.LineTotal.Float64 }
 		pi := PreviewItem{ItemID: it.ItemID, RawText: it.RawProductText, Quantity: qty, UnitPrice: up, LineTotal: lt}
-		if it.MappedProductID.Valid {
+		switch {
+		case it.MappedProductID.Valid:
 			pi.TargetType = "product"
 			pi.TargetID = int(it.MappedProductID.Int64)
 			pi.Name = productNames[pi.TargetID]
 			if pi.Name == "" { pi.Name = fmt.Sprintf("Produkt #%d", pi.TargetID) }
-		} else if it.MappedPackageID.Valid {
+		case it.MappedPackageID.Valid:
 			pi.TargetType = "package"
 			pi.TargetID = int(it.MappedPackageID.Int64)
 			pi.Name = packageNames[pi.TargetID]
 			if pi.Name == "" { pi.Name = fmt.Sprintf("Paket #%d", pi.TargetID) }
+		case it.MappedRentalEquipmentID.Valid:
+			pi.TargetType = "rental"
+			pi.TargetID = int(it.MappedRentalEquipmentID.Int64)
+			pi.Name = rentalNames[pi.TargetID]
+			if pi.Name == "" { pi.Name = fmt.Sprintf("Mietprodukt #%d", pi.TargetID) }
+		case it.MappedServiceItemID.Valid:
+			pi.TargetType = "service"
+			pi.TargetID = int(it.MappedServiceItemID.Int64)
+			pi.Name = serviceNames[pi.TargetID]
+			if pi.Name == "" { pi.Name = fmt.Sprintf("Dienstleistung #%d", pi.TargetID) }
 		}
 		result = append(result, pi)
 	}
