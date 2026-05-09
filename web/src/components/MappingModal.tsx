@@ -739,7 +739,10 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          start_date: meta.start_date ? meta.start_date.substring(0, 10) : undefined,
+          end_date: meta.end_date ? meta.end_date.substring(0, 10) : undefined,
+        }),
       });
       if (!res.ok) throw new Error('Finalisierung fehlgeschlagen');
       const data = await res.json();
@@ -813,16 +816,26 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                     onChanged={(id, name) => setMeta(m => ({ ...m, customer_id: id, customer_name: name }))}
                   />
                 )}
-                {meta.start_date && (
-                  <span style={{ color: 'var(--rc-text-secondary)' }}>
-                    Von: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.start_date}</span>
-                  </span>
-                )}
-                {meta.end_date && (
-                  <span style={{ color: 'var(--rc-text-secondary)' }}>
-                    Bis: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.end_date}</span>
-                  </span>
-                )}
+                <label className="flex items-center gap-1.5" style={{ color: 'var(--rc-text-secondary)' }}>
+                  Von:
+                  <input
+                    type="date"
+                    value={meta.start_date ? meta.start_date.substring(0, 10) : ''}
+                    onChange={e => setMeta(m => ({ ...m, start_date: e.target.value }))}
+                    className="rc-input rc-input-sm"
+                    style={{ width: '130px', padding: '2px 6px' }}
+                  />
+                </label>
+                <label className="flex items-center gap-1.5" style={{ color: 'var(--rc-text-secondary)' }}>
+                  Bis:
+                  <input
+                    type="date"
+                    value={meta.end_date ? meta.end_date.substring(0, 10) : ''}
+                    onChange={e => setMeta(m => ({ ...m, end_date: e.target.value }))}
+                    className="rc-input rc-input-sm"
+                    style={{ width: '130px', padding: '2px 6px' }}
+                  />
+                </label>
               </div>
 
               {/* Progress bar */}
