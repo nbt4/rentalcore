@@ -750,13 +750,47 @@ func (p *IntelligentParser) parseItemIntelligently(line string, lineNum int) *Pa
 	}
 
 	// Assign numbers to quantity/price/total
-	if len(numbers) >= 2 {
-		// Assume smallest number is quantity, largest is total
+	switch len(numbers) {
+	case 2:
+		// Only qty + total present (no separate unit price column).
+		// Bug guard: numbers[-2] == numbers[0] == qty → would put qty into UnitPrice.
+		// Instead derive unit price from total / qty.
+		if numbers[0] > 0 && numbers[0] < 100 && numbers[0] == float64(int(numbers[0])) {
+			item.Quantity = int(numbers[0])
+			item.LineTotal = numbers[1]
+			item.UnitPrice = numbers[1] / numbers[0]
+		} else {
+			item.UnitPrice = numbers[0]
+			item.LineTotal = numbers[1]
+		}
+	case 3:
+		// qty + price + total (standard)
 		if numbers[0] < 100 && numbers[0] == float64(int(numbers[0])) {
 			item.Quantity = int(numbers[0])
 		}
-		item.UnitPrice = numbers[len(numbers)-2]
-		item.LineTotal = numbers[len(numbers)-1]
+		item.UnitPrice = numbers[1]
+		item.LineTotal = numbers[2]
+	default:
+		// 4+ numbers: could be [pos, qty, price, total] or similar.
+		// Use qty × price ≈ total to identify actual quantity field.
+		price := numbers[len(numbers)-2]
+		total := numbers[len(numbers)-1]
+		item.UnitPrice = price
+		item.LineTotal = total
+		if total > 0 && price > 0 {
+			// Check second-from-price number first (position of potential qty)
+			candidateIdx := len(numbers) - 3
+			if candidateIdx >= 0 {
+				qtyCandidate := int(numbers[candidateIdx])
+				if math.Abs(float64(qtyCandidate)*price-total)/total < 0.02 {
+					item.Quantity = qtyCandidate
+				} else if numbers[0] < 100 && numbers[0] == float64(int(numbers[0])) {
+					item.Quantity = int(numbers[0])
+				}
+			}
+		} else if numbers[0] < 100 && numbers[0] == float64(int(numbers[0])) {
+			item.Quantity = int(numbers[0])
+		}
 	}
 
 	if item.ProductName == "" {
