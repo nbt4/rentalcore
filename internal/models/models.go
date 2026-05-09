@@ -24,7 +24,13 @@ type Customer struct {
 	IsCustomer   bool    `json:"is_customer" gorm:"column:is_customer;default:true"`
 	IsSupplier   bool    `json:"is_supplier" gorm:"column:is_supplier;default:false"`
 	Notes        *string `json:"notes" gorm:"column:notes"`
-	Jobs         []Job   `json:"jobs,omitempty" gorm:"-"`
+	// M365 sync fields
+	M365ID        *string    `json:"m365_id,omitempty" gorm:"column:m365_id"`
+	M365UpdatedAt *time.Time `json:"m365_updated_at,omitempty" gorm:"column:m365_updated_at"`
+	IsArchived    bool       `json:"is_archived" gorm:"column:is_archived;default:false"`
+	ArchivedAt    *time.Time `json:"archived_at,omitempty" gorm:"column:archived_at"`
+	UpdatedAt     time.Time  `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
+	Jobs          []Job      `json:"jobs,omitempty" gorm:"-"`
 }
 
 func (Customer) TableName() string {
