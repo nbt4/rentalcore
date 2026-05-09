@@ -284,6 +284,13 @@ func main() {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
+	// Ensure M365 sync columns exist on production databases
+	if sqlDB, err := db.DB.DB(); err == nil {
+		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
+			log.Printf("Warning: M365 column migration failed: %v", err)
+		}
+	}
+
 	// Apply performance indexes for optimal database performance
 	go func() {
 		if err := config.ApplyPerformanceIndexes(db.DB); err != nil {
