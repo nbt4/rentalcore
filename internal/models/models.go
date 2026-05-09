@@ -29,6 +29,7 @@ type Customer struct {
 	M365UpdatedAt *time.Time `json:"m365_updated_at,omitempty" gorm:"column:m365_updated_at"`
 	IsArchived    bool       `json:"is_archived" gorm:"column:is_archived;default:false"`
 	ArchivedAt    *time.Time `json:"archived_at,omitempty" gorm:"column:archived_at"`
+	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt     time.Time  `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 	Jobs          []Job      `json:"jobs,omitempty" gorm:"-"`
 }
