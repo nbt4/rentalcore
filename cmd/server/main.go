@@ -24,6 +24,7 @@ import (
 	"go-barcode-webapp/internal/repository"
 	"go-barcode-webapp/internal/services"
 	pdfsvc "go-barcode-webapp/internal/services/pdf"
+	m365sync "go-barcode-webapp/internal/sync/m365"
 
 	"github.com/gin-gonic/gin"
 )
@@ -348,6 +349,29 @@ func main() {
 	deviceRepo := repository.NewDeviceRepository(db)
 	requirementRepo := repository.NewRequirementRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
+
+	// M365 Sync Service (optional — nur wenn Env-Vars gesetzt)
+	var m365SyncService handlers.SyncServiceInterface
+	if cfg.M365.IsConfigured() {
+		interval, err := time.ParseDuration(cfg.M365.SyncInterval)
+		if err != nil {
+			interval = 5 * time.Minute
+		}
+		graphClient := m365sync.NewGraphClient(
+			cfg.M365.TenantID,
+			cfg.M365.ClientID,
+			cfg.M365.ClientSecret,
+			cfg.M365.MailboxID,
+		)
+		sqlDB, _ := db.DB.DB()
+		svc := m365sync.NewSyncService(graphClient, customerRepo, sqlDB, interval)
+		m365SyncService = svc
+		syncCtx, _ := context.WithCancel(context.Background())
+		svc.Start(syncCtx)
+		log.Println("M365 sync: service initialized")
+	} else {
+		log.Println("M365 sync: not configured (M365_TENANT_ID etc. not set)")
+	}
 	statusRepo := repository.NewStatusRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	jobCategoryRepo := repository.NewJobCategoryRepository(db)
@@ -376,7 +400,7 @@ func main() {
 	jobHandler := handlers.NewJobHandler(jobRepo, jobPackageRepo, deviceRepo, requirementRepo, customerRepo, statusRepo, jobCategoryRepo, jobEditSessionRepo, jobHistoryService, rentalEquipmentRepo)
 	jobHistoryHandler := handlers.NewJobHistoryHandler(db.DB)
 	deviceHandler := handlers.NewDeviceHandler(deviceRepo, barcodeService, productRepo)
-	customerHandler := handlers.NewCustomerHandler(customerRepo)
+	customerHandler := handlers.NewCustomerHandler(customerRepo, m365SyncService)
 	statusHandler := handlers.NewStatusHandler(statusRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
 	cableHandler := handlers.NewCableHandler(cableRepo)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,12 +14,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CustomerHandler struct {
-	customerRepo *repository.CustomerRepository
+// SyncServiceInterface erlaubt nil-Check ohne Import-Zyklus.
+type SyncServiceInterface interface {
+	PushCreate(customer *models.Customer) error
+	PushUpdate(customer *models.Customer) error
+	PushDelete(customer *models.Customer)
 }
 
-func NewCustomerHandler(customerRepo *repository.CustomerRepository) *CustomerHandler {
-	return &CustomerHandler{customerRepo: customerRepo}
+type CustomerHandler struct {
+	customerRepo *repository.CustomerRepository
+	syncService  SyncServiceInterface
+}
+
+func NewCustomerHandler(customerRepo *repository.CustomerRepository, syncService SyncServiceInterface) *CustomerHandler {
+	return &CustomerHandler{customerRepo: customerRepo, syncService: syncService}
 }
 
 func (h *CustomerHandler) ListCustomers(c *gin.Context) {
@@ -140,6 +149,12 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 			"user":     user,
 		})
 		return
+	}
+
+	if h.syncService != nil {
+		if err := h.syncService.PushCreate(&customer); err != nil {
+			log.Printf("M365 sync PushCreate failed: %v", err)
+		}
 	}
 
 	fmt.Printf("✅ DEBUG: Customer creation succeeded, ID: %d\n", customer.CustomerID)
@@ -276,6 +291,14 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 		return
 	}
 
+	if h.syncService != nil {
+		if saved, err := h.customerRepo.GetByID(customer.CustomerID); err == nil {
+			if err := h.syncService.PushUpdate(saved); err != nil {
+				log.Printf("M365 sync PushUpdate failed: %v", err)
+			}
+		}
+	}
+
 	c.Redirect(http.StatusFound, "/customers")
 }
 
@@ -286,9 +309,18 @@ func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 		return
 	}
 
+	var customerForSync *models.Customer
+	if h.syncService != nil {
+		customerForSync, _ = h.customerRepo.GetByID(uint(id))
+	}
+
 	if err := h.customerRepo.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if h.syncService != nil && customerForSync != nil {
+		h.syncService.PushDelete(customerForSync)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Customer deleted successfully"})
@@ -338,6 +370,12 @@ func (h *CustomerHandler) CreateCustomerAPI(c *gin.Context) {
 		return
 	}
 
+	if h.syncService != nil {
+		if err := h.syncService.PushCreate(&customer); err != nil {
+			log.Printf("M365 sync PushCreate failed: %v", err)
+		}
+	}
+
 	fmt.Printf("🎉 DEBUG API: Customer created successfully with ID: %d\n", customer.CustomerID)
 	c.JSON(http.StatusCreated, customer)
 }
@@ -377,6 +415,14 @@ func (h *CustomerHandler) UpdateCustomerAPI(c *gin.Context) {
 		return
 	}
 
+	if h.syncService != nil {
+		if saved, err := h.customerRepo.GetByID(customer.CustomerID); err == nil {
+			if err := h.syncService.PushUpdate(saved); err != nil {
+				log.Printf("M365 sync PushUpdate failed: %v", err)
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, customer)
 }
 
@@ -387,9 +433,18 @@ func (h *CustomerHandler) DeleteCustomerAPI(c *gin.Context) {
 		return
 	}
 
+	var customerForSync *models.Customer
+	if h.syncService != nil {
+		customerForSync, _ = h.customerRepo.GetByID(uint(id))
+	}
+
 	if err := h.customerRepo.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if h.syncService != nil && customerForSync != nil {
+		h.syncService.PushDelete(customerForSync)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Customer deleted successfully"})
