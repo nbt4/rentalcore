@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.44** - feat: Bidirektionaler M365-Kontakt-Sync (Shared Mailbox, Delta-Poll alle 5 Min, Last-Write-Wins, M365-Löschungen archivieren Kunden)
+
 ### **v5.3.43** - fix: parseItemIntelligently fallback parser — qty-as-price (2-number case) and pos-as-qty (4-number case) bugs corrected; switch-based number assignment with qty×price≈total verification
 
 ### **v5.3.42** - feat: multiply_by_days + prices_include_tax flags for job price calculation; UpdatePriceSettings API endpoint; toggle UI in JobPositionsPanel; fix GORM column-tag casing for Product model (500 on position update); UpdateFields method in job_repository
