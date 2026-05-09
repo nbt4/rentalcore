@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Package, Wrench, Plus, Trash2, Check, Cpu } from 'lucide-react';
+import { Package, Wrench, Plus, Trash2, Check, Cpu, Building2 } from 'lucide-react';
 import { positionsApi, api } from '../lib/api';
 import type { JobPosition, JobTotals } from '../lib/api';
 
@@ -46,6 +46,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
 
   const productPositions = positions.filter(p => p.position_type === 'product');
   const servicePositions = positions.filter(p => p.position_type === 'service');
+  const rentalPositions = positions.filter(p => p.position_type === 'rental' || p.position_type === 'package');
 
   const handleAdd = async (type: 'product' | 'service', itemId: number) => {
     if (type === 'product') {
@@ -179,6 +180,21 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
       </div>
 
+      {/* Rental / Package Section */}
+      {rentalPositions.length > 0 && (
+        <div className="glass-dark rounded-xl border border-white/10 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Building2 className="w-4 h-4 text-accent-red" />
+            <h3 className="font-semibold text-white">Mietprodukte ({rentalPositions.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {rentalPositions.map(pos => (
+              <PositionRow key={pos.position_id} pos={pos} onUpdate={handleUpdate} onDelete={handleDelete} showFactor={false} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Totals */}
       {totals && (
         <div className="glass-dark rounded-xl border border-white/10 p-5">
@@ -275,6 +291,14 @@ function PositionRow({ pos, onUpdate, onDelete, showFactor }: {
 
         {/* Discount */}
         <EditableCell value={pos.discount_percent} field="discount_percent" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-14" suffix="%" />
+
+        {/* Tax Rate */}
+        <EditableCell value={pos.tax_rate} field="tax_rate" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-14" suffix="%" />
+
+        {/* Line Total */}
+        <span className="w-20 text-xs text-right font-medium text-white">
+          {(pos.quantity * pos.unit_price * (1 - pos.discount_percent / 100)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+        </span>
 
         {/* Delete */}
         <button onClick={() => onDelete(pos.position_id)} className="p-1.5 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors">
