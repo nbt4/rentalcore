@@ -161,6 +161,8 @@ export interface JobTotals {
   tax_rate: number;
   tax: number;
   brutto: number;
+  multiply_by_days: boolean;
+  prices_include_tax: boolean;
 }
 
 export const positionsApi = {
@@ -180,4 +182,6 @@ export const positionsApi = {
     api.delete(`/jobs/${jobId}/positions/${posId}/devices/${deviceId}`),
   getTotals: (jobId: number) =>
     api.get<JobTotals>(`/jobs/${jobId}/totals`),
+  updatePriceSettings: (jobId: number, settings: { multiply_by_days?: boolean; prices_include_tax?: boolean }) =>
+    api.patch(`/jobs/${jobId}/price-settings`, settings),
 };

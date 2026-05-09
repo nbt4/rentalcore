@@ -15,6 +15,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   const [adding, setAdding] = useState<'product' | 'service' | null>(null);
   const [products, setProducts] = useState<{ productID: number; name: string; itemcostperday?: number }[]>([]);
   const [services, setServices] = useState<{ id: number; name: string; default_price?: number; unit?: string }[]>([]);
+  const [multiplyByDays, setMultiplyByDays] = useState(true);
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -24,6 +26,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       ]);
       setPositions(posRes.data.positions || []);
       setTotals(totRes.data);
+      setMultiplyByDays(totRes.data.multiply_by_days ?? true);
+      setPricesIncludeTax(totRes.data.prices_include_tax ?? false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -81,6 +85,14 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
 
   const handleUpdate = async (pos: JobPosition, field: string, value: number | string) => {
     await positionsApi.update(jobId, pos.position_id, { [field]: value });
+    loadData();
+    onChanged?.();
+  };
+
+  const handleToggle = async (field: 'multiply_by_days' | 'prices_include_tax', value: boolean) => {
+    if (field === 'multiply_by_days') setMultiplyByDays(value);
+    else setPricesIncludeTax(value);
+    await positionsApi.updatePriceSettings(jobId, { [field]: value });
     loadData();
     onChanged?.();
   };
@@ -195,6 +207,33 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
       )}
 
+      {/* Price Settings Toggles */}
+      <div className="glass-dark rounded-xl border border-white/10 p-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Preiseinstellungen</span>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              onClick={() => handleToggle('multiply_by_days', !multiplyByDays)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${multiplyByDays ? 'bg-accent-red' : 'bg-white/10'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${multiplyByDays ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-sm text-gray-300">Preis × Veranstaltungstage</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              onClick={() => handleToggle('prices_include_tax', !pricesIncludeTax)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${pricesIncludeTax ? 'bg-accent-red' : 'bg-white/10'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${pricesIncludeTax ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-sm text-gray-300">
+              {pricesIncludeTax ? 'Preise inkl. MwSt (Brutto)' : 'Preise exkl. MwSt (Netto)'}
+            </span>
+          </label>
+        </div>
+      </div>
+
       {/* Totals */}
       {totals && (
         <div className="glass-dark rounded-xl border border-white/10 p-5">
@@ -218,7 +257,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
               <span className="font-medium">{fmt(totals.netto)} €</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>MwSt ({totals.tax_rate}%)</span>
+              <span>MwSt ({totals.tax_rate}%){pricesIncludeTax ? ' (enthalten)' : ''}</span>
               <span>{fmt(totals.tax)} €</span>
             </div>
             <div className="flex justify-between text-white font-bold text-base border-t border-white/10 pt-2">

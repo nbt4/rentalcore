@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type PositionHandler struct {
@@ -17,11 +19,20 @@ type PositionHandler struct {
 	jobRepo      *repository.JobRepository
 }
 
-func NewPositionHandler(positionRepo *repository.PositionRepository, jobRepo *repository.JobRepository) *PositionHandler {
+func NewPositionHandler(positionRepo *repository.PositionRepository, jobRepo *repository.JobRepository, db *gorm.DB) *PositionHandler {
+	if err := ensureJobPriceColumns(db); err != nil {
+		log.Printf("warning: failed to ensure job price columns: %v", err)
+	}
 	return &PositionHandler{
 		positionRepo: positionRepo,
 		jobRepo:      jobRepo,
 	}
+}
+
+func ensureJobPriceColumns(db *gorm.DB) error {
+	db.Exec(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS multiply_by_days BOOLEAN NOT NULL DEFAULT TRUE`)
+	db.Exec(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS prices_include_tax BOOLEAN NOT NULL DEFAULT FALSE`)
+	return nil
 }
 
 func (h *PositionHandler) GetPositions(c *gin.Context) {
@@ -340,10 +351,17 @@ func (h *PositionHandler) GetTotals(c *gin.Context) {
 	subtotal := 0.0
 	for _, p := range positions {
 		dayFactor := 1.0
-		if eventDays > 1 && p.FollowDayFactor > 0 {
+		if job.MultiplyByDays && eventDays > 1 && p.FollowDayFactor > 0 {
 			dayFactor = 1 + float64(eventDays-1)*p.FollowDayFactor
 		}
-		lineTotal := p.Quantity * p.UnitPrice * dayFactor
+		unitPrice := p.UnitPrice
+		if job.PricesIncludeTax {
+			taxDivisor := 1 + p.TaxRate/100
+			if taxDivisor > 0 {
+				unitPrice = p.UnitPrice / taxDivisor
+			}
+		}
+		lineTotal := p.Quantity * unitPrice * dayFactor
 		discount := p.DiscountAmount + (lineTotal * p.DiscountPercent / 100)
 		subtotal += lineTotal - discount
 	}
@@ -363,14 +381,55 @@ func (h *PositionHandler) GetTotals(c *gin.Context) {
 	brutto := netto + tax
 
 	c.JSON(http.StatusOK, gin.H{
-		"event_days":      eventDays,
-		"subtotal":        math.Round(subtotal*100) / 100,
-		"global_discount": math.Round(globalDiscount*100) / 100,
-		"netto":           math.Round(netto*100) / 100,
-		"tax_rate":        taxRate,
-		"tax":             math.Round(tax*100) / 100,
-		"brutto":          math.Round(brutto*100) / 100,
+		"event_days":         eventDays,
+		"subtotal":           math.Round(subtotal*100) / 100,
+		"global_discount":    math.Round(globalDiscount*100) / 100,
+		"netto":              math.Round(netto*100) / 100,
+		"tax_rate":           taxRate,
+		"tax":                math.Round(tax*100) / 100,
+		"brutto":             math.Round(brutto*100) / 100,
+		"multiply_by_days":   job.MultiplyByDays,
+		"prices_include_tax": job.PricesIncludeTax,
 	})
+}
+
+type PriceSettingsInput struct {
+	MultiplyByDays   *bool `json:"multiply_by_days"`
+	PricesIncludeTax *bool `json:"prices_include_tax"`
+}
+
+func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		return
+	}
+
+	var input PriceSettingsInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if input.MultiplyByDays != nil {
+		updates["multiply_by_days"] = *input.MultiplyByDays
+	}
+	if input.PricesIncludeTax != nil {
+		updates["prices_include_tax"] = *input.PricesIncludeTax
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields provided"})
+		return
+	}
+
+	if err := h.jobRepo.UpdateFields(uint(jobID), updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "updated"})
 }
 
 func calcEventDays(start, end *time.Time) int {

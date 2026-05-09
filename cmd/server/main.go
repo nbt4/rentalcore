@@ -418,7 +418,7 @@ func main() {
 	pdfHandler := handlers.NewPDFHandler(db.DB, "uploads", jobHandler, jobAttachmentRepo, packageAliasCache, documentHandler)
 	accessoriesConsumablesHandler := handlers.NewAccessoriesConsumablesHandler(accessoriesConsumablesRepo)
 	positionRepo := repository.NewPositionRepository(db)
-	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo)
+	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, db.DB)
 
 	// Initialize RBAC middleware for role-based access control
 	rbacMiddleware := middleware.NewRBACMiddleware(db.DB)
@@ -1317,7 +1317,11 @@ func setupRoutes(r *gin.Engine,
 			apiJobs.POST("/:id/positions/:posId/devices", positionHandler.AssignDevice)
 			apiJobs.DELETE("/:id/positions/:posId/devices/:devId", positionHandler.RemoveDevice)
 			apiJobs.GET("/:id/totals", positionHandler.GetTotals)
+			apiJobs.PATCH("/:id/price-settings", positionHandler.UpdatePriceSettings)
 			apiJobs.GET("/:id/picklist", positionHandler.GetPicklist)
+
+			// Service items (used by JobPositionsPanel)
+			api.GET("/service-items", pdfHandler.ListServiceItems)
 
 			// Job package management routes
 			apiJobPackages := api.Group("/jobs/packages")

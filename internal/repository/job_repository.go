@@ -234,6 +234,10 @@ func (r *JobRepository) GetProductName(productID uint) (string, error) {
 	return product.Name, nil
 }
 
+func (r *JobRepository) UpdateFields(jobID uint, fields map[string]interface{}) error {
+	return r.db.Model(&models.Job{}).Where("jobid = ?", jobID).Updates(fields).Error
+}
+
 // RemoveAllDevicesFromJob removes all devices assigned to a specific job
 func (r *JobRepository) RemoveAllDevicesFromJob(jobID uint) error {
 	return r.db.Where("jobID = ?", jobID).Delete(&models.JobDevice{}).Error

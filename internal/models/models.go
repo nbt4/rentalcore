@@ -77,9 +77,11 @@ type Job struct {
 	Discount     float64      `json:"discount" gorm:"column:discount;default:0"`
 	DiscountType string       `json:"discount_type" gorm:"column:discount_type;default:amount"`
 	Revenue      float64      `json:"revenue" gorm:"column:revenue;default:0"`
-	FinalRevenue *float64     `json:"final_revenue" gorm:"column:final_revenue"`
-	StartDate    *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
-	EndDate      *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
+	FinalRevenue    *float64     `json:"final_revenue" gorm:"column:final_revenue"`
+	StartDate       *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
+	EndDate         *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
+	MultiplyByDays  bool         `json:"multiply_by_days" gorm:"column:multiply_by_days;default:true"`
+	PricesIncludeTax bool        `json:"prices_include_tax" gorm:"column:prices_include_tax;default:false"`
 	JobDevices   []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
 	JobPackages  []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
 	DeviceCount  int          `json:"device_count" gorm:"-:all"`
@@ -143,10 +145,10 @@ type Product struct {
 	CategoryID          *uint    `json:"categoryID" gorm:"column:categoryid"`
 	SubcategoryID       *string  `json:"subcategoryID" gorm:"column:subcategoryid"`
 	SubbiercategoryID   *string  `json:"subbiercategoryID" gorm:"column:subbiercategoryid"`
-	ManufacturerID      *uint    `json:"manufacturerID" gorm:"column:\"manufacturerID\""`
-	BrandID             *uint    `json:"brandID" gorm:"column:\"brandID\""`
+	ManufacturerID      *uint    `json:"manufacturerID" gorm:"column:manufacturerid"`
+	BrandID             *uint    `json:"brandID" gorm:"column:brandid"`
 	Description         *string  `json:"description" gorm:"column:description"`
-	MaintenanceInterval *uint    `json:"maintenanceInterval" gorm:"column:\"maintenanceInterval\""`
+	MaintenanceInterval *uint    `json:"maintenanceInterval" gorm:"column:maintenanceinterval"`
 	ItemCostPerDay      *float64 `json:"itemcostperday" gorm:"column:itemcostperday"`
 	Weight              *float64 `json:"weight" gorm:"column:weight"`
 	Height              *float64 `json:"height" gorm:"column:height"`
