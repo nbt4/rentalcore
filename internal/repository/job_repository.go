@@ -247,7 +247,10 @@ func (r *JobRepository) Delete(id uint) error {
 
 	// Collect device IDs before removing them, so we can reset their status
 	var deviceIDs []string
-	tx.Model(&models.JobDevice{}).Where("jobID = ?", id).Pluck("deviceID", &deviceIDs)
+	if err := tx.Model(&models.JobDevice{}).Where("jobID = ?", id).Pluck("deviceid", &deviceIDs).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to collect device IDs: %v", err)
+	}
 
 	// Reset on_job devices back to in_storage
 	if len(deviceIDs) > 0 {

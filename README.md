@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.41** - fix: Pluck("deviceid") PostgreSQL case-sensitive identifier fix; error handling for device ID collection on job delete; add rental/package position types and rental_equipment_id/tax_rate to JobPosition interface
+
 ### **v5.3.40** - feat: OCR-Finalize erstellt job_positions; tax_rate + Mietprodukt-Sektion in JobPositionsPanel; editierbare Datum-Inputs im MappingModal
 
 ### **v5.3.39** - feat: job positions API (quote-style line items with degressive pricing)

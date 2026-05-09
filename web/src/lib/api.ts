@@ -134,9 +134,10 @@ export interface JobPositionDevice {
 export interface JobPosition {
   position_id: number;
   job_id: number;
-  position_type: 'product' | 'service';
+  position_type: 'product' | 'service' | 'rental' | 'package';
   product_id: number | null;
   service_item_id: number | null;
+  rental_equipment_id: number | null;
   description: string;
   quantity: number;
   unit: string;
@@ -144,9 +145,11 @@ export interface JobPosition {
   follow_day_factor: number;
   discount_percent: number;
   discount_amount: number;
+  tax_rate: number;
   sort_order: number;
   product?: { productID: number; name: string; itemcostperday?: number } | null;
   service_item?: { id: number; name: string; default_price?: number; unit?: string } | null;
+  rental_equipment?: { equipmentID: number; productName: string; rentalPrice?: number } | null;
   devices?: JobPositionDevice[];
 }
 
