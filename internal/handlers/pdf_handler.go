@@ -1742,6 +1742,9 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": assignErr.Error()})
 				return
 			}
+			if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
+				log.Printf("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
+			}
 
 			if err := h.DB.Model(&models.Job{}).Where("job_id = ?", job.JobID).
 				Updates(map[string]interface{}{
@@ -1856,6 +1859,9 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		h.DB.Delete(&job)
 		c.JSON(http.StatusBadRequest, gin.H{"error": assignErr.Error()})
 		return
+	}
+	if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
+		log.Printf("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
 	}
 
 	h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", upload.UploadID).
@@ -2278,6 +2284,83 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 	}
 
 	return "", nil
+}
+
+// createPositionsFromExtraction creates job_positions from PDF extraction items.
+// Called after assignProductsToJob during finalize. Idempotent: deletes existing positions first.
+func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID uint64) error {
+	var items []models.PDFExtractionItem
+	if err := h.DB.Where(
+		"extraction_id = ? AND mapping_status IN ('auto_mapped','user_confirmed')",
+		extractionID,
+	).Order("item_id ASC").Find(&items).Error; err != nil {
+		return err
+	}
+
+	// Idempotent: remove existing positions for this job before recreating
+	if err := h.DB.Where("job_id = ?", job.JobID).Delete(&models.JobPosition{}).Error; err != nil {
+		return err
+	}
+
+	for i, item := range items {
+		qty := 1.0
+		if item.Quantity.Valid && item.Quantity.Int64 > 0 {
+			qty = float64(item.Quantity.Int64)
+		}
+		unitPrice := 0.0
+		if item.UnitPrice.Valid {
+			unitPrice = item.UnitPrice.Float64
+		}
+
+		var posType string
+		var productID *uint
+		var serviceItemID *uint
+		var rentalEquipmentID *uint
+		followDayFactor := 0.5
+
+		switch {
+		case item.MappedProductID.Valid:
+			posType = "product"
+			pid := uint(item.MappedProductID.Int64)
+			productID = &pid
+		case item.MappedPackageID.Valid:
+			posType = "package"
+			followDayFactor = 0
+		case item.MappedRentalEquipmentID.Valid:
+			posType = "rental"
+			rid := uint(item.MappedRentalEquipmentID.Int64)
+			rentalEquipmentID = &rid
+			followDayFactor = 0
+		case item.MappedServiceItemID.Valid:
+			posType = "service"
+			sid := uint(item.MappedServiceItemID.Int64)
+			serviceItemID = &sid
+			followDayFactor = 0
+		default:
+			continue
+		}
+
+		pos := models.JobPosition{
+			JobID:             job.JobID,
+			PositionType:      posType,
+			ProductID:         productID,
+			ServiceItemID:     serviceItemID,
+			RentalEquipmentID: rentalEquipmentID,
+			Description:       item.RawProductText,
+			Quantity:          qty,
+			Unit:              "Stück",
+			UnitPrice:         unitPrice,
+			FollowDayFactor:   followDayFactor,
+			DiscountPercent:   0,
+			TaxRate:           19.0,
+			SortOrder:         i,
+		}
+
+		if err := h.DB.Create(&pos).Error; err != nil {
+			log.Printf("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
+		}
+	}
+	return nil
 }
 
 type customerPrefill struct {

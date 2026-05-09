@@ -41,16 +41,18 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 }
 
 type CreatePositionInput struct {
-	PositionType    string   `json:"position_type" binding:"required,oneof=product service"`
-	ProductID       *uint    `json:"product_id"`
-	ServiceItemID   *uint    `json:"service_item_id"`
-	Description     string   `json:"description"`
-	Quantity        float64  `json:"quantity"`
-	Unit            string   `json:"unit"`
-	UnitPrice       float64  `json:"unit_price"`
-	FollowDayFactor *float64 `json:"follow_day_factor"`
-	DiscountPercent float64  `json:"discount_percent"`
-	DiscountAmount  float64  `json:"discount_amount"`
+	PositionType      string   `json:"position_type" binding:"required,oneof=product service rental package"`
+	ProductID         *uint    `json:"product_id"`
+	ServiceItemID     *uint    `json:"service_item_id"`
+	RentalEquipmentID *uint    `json:"rental_equipment_id"`
+	Description       string   `json:"description"`
+	Quantity          float64  `json:"quantity"`
+	Unit              string   `json:"unit"`
+	UnitPrice         float64  `json:"unit_price"`
+	FollowDayFactor   *float64 `json:"follow_day_factor"`
+	DiscountPercent   float64  `json:"discount_percent"`
+	DiscountAmount    float64  `json:"discount_amount"`
+	TaxRate           *float64 `json:"tax_rate"`
 }
 
 func (h *PositionHandler) CreatePosition(c *gin.Context) {
@@ -80,22 +82,33 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 	if input.PositionType == "service" {
 		followDayFactor = 0
 	}
+	// rental and package have no follow_day_factor
+	if input.PositionType == "rental" || input.PositionType == "package" {
+		followDayFactor = 0
+	}
+
+	taxRate := 19.0
+	if input.TaxRate != nil {
+		taxRate = *input.TaxRate
+	}
 
 	nextOrder, _ := h.positionRepo.GetNextSortOrder(uint(jobID))
 
 	pos := models.JobPosition{
-		JobID:           uint(jobID),
-		PositionType:    input.PositionType,
-		ProductID:       input.ProductID,
-		ServiceItemID:   input.ServiceItemID,
-		Description:     input.Description,
-		Quantity:        input.Quantity,
-		Unit:            input.Unit,
-		UnitPrice:       input.UnitPrice,
-		FollowDayFactor: followDayFactor,
-		DiscountPercent: input.DiscountPercent,
-		DiscountAmount:  input.DiscountAmount,
-		SortOrder:       nextOrder,
+		JobID:             uint(jobID),
+		PositionType:      input.PositionType,
+		ProductID:         input.ProductID,
+		ServiceItemID:     input.ServiceItemID,
+		RentalEquipmentID: input.RentalEquipmentID,
+		Description:       input.Description,
+		Quantity:          input.Quantity,
+		Unit:              input.Unit,
+		UnitPrice:         input.UnitPrice,
+		FollowDayFactor:   followDayFactor,
+		DiscountPercent:   input.DiscountPercent,
+		DiscountAmount:    input.DiscountAmount,
+		TaxRate:           taxRate,
+		SortOrder:         nextOrder,
 	}
 
 	if err := h.positionRepo.Create(&pos); err != nil {
@@ -115,6 +128,7 @@ type UpdatePositionInput struct {
 	FollowDayFactor *float64 `json:"follow_day_factor"`
 	DiscountPercent *float64 `json:"discount_percent"`
 	DiscountAmount  *float64 `json:"discount_amount"`
+	TaxRate         *float64 `json:"tax_rate"`
 }
 
 func (h *PositionHandler) UpdatePosition(c *gin.Context) {
@@ -156,6 +170,9 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	}
 	if input.DiscountAmount != nil {
 		pos.DiscountAmount = *input.DiscountAmount
+	}
+	if input.TaxRate != nil {
+		pos.TaxRate = *input.TaxRate
 	}
 	pos.UpdatedAt = time.Now()
 
