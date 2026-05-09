@@ -147,6 +147,22 @@ func TestSplitStreetNumber(t *testing.T) {
 	}
 }
 
+func TestShouldApplyM365Change(t *testing.T) {
+	now := time.Now().UTC()
+	earlier := now.Add(-10 * time.Minute)
+	later := now.Add(10 * time.Minute)
+
+	if !m365.ShouldApplyM365Change(earlier, later) {
+		t.Error("M365 newer: should apply")
+	}
+	if m365.ShouldApplyM365Change(later, earlier) {
+		t.Error("RentalCore newer: should not apply")
+	}
+	if m365.ShouldApplyM365Change(now, now) {
+		t.Error("Same time: should not apply")
+	}
+}
+
 func TestM365ConfigLoadsFromEnv(t *testing.T) {
 	os.Setenv("M365_TENANT_ID", "tenant-123")
 	os.Setenv("M365_CLIENT_ID", "client-456")

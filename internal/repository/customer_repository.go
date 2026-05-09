@@ -2,6 +2,8 @@ package repository
 
 import (
 	"fmt"
+	"time"
+
 	"go-barcode-webapp/internal/models"
 )
 
@@ -42,6 +44,7 @@ func (r *CustomerRepository) List(params *models.FilterParams) ([]models.Custome
 	var customers []models.Customer
 
 	query := r.db.Model(&models.Customer{})
+	query = query.Where("is_archived = false OR is_archived IS NULL")
 
 	if params.SearchTerm != "" {
 		searchPattern := "%" + params.SearchTerm + "%"
@@ -61,11 +64,41 @@ func (r *CustomerRepository) List(params *models.FilterParams) ([]models.Custome
 	return customers, err
 }
 
+// GetByM365ID sucht einen Kunden anhand seiner M365-Kontakt-ID.
+func (r *CustomerRepository) GetByM365ID(m365ID string) (*models.Customer, error) {
+	var customer models.Customer
+	err := r.db.Where("m365_id = ?", m365ID).First(&customer).Error
+	if err != nil {
+		return nil, err
+	}
+	return &customer, nil
+}
+
+// SetM365ID speichert die M365-Kontakt-ID für einen Kunden.
+func (r *CustomerRepository) SetM365ID(customerID uint, m365ID string) error {
+	return r.db.Model(&models.Customer{}).
+		Where("customerid = ?", customerID).
+		Update("m365_id", m365ID).Error
+}
+
+// Archive markiert einen Kunden als archiviert (nicht löschend).
+func (r *CustomerRepository) Archive(customerID uint) error {
+	now := time.Now()
+	return r.db.Model(&models.Customer{}).
+		Where("customerid = ?", customerID).
+		Updates(map[string]interface{}{
+			"is_archived": true,
+			"archived_at": now,
+			"m365_id":     nil,
+		}).Error
+}
+
 // ListByRole returns customers filtered by role ("customer", "supplier", or "" for all).
 func (r *CustomerRepository) ListByRole(params *models.FilterParams, role string) ([]models.Customer, error) {
 	var customers []models.Customer
 
 	query := r.db.Model(&models.Customer{})
+	query = query.Where("is_archived = false OR is_archived IS NULL")
 
 	switch role {
 	case "customer":
