@@ -2297,7 +2297,8 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 		return err
 	}
 
-	// Idempotent: remove existing positions for this job before recreating
+	// Intentional: OCR re-finalize always rebuilds positions from the extraction.
+	// Manually-added positions for this job are overwritten by design.
 	if err := h.DB.Where("job_id = ?", job.JobID).Delete(&models.JobPosition{}).Error; err != nil {
 		return err
 	}
