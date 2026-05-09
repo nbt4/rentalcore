@@ -3,25 +3,28 @@ package models
 import "time"
 
 type JobPosition struct {
-	PositionID      uint      `gorm:"primaryKey;column:position_id" json:"position_id"`
-	JobID           uint      `gorm:"column:job_id;not null;index" json:"job_id"`
-	PositionType    string    `gorm:"column:position_type;not null;default:product" json:"position_type"`
-	ProductID       *uint     `gorm:"column:product_id" json:"product_id"`
-	ServiceItemID   *uint     `gorm:"column:service_item_id" json:"service_item_id"`
-	Description     string    `gorm:"column:description;not null;default:''" json:"description"`
-	Quantity        float64   `gorm:"column:quantity;not null;default:1" json:"quantity"`
-	Unit            string    `gorm:"column:unit;not null;default:Stück" json:"unit"`
-	UnitPrice       float64   `gorm:"column:unit_price;not null;default:0" json:"unit_price"`
-	FollowDayFactor float64   `gorm:"column:follow_day_factor;not null;default:0.50" json:"follow_day_factor"`
-	DiscountPercent float64   `gorm:"column:discount_percent;not null;default:0" json:"discount_percent"`
-	DiscountAmount  float64   `gorm:"column:discount_amount;not null;default:0" json:"discount_amount"`
-	SortOrder       int       `gorm:"column:sort_order;not null;default:0" json:"sort_order"`
-	CreatedAt       time.Time `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt       time.Time `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	PositionID         uint      `gorm:"primaryKey;column:position_id" json:"position_id"`
+	JobID              uint      `gorm:"column:job_id;not null;index" json:"job_id"`
+	PositionType       string    `gorm:"column:position_type;not null;default:product" json:"position_type"`
+	ProductID          *uint     `gorm:"column:product_id" json:"product_id"`
+	ServiceItemID      *uint     `gorm:"column:service_item_id" json:"service_item_id"`
+	RentalEquipmentID  *uint     `gorm:"column:rental_equipment_id" json:"rental_equipment_id"`
+	Description        string    `gorm:"column:description;not null;default:''" json:"description"`
+	Quantity           float64   `gorm:"column:quantity;not null;default:1" json:"quantity"`
+	Unit               string    `gorm:"column:unit;not null;default:Stück" json:"unit"`
+	UnitPrice          float64   `gorm:"column:unit_price;not null;default:0" json:"unit_price"`
+	FollowDayFactor    float64   `gorm:"column:follow_day_factor;not null;default:0.50" json:"follow_day_factor"`
+	DiscountPercent    float64   `gorm:"column:discount_percent;not null;default:0" json:"discount_percent"`
+	DiscountAmount     float64   `gorm:"column:discount_amount;not null;default:0" json:"discount_amount"`
+	TaxRate            float64   `gorm:"column:tax_rate;not null;default:19.00" json:"tax_rate"`
+	SortOrder          int       `gorm:"column:sort_order;not null;default:0" json:"sort_order"`
+	CreatedAt          time.Time `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt          time.Time `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
 
-	Product     *Product            `gorm:"foreignKey:ProductID;references:ProductID" json:"product,omitempty"`
-	ServiceItem *ServiceItem        `gorm:"foreignKey:ServiceItemID;references:ID" json:"service_item,omitempty"`
-	Devices     []JobPositionDevice `gorm:"foreignKey:PositionID;references:PositionID" json:"devices,omitempty"`
+	Product          *Product          `gorm:"foreignKey:ProductID;references:ProductID" json:"product,omitempty"`
+	ServiceItem      *ServiceItem      `gorm:"foreignKey:ServiceItemID;references:ID" json:"service_item,omitempty"`
+	RentalEquipment  *RentalEquipment  `gorm:"foreignKey:RentalEquipmentID;references:EquipmentID" json:"rental_equipment,omitempty"`
+	Devices          []JobPositionDevice `gorm:"foreignKey:PositionID;references:PositionID" json:"devices,omitempty"`
 }
 
 func (JobPosition) TableName() string { return "job_positions" }
