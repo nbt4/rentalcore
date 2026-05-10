@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-// ExchangeAdminClient verwaltet GAL-Kontakte (MailContact) via Exchange Online admin API.
+// ExchangeAdminClient verwaltet GAL-Kontakte via Exchange Online cmdlet REST API.
 // Benötigt Exchange.ManageAsApp + "Mail Recipients"-Rolle auf dem Service Principal.
 type ExchangeAdminClient struct {
 	tenantID     string
@@ -28,19 +29,21 @@ type ExchangeAdminClient struct {
 // GALContact entspricht einem Exchange MailContact-Objekt.
 type GALContact struct {
 	Name                 string `json:"Name"`
-	ExternalEmailAddress string `json:"ExternalEmailAddress"` // "smtp:email@domain.com"
+	ExternalEmailAddress string `json:"ExternalEmailAddress"`
 	FirstName            string `json:"FirstName,omitempty"`
 	LastName             string `json:"LastName,omitempty"`
 	Company              string `json:"Company,omitempty"`
 	Phone                string `json:"Phone,omitempty"`
 }
 
-type exchangeContactList struct {
-	Value []struct {
-		ExternalEmailAddress string `json:"ExternalEmailAddress"`
-		Name                 string `json:"Name"`
-	} `json:"value"`
-	NextLink string `json:"@odata.nextLink"`
+// cmdletRequest entspricht dem Exchange Online InvokeCommand-Format.
+type cmdletRequest struct {
+	CmdletInput cmdletInput `json:"CmdletInput"`
+}
+
+type cmdletInput struct {
+	CmdletName string         `json:"CmdletName"`
+	Parameters map[string]any `json:"Parameters"`
 }
 
 func NewExchangeAdminClient(tenantID, clientID, clientSecret string) *ExchangeAdminClient {
@@ -81,7 +84,7 @@ func (c *ExchangeAdminClient) getToken() (string, error) {
 		return "", fmt.Errorf("exchange token decode: %w", err)
 	}
 	if tr.AccessToken == "" {
-		return "", fmt.Errorf("exchange token: empty access_token in response")
+		return "", fmt.Errorf("exchange token: empty access_token")
 	}
 
 	c.token = tr.AccessToken
@@ -89,117 +92,156 @@ func (c *ExchangeAdminClient) getToken() (string, error) {
 	return c.token, nil
 }
 
-func (c *ExchangeAdminClient) baseURL() string {
-	return fmt.Sprintf("https://outlook.office365.com/adminapi/beta/%s", c.tenantID)
+func (c *ExchangeAdminClient) invokeCommand(cmdletName string, params map[string]any) error {
+	token, err := c.getToken()
+	if err != nil {
+		return err
+	}
+
+	reqBody := cmdletRequest{
+		CmdletInput: cmdletInput{
+			CmdletName: cmdletName,
+			Parameters: params,
+		},
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+
+	reqURL := fmt.Sprintf("https://outlook.office365.com/adminapi/beta/%s/InvokeCommand", c.tenantID)
+	req, err := http.NewRequest("POST", reqURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("%s: HTTP %d — %s", cmdletName, resp.StatusCode, string(body))
 }
 
-func (c *ExchangeAdminClient) doRequest(method, reqURL string, body interface{}) (*http.Response, error) {
+func (c *ExchangeAdminClient) invokeQuery(cmdletName string, params map[string]any) ([]map[string]any, error) {
 	token, err := c.getToken()
 	if err != nil {
 		return nil, err
 	}
 
-	var bodyBytes []byte
-	if body != nil {
-		bodyBytes, err = json.Marshal(body)
-		if err != nil {
-			return nil, err
-		}
+	reqBody := cmdletRequest{
+		CmdletInput: cmdletInput{
+			CmdletName: cmdletName,
+			Parameters: params,
+		},
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
 	}
 
-	req, err := http.NewRequest(method, reqURL, bytes.NewReader(bodyBytes))
+	reqURL := fmt.Sprintf("https://outlook.office365.com/adminapi/beta/%s/InvokeCommand", c.tenantID)
+	req, err := http.NewRequest("POST", reqURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("%s: HTTP %d — %s", cmdletName, resp.StatusCode, string(body))
 	}
 
-	return c.httpClient.Do(req)
+	var result struct {
+		Value []map[string]any `json:"value"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return result.Value, nil
 }
 
-// normEmail stellt sicher dass die Adresse ohne "smtp:"-Prefix vorliegt.
+// normEmail entfernt den "smtp:"-Prefix falls vorhanden.
 func normEmail(email string) string {
-	return strings.TrimPrefix(email, "smtp:")
+	return strings.TrimPrefix(strings.TrimPrefix(email, "smtp:"), "SMTP:")
 }
 
-// CreateMailContact legt einen neuen GAL-Kontakt an.
+// CreateMailContact legt einen neuen GAL MailContact via New-MailContact an.
 func (c *ExchangeAdminClient) CreateMailContact(contact GALContact) error {
 	if contact.ExternalEmailAddress == "" {
 		return fmt.Errorf("ExternalEmailAddress required")
 	}
-	contact.ExternalEmailAddress = "smtp:" + normEmail(contact.ExternalEmailAddress)
-
-	resp, err := c.doRequest("POST", c.baseURL()+"/MailContact", contact)
-	if err != nil {
-		return err
+	params := map[string]any{
+		"Name":                 contact.Name,
+		"ExternalEmailAddress": normEmail(contact.ExternalEmailAddress),
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("create GAL contact: HTTP %d", resp.StatusCode)
+	if contact.FirstName != "" {
+		params["FirstName"] = contact.FirstName
 	}
-	return nil
+	if contact.LastName != "" {
+		params["LastName"] = contact.LastName
+	}
+	return c.invokeCommand("New-MailContact", params)
 }
 
-// UpdateMailContact aktualisiert einen bestehenden GAL-Kontakt anhand seiner E-Mail.
+// UpdateMailContact aktualisiert einen GAL MailContact via Set-MailContact.
 func (c *ExchangeAdminClient) UpdateMailContact(email string, contact GALContact) error {
-	reqURL := fmt.Sprintf("%s/MailContact('%s')", c.baseURL(), url.PathEscape(normEmail(email)))
-	if contact.ExternalEmailAddress != "" {
-		contact.ExternalEmailAddress = "smtp:" + normEmail(contact.ExternalEmailAddress)
+	params := map[string]any{
+		"Identity": normEmail(email),
 	}
-
-	resp, err := c.doRequest("PATCH", reqURL, contact)
-	if err != nil {
-		return err
+	if contact.Name != "" {
+		params["DisplayName"] = contact.Name
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("update GAL contact: HTTP %d", resp.StatusCode)
+	if contact.FirstName != "" {
+		params["FirstName"] = contact.FirstName
 	}
-	return nil
+	if contact.LastName != "" {
+		params["LastName"] = contact.LastName
+	}
+	return c.invokeCommand("Set-MailContact", params)
 }
 
-// DeleteMailContact löscht einen GAL-Kontakt anhand seiner E-Mail.
+// DeleteMailContact löscht einen GAL MailContact via Remove-MailContact.
 func (c *ExchangeAdminClient) DeleteMailContact(email string) error {
-	reqURL := fmt.Sprintf("%s/MailContact('%s')", c.baseURL(), url.PathEscape(normEmail(email)))
-	resp, err := c.doRequest("DELETE", reqURL, nil)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("delete GAL contact: HTTP %d", resp.StatusCode)
-	}
-	return nil
+	return c.invokeCommand("Remove-MailContact", map[string]any{
+		"Identity": normEmail(email),
+		"Confirm":  false,
+	})
 }
 
 // ListMailContactEmails gibt alle E-Mail-Adressen bestehender GAL MailContacts zurück.
 func (c *ExchangeAdminClient) ListMailContactEmails() (map[string]bool, error) {
+	items, err := c.invokeQuery("Get-MailContact", map[string]any{
+		"ResultSize": "Unlimited",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	emails := make(map[string]bool)
-	reqURL := c.baseURL() + "/MailContact?$select=ExternalEmailAddress,Name"
-
-	for reqURL != "" {
-		resp, err := c.doRequest("GET", reqURL, nil)
-		if err != nil {
-			return nil, err
+	for _, item := range items {
+		if raw, ok := item["ExternalEmailAddress"]; ok {
+			if email, ok := raw.(string); ok {
+				emails[normEmail(email)] = true
+			}
 		}
-
-		var list exchangeContactList
-		decErr := json.NewDecoder(resp.Body).Decode(&list)
-		resp.Body.Close()
-		if decErr != nil {
-			return nil, decErr
-		}
-
-		for _, contact := range list.Value {
-			emails[normEmail(contact.ExternalEmailAddress)] = true
-		}
-		reqURL = list.NextLink
 	}
 	return emails, nil
 }
