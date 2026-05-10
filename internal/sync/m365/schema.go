@@ -14,6 +14,7 @@ func EnsureCustomerM365Columns(db *sql.DB) error {
 	}{
 		{"m365_id", "VARCHAR(255)"},
 		{"m365_updated_at", "TIMESTAMP"},
+		{"gal_contact_id", "VARCHAR(255)"},
 		{"is_archived", "BOOLEAN NOT NULL DEFAULT FALSE"},
 		{"archived_at", "TIMESTAMP"},
 		{"updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"},

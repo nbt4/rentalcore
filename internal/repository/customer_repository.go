@@ -89,6 +89,22 @@ func (r *CustomerRepository) GetUnsynced() ([]models.Customer, error) {
 	return customers, err
 }
 
+// SetGALContactID speichert die GAL-Kontakt-ID (E-Mail) für einen Kunden.
+func (r *CustomerRepository) SetGALContactID(customerID uint, email string) error {
+	return r.db.Model(&models.Customer{}).
+		Where("customerid = ?", customerID).
+		Update("gal_contact_id", email).Error
+}
+
+// GetGALUnsynced gibt alle nicht-archivierten Kunden mit E-Mail aber ohne gal_contact_id zurück.
+func (r *CustomerRepository) GetGALUnsynced() ([]models.Customer, error) {
+	var customers []models.Customer
+	err := r.db.Where(
+		"(is_archived = false OR is_archived IS NULL) AND (gal_contact_id IS NULL OR gal_contact_id = '') AND email IS NOT NULL AND email != ''",
+	).Find(&customers).Error
+	return customers, err
+}
+
 // Archive markiert einen Kunden als archiviert (nicht löschend).
 func (r *CustomerRepository) Archive(customerID uint) error {
 	now := time.Now()

@@ -120,3 +120,28 @@ func SplitStreetAndNumber(s string) (street, houseNumber string) {
 }
 
 func strPtr(s string) *string { return &s }
+
+// CustomerToGALContact wandelt einen RentalCore-Kunden in einen Exchange GAL-Kontakt um.
+// Kunden ohne E-Mail können nicht in die GAL aufgenommen werden.
+func CustomerToGALContact(c *models.Customer) GALContact {
+	contact := GALContact{}
+
+	if c.Email != nil {
+		contact.ExternalEmailAddress = *c.Email
+	}
+	if c.FirstName != nil {
+		contact.FirstName = *c.FirstName
+	}
+	if c.LastName != nil {
+		contact.LastName = *c.LastName
+	}
+	if c.CompanyName != nil {
+		contact.Company = *c.CompanyName
+	}
+	if c.PhoneNumber != nil {
+		contact.Phone = *c.PhoneNumber
+	}
+
+	contact.Name = c.GetDisplayName()
+	return contact
+}

@@ -27,6 +27,7 @@ type Customer struct {
 	// M365 sync fields
 	M365ID        *string    `json:"m365_id,omitempty" gorm:"column:m365_id"`
 	M365UpdatedAt *time.Time `json:"m365_updated_at,omitempty" gorm:"column:m365_updated_at"`
+	GALContactID  *string    `json:"gal_contact_id,omitempty" gorm:"column:gal_contact_id"`
 	IsArchived    bool       `json:"is_archived" gorm:"column:is_archived;default:false"`
 	ArchivedAt    *time.Time `json:"archived_at,omitempty" gorm:"column:archived_at"`
 	CreatedAt     time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`

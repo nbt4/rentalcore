@@ -370,8 +370,13 @@ func main() {
 			cfg.M365.ClientSecret,
 			cfg.M365.MailboxID,
 		)
+		exchangeClient := m365sync.NewExchangeAdminClient(
+			cfg.M365.TenantID,
+			cfg.M365.ClientID,
+			cfg.M365.ClientSecret,
+		)
 		sqlDB, _ := db.DB.DB()
-		svc := m365sync.NewSyncService(graphClient, customerRepo, sqlDB, interval)
+		svc := m365sync.NewSyncService(graphClient, exchangeClient, customerRepo, sqlDB, interval)
 		m365SyncService = svc
 		syncCtx, _ := context.WithCancel(context.Background())
 		svc.Start(syncCtx)
