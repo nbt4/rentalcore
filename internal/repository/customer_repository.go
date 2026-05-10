@@ -81,6 +81,14 @@ func (r *CustomerRepository) SetM365ID(customerID uint, m365ID string) error {
 		Update("m365_id", m365ID).Error
 }
 
+// GetUnsynced gibt alle nicht-archivierten Kunden ohne m365_id zurück.
+func (r *CustomerRepository) GetUnsynced() ([]models.Customer, error) {
+	var customers []models.Customer
+	err := r.db.Where("(is_archived = false OR is_archived IS NULL) AND (m365_id IS NULL OR m365_id = '')").
+		Find(&customers).Error
+	return customers, err
+}
+
 // Archive markiert einen Kunden als archiviert (nicht löschend).
 func (r *CustomerRepository) Archive(customerID uint) error {
 	now := time.Now()

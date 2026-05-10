@@ -30,12 +30,17 @@ func NewSyncService(client *GraphClient, customerRepo *repository.CustomerReposi
 }
 
 // Start startet den Delta-Poll-Loop als Goroutine. Blockiert nicht.
+// Beim ersten Start wird außerdem ein einmaliger Bulk-Push aller Kunden
+// ohne m365_id angestoßen, bevor der Delta-Loop beginnt.
 func (s *SyncService) Start(ctx context.Context) {
 	if err := s.ensureSyncStateTable(); err != nil {
 		log.Printf("M365 sync: could not ensure sync_state table: %v", err)
 		return
 	}
-	go s.runDeltaLoop(ctx)
+	go func() {
+		s.BulkPushUnsynced()
+		s.runDeltaLoop(ctx)
+	}()
 	log.Printf("M365 sync: started (interval: %s)", s.syncInterval)
 }
 
@@ -120,6 +125,37 @@ func (s *SyncService) handleM365Deletion(contactID string) {
 	if err := s.customerRepo.Archive(existing.CustomerID); err != nil {
 		log.Printf("M365 sync: archive customer %d failed: %v", existing.CustomerID, err)
 	}
+}
+
+// BulkPushUnsynced schiebt alle Kunden ohne m365_id einmalig nach M365.
+// Läuft beim Server-Start einmal durch; danach übernimmt der Delta-Loop + Push-Hooks.
+func (s *SyncService) BulkPushUnsynced() {
+	customers, err := s.customerRepo.GetUnsynced()
+	if err != nil {
+		log.Printf("M365 bulk-push: could not fetch unsynced customers: %v", err)
+		return
+	}
+	if len(customers) == 0 {
+		log.Println("M365 bulk-push: all customers already synced")
+		return
+	}
+	log.Printf("M365 bulk-push: pushing %d unsynced customers to M365", len(customers))
+
+	ok, failed := 0, 0
+	for i := range customers {
+		if err := s.PushCreate(&customers[i]); err != nil {
+			log.Printf("M365 bulk-push: customer %d failed: %v", customers[i].CustomerID, err)
+			failed++
+		} else {
+			ok++
+		}
+		if i > 0 && i%10 == 0 {
+			log.Printf("M365 bulk-push: progress %d/%d", i+1, len(customers))
+		}
+		// ~4 req/s Graph-API-Limit einhalten
+		time.Sleep(250 * time.Millisecond)
+	}
+	log.Printf("M365 bulk-push: done — %d pushed, %d failed", ok, failed)
 }
 
 // PushCreate sendet einen neuen Kunden an M365 und speichert die erhaltene M365-ID.

@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.45** - feat: M365 Bulk-Push beim Start — alle bestehenden Kunden ohne m365_id werden einmalig nach M365 gepusht; Beispieldateien um M365-Konfiguration ergänzt
+
 ### **v5.3.44** - feat: Bidirektionaler M365-Kontakt-Sync (Shared Mailbox, Delta-Poll alle 5 Min, Last-Write-Wins, M365-Löschungen archivieren Kunden)
 
 ### **v5.3.43** - fix: parseItemIntelligently fallback parser — qty-as-price (2-number case) and pos-as-qty (4-number case) bugs corrected; switch-based number assignment with qty×price≈total verification

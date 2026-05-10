@@ -105,5 +105,12 @@
     "interval": 86400,
     "retention_days": 30,
     "path": "backups/"
+  },
+  "m365": {
+    "tenant_id": "your-entra-tenant-id",
+    "client_id": "your-entra-app-client-id",
+    "client_secret": "your-entra-app-client-secret",
+    "mailbox_id": "contacts@yourdomain.com",
+    "sync_interval": "5m"
   }
 }
