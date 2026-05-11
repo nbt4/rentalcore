@@ -22,6 +22,7 @@ type Config struct {
 	Logging  LoggingConfig  `json:"logging"`
 	Backup   BackupConfig   `json:"backup"`
 	Features FeaturesConfig `json:"features"`
+	M365     M365Config     `json:"m365"`
 }
 
 type DatabaseConfig struct {
@@ -383,6 +384,40 @@ func loadFromEnvironment(config *Config) {
 	if scannerEnabled := os.Getenv("SCANNER_ENABLED"); scannerEnabled != "" {
 		config.Features.ScannerEnabled = false // Always false, scanner removed
 	}
+
+	config.M365.LoadFromEnv()
+}
+
+type M365Config struct {
+	TenantID     string `json:"tenant_id"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	MailboxID    string `json:"mailbox_id"`
+	SyncInterval string `json:"sync_interval"`
+}
+
+func (c *M365Config) LoadFromEnv() {
+	if v := os.Getenv("M365_TENANT_ID"); v != "" {
+		c.TenantID = v
+	}
+	if v := os.Getenv("M365_CLIENT_ID"); v != "" {
+		c.ClientID = v
+	}
+	if v := os.Getenv("M365_CLIENT_SECRET"); v != "" {
+		c.ClientSecret = v
+	}
+	if v := os.Getenv("M365_SHARED_MAILBOX_ID"); v != "" {
+		c.MailboxID = v
+	}
+	if v := os.Getenv("M365_SYNC_INTERVAL"); v != "" {
+		c.SyncInterval = v
+	} else {
+		c.SyncInterval = "5m"
+	}
+}
+
+func (c *M365Config) IsConfigured() bool {
+	return c.TenantID != "" && c.ClientID != "" && c.ClientSecret != "" && c.MailboxID != ""
 }
 // GetDatabaseStats returns database connection statistics
 func GetDatabaseStats(db *gorm.DB) (map[string]interface{}, error) {

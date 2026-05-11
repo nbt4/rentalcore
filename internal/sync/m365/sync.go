@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
@@ -302,8 +303,15 @@ func (s *SyncService) BulkPushToGAL() {
 	ok, failed := 0, 0
 	for i := range toCreate {
 		if err := s.GALPushCreate(&toCreate[i]); err != nil {
-			log.Printf("M365 GAL bulk-push: customer %d failed: %v", toCreate[i].CustomerID, err)
-			failed++
+			// 409 = E-Mail gehört bereits einem Exchange-Postfach — als gesynct markieren
+			if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "ProxyAddressExists") {
+				_ = s.customerRepo.SetGALContactID(toCreate[i].CustomerID, *toCreate[i].Email)
+				log.Printf("M365 GAL bulk-push: customer %d email already in Exchange (mailbox) — marked synced", toCreate[i].CustomerID)
+				ok++
+			} else {
+				log.Printf("M365 GAL bulk-push: customer %d failed: %v", toCreate[i].CustomerID, err)
+				failed++
+			}
 		} else {
 			ok++
 		}

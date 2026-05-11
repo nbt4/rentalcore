@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.47** - fix: GAL bulk-push 409-Konflikte (E-Mail gehört echtem Exchange-Postfach) werden als gesynct markiert statt endlos retryed
+
 ### **v5.3.46** - feat: GAL-Sync via Exchange Online admin API — Kontakte erscheinen in OWA-Autocomplete und Outlook auf allen Plattformen; gal_contact_id-Spalte, BulkPushToGAL beim Start, E-Mail-Änderungen korrekt behandelt
 
 ### **v5.3.45** - feat: M365 Bulk-Push beim Start — alle bestehenden Kunden ohne m365_id werden einmalig nach M365 gepusht; Beispieldateien um M365-Konfiguration ergänzt
