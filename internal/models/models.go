@@ -89,6 +89,7 @@ type Job struct {
 	StartDate       *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
 	EndDate         *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
 	MultiplyByDays  bool         `json:"multiply_by_days" gorm:"column:multiply_by_days;default:true"`
+	M365EventID     *string      `json:"m365_event_id,omitempty" gorm:"column:m365_event_id;size:255"`
 	PricesIncludeTax bool        `json:"prices_include_tax" gorm:"column:prices_include_tax;default:false"`
 	JobDevices   []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
 	JobPackages  []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
