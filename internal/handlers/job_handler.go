@@ -111,6 +111,12 @@ func parseProductSelectionsFromInterface(value interface{}) ([]JobProductSelecti
 	}
 }
 
+// CalendarSyncServiceInterface ermöglicht nil-sicheres Einbinden ohne M365-Pflicht.
+type CalendarSyncServiceInterface interface {
+	SyncJobEvent(jobID uint)
+	DeleteJobEvent(jobID uint)
+}
+
 type JobHandler struct {
 	jobRepo            *repository.JobRepository
 	jobPackageRepo     *repository.JobPackageRepository
@@ -123,6 +129,8 @@ type JobHandler struct {
 	jobHistoryService  *services.JobHistoryService
 	rentalEquipRepo    *repository.RentalEquipmentRepository
 	warehouseClient    *warehousecore.Client
+	jobEmployeeRepo    *repository.JobEmployeeRepository
+	calendarSync       CalendarSyncServiceInterface
 }
 
 type JobProductSelection struct {
@@ -171,7 +179,7 @@ func formatUserDisplayName(user *models.User) string {
 	}
 }
 
-func NewJobHandler(jobRepo *repository.JobRepository, jobPackageRepo *repository.JobPackageRepository, deviceRepo *repository.DeviceRepository, requirementRepo *repository.RequirementRepository, customerRepo *repository.CustomerRepository, statusRepo *repository.StatusRepository, jobCategoryRepo *repository.JobCategoryRepository, jobEditSessionRepo *repository.JobEditSessionRepository, jobHistoryService *services.JobHistoryService, rentalEquipRepo *repository.RentalEquipmentRepository) *JobHandler {
+func NewJobHandler(jobRepo *repository.JobRepository, jobPackageRepo *repository.JobPackageRepository, deviceRepo *repository.DeviceRepository, requirementRepo *repository.RequirementRepository, customerRepo *repository.CustomerRepository, statusRepo *repository.StatusRepository, jobCategoryRepo *repository.JobCategoryRepository, jobEditSessionRepo *repository.JobEditSessionRepository, jobHistoryService *services.JobHistoryService, rentalEquipRepo *repository.RentalEquipmentRepository, jobEmployeeRepo *repository.JobEmployeeRepository, calendarSync CalendarSyncServiceInterface) *JobHandler {
 	return &JobHandler{
 		jobRepo:            jobRepo,
 		jobPackageRepo:     jobPackageRepo,
@@ -184,6 +192,8 @@ func NewJobHandler(jobRepo *repository.JobRepository, jobPackageRepo *repository
 		jobHistoryService:  jobHistoryService,
 		rentalEquipRepo:    rentalEquipRepo,
 		warehouseClient:    warehousecore.NewClient(),
+		jobEmployeeRepo:    jobEmployeeRepo,
+		calendarSync:       calendarSync,
 	}
 }
 
@@ -535,6 +545,10 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		}
 	}
 
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(job.JobID)
+	}
+
 	c.Redirect(http.StatusFound, "/jobs")
 }
 
@@ -748,6 +762,10 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		h.jobRepo.UpdateFinalRevenue(uint(id))
 	}
 
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(uint(id))
+	}
+
 	c.Redirect(http.StatusFound, fmt.Sprintf("/jobs/%d", id))
 }
 
@@ -756,6 +774,10 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
+	}
+
+	if h.calendarSync != nil {
+		h.calendarSync.DeleteJobEvent(uint(id))
 	}
 
 	if err := h.jobRepo.Delete(uint(id)); err != nil {
@@ -1021,6 +1043,10 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		}
 	}
 
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(job.JobID)
+	}
+
 	c.JSON(http.StatusCreated, job)
 }
 
@@ -1186,6 +1212,10 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		}
 	}
 
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(job.JobID)
+	}
+
 	c.JSON(http.StatusOK, job)
 }
 
@@ -1194,6 +1224,10 @@ func (h *JobHandler) DeleteJobAPI(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
 		return
+	}
+
+	if h.calendarSync != nil {
+		h.calendarSync.DeleteJobEvent(uint(id))
 	}
 
 	if err := h.jobRepo.Delete(uint(id)); err != nil {
@@ -2049,4 +2083,63 @@ func (h *JobHandler) GetJobCablePlanning(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *JobHandler) ListJobEmployees(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
+		return
+	}
+	entries, err := h.jobEmployeeRepo.ListForJob(uint(jobID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, entries)
+}
+
+func (h *JobHandler) AssignEmployee(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
+		return
+	}
+	var body struct {
+		EmployeeID uint    `json:"employee_id"`
+		Role       *string `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.EmployeeID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "employee_id required"})
+		return
+	}
+	if err := h.jobEmployeeRepo.Assign(uint(jobID), body.EmployeeID, body.Role); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(uint(jobID))
+	}
+	c.JSON(http.StatusCreated, gin.H{"ok": true})
+}
+
+func (h *JobHandler) RemoveEmployee(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
+		return
+	}
+	employeeID, err := strconv.ParseUint(c.Param("employeeId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid employee id"})
+		return
+	}
+	if err := h.jobEmployeeRepo.Remove(uint(jobID), uint(employeeID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(uint(jobID))
+	}
+	c.Status(http.StatusNoContent)
 }
