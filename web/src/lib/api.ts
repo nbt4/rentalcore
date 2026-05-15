@@ -176,13 +176,17 @@ export interface Employee {
   id: number;
   first_name: string;
   last_name: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  address?: string;
-  date_of_birth?: string;
-  iban?: string;
-  notes?: string;
+  email?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  zip?: string | null;
+  city?: string | null;
+  country?: string | null;
+  date_of_birth?: string | null;
+  iban?: string | null;
+  notes?: string | null;
   is_active: boolean;
   skills?: Skill[];
 }

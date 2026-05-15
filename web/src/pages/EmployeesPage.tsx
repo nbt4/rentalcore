@@ -8,7 +8,11 @@ interface EmployeeFormState {
   email: string;
   phone: string;
   mobile: string;
-  address: string;
+  street: string;
+  house_number: string;
+  zip: string;
+  city: string;
+  country: string;
   date_of_birth: string;
   iban: string;
   notes: string;
@@ -18,7 +22,8 @@ interface EmployeeFormState {
 
 const emptyForm = (): EmployeeFormState => ({
   first_name: '', last_name: '', email: '', phone: '', mobile: '',
-  address: '', date_of_birth: '', iban: '', notes: '', is_active: true, skill_ids: [],
+  street: '', house_number: '', zip: '', city: '', country: 'Deutschland',
+  date_of_birth: '', iban: '', notes: '', is_active: true, skill_ids: [],
 });
 
 const toForm = (e: Employee): EmployeeFormState => ({
@@ -27,8 +32,12 @@ const toForm = (e: Employee): EmployeeFormState => ({
   email: e.email || '',
   phone: e.phone || '',
   mobile: e.mobile || '',
-  address: e.address || '',
-  date_of_birth: e.date_of_birth || '',
+  street: e.street || '',
+  house_number: e.house_number || '',
+  zip: e.zip || '',
+  city: e.city || '',
+  country: e.country || 'Deutschland',
+  date_of_birth: e.date_of_birth ? e.date_of_birth.substring(0, 10) : '',
   iban: e.iban || '',
   notes: e.notes || '',
   is_active: e.is_active,
@@ -71,7 +80,7 @@ export function EmployeesPage() {
   const saveEdit = async () => {
     if (!editingId) return;
     try {
-      await employeesApi.update(editingId, form);
+      await employeesApi.update(editingId, toPayload(form));
       setEditingId(null);
       await load();
     } catch {
@@ -79,10 +88,25 @@ export function EmployeesPage() {
     }
   };
 
+  const toPayload = (f: EmployeeFormState) => ({
+    ...f,
+    date_of_birth: f.date_of_birth || null,
+    email: f.email || null,
+    phone: f.phone || null,
+    mobile: f.mobile || null,
+    street: f.street || null,
+    house_number: f.house_number || null,
+    zip: f.zip || null,
+    city: f.city || null,
+    country: f.country || null,
+    iban: f.iban || null,
+    notes: f.notes || null,
+  });
+
   const createEmployee = async () => {
     if (!form.first_name.trim() || !form.last_name.trim()) return;
     try {
-      await employeesApi.create(form);
+      await employeesApi.create(toPayload(form));
       setShowNew(false);
       setForm(emptyForm());
       await load();
@@ -193,13 +217,17 @@ export function EmployeesPage() {
 }
 
 function EmployeeDetail({ emp }: { emp: Employee }) {
+  const addressParts = [emp.street ?? '', emp.house_number ?? ''].filter(Boolean).join(' ');
+  const cityParts = [emp.zip ?? '', emp.city ?? ''].filter(Boolean).join(' ');
+  const address = [addressParts, cityParts, emp.country && emp.country !== 'Deutschland' ? emp.country : ''].filter(Boolean).join(', ');
+
   const fields: [string, string | undefined][] = [
-    ['Telefon', emp.phone],
-    ['Mobil', emp.mobile],
-    ['Adresse', emp.address],
-    ['Geburtsdatum', emp.date_of_birth],
-    ['IBAN', emp.iban],
-    ['Notizen', emp.notes],
+    ['Telefon', emp.phone ?? undefined],
+    ['Mobil', emp.mobile ?? undefined],
+    ['Adresse', address || undefined],
+    ['Geburtsdatum', emp.date_of_birth ? emp.date_of_birth.substring(0, 10) : undefined],
+    ['IBAN', emp.iban ?? undefined],
+    ['Notizen', emp.notes ?? undefined],
   ];
   return (
     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -248,14 +276,11 @@ function EmployeeForm({ form, setForm, skills }: {
         {field('date_of_birth', 'Geburtsdatum', 'date')}
         {field('iban', 'IBAN')}
       </div>
-      <div>
-        <label className="block text-xs text-white/40 mb-1">Adresse</label>
-        <textarea
-          className="w-full px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm border border-white/10 focus:outline-none focus:border-accent resize-none"
-          rows={2}
-          value={form.address}
-          onChange={e => setForm({ ...form, address: e.target.value })}
-        />
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-2">{field('street', 'Straße')}</div>
+        <div>{field('house_number', 'Hausnr.')}</div>
+        <div>{field('zip', 'PLZ')}</div>
+        <div className="col-span-2">{field('city', 'Stadt')}</div>
       </div>
       <div>
         <label className="block text-xs text-white/40 mb-1">Notizen</label>

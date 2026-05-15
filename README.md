@@ -480,6 +480,10 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.50** - fix: POST /employees 400-Fehler behoben — date_of_birth als String geparst (nicht direkt time.Time), Adressfelder in separate Felder (street, house_number, zip, city) aufgeteilt
+
+### **v5.3.49** - fix: M365 Kalender-Endpunkt von /users/ auf /groups/ umgestellt (events@tsunami-events.de ist eine M365-Gruppe, kein User-Postfach)
+
 ### **v5.3.48** - feat: Mitarbeiterverwaltung, Skills-Verwaltung und M365-Kalender-Integration — Jobs erzeugen/aktualisieren/löschen Kalendertermine in events@tsunami-events.de; Bearbeiter werden als Attendees eingetragen
 
 ### **v5.3.47** - fix: GAL bulk-push 409-Konflikte (E-Mail gehört echtem Exchange-Postfach) werden als gesynct markiert statt endlos retryed
