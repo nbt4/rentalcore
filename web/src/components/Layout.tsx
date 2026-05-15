@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Briefcase, BarChart2, FileText,
   Menu, X, LogOut, User, ChevronLeft, ChevronRight, Warehouse, LayoutDashboard,
+  Users, Star,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,9 +56,10 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard', exact: true },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
-
     { path: '/analytics', icon: BarChart2, label: 'Analyse' },
     { path: '/documents', icon: FileText, label: 'Dokumente' },
+    { path: '/employees', icon: Users, label: 'Mitarbeiter' },
+    { path: '/admin/skills', icon: Star, label: 'Skills' },
   ];
 
   const isActive = (path: string, exact = false) =>

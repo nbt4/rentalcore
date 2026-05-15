@@ -165,6 +165,59 @@ export interface JobTotals {
   prices_include_tax: boolean;
 }
 
+export interface Skill {
+  id: number;
+  name: string;
+  category: string;
+  description?: string;
+}
+
+export interface Employee {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  address?: string;
+  date_of_birth?: string;
+  iban?: string;
+  notes?: string;
+  is_active: boolean;
+  skills?: Skill[];
+}
+
+export interface JobEmployee {
+  job_id: number;
+  employee_id: number;
+  role?: string;
+  employee: Employee;
+}
+
+export const skillsApi = {
+  list: () => api.get<Skill[]>('/skills'),
+  create: (data: Partial<Skill>) => api.post<Skill>('/skills', data),
+  update: (id: number, data: Partial<Skill>) => api.put<Skill>(`/skills/${id}`, data),
+  delete: (id: number) => api.delete(`/skills/${id}`),
+};
+
+export const employeesApi = {
+  list: () => api.get<Employee[]>('/employees'),
+  listActive: () => api.get<Employee[]>('/employees/active'),
+  getById: (id: number) => api.get<Employee>(`/employees/${id}`),
+  create: (data: Partial<Employee> & { skill_ids?: number[] }) => api.post<Employee>('/employees', data),
+  update: (id: number, data: Partial<Employee> & { skill_ids?: number[] }) => api.put<Employee>(`/employees/${id}`, data),
+  delete: (id: number) => api.delete(`/employees/${id}`),
+};
+
+export const jobEmployeesApi = {
+  list: (jobId: number) => api.get<JobEmployee[]>(`/jobs/${jobId}/employees`),
+  assign: (jobId: number, employeeId: number, role?: string) =>
+    api.post(`/jobs/${jobId}/employees`, { employee_id: employeeId, role }),
+  remove: (jobId: number, employeeId: number) =>
+    api.delete(`/jobs/${jobId}/employees/${employeeId}`),
+};
+
 export const positionsApi = {
   getByJob: (jobId: number) =>
     api.get<{ positions: JobPosition[] }>(`/jobs/${jobId}/positions`),

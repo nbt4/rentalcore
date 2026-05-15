@@ -5,8 +5,8 @@ import {
   ArrowLeft, Trash2, Edit3, X, Check, Monitor, Package,
   ChevronRight, ChevronDown, FileText, Upload,
 } from 'lucide-react';
-import { jobsApi, customersApi, statusApi, api } from '../lib/api';
-import type { Job, Customer, JobStatus, JobDevice } from '../lib/api';
+import { jobsApi, customersApi, statusApi, api, jobEmployeesApi, employeesApi } from '../lib/api';
+import type { Job, Customer, JobStatus, JobDevice, JobEmployee, Employee } from '../lib/api';
 import MappingModal from '../components/MappingModal';
 import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
 import JobPositionsPanel from '../components/JobPositionsPanel';
@@ -458,6 +458,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
 
       <JobPositionsPanel jobId={id} onChanged={loadData} />
       <RequirementsPanel jobId={id} onDeviceAssigned={loadData} />
+      <JobEmployeesPanel jobId={id} />
       <DeviceList devices={devices} jobId={id} onChanged={loadData} />
     </div>
   );
@@ -872,6 +873,122 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
       {/* Existing devices — only in edit mode */}
       {jobId && devices.length > 0 && (
         <DeviceList devices={devices} jobId={jobId} onChanged={loadDevices} />
+      )}
+    </div>
+  );
+}
+
+// ── Job Employees Panel ───────────────────────────────────────
+
+function JobEmployeesPanel({ jobId }: { jobId: number }) {
+  const [assigned, setAssigned] = useState<JobEmployee[]>([]);
+  const [available, setAvailable] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | ''>('');
+  const [role, setRole] = useState('');
+
+  const load = async () => {
+    try {
+      const [asgn, avail] = await Promise.all([
+        jobEmployeesApi.list(jobId),
+        employeesApi.listActive(),
+      ]);
+      setAssigned(asgn.data);
+      setAvailable(avail.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [jobId]);
+
+  const unassigned = available.filter(e => !assigned.some(a => a.employee_id === e.id));
+
+  const assign = async () => {
+    if (!selectedId) return;
+    await jobEmployeesApi.assign(jobId, Number(selectedId), role || undefined);
+    setAdding(false);
+    setSelectedId('');
+    setRole('');
+    load();
+  };
+
+  const remove = async (employeeId: number) => {
+    await jobEmployeesApi.remove(jobId, employeeId);
+    load();
+  };
+
+  return (
+    <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wide">Bearbeiter</h3>
+        {!adding && (
+          <button
+            onClick={() => setAdding(true)}
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-white/10 text-white/60 hover:bg-white/15 hover:text-white transition-colors"
+          >
+            <Plus className="w-3 h-3" /> Zuweisen
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-white/30 text-sm">Lädt...</div>
+      ) : (
+        <>
+          {assigned.length === 0 && !adding && (
+            <div className="text-white/30 text-sm">Noch keine Bearbeiter zugewiesen.</div>
+          )}
+          <div className="space-y-1">
+            {assigned.map(je => (
+              <div key={je.employee_id} className="flex items-center gap-2 text-sm">
+                <span className="text-white/80">{je.employee.first_name} {je.employee.last_name}</span>
+                {je.role && <span className="text-white/40 text-xs">({je.role})</span>}
+                {je.employee.email && <span className="text-white/30 text-xs">{je.employee.email}</span>}
+                <button
+                  onClick={() => remove(je.employee_id)}
+                  className="ml-auto p-1 rounded text-red-400/50 hover:text-red-400 hover:bg-red-400/10"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {adding && (
+            <div className="mt-3 flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="block text-xs text-white/40 mb-1">Mitarbeiter</label>
+                <select
+                  className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm border border-white/10 focus:outline-none focus:border-accent"
+                  value={selectedId}
+                  onChange={e => setSelectedId(Number(e.target.value) || '')}
+                >
+                  <option value="">Auswählen...</option>
+                  {unassigned.map(e => (
+                    <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-white/40 mb-1">Rolle (optional)</label>
+                <input
+                  className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm border border-white/10 focus:outline-none focus:border-accent"
+                  placeholder="z.B. Ton"
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                />
+              </div>
+              <button onClick={assign} className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm hover:bg-green-500 flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" /> Zuweisen
+              </button>
+              <button onClick={() => setAdding(false)} className="px-3 py-1.5 rounded-lg bg-white/10 text-white/60 text-sm hover:bg-white/15">
+                Abbrechen
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
