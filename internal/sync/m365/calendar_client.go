@@ -46,7 +46,7 @@ func NewCalendarClient(gc *GraphClient, mailbox string) *CalendarClient {
 
 func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
 	resp, err := c.gc.doRequest("POST",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/events", c.mailbox),
+		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events", c.mailbox),
 		event,
 	)
 	if err != nil {
@@ -66,7 +66,7 @@ func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
 
 func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error {
 	resp, err := c.gc.doRequest("PATCH",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/events/%s", c.mailbox, eventID),
+		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
 		event,
 	)
 	if err != nil {
@@ -82,7 +82,7 @@ func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error 
 
 func (c *CalendarClient) DeleteEvent(eventID string) error {
 	resp, err := c.gc.doRequest("DELETE",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/events/%s", c.mailbox, eventID),
+		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
 		nil,
 	)
 	if err != nil {
