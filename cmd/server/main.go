@@ -356,9 +356,14 @@ func main() {
 	deviceRepo := repository.NewDeviceRepository(db)
 	requirementRepo := repository.NewRequirementRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
+	jobEmployeeRepo := repository.NewJobEmployeeRepository(db.DB)
+	skillRepo       := repository.NewSkillRepository(db.DB)
+	employeeRepo    := repository.NewEmployeeRepository(db.DB)
+	positionRepo    := repository.NewPositionRepository(db)
 
 	// M365 Sync Service (optional — nur wenn Env-Vars gesetzt)
 	var m365SyncService handlers.SyncServiceInterface
+	var calendarSync handlers.CalendarSyncServiceInterface
 	if cfg.M365.IsConfigured() {
 		interval, err := time.ParseDuration(cfg.M365.SyncInterval)
 		if err != nil {
@@ -381,6 +386,12 @@ func main() {
 		syncCtx, _ := context.WithCancel(context.Background())
 		svc.Start(syncCtx)
 		log.Println("M365 sync: service initialized")
+
+		calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
+		calendarSync = m365sync.NewCalendarSyncService(
+			calendarClient, jobRepo, positionRepo, jobEmployeeRepo, db, cfg.M365.AppBaseURL,
+		)
+		log.Printf("M365 calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
 	} else {
 		log.Println("M365 sync: not configured (M365_TENANT_ID etc. not set)")
 	}
@@ -409,7 +420,7 @@ func main() {
 	accessoriesConsumablesRepo := repository.NewAccessoriesConsumablesRepository(db)
 
 	// Initialize handlers
-	jobHandler := handlers.NewJobHandler(jobRepo, jobPackageRepo, deviceRepo, requirementRepo, customerRepo, statusRepo, jobCategoryRepo, jobEditSessionRepo, jobHistoryService, rentalEquipmentRepo)
+	jobHandler := handlers.NewJobHandler(jobRepo, jobPackageRepo, deviceRepo, requirementRepo, customerRepo, statusRepo, jobCategoryRepo, jobEditSessionRepo, jobHistoryService, rentalEquipmentRepo, jobEmployeeRepo, calendarSync)
 	jobHistoryHandler := handlers.NewJobHistoryHandler(db.DB)
 	deviceHandler := handlers.NewDeviceHandler(deviceRepo, barcodeService, productRepo)
 	customerHandler := handlers.NewCustomerHandler(customerRepo, m365SyncService)
@@ -453,7 +464,8 @@ func main() {
 
 	pdfHandler := handlers.NewPDFHandler(db.DB, "uploads", jobHandler, jobAttachmentRepo, packageAliasCache, documentHandler)
 	accessoriesConsumablesHandler := handlers.NewAccessoriesConsumablesHandler(accessoriesConsumablesRepo)
-	positionRepo := repository.NewPositionRepository(db)
+	skillHandler := handlers.NewSkillHandler(skillRepo)
+	employeeHandler := handlers.NewEmployeeHandler(employeeRepo)
 	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, db.DB)
 
 	// Initialize RBAC middleware for role-based access control
@@ -758,7 +770,7 @@ func main() {
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -847,7 +859,9 @@ func setupRoutes(r *gin.Engine,
 	accessoriesConsumablesHandler *handlers.AccessoriesConsumablesHandler,
 	positionHandler *handlers.PositionHandler,
 	rbacMiddleware *middleware.RBACMiddleware,
-	complianceMiddleware *compliance.ComplianceMiddleware) {
+	complianceMiddleware *compliance.ComplianceMiddleware,
+	skillHandler *handlers.SkillHandler,
+	employeeHandler *handlers.EmployeeHandler) {
 
 	// Root route - serve SPA
 	r.GET("/", func(c *gin.Context) {
@@ -1610,6 +1624,31 @@ func setupRoutes(r *gin.Engine,
 					authAPI.DELETE("/users/:id", authHandler.DeleteUserAPI)
 				}
 			}
+
+			// Skills API
+			apiSkills := api.Group("/skills")
+			{
+				apiSkills.GET("", skillHandler.List)
+				apiSkills.POST("", skillHandler.Create)
+				apiSkills.PUT("/:id", skillHandler.Update)
+				apiSkills.DELETE("/:id", skillHandler.Delete)
+			}
+
+			// Employees API
+			apiEmployees := api.Group("/employees")
+			{
+				apiEmployees.GET("", employeeHandler.List)
+				apiEmployees.GET("/active", employeeHandler.ListActive)
+				apiEmployees.GET("/:id", employeeHandler.GetByID)
+				apiEmployees.POST("", employeeHandler.Create)
+				apiEmployees.PUT("/:id", employeeHandler.Update)
+				apiEmployees.DELETE("/:id", employeeHandler.Delete)
+			}
+
+			// Job-Employee assignment API
+			api.GET("/jobs/:id/employees", jobHandler.ListJobEmployees)
+			api.POST("/jobs/:id/employees", jobHandler.AssignEmployee)
+			api.DELETE("/jobs/:id/employees/:employeeId", jobHandler.RemoveEmployee)
 		}
 
 		// Additional API routes (outside v1 group for legacy compatibility)
