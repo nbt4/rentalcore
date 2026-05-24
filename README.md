@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.54** - feat: Kalendereinträge werden direkt in persönlichen Mitarbeiter-Kalender erstellt/gelöscht wenn Mitarbeiter einem Job zugewiesen/entfernt wird
+
 ### **v5.3.53** - fix: x-anchor-mailbox Header für Gruppen-Kalender-Requests gesetzt (ErrorIncorrectRoutingHint behoben)
 
 ### **v5.3.52** - fix: GORM-Spaltenmapping für ZIP→zip und IBAN→iban korrigiert (Mitarbeitererstellung 500-Fehler behoben)

@@ -115,6 +115,8 @@ func parseProductSelectionsFromInterface(value interface{}) ([]JobProductSelecti
 type CalendarSyncServiceInterface interface {
 	SyncJobEvent(jobID uint)
 	DeleteJobEvent(jobID uint)
+	SyncEmployeeEvent(jobID, employeeID uint)
+	DeleteEmployeeEvent(jobID, employeeID uint)
 }
 
 type JobHandler struct {
@@ -2118,7 +2120,7 @@ func (h *JobHandler) AssignEmployee(c *gin.Context) {
 		return
 	}
 	if h.calendarSync != nil {
-		go h.calendarSync.SyncJobEvent(uint(jobID))
+		go h.calendarSync.SyncEmployeeEvent(uint(jobID), body.EmployeeID)
 	}
 	c.JSON(http.StatusCreated, gin.H{"ok": true})
 }
@@ -2134,12 +2136,12 @@ func (h *JobHandler) RemoveEmployee(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid employee id"})
 		return
 	}
+	if h.calendarSync != nil {
+		h.calendarSync.DeleteEmployeeEvent(uint(jobID), uint(employeeID))
+	}
 	if err := h.jobEmployeeRepo.Remove(uint(jobID), uint(employeeID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-	if h.calendarSync != nil {
-		go h.calendarSync.SyncJobEvent(uint(jobID))
 	}
 	c.Status(http.StatusNoContent)
 }

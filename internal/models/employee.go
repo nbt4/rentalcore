@@ -41,11 +41,12 @@ func (e Employee) DisplayName() string {
 }
 
 type JobEmployee struct {
-	JobID      uint      `json:"job_id"      gorm:"primaryKey"`
-	EmployeeID uint      `json:"employee_id" gorm:"primaryKey"`
-	Role       *string   `json:"role"        gorm:"size:100"`
-	CreatedAt  time.Time `json:"created_at"`
-	Employee   Employee  `json:"employee"    gorm:"foreignKey:EmployeeID"`
+	JobID        uint      `json:"job_id"        gorm:"primaryKey"`
+	EmployeeID   uint      `json:"employee_id"   gorm:"primaryKey"`
+	Role         *string   `json:"role"          gorm:"size:100"`
+	M365EventID  *string   `json:"-"             gorm:"column:m365_event_id;size:512"`
+	CreatedAt    time.Time `json:"created_at"`
+	Employee     Employee  `json:"employee"      gorm:"foreignKey:EmployeeID"`
 }
 
 func (JobEmployee) TableName() string { return "job_employees" }
