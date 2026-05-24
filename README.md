@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.51** - feat: Mietprodukte zu Jobs hinzufügbar; Produktpositionen synchronisieren job_product_requirements für WarehouseCore-Packliste
+
 ### **v5.3.50** - fix: POST /employees 400-Fehler behoben — date_of_birth als String geparst (nicht direkt time.Time), Adressfelder in separate Felder (street, house_number, zip, city) aufgeteilt
 
 ### **v5.3.49** - fix: M365 Kalender-Endpunkt von /users/ auf /groups/ umgestellt (events@tsunami-events.de ist eine M365-Gruppe, kein User-Postfach)
