@@ -495,12 +495,22 @@ func calcEventDays(start, end *time.Time) int {
 }
 
 // GetRentalCatalog returns all active rental equipment items for selection in job positions.
+// Uses raw column names matching the actual PostgreSQL schema (id, name, supplier)
+// rather than the GORM model tags which reference a different legacy schema.
 func (h *PositionHandler) GetRentalCatalog(c *gin.Context) {
-	var items []models.RentalEquipment
-	if err := h.db.Where("is_active = ?", true).
-		Order("product_name ASC").
-		Select("equipment_id, product_name, supplier_name, rental_price, category").
-		Find(&items).Error; err != nil {
+	type catalogItem struct {
+		EquipmentID  uint    `json:"equipmentID"`
+		ProductName  string  `json:"productName"`
+		SupplierName string  `json:"supplierName"`
+		RentalPrice  float64 `json:"rentalPrice"`
+		Category     string  `json:"category"`
+	}
+	var items []catalogItem
+	if err := h.db.Table("rental_equipment").
+		Where("is_active = ?", true).
+		Order("name ASC").
+		Select("id AS equipment_id, name AS product_name, supplier AS supplier_name, rental_price, category").
+		Scan(&items).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
