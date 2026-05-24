@@ -165,6 +165,14 @@ export interface JobTotals {
   prices_include_tax: boolean;
 }
 
+export interface RentalCatalogItem {
+  equipmentID: number;
+  productName: string;
+  supplierName: string;
+  rentalPrice: number;
+  category: string;
+}
+
 export interface Skill {
   id: number;
   name: string;
@@ -241,4 +249,6 @@ export const positionsApi = {
     api.get<JobTotals>(`/jobs/${jobId}/totals`),
   updatePriceSettings: (jobId: number, settings: { multiply_by_days?: boolean; prices_include_tax?: boolean }) =>
     api.patch(`/jobs/${jobId}/price-settings`, settings),
+  getRentalCatalog: () =>
+    api.get<{ items: RentalCatalogItem[] }>('/rental-catalog'),
 };
