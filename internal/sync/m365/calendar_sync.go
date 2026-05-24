@@ -144,10 +144,6 @@ func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error
 	if err != nil {
 		return nil, fmt.Errorf("load positions: %w", err)
 	}
-	jEmployees, err := s.empRepo.ListForJob(job.JobID)
-	if err != nil {
-		return nil, fmt.Errorf("load employees: %w", err)
-	}
 
 	desc := ""
 	if job.Description != nil {
@@ -166,22 +162,11 @@ func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error
 		end = job.StartDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
 	}
 
-	var attendees []Attendee
-	for _, je := range jEmployees {
-		if je.Employee.Email != nil && *je.Employee.Email != "" {
-			attendees = append(attendees, Attendee{
-				EmailAddress: EmailAddr{Address: *je.Employee.Email},
-				Type:         "required",
-			})
-		}
-	}
-
 	return &CalendarEvent{
-		Subject:   subject,
-		Body:      EventBody{ContentType: "HTML", Content: body},
-		Start:     EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
-		End:       EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
-		Attendees: attendees,
+		Subject: subject,
+		Body:    EventBody{ContentType: "HTML", Content: body},
+		Start:   EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
+		End:     EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
 	}, nil
 }
 

@@ -480,6 +480,8 @@ All documentation is organized in the `docs/` folder for easy access:
 
 ## 🏷️ Version History
 
+### **v5.3.55** - fix: Doppelte Kalendereinladungen behoben — Attendees aus Event-Payload entfernt, Einträge landen ohne Einladungsversand direkt im persönlichen Kalender
+
 ### **v5.3.54** - feat: Kalendereinträge werden direkt in persönlichen Mitarbeiter-Kalender erstellt/gelöscht wenn Mitarbeiter einem Job zugewiesen/entfernt wird
 
 ### **v5.3.53** - fix: x-anchor-mailbox Header für Gruppen-Kalender-Requests gesetzt (ErrorIncorrectRoutingHint behoben)
