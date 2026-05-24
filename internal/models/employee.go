@@ -22,11 +22,11 @@ type Employee struct {
 	Mobile      *string    `json:"mobile"       gorm:"size:50"`
 	Street      *string    `json:"street"       gorm:"size:255"`
 	HouseNumber *string    `json:"house_number" gorm:"size:20"`
-	ZIP         *string    `json:"zip"          gorm:"size:20"`
+	ZIP         *string    `json:"zip"          gorm:"column:zip;size:20"`
 	City        *string    `json:"city"         gorm:"size:100"`
 	Country     *string    `json:"country"      gorm:"default:'Deutschland'"`
 	DateOfBirth *time.Time `json:"date_of_birth"`
-	IBAN        *string    `json:"iban"         gorm:"size:50"`
+	IBAN        *string    `json:"iban"         gorm:"column:iban;size:50"`
 	Notes       *string    `json:"notes"`
 	IsActive    bool       `json:"is_active"    gorm:"default:true"`
 	Skills      []Skill    `json:"skills"       gorm:"many2many:employee_skills;"`
