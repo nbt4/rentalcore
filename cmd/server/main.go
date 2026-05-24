@@ -466,7 +466,7 @@ func main() {
 	accessoriesConsumablesHandler := handlers.NewAccessoriesConsumablesHandler(accessoriesConsumablesRepo)
 	skillHandler := handlers.NewSkillHandler(skillRepo)
 	employeeHandler := handlers.NewEmployeeHandler(employeeRepo)
-	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, db.DB)
+	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, requirementRepo, db.DB)
 
 	// Initialize RBAC middleware for role-based access control
 	rbacMiddleware := middleware.NewRBACMiddleware(db.DB)

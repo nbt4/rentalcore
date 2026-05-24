@@ -15,17 +15,21 @@ import (
 )
 
 type PositionHandler struct {
-	positionRepo *repository.PositionRepository
-	jobRepo      *repository.JobRepository
+	positionRepo    *repository.PositionRepository
+	jobRepo         *repository.JobRepository
+	requirementRepo *repository.RequirementRepository
+	db              *gorm.DB
 }
 
-func NewPositionHandler(positionRepo *repository.PositionRepository, jobRepo *repository.JobRepository, db *gorm.DB) *PositionHandler {
+func NewPositionHandler(positionRepo *repository.PositionRepository, jobRepo *repository.JobRepository, requirementRepo *repository.RequirementRepository, db *gorm.DB) *PositionHandler {
 	if err := ensureJobPriceColumns(db); err != nil {
 		log.Printf("warning: failed to ensure job price columns: %v", err)
 	}
 	return &PositionHandler{
-		positionRepo: positionRepo,
-		jobRepo:      jobRepo,
+		positionRepo:    positionRepo,
+		jobRepo:         jobRepo,
+		requirementRepo: requirementRepo,
+		db:              db,
 	}
 }
 
@@ -33,6 +37,32 @@ func ensureJobPriceColumns(db *gorm.DB) error {
 	db.Exec(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS multiply_by_days BOOLEAN NOT NULL DEFAULT TRUE`)
 	db.Exec(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS prices_include_tax BOOLEAN NOT NULL DEFAULT FALSE`)
 	return nil
+}
+
+func (h *PositionHandler) syncRequirements(jobID uint) {
+	var positions []models.JobPosition
+	if err := h.db.Where("job_id = ? AND position_type = 'product'", jobID).Find(&positions).Error; err != nil {
+		log.Printf("syncRequirements: query failed for job %d: %v", jobID, err)
+		return
+	}
+	reqs := make([]models.JobProductRequirement, 0, len(positions))
+	for _, pos := range positions {
+		if pos.ProductID == nil {
+			continue
+		}
+		qty := int(math.Round(pos.Quantity))
+		if qty < 1 {
+			qty = 1
+		}
+		reqs = append(reqs, models.JobProductRequirement{
+			JobID:     jobID,
+			ProductID: *pos.ProductID,
+			Quantity:  qty,
+		})
+	}
+	if err := h.requirementRepo.SaveRequirements(jobID, reqs); err != nil {
+		log.Printf("syncRequirements: save failed for job %d: %v", jobID, err)
+	}
 }
 
 func (h *PositionHandler) GetPositions(c *gin.Context) {
@@ -128,6 +158,11 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 	}
 
 	created, _ := h.positionRepo.GetByID(pos.PositionID)
+
+	if input.PositionType == "product" {
+		h.syncRequirements(uint(jobID))
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"position": created})
 }
 
@@ -148,6 +183,7 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid position ID"})
 		return
 	}
+	jobID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
 	pos, err := h.positionRepo.GetByID(uint(posID))
 	if err != nil {
@@ -193,6 +229,11 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	}
 
 	updated, _ := h.positionRepo.GetByID(pos.PositionID)
+
+	if pos.PositionType == "product" {
+		h.syncRequirements(uint(jobID))
+	}
+
 	c.JSON(http.StatusOK, gin.H{"position": updated})
 }
 
@@ -203,9 +244,19 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 		return
 	}
 
+	pos, err := h.positionRepo.GetByID(uint(posID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
+		return
+	}
+
 	if err := h.positionRepo.Delete(uint(posID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if pos.PositionType == "product" {
+		h.syncRequirements(pos.JobID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "position deleted"})
