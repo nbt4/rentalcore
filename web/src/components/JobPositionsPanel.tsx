@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Package, Wrench, Plus, Trash2, Check, Cpu, Building2 } from 'lucide-react';
 import { positionsApi, api } from '../lib/api';
-import type { JobPosition, JobTotals } from '../lib/api';
+import type { JobPosition, JobTotals, RentalCatalogItem } from '../lib/api';
 
 interface Props {
   jobId: number;
@@ -12,9 +12,10 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   const [positions, setPositions] = useState<JobPosition[]>([]);
   const [totals, setTotals] = useState<JobTotals | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState<'product' | 'service' | null>(null);
+  const [adding, setAdding] = useState<'product' | 'service' | 'rental' | null>(null);
   const [products, setProducts] = useState<{ productID: number; name: string; itemcostperday?: number }[]>([]);
   const [services, setServices] = useState<{ id: number; name: string; default_price?: number; unit?: string }[]>([]);
+  const [rentalItems, setRentalItems] = useState<RentalCatalogItem[]>([]);
   const [multiplyByDays, setMultiplyByDays] = useState(true);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
 
@@ -46,13 +47,16 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       const list = (r.data as any).service_items || (r.data as any).items || r.data;
       if (Array.isArray(list)) setServices(list);
     }).catch(() => {});
+    positionsApi.getRentalCatalog().then(r => {
+      setRentalItems(r.data.items || []);
+    }).catch(() => {});
   }, []);
 
   const productPositions = positions.filter(p => p.position_type === 'product');
   const servicePositions = positions.filter(p => p.position_type === 'service');
   const rentalPositions = positions.filter(p => p.position_type === 'rental' || p.position_type === 'package');
 
-  const handleAdd = async (type: 'product' | 'service', itemId: number) => {
+  const handleAdd = async (type: 'product' | 'service' | 'rental', itemId: number) => {
     if (type === 'product') {
       const prod = products.find(p => p.productID === itemId);
       if (!prod) return;
@@ -65,7 +69,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         unit_price: prod.itemcostperday || 0,
         follow_day_factor: 0.5,
       });
-    } else {
+    } else if (type === 'service') {
       const svc = services.find(s => s.id === itemId);
       if (!svc) return;
       await positionsApi.create(jobId, {
@@ -75,6 +79,18 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         quantity: 1,
         unit: svc.unit || 'Pauschale',
         unit_price: svc.default_price || 0,
+        follow_day_factor: 0,
+      });
+    } else {
+      const item = rentalItems.find(r => r.equipmentID === itemId);
+      if (!item) return;
+      await positionsApi.create(jobId, {
+        position_type: 'rental',
+        rental_equipment_id: item.equipmentID,
+        description: item.productName,
+        quantity: 1,
+        unit: 'Stück',
+        unit_price: item.rentalPrice,
         follow_day_factor: 0,
       });
     }
@@ -192,20 +208,48 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
       </div>
 
-      {/* Rental / Package Section */}
-      {rentalPositions.length > 0 && (
-        <div className="glass-dark rounded-xl border border-white/10 p-5">
-          <div className="flex items-center gap-2 mb-4">
+      {/* Mietprodukte Section */}
+      <div className="glass-dark rounded-xl border border-white/10 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-accent-red" />
             <h3 className="font-semibold text-white">Mietprodukte ({rentalPositions.length})</h3>
           </div>
-          <div className="space-y-2">
-            {rentalPositions.map(pos => (
-              <PositionRow key={pos.position_id} pos={pos} onUpdate={handleUpdate} onDelete={handleDelete} showFactor={false} />
-            ))}
-          </div>
+          <button
+            onClick={() => setAdding(adding === 'rental' ? null : 'rental')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-red/10 text-accent-red hover:bg-accent-red/20 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Mietprodukt
+          </button>
         </div>
-      )}
+
+        {adding === 'rental' && (
+          <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10">
+            <select
+              className="w-full bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+              value=""
+              onChange={e => { if (e.target.value) handleAdd('rental', parseInt(e.target.value)); }}
+            >
+              <option value="">Mietprodukt auswählen...</option>
+              {rentalItems.map(r => (
+                <option key={r.equipmentID} value={r.equipmentID}>
+                  {r.productName} — {r.supplierName} ({fmt(r.rentalPrice)} €/Tag)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {rentalPositions.length === 0 && adding !== 'rental' && (
+          <p className="text-gray-500 text-sm py-2">Keine Mietprodukte hinzugefügt.</p>
+        )}
+
+        <div className="space-y-2">
+          {rentalPositions.map(pos => (
+            <PositionRow key={pos.position_id} pos={pos} onUpdate={handleUpdate} onDelete={handleDelete} showFactor={false} />
+          ))}
+        </div>
+      </div>
 
       {/* Price Settings Toggles */}
       <div className="glass-dark rounded-xl border border-white/10 p-4">
