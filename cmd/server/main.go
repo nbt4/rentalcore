@@ -1370,6 +1370,9 @@ func setupRoutes(r *gin.Engine,
 			apiJobs.PATCH("/:id/price-settings", positionHandler.UpdatePriceSettings)
 			apiJobs.GET("/:id/picklist", positionHandler.GetPicklist)
 
+			// Rental catalog for job position selection
+			api.GET("/rental-catalog", positionHandler.GetRentalCatalog)
+
 			// Service items (used by JobPositionsPanel)
 			api.GET("/service-items", pdfHandler.ListServiceItems)
 

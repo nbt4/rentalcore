@@ -493,3 +493,16 @@ func calcEventDays(start, end *time.Time) int {
 	}
 	return days
 }
+
+// GetRentalCatalog returns all active rental equipment items for selection in job positions.
+func (h *PositionHandler) GetRentalCatalog(c *gin.Context) {
+	var items []models.RentalEquipment
+	if err := h.db.Where("is_active = ?", true).
+		Order("product_name ASC").
+		Select("equipment_id, product_name, supplier_name, rental_price, category").
+		Find(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
