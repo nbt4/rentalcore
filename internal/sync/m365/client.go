@@ -109,6 +109,10 @@ func (c *GraphClient) getToken() (string, error) {
 }
 
 func (c *GraphClient) doRequest(method, reqURL string, body interface{}) (*http.Response, error) {
+	return c.doRequestWithHeaders(method, reqURL, body, nil)
+}
+
+func (c *GraphClient) doRequestWithHeaders(method, reqURL string, body interface{}, extraHeaders map[string]string) (*http.Response, error) {
 	token, err := c.getToken()
 	if err != nil {
 		return nil, err
@@ -129,6 +133,9 @@ func (c *GraphClient) doRequest(method, reqURL string, body interface{}) (*http.
 	req.Header.Set("Authorization", "Bearer "+token)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
 	}
 
 	return c.httpClient.Do(req)

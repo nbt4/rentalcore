@@ -44,10 +44,17 @@ func NewCalendarClient(gc *GraphClient, mailbox string) *CalendarClient {
 	return &CalendarClient{gc: gc, mailbox: mailbox}
 }
 
+func (c *CalendarClient) groupHeaders() map[string]string {
+	return map[string]string{
+		"x-anchor-mailbox": "GroupMailbox:" + c.mailbox,
+	}
+}
+
 func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
-	resp, err := c.gc.doRequest("POST",
+	resp, err := c.gc.doRequestWithHeaders("POST",
 		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events", c.mailbox),
 		event,
+		c.groupHeaders(),
 	)
 	if err != nil {
 		return "", err
@@ -65,9 +72,10 @@ func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
 }
 
 func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error {
-	resp, err := c.gc.doRequest("PATCH",
+	resp, err := c.gc.doRequestWithHeaders("PATCH",
 		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
 		event,
+		c.groupHeaders(),
 	)
 	if err != nil {
 		return err
@@ -81,9 +89,10 @@ func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error 
 }
 
 func (c *CalendarClient) DeleteEvent(eventID string) error {
-	resp, err := c.gc.doRequest("DELETE",
+	resp, err := c.gc.doRequestWithHeaders("DELETE",
 		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
 		nil,
+		c.groupHeaders(),
 	)
 	if err != nil {
 		return err
