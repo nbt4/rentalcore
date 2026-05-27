@@ -297,6 +297,9 @@ func main() {
 			log.Printf("Warning: jobs.venue_id migration failed: %v", err)
 		}
 	}
+	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
+		log.Printf("Warning: M365Settings AutoMigrate failed: %v", err)
+	}
 
 	// Apply performance indexes for optimal database performance
 	go func() {
@@ -476,6 +479,7 @@ func main() {
 	venueRepo := repository.NewVenueRepository(db)
 	venueHandler := handlers.NewVenueHandler(venueRepo)
 	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, requirementRepo, db.DB)
+	m365SettingsHandler := handlers.NewM365SettingsHandler(db.DB)
 
 	// Initialize RBAC middleware for role-based access control
 	rbacMiddleware := middleware.NewRBACMiddleware(db.DB)
@@ -779,7 +783,7 @@ func main() {
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, venueHandler)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, venueHandler, m365SettingsHandler)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -871,7 +875,8 @@ func setupRoutes(r *gin.Engine,
 	complianceMiddleware *compliance.ComplianceMiddleware,
 	skillHandler *handlers.SkillHandler,
 	employeeHandler *handlers.EmployeeHandler,
-	venueHandler *handlers.VenueHandler) {
+	venueHandler *handlers.VenueHandler,
+	m365SettingsHandler *handlers.M365SettingsHandler) {
 
 	// Root route - serve SPA
 	r.GET("/", func(c *gin.Context) {
@@ -1689,6 +1694,13 @@ func setupRoutes(r *gin.Engine,
 					apiTwoFA.POST("/verify", profileHandler.Verify2FA)
 					apiTwoFA.POST("/disable", profileHandler.Disable2FA)
 				}
+			}
+
+			// M365 Settings
+			apiSettingsM365 := api.Group("/settings")
+			{
+				apiSettingsM365.GET("/m365", m365SettingsHandler.GetM365Settings)
+				apiSettingsM365.PUT("/m365", m365SettingsHandler.UpdateM365Settings)
 			}
 		}
 
