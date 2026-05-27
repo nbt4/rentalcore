@@ -22,6 +22,7 @@ import (
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/monitoring"
 	"go-barcode-webapp/internal/repository"
+	"go-barcode-webapp/internal/schema"
 	"go-barcode-webapp/internal/services"
 	pdfsvc "go-barcode-webapp/internal/services/pdf"
 	m365sync "go-barcode-webapp/internal/sync/m365"
@@ -289,6 +290,12 @@ func main() {
 		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
 			log.Printf("Warning: M365 column migration failed: %v", err)
 		}
+		if err := schema.EnsureVenuesTable(sqlDB); err != nil {
+			log.Printf("Warning: venues table migration failed: %v", err)
+		}
+		if err := schema.EnsureJobsVenueID(sqlDB); err != nil {
+			log.Printf("Warning: jobs.venue_id migration failed: %v", err)
+		}
 	}
 
 	// Apply performance indexes for optimal database performance
@@ -466,6 +473,8 @@ func main() {
 	accessoriesConsumablesHandler := handlers.NewAccessoriesConsumablesHandler(accessoriesConsumablesRepo)
 	skillHandler := handlers.NewSkillHandler(skillRepo)
 	employeeHandler := handlers.NewEmployeeHandler(employeeRepo)
+	venueRepo := repository.NewVenueRepository(db)
+	venueHandler := handlers.NewVenueHandler(venueRepo)
 	positionHandler := handlers.NewPositionHandler(positionRepo, jobRepo, requirementRepo, db.DB)
 
 	// Initialize RBAC middleware for role-based access control
@@ -770,7 +779,7 @@ func main() {
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, venueHandler)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -861,7 +870,8 @@ func setupRoutes(r *gin.Engine,
 	rbacMiddleware *middleware.RBACMiddleware,
 	complianceMiddleware *compliance.ComplianceMiddleware,
 	skillHandler *handlers.SkillHandler,
-	employeeHandler *handlers.EmployeeHandler) {
+	employeeHandler *handlers.EmployeeHandler,
+	venueHandler *handlers.VenueHandler) {
 
 	// Root route - serve SPA
 	r.GET("/", func(c *gin.Context) {
@@ -1652,6 +1662,34 @@ func setupRoutes(r *gin.Engine,
 			api.GET("/jobs/:id/employees", jobHandler.ListJobEmployees)
 			api.POST("/jobs/:id/employees", jobHandler.AssignEmployee)
 			api.DELETE("/jobs/:id/employees/:employeeId", jobHandler.RemoveEmployee)
+
+			// Venues API
+			apiVenues := api.Group("/venues")
+			{
+				apiVenues.GET("", venueHandler.List)
+				apiVenues.POST("", venueHandler.Create)
+				apiVenues.PUT("/:id", venueHandler.Update)
+				apiVenues.DELETE("/:id", venueHandler.Delete)
+			}
+
+			// Profile security routes (also exposed under /api/v1 for Cores proxy)
+			apiProfile := api.Group("/profile")
+			{
+				apiPasskeys := apiProfile.Group("/passkeys")
+				{
+					apiPasskeys.POST("/start-registration", profileHandler.StartPasskeyRegistration)
+					apiPasskeys.POST("/complete-registration", profileHandler.CompletePasskeyRegistration)
+					apiPasskeys.GET("", profileHandler.ListUserPasskeys)
+					apiPasskeys.DELETE("/:id", profileHandler.DeletePasskey)
+				}
+				apiTwoFA := apiProfile.Group("/2fa")
+				{
+					apiTwoFA.GET("/status", profileHandler.Get2FAStatus)
+					apiTwoFA.POST("/setup", profileHandler.Setup2FA)
+					apiTwoFA.POST("/verify", profileHandler.Verify2FA)
+					apiTwoFA.POST("/disable", profileHandler.Disable2FA)
+				}
+			}
 		}
 
 		// Additional API routes (outside v1 group for legacy compatibility)
