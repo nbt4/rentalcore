@@ -66,6 +66,8 @@ export interface Job {
   final_revenue?: number | null;
   device_count?: number;
   created_at?: string;
+  venue_id?: number | null;
+  venue?: Venue | null;
 }
 
 export interface DashboardStats {
@@ -228,6 +230,26 @@ export const jobEmployeesApi = {
     api.post(`/jobs/${jobId}/employees`, { employee_id: employeeId, role }),
   remove: (jobId: number, employeeId: number) =>
     api.delete(`/jobs/${jobId}/employees/${employeeId}`),
+};
+
+export interface Venue {
+  id: number;
+  name: string;
+  street?: string | null;
+  house_number?: string | null;
+  zip?: string | null;
+  city?: string | null;
+  contact_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+}
+
+export const venuesApi = {
+  list: () => api.get<Venue[]>('/venues'),
+  create: (data: Omit<Venue, 'id'>) => api.post<Venue>('/venues', data),
+  update: (id: number, data: Omit<Venue, 'id'>) => api.put<Venue>(`/venues/${id}`, data),
+  delete: (id: number) => api.delete(`/venues/${id}`),
 };
 
 export const positionsApi = {

@@ -1,0 +1,105 @@
+<h2>Manuelles Mapping — nicht erkannte Items</h2>
+<p class="subtitle">Ein Item konnte nicht auto-gemappt werden. Wie wählt der Nutzer das richtige Produkt?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:14px;border-radius:6px;font-size:11px">
+      <!-- Inline search row -->
+      <div style="background:#1e293b;border-radius:6px;padding:10px;margin-bottom:6px">
+        <div style="color:#64748b;font-size:9px;margin-bottom:6px">NICHT ERKANNT</div>
+        <div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:start">
+          <div style="background:#0f172a;border-radius:4px;padding:6px;color:#e2e8f0;font-size:10px">
+            PA mit 2 Subwoofern<br>
+            <span style="color:#64748b;font-size:9px">Menge: 1 × 200,00 €</span>
+          </div>
+          <div style="color:#475569;text-align:center;padding-top:8px">→</div>
+          <div>
+            <input style="width:100%;background:#0f172a;border:1px solid #3b82f6;border-radius:4px;padding:5px 8px;color:#e2e8f0;font-size:10px;box-sizing:border-box" placeholder="Produkt suchen..." value="PA Sub">
+            <div style="background:#0f172a;border:1px solid #334155;border-radius:4px;margin-top:2px;overflow:hidden">
+              <div style="padding:5px 8px;color:#e2e8f0;font-size:9px;border-bottom:1px solid #1e293b;background:#1e293b20">🔊 PA System 2x Sub 18" + Top</div>
+              <div style="padding:5px 8px;color:#e2e8f0;font-size:9px;border-bottom:1px solid #1e293b">🔊 PA Subwoofer 18" (einzeln)</div>
+              <div style="padding:5px 8px;color:#64748b;font-size:9px">🎛 PA Mischpult Mackie</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Already mapped row for contrast -->
+      <div style="background:#1e293b;border-radius:6px;padding:10px;opacity:0.6">
+        <div style="color:#22c55e;font-size:9px;margin-bottom:4px">✓ AUTO-GEMAPPT (94%)</div>
+        <div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center">
+          <div style="color:#94a3b8;font-size:10px">Akku Ambientebeleuchtung</div>
+          <div style="color:#475569;text-align:center">→</div>
+          <div style="color:#22c55e;font-size:10px">Akkuspot Set 11x</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Inline Suche in der Zeile</h3>
+      <p>Direkt in der Tabellenzeile: Suchfeld öffnet Dropdown mit Produkten. Kompakt, kein extra Dialog.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:14px;border-radius:6px;font-size:11px">
+      <!-- Item list -->
+      <div style="background:#1e293b;border-radius:6px;padding:10px;margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:1fr 20px 1fr auto;gap:6px;align-items:center;margin-bottom:4px">
+          <div style="color:#94a3b8;font-size:10px">Akku Ambientebeleuchtung</div>
+          <div style="color:#475569;text-align:center">→</div>
+          <div style="color:#22c55e;font-size:10px">✓ Akkuspot Set</div>
+          <div style="color:#64748b;font-size:9px">✏</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 20px 1fr auto;gap:6px;align-items:center;background:#f59e0b10;border-radius:3px;padding:4px">
+          <div style="color:#f59e0b;font-size:10px">⚠ PA mit 2 Subwoofern</div>
+          <div style="color:#475569;text-align:center">→</div>
+          <div style="color:#64748b;font-size:10px;font-style:italic">nicht zugeordnet</div>
+          <div style="background:#3b82f6;border-radius:3px;padding:2px 6px;color:#fff;font-size:9px;cursor:pointer">Wählen</div>
+        </div>
+      </div>
+      <!-- Side panel that slides in -->
+      <div style="background:#1e293b;border:1px solid #3b82f6;border-radius:6px;padding:10px">
+        <div style="color:#3b82f6;font-size:9px;margin-bottom:8px">🔍 PRODUKT WÄHLEN für „PA mit 2 Subwoofern"</div>
+        <input style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:4px;padding:5px 8px;color:#e2e8f0;font-size:10px;box-sizing:border-box;margin-bottom:6px" placeholder="Name, Artikelnummer...">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <div style="background:#334155;border-radius:3px;padding:2px 6px;color:#94a3b8;font-size:9px">Alle</div>
+          <div style="background:#3b82f620;border-radius:3px;padding:2px 6px;color:#3b82f6;font-size:9px">Ton</div>
+          <div style="background:#334155;border-radius:3px;padding:2px 6px;color:#94a3b8;font-size:9px">Licht</div>
+        </div>
+        <div style="background:#22c55e10;border:1px solid #22c55e40;border-radius:3px;padding:5px 8px;color:#e2e8f0;font-size:10px">🔊 PA System 2x Sub + Top</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — „Wählen" Button → Suchpanel</h3>
+      <p>Button pro nicht-gemapptem Item. Klick öffnet ein Suchpanel unterhalb (oder daneben) mit Filter nach Kategorie.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:14px;border-radius:6px;font-size:11px">
+      <!-- Two-column split: PDF items left, products right -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#1e293b;border-radius:6px;padding:8px">
+          <div style="color:#64748b;font-size:9px;margin-bottom:6px">PDF ITEMS</div>
+          <div style="padding:4px 6px;color:#22c55e;font-size:9px;margin-bottom:2px">✓ Akkuspot Set</div>
+          <div style="padding:4px 6px;background:#f59e0b20;border-radius:3px;color:#f59e0b;font-size:9px;margin-bottom:2px;border-left:2px solid #f59e0b">▶ PA mit 2 Sub...</div>
+          <div style="padding:4px 6px;color:#94a3b8;font-size:9px;margin-bottom:2px">○ Effektlicht M2</div>
+          <div style="padding:4px 6px;color:#94a3b8;font-size:9px">○ Lichtoperator</div>
+        </div>
+        <div style="background:#1e293b;border-radius:6px;padding:8px">
+          <div style="color:#3b82f6;font-size:9px;margin-bottom:6px">PRODUKTE SUCHEN</div>
+          <input style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:3px;padding:4px 6px;color:#e2e8f0;font-size:9px;box-sizing:border-box;margin-bottom:4px" placeholder="Suchen...">
+          <div style="color:#e2e8f0;font-size:9px;padding:3px;margin-bottom:1px;background:#22c55e10;border-radius:2px;cursor:pointer">🔊 PA System 2x Sub</div>
+          <div style="color:#94a3b8;font-size:9px;padding:3px;margin-bottom:1px">🔊 Sub 18" einzeln</div>
+          <div style="color:#94a3b8;font-size:9px;padding:3px">🎛 Mischpult Mackie</div>
+        </div>
+      </div>
+      <div style="margin-top:6px;text-align:center;color:#64748b;font-size:9px">← Produkt anklicken zum Zuordnen</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Split: Items links, Produktsuche rechts</h3>
+      <p>Zwei Spalten: Links alle PDF-Items (mit Status), rechts persistente Produktsuche. Produkt anklicken = sofort zugeordnet.</p>
+    </div>
+  </div>
+
+</div>

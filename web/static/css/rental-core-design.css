@@ -234,7 +234,7 @@
 [data-theme="light"] .rc-btn-outline.active {
     background: var(--gray-600);
     border-color: var(--accent-red);
-    color: white;
+    color: var(--text-inverse);
 }
 
 /* Light Mode Spinner */
@@ -245,6 +245,7 @@
 
 /* Light Mode Modal Overlays */
 [data-theme="light"] .rc-modal-overlay {
+    /* TODO: replace with --surface-1-rgb when defined (e.g. background: rgba(var(--surface-1-rgb), 0.5)) */
     background: rgba(17, 17, 17, 0.5);  /* Pure gray instead of blue */
 }
 
@@ -263,7 +264,7 @@
 /* Light Mode Badges */
 [data-theme="light"] .rc-badge-info {
     background: var(--gray-600);
-    color: white;
+    color: var(--text-inverse);
 }
 
 /* Light Mode Tree View Elements */
@@ -273,15 +274,15 @@
 }
 
 [data-theme="light"] .tree-device.selected {
-    background: #f0f0f0;
-    border-color: #dc3545;
+    background: var(--gray-50);
+    border-color: var(--error);
     opacity: 0.7;
     color: var(--text-inverse);  /* Dark text for light mode */
 }
 
 [data-theme="dark"] .tree-device.selected {
-    background: #2a2a2a;
-    border-color: #dc3545;
+    background: var(--surface-4);
+    border-color: var(--error);
     opacity: 0.8;
     color: var(--text-primary);  /* White text instead of gray */
 }
@@ -289,13 +290,13 @@
 /* Light Mode Device Status Badges in Tree */
 [data-theme="light"] .device-status-free {
     background: var(--success);
-    color: white;
+    color: var(--text-inverse);
 }
 
 [data-theme="light"] .device-status-rented,
 [data-theme="light"] .device-status-assigned {
     background: var(--warning);
-    color: white;
+    color: var(--text-inverse);
 }
 
 [data-theme="light"] .device-status-maintenance {

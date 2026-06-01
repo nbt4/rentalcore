@@ -5,8 +5,8 @@ import {
   ArrowLeft, Trash2, Edit3, X, Check, Monitor, Package,
   ChevronRight, ChevronDown, FileText, Upload,
 } from 'lucide-react';
-import { jobsApi, customersApi, statusApi, api, jobEmployeesApi, employeesApi } from '../lib/api';
-import type { Job, Customer, JobStatus, JobDevice, JobEmployee, Employee } from '../lib/api';
+import { jobsApi, customersApi, statusApi, api, jobEmployeesApi, employeesApi, venuesApi } from '../lib/api';
+import type { Job, Customer, JobStatus, JobDevice, JobEmployee, Employee, Venue } from '../lib/api';
 import MappingModal from '../components/MappingModal';
 import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
 import JobPositionsPanel from '../components/JobPositionsPanel';
@@ -619,6 +619,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
   const [form, setForm] = useState<Partial<Job>>({});
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statuses, setStatuses] = useState<JobStatus[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [selections, setSelections] = useState<ProductSelection[]>([]);
   const [devices, setDevices] = useState<JobDevice[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -637,12 +638,14 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
     Promise.all([
       customersApi.getAll(),
       statusApi.getAll(),
+      venuesApi.list(),
       jobId ? jobsApi.getById(jobId) : Promise.resolve(null),
       jobId ? jobsApi.getDevices(jobId) : Promise.resolve(null),
       jobId ? api.get(`/jobs/${jobId}/requirements`) : Promise.resolve(null),
-    ]).then(([cRes, sRes, jRes, dRes, rRes]) => {
+    ]).then(([cRes, sRes, vRes, jRes, dRes, rRes]) => {
       setCustomers(cRes.data.customers || []);
       setStatuses(sRes.data.statuses || []);
+      setVenues(vRes.data || []);
       if (jRes) setForm(jRes.data);
       if (dRes) setDevices(dRes.data.devices || []);
       if (rRes) {
@@ -773,6 +776,32 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
                 <option key={s.status_id} value={s.status_id}>{s.status}</option>
               ))}
             </select>
+          </div>
+
+          {/* Venue */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Veranstaltungsort</label>
+            <select
+              value={form.venue_id ?? ''}
+              onChange={(e) => setForm({ ...form, venue_id: e.target.value ? Number(e.target.value) : null })}
+              className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent-red"
+            >
+              <option value="">— Kein Veranstaltungsort —</option>
+              {venues.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}{v.city ? ` (${v.city})` : ''}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {(() => {
+                if (form.venue_id) {
+                  const v = venues.find(x => x.id === form.venue_id);
+                  if (v) return `Kalender-Ort: ${v.name}${v.city ? `, ${v.city}` : ''}`;
+                }
+                const c = customers.find(x => x.customer_id === form.customer_id);
+                if (c && (c.city || c.street)) return `Kalender-Ort: Kundenadresse${c.city ? ` (${c.city})` : ''}`;
+                return 'Kein Ort im Kalender';
+              })()}
+            </p>
           </div>
 
           {/* Description */}

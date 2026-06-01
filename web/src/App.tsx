@@ -11,6 +11,7 @@ import { DocumentsPage } from './pages/DocumentsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SkillsPage } from './pages/SkillsPage';
 import { EmployeesPage } from './pages/EmployeesPage';
+import { VenuesPage } from './pages/VenuesPage';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/documents" element={<ProtectedRoute><Layout><DocumentsPage /></Layout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
           <Route path="/employees" element={<ProtectedRoute><Layout><EmployeesPage /></Layout></ProtectedRoute>} />
+          <Route path="/venues" element={<ProtectedRoute><Layout><VenuesPage /></Layout></ProtectedRoute>} />
           <Route path="/admin/skills" element={<ProtectedRoute><Layout><SkillsPage /></Layout></ProtectedRoute>} />
         </Routes>
       </AuthProvider>

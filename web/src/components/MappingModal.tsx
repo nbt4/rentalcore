@@ -214,9 +214,9 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'var(--bg-overlay)', backdropFilter: 'blur(4px)' }}>
       <div className="rc-card w-full max-w-lg flex flex-col"
-        style={{ borderRadius: '16px', border: '1px solid var(--rc-border)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)', maxHeight: '90vh' }}>
+        style={{ borderRadius: '16px', border: '1px solid var(--rc-border)', boxShadow: 'var(--shadow-modal)', maxHeight: '90vh' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--rc-border)' }}>
@@ -233,7 +233,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
                 background: tab === t.id ? 'var(--rc-primary)' : 'var(--rc-bg-secondary)',
-                color: tab === t.id ? '#fff' : 'var(--rc-text-secondary)',
+                color: tab === t.id ? 'var(--text-primary)' : 'var(--rc-text-secondary)',
                 border: `1px solid ${tab === t.id ? 'var(--rc-primary)' : 'var(--rc-border)'}`,
               }}>
               {t.icon}{t.label}
@@ -306,7 +306,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
                 />
                 {supplierResults.length > 0 && !selectedSupplier && (
                   <div className="absolute top-full left-0 right-0 mt-1 rounded-lg overflow-hidden z-50"
-                    style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+                    style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: 'var(--shadow-lg)' }}>
                     {supplierResults.map(s => (
                       <button key={s.id} type="button"
                         onClick={() => { setSelectedSupplier(s); setSupplierResults([]); setSupplierQuery(''); }}
@@ -471,7 +471,7 @@ function CustomerPicker({ extractionId, currentName, currentId, onChanged }: Cus
 
       {open && (
         <div className="absolute top-full left-0 mt-1 z-50 rounded-lg overflow-hidden w-72"
-          style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+          style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: 'var(--shadow-lg)' }}>
           <div className="p-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--rc-text-secondary)' }} />
@@ -585,7 +585,7 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
       </div>
       {(results.length > 0 || loading || noResults) && (
         <div className="absolute top-full left-0 right-0 mt-1 rounded-lg overflow-hidden z-50"
-          style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+          style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: 'var(--shadow-lg)' }}>
           {loading && <div className="px-3 py-2 text-xs" style={{ color: 'var(--rc-text-secondary)' }}>Suche…</div>}
           {results.map((r) => (
             <button key={`${r.type}-${r.id}`} type="button" onClick={() => onSelect(r)}
@@ -762,7 +762,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'var(--bg-overlay)', backdropFilter: 'blur(4px)' }}>
       <div className="rc-card w-full max-w-2xl max-h-[90vh] flex flex-col"
         style={{ borderRadius: '16px', border: '1px solid var(--rc-border)', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
 
@@ -859,9 +859,9 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
                   let borderColor = 'var(--rc-border)';
                   let bgStyle = 'var(--rc-bg-card)';
-                  if (item.mapping_status === 'user_confirmed') { borderColor = 'var(--rc-success)'; bgStyle = 'rgba(34,197,94,0.05)'; }
-                  else if (mapped && conf >= 80) { borderColor = 'rgba(34,197,94,0.3)'; bgStyle = 'rgba(34,197,94,0.04)'; }
-                  else if (mapped && conf >= 60) { borderColor = 'var(--rc-warning)'; bgStyle = 'rgba(255,193,7,0.05)'; }
+                  if (item.mapping_status === 'user_confirmed') { borderColor = 'var(--rc-success)'; bgStyle = 'rgba(var(--color-success-rgb), 0.05)'; }
+                  else if (mapped && conf >= 80) { borderColor = 'rgba(var(--color-success-rgb), 0.3)'; bgStyle = 'rgba(var(--color-success-rgb), 0.04)'; }
+                  else if (mapped && conf >= 60) { borderColor = 'var(--rc-warning)'; bgStyle = 'rgba(var(--color-warning-rgb), 0.05)'; }
 
                   return (
                     <div key={item.item_id} className="rounded-xl p-3"

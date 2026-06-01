@@ -106,6 +106,7 @@ func (r *JobRepository) GetByID(id uint) (*models.Job, error) {
 	err := r.db.
 		Preload("JobDevices.Device").
 		Preload("Creator").
+		Preload("Venue").
 		First(&job, id).Error
 	if err != nil {
 		jobRepoDebugLog("🔧 DEBUG JobRepo.GetByID: Error loading job %d: %v\n", id, err)
@@ -186,6 +187,7 @@ func (r *JobRepository) Update(job *models.Job) error {
 		"discount_type": job.DiscountType,
 		"jobcategoryid": job.JobCategoryID,
 		"final_revenue": finalRevenue,
+		"venue_id":      job.VenueID,
 	})
 
 	if result.Error != nil {

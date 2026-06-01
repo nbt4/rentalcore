@@ -91,6 +91,8 @@ type Job struct {
 	MultiplyByDays  bool         `json:"multiply_by_days" gorm:"column:multiply_by_days;default:true"`
 	M365EventID     *string      `json:"m365_event_id,omitempty" gorm:"column:m365_event_id;size:255"`
 	PricesIncludeTax bool        `json:"prices_include_tax" gorm:"column:prices_include_tax;default:false"`
+	VenueID      *uint        `json:"venue_id" gorm:"column:venue_id"`
+	Venue        *Venue       `json:"venue,omitempty" gorm:"foreignKey:VenueID"`
 	JobDevices   []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
 	JobPackages  []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
 	DeviceCount  int          `json:"device_count" gorm:"-:all"`

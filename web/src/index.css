@@ -1,32 +1,90 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent-red: #D0021B;
-  --color-dark: #0B0B0B;
-  --color-dark-100: #111111;
-  --color-dark-200: #161616;
-  --color-dark-300: #1F1F1F;
-  --color-light: #FFFFFF;
-  --color-light-100: #F5F5F5;
-  --color-light-200: #EAEAEA;
+  --color-accent-red: var(--rc-danger);
+  --color-dark: var(--color-surface-0);
+  --color-dark-100: var(--color-surface-1);
+  --color-dark-200: var(--color-surface-2);
+  --color-dark-300: var(--color-surface-3);
+  --color-light: var(--color-light-text);
+  --color-light-100: var(--color-light-surface);
+  --color-light-200: var(--color-light-border);
 }
 
 /* RC design system variables (modal/component use only — no global overrides) */
 :root {
+  /* Brand & Status Colors */
   --rc-primary: #c0552c;
   --rc-danger: #D0021B;
   --rc-success: #22c55e;
   --rc-warning: #eab308;
-  --rc-text-primary: #ffffff;
-  --rc-text-secondary: rgba(255,255,255,0.55);
-  --rc-bg-card: rgba(17,17,17,0.97);
-  --rc-bg-secondary: rgba(255,255,255,0.04);
-  --rc-border: rgba(255,255,255,0.08);
+
+  /* Accent red variants */
+  --color-accent-red-hover: #a00115;
+  --color-accent-red-end: #dc2626;
+
+  /* Surface colors */
+  --color-surface-0: #0B0B0B;
+  --color-surface-1: #111111;
+  --color-surface-2: #161616;
+  --color-surface-3: #1F1F1F;
+  --color-surface-4: #2A2A2A;
+  --color-surface-5: #1a1a1a;
+
+  /* Light colors */
+  --color-light-text: #FFFFFF;
+  --color-light-surface: #F5F5F5;
+  --color-light-border: #EAEAEA;
+
+  /* RGB channel values (for rgba() usage in components) */
+  --rc-danger-rgb: 208, 2, 27;
+  --color-success-rgb: 34, 197, 94;
+  --color-warning-rgb: 234, 179, 8;
+  --color-info-rgb: 96, 165, 250;
+  --color-light-rgb: 255, 255, 255;
+  --color-surface-0-rgb: 11, 11, 11;
+  --color-surface-1-rgb: 17, 17, 17;
+  --color-surface-3-rgb: 31, 31, 31;
+  --color-surface-4-rgb: 42, 42, 42;
+  --color-surface-5-rgb: 26, 26, 26;
+  --color-black-rgb: 0, 0, 0;
+
+  /* Semantic aliases — modal/component use */
+  --rc-text-primary: var(--color-light-text);
+  --rc-text-secondary: rgba(var(--color-light-rgb), 0.55);
+  --rc-bg-card: rgba(var(--color-surface-1-rgb), 0.97);
+  --rc-bg-secondary: rgba(var(--color-light-rgb), 0.04);
+  --rc-border: rgba(var(--color-light-rgb), 0.08);
+
+  /* Standard semantic aliases — use in TSX inline styles */
+  --accent-red: #D0021B;
+  --accent-red-hover: #a00115;
+  --accent-red-rgb: 208, 2, 27;
+  --accent-red-light: #f87171;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-tertiary: #606060;
+
+  --surface-1: var(--color-surface-1);
+  --surface-2: var(--color-surface-2);
+  --surface-3: var(--color-surface-3);
+
+  --border-subtle: rgba(var(--color-light-rgb), 0.08);
+  --bg-subtle: rgba(var(--color-light-rgb), 0.04);
+  --bg-hover: rgba(var(--color-light-rgb), 0.08);
+
+  --shadow-accent: 0 2px 8px rgba(208, 2, 27, 0.3);
+  --shadow-accent-lg: 0 4px 14px rgba(208, 2, 27, 0.25);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+  --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
 }
 
 /* RC component classes — used in MappingModal */
 .rc-card {
-  background: #111111;
+  background: var(--color-surface-1);
   border: 1px solid var(--rc-border);
   border-radius: 1rem;
   padding: 1.5rem;
@@ -50,26 +108,26 @@
 }
 
 .rc-btn-primary {
-  background: #D0021B;
-  color: #fff;
+  background: var(--color-accent-red);
+  color: var(--color-light-text);
   border: none;
 }
-.rc-btn-primary:hover { background: #a00115; }
+.rc-btn-primary:hover { background: var(--color-accent-red-hover); }
 .rc-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .rc-btn-secondary {
-  background: #1f1f1f;
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--color-surface-3);
+  color: var(--color-light-text);
+  border: 1px solid rgba(var(--color-light-rgb), 0.12);
 }
-.rc-btn-secondary:hover { background: #2a2a2a; border-color: rgba(255,255,255,0.2); }
+.rc-btn-secondary:hover { background: var(--color-surface-4); border-color: rgba(var(--color-light-rgb), 0.2); }
 
 .rc-btn-outline {
   background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--color-light-text);
+  border: 1px solid rgba(var(--color-light-rgb), 0.15);
 }
-.rc-btn-outline:hover { background: rgba(255,255,255,0.05); border-color: #D0021B; }
+.rc-btn-outline:hover { background: rgba(var(--color-light-rgb), 0.05); border-color: var(--color-accent-red); }
 
 .rc-btn-sm {
   padding: 0.25rem 0.625rem;
@@ -81,20 +139,20 @@
 .rc-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(var(--color-light-rgb), 0.07);
+  border: 1px solid rgba(var(--color-light-rgb), 0.12);
   border-radius: 0.5rem;
-  color: #fff;
+  color: var(--color-light-text);
   font-size: 0.875rem;
   font-family: inherit;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .rc-input:focus {
   outline: none;
-  border-color: #D0021B;
-  background: rgba(255,255,255,0.1);
+  border-color: var(--color-accent-red);
+  background: rgba(var(--color-light-rgb), 0.1);
 }
-.rc-input::placeholder { color: rgba(255,255,255,0.35); }
+.rc-input::placeholder { color: rgba(var(--color-light-rgb), 0.35); }
 
 .rc-input-sm {
   padding: 0.3rem 0.6rem;
@@ -120,19 +178,19 @@ body.modal-open {
 }
 
 .glass {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(var(--color-light-rgb), 0.1);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--color-light-rgb), 0.2);
 }
 
 .glass-dark {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(var(--color-black-rgb), 0.4);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--color-light-rgb), 0.1);
 }
 
 .text-gradient {
-  background: linear-gradient(to right, var(--color-accent-red), #dc2626);
+  background: linear-gradient(to right, var(--color-accent-red), var(--color-accent-red-end));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -140,29 +198,29 @@ body.modal-open {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(208, 2, 27, 0.5) rgba(255, 255, 255, 0.1);
+  scrollbar-color: rgba(var(--rc-danger-rgb), 0.5) rgba(var(--color-light-rgb), 0.1);
 }
 
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
-*::-webkit-scrollbar-thumb { background: rgba(208, 2, 27, 0.5); border-radius: 4px; }
-*::-webkit-scrollbar-thumb:hover { background: rgba(208, 2, 27, 0.7); }
+*::-webkit-scrollbar-track { background: rgba(var(--color-light-rgb), 0.05); border-radius: 4px; }
+*::-webkit-scrollbar-thumb { background: rgba(var(--rc-danger-rgb), 0.5); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(var(--rc-danger-rgb), 0.7); }
 
 select {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(var(--color-light-rgb), 0.1);
+  color: var(--color-light-text);
+  border: 1px solid rgba(var(--color-light-rgb), 0.2);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
 }
 select:focus {
   outline: none;
   border-color: var(--color-accent-red);
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(var(--color-light-rgb), 0.15);
 }
 select option {
-  background-color: #1a1a1a;
-  color: white;
+  background-color: var(--color-surface-5);
+  color: var(--color-light-text);
 }
 
 input[type="text"],
@@ -172,9 +230,9 @@ input[type="password"],
 input[type="search"],
 input[type="date"],
 textarea {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(var(--color-light-rgb), 0.1);
+  color: var(--color-light-text);
+  border: 1px solid rgba(var(--color-light-rgb), 0.2);
 }
 input[type="text"]:focus,
 input[type="number"]:focus,
@@ -183,9 +241,9 @@ input[type="password"]:focus,
 input[type="search"]:focus,
 input[type="date"]:focus,
 textarea:focus {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(var(--color-light-rgb), 0.15);
 }
 input::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--color-light-rgb), 0.5);
 }

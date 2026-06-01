@@ -1,0 +1,94 @@
+<h2>Mapping-Verwaltung — globale Übersicht</h2>
+<p class="subtitle">Wie soll die Seite aufgebaut sein, auf der du alle Mappings siehst und verwaltest?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:14px;border-radius:6px;font-size:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="color:#94a3b8;font-size:11px;font-weight:bold">🗂 Produkt-Mappings</span>
+        <div style="background:#3b82f6;border-radius:4px;padding:3px 10px;color:#fff;font-size:9px">+ Neu</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:4px 8px;color:#e2e8f0;font-size:9px" placeholder="🔍 OCR-Text oder Produkt...">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:4px 8px;color:#94a3b8;font-size:9px">Alle Typen ▾</div>
+      </div>
+      <!-- Table -->
+      <div style="background:#1e293b;border-radius:4px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:0;padding:4px 8px;background:#334155">
+          <span style="color:#64748b;font-size:8px">OCR-TEXT</span>
+          <span style="color:#64748b;font-size:8px">PRODUKT</span>
+          <span style="color:#64748b;font-size:8px">TYP</span>
+          <span style="color:#64748b;font-size:8px">NUTZUNG</span>
+          <span style="color:#64748b;font-size:8px"></span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:0;padding:5px 8px;border-bottom:1px solid #0f172a;align-items:center">
+          <span style="color:#e2e8f0;font-size:9px">Akku Ambientebeleuchtung</span>
+          <span style="color:#22c55e;font-size:9px">Akkuspot Set 11x</span>
+          <span style="background:#22c55e20;color:#22c55e;font-size:8px;padding:1px 4px;border-radius:2px;width:fit-content">exakt</span>
+          <span style="color:#64748b;font-size:9px">12×</span>
+          <div style="display:flex;gap:3px"><span style="color:#3b82f6;font-size:9px">✏</span><span style="color:#ef4444;font-size:9px">🗑</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:0;padding:5px 8px;border-bottom:1px solid #0f172a;align-items:center">
+          <span style="color:#e2e8f0;font-size:9px">PA mit 2 Subwoofern</span>
+          <span style="color:#22c55e;font-size:9px">PA System 2x Sub</span>
+          <span style="background:#3b82f620;color:#3b82f6;font-size:8px;padding:1px 4px;border-radius:2px;width:fit-content">manuell</span>
+          <span style="color:#64748b;font-size:9px">5×</span>
+          <div style="display:flex;gap:3px"><span style="color:#3b82f6;font-size:9px">✏</span><span style="color:#ef4444;font-size:9px">🗑</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:0;padding:5px 8px;align-items:center">
+          <span style="color:#e2e8f0;font-size:9px">Effektlicht M2 Stative</span>
+          <span style="color:#f59e0b;font-size:9px">Moving Head 2x (fuzzy)</span>
+          <span style="background:#f59e0b20;color:#f59e0b;font-size:8px;padding:1px 4px;border-radius:2px;width:fit-content">fuzzy</span>
+          <span style="color:#64748b;font-size:9px">3×</span>
+          <div style="display:flex;gap:3px"><span style="color:#3b82f6;font-size:9px">✏</span><span style="color:#ef4444;font-size:9px">🗑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Einfache Tabelle mit Suche</h3>
+      <p>Klassische Tabelle: OCR-Text, zugeordnetes Produkt, Typ-Badge (exakt/manuell/fuzzy), Nutzungszähler, Edit/Delete. Oben Suchfeld und Typfilter.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:14px;border-radius:6px;font-size:11px">
+      <!-- Tabs for product vs package mappings -->
+      <div style="display:flex;gap:0;margin-bottom:8px;border-bottom:1px solid #334155">
+        <div style="padding:4px 10px;color:#3b82f6;font-size:9px;border-bottom:2px solid #3b82f6">Produkte (42)</div>
+        <div style="padding:4px 10px;color:#64748b;font-size:9px">Pakete (8)</div>
+        <div style="padding:4px 10px;color:#64748b;font-size:9px">Kunden (15)</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:4px 8px;color:#e2e8f0;font-size:9px" placeholder="🔍 Suchen...">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:4px 8px;color:#94a3b8;font-size:9px">⚠ Unsicher zuerst</div>
+        <div style="background:#3b82f6;border-radius:4px;padding:4px 8px;color:#fff;font-size:9px">+ Neu</div>
+      </div>
+      <div style="background:#1e293b;border-radius:4px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:0;padding:4px 8px;background:#334155">
+          <span style="color:#64748b;font-size:8px">OCR-TEXT</span>
+          <span style="color:#64748b;font-size:8px">PRODUKT</span>
+          <span style="color:#64748b;font-size:8px">KONFIDENZ</span>
+          <span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:0;padding:5px 8px;border-bottom:1px solid #0f172a;align-items:center">
+          <span style="color:#e2e8f0;font-size:9px">Akku Ambientebeleuchtung</span>
+          <span style="color:#22c55e;font-size:9px">Akkuspot Set 11x</span>
+          <div style="display:flex;align-items:center;gap:3px"><div style="width:30px;height:4px;background:#334155;border-radius:2px"><div style="width:94%;height:100%;background:#22c55e;border-radius:2px"></div></div><span style="color:#22c55e;font-size:8px">94%</span></div>
+          <div style="display:flex;gap:3px"><span style="color:#3b82f6;font-size:9px">✏</span><span style="color:#ef4444;font-size:9px">🗑</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:0;padding:5px 8px;align-items:center;background:#f59e0b08">
+          <span style="color:#f59e0b;font-size:9px">⚠ Effektlicht M2...</span>
+          <span style="color:#f59e0b;font-size:9px">Moving Head 2x</span>
+          <div style="display:flex;align-items:center;gap:3px"><div style="width:30px;height:4px;background:#334155;border-radius:2px"><div style="width:71%;height:100%;background:#f59e0b;border-radius:2px"></div></div><span style="color:#f59e0b;font-size:8px">71%</span></div>
+          <div style="display:flex;gap:3px"><span style="color:#3b82f6;font-size:9px">✏</span><span style="color:#ef4444;font-size:9px">🗑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Tabs (Produkte / Pakete / Kunden) + Konfidenz-Balken</h3>
+      <p>Drei Tabs für die drei Mapping-Typen. Konfidenz als visueller Balken. Filter „Unsichere zuerst" um niedrig-konfidente Mappings zu reviewen.</p>
+    </div>
+  </div>
+
+</div>

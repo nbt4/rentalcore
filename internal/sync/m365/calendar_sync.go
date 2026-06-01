@@ -162,12 +162,70 @@ func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error
 		end = job.StartDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
 	}
 
+	location := buildLocation(job)
+
 	return &CalendarEvent{
-		Subject: subject,
-		Body:    EventBody{ContentType: "HTML", Content: body},
-		Start:   EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
-		End:     EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
+		Subject:  subject,
+		Body:     EventBody{ContentType: "HTML", Content: body},
+		Start:    EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
+		End:      EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
+		Location: location,
 	}, nil
+}
+
+func buildLocation(job *models.Job) *EventLocation {
+	if job.VenueID != nil && job.Venue != nil {
+		v := job.Venue
+		parts := []string{v.Name}
+		street := ""
+		if v.Street != nil && *v.Street != "" {
+			street = *v.Street
+		}
+		if v.HouseNumber != nil && *v.HouseNumber != "" {
+			street = strings.TrimSpace(street + " " + *v.HouseNumber)
+		}
+		if street != "" {
+			parts = append(parts, street)
+		}
+		cityPart := ""
+		if v.ZIP != nil && *v.ZIP != "" {
+			cityPart = *v.ZIP
+		}
+		if v.City != nil && *v.City != "" {
+			cityPart = strings.TrimSpace(cityPart + " " + *v.City)
+		}
+		if cityPart != "" {
+			parts = append(parts, cityPart)
+		}
+		return &EventLocation{DisplayName: strings.Join(parts, ", ")}
+	}
+
+	c := job.Customer
+	street := ""
+	if c.Street != nil && *c.Street != "" {
+		street = *c.Street
+	}
+	if c.HouseNumber != nil && *c.HouseNumber != "" {
+		street = strings.TrimSpace(street + " " + *c.HouseNumber)
+	}
+	cityPart := ""
+	if c.ZIP != nil && *c.ZIP != "" {
+		cityPart = *c.ZIP
+	}
+	if c.City != nil && *c.City != "" {
+		cityPart = strings.TrimSpace(cityPart + " " + *c.City)
+	}
+	var addrParts []string
+	if street != "" {
+		addrParts = append(addrParts, street)
+	}
+	if cityPart != "" {
+		addrParts = append(addrParts, cityPart)
+	}
+	if len(addrParts) > 0 {
+		return &EventLocation{DisplayName: strings.Join(addrParts, ", ")}
+	}
+	return nil
 }
 
 func (s *CalendarSyncService) buildBody(positions []models.JobPosition, jobID uint) string {

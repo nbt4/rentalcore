@@ -1005,6 +1005,13 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		}
 	}
 
+	if venueVal, ok := requestData["venue_id"]; ok {
+		if v, ok := venueVal.(float64); ok && v > 0 {
+			vid := uint(v)
+			job.VenueID = &vid
+		}
+	}
+
 	// Set the creator to the current user
 	currentUser, _ := GetCurrentUser(c)
 	if currentUser != nil {
@@ -1115,6 +1122,7 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		FinalRevenue:  existingJob.FinalRevenue,
 		StartDate:     existingJob.StartDate,
 		EndDate:       existingJob.EndDate,
+		VenueID:       existingJob.VenueID,
 	}
 	// Accept both legacy "customerid" and API "customer_id"
 	for _, key := range []string{"customer_id", "customerid"} {
@@ -1179,6 +1187,20 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 					break
 				}
 			}
+		}
+	}
+
+	if venueVal, ok := requestData["venue_id"]; ok {
+		switch v := venueVal.(type) {
+		case float64:
+			if v > 0 {
+				vid := uint(v)
+				job.VenueID = &vid
+			} else {
+				job.VenueID = nil
+			}
+		case nil:
+			job.VenueID = nil
 		}
 	}
 

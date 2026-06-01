@@ -1,0 +1,102 @@
+<h2>Wie soll das Mapping nach dem PDF-Upload erscheinen?</h2>
+<p class="subtitle">Nach dem Upload und dem Parsen der PDF — wie kommt der Nutzer zum Mapping?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;border-radius:6px;font-family:monospace;font-size:12px">
+      <div style="background:#1e293b;border-radius:4px;padding:8px;margin-bottom:8px;color:#94a3b8">
+        📋 Job erstellen — Schritt 2 von 3
+      </div>
+      <div style="background:#1e293b;border-radius:4px;padding:10px;margin-bottom:6px">
+        <div style="color:#64748b;font-size:10px;margin-bottom:4px">PDF UPLOAD</div>
+        <div style="background:#22c55e20;border:1px solid #22c55e;border-radius:3px;padding:6px;color:#22c55e;font-size:11px">✓ rechnung_re0039.pdf geparst (8 Items)</div>
+      </div>
+      <div style="background:#3b82f620;border:1px dashed #3b82f6;border-radius:4px;padding:10px">
+        <div style="color:#64748b;font-size:10px;margin-bottom:6px">MAPPING (direkt darunter)</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <div style="background:#1e293b;border-radius:3px;padding:3px 6px;color:#e2e8f0;font-size:10px;flex:1">Akku Ambientebeleuchtung</div>
+          <div style="color:#64748b;font-size:10px">→</div>
+          <div style="background:#22c55e20;border-radius:3px;padding:3px 6px;color:#22c55e;font-size:10px;flex:1">✓ Akkuspot Set</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div style="background:#1e293b;border-radius:3px;padding:3px 6px;color:#e2e8f0;font-size:10px;flex:1">PA mit 2 Subwoofern</div>
+          <div style="color:#64748b;font-size:10px">→</div>
+          <div style="background:#f59e0b20;border-radius:3px;padding:3px 6px;color:#f59e0b;font-size:10px;flex:1">? Suche...</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Inline im Job-Formular</h3>
+      <p>Mapping erscheint direkt unterhalb des PDF-Uploads als aufklappbarer Bereich. Alles auf einer Seite, kein Seitenwechsel.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;border-radius:6px;font-family:monospace;font-size:12px">
+      <div style="background:#1e293b;border-radius:4px;padding:8px;margin-bottom:8px;color:#94a3b8;opacity:0.5">
+        📋 Job erstellen...
+      </div>
+      <div style="position:relative">
+        <div style="background:#1e293b;border-radius:4px;padding:8px;filter:blur(1px);opacity:0.4;color:#94a3b8">
+          <div style="height:12px;background:#334155;border-radius:2px;margin-bottom:6px"></div>
+          <div style="height:12px;background:#334155;border-radius:2px;width:70%"></div>
+        </div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <div style="background:#1e293b;border:1px solid #3b82f6;border-radius:8px;padding:12px;width:90%;box-shadow:0 20px 40px #00000080">
+            <div style="color:#3b82f6;font-size:10px;margin-bottom:8px">🗂 MAPPING — rechnung_re0039.pdf</div>
+            <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+              <div style="background:#0f172a;border-radius:3px;padding:2px 5px;color:#e2e8f0;font-size:9px;flex:1">Akku Ambientebeleuchtung</div>
+              <div style="color:#22c55e;font-size:9px">✓ Akkuspot Set</div>
+            </div>
+            <div style="display:flex;gap:4px;align-items:center;margin-bottom:8px">
+              <div style="background:#0f172a;border-radius:3px;padding:2px 5px;color:#e2e8f0;font-size:9px;flex:1">PA mit 2 Subwoofern</div>
+              <div style="color:#f59e0b;font-size:9px">⚠ manuell wählen</div>
+            </div>
+            <div style="display:flex;gap:4px;justify-content:flex-end">
+              <div style="background:#334155;border-radius:3px;padding:3px 8px;color:#94a3b8;font-size:9px">Abbrechen</div>
+              <div style="background:#3b82f6;border-radius:3px;padding:3px 8px;color:#fff;font-size:9px">Übernehmen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Modal / Overlay</h3>
+      <p>Nach dem Upload öffnet sich ein Modal über dem Job-Formular. Mapping bestätigen → Modal schließt, Items landen im Job.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;border-radius:6px;font-family:monospace;font-size:12px">
+      <div style="background:#1e293b;border-radius:4px;padding:6px 10px;margin-bottom:8px;display:flex;gap:8px;align-items:center">
+        <span style="color:#64748b;font-size:10px">Job erstellen</span>
+        <span style="color:#334155">›</span>
+        <span style="color:#3b82f6;font-size:10px;font-weight:bold">PDF Mapping</span>
+        <span style="color:#334155">›</span>
+        <span style="color:#64748b;font-size:10px">Fertig</span>
+      </div>
+      <div style="background:#1e293b;border-radius:4px;padding:10px">
+        <div style="color:#94a3b8;font-size:11px;margin-bottom:8px;border-bottom:1px solid #334155;padding-bottom:6px">🗂 PDF Mapping — rechnung_re0039.pdf (8 Items)</div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:4px">
+          <div style="background:#0f172a;border-radius:3px;padding:3px 6px;color:#e2e8f0;font-size:9px">Akku Ambientebeleuchtung</div>
+          <div style="color:#22c55e;font-size:9px">→</div>
+          <div style="background:#22c55e20;border-radius:3px;padding:3px 6px;color:#22c55e;font-size:9px">Akkuspot Set ✓</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:4px">
+          <div style="background:#0f172a;border-radius:3px;padding:3px 6px;color:#e2e8f0;font-size:9px">PA mit 2 Subwoofern</div>
+          <div style="color:#f59e0b;font-size:9px">→</div>
+          <div style="background:#f59e0b20;border:1px dashed #f59e0b;border-radius:3px;padding:3px 6px;color:#f59e0b;font-size:9px">Produkt suchen...</div>
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:flex-end">
+          <div style="background:#3b82f6;border-radius:3px;padding:4px 12px;color:#fff;font-size:9px">Mapping abschließen →</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Eigene Seite (Wizard-Schritt)</h3>
+      <p>Nach Upload wird automatisch zur Mapping-Seite weitergeleitet. Eigener Schritt im Wizard: „Job erstellen → PDF Mapping → Fertig".</p>
+    </div>
+  </div>
+
+</div>

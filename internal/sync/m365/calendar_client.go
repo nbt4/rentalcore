@@ -7,12 +7,17 @@ import (
 	"net/http"
 )
 
+type EventLocation struct {
+	DisplayName string `json:"displayName"`
+}
+
 type CalendarEvent struct {
-	Subject   string        `json:"subject"`
-	Body      EventBody     `json:"body"`
-	Start     EventDateTime `json:"start"`
-	End       EventDateTime `json:"end"`
-	Attendees []Attendee    `json:"attendees,omitempty"`
+	Subject   string          `json:"subject"`
+	Body      EventBody       `json:"body"`
+	Start     EventDateTime   `json:"start"`
+	End       EventDateTime   `json:"end"`
+	Location  *EventLocation  `json:"location,omitempty"`
+	Attendees []Attendee      `json:"attendees,omitempty"`
 }
 
 type EventBody struct {
