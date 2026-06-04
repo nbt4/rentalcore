@@ -3414,6 +3414,16 @@ body:has(.rc-sidebar.collapsed) .rc-header {
     margin: 0;
 }
 
+.rc-header-logo {
+    height: 1.5rem;
+    display: block;
+}
+
+.rc-sidebar-logo {
+    height: 1.25rem;
+    display: block;
+}
+
 @media (min-width: 640px) {
     .rc-header-brand {
         font-size: 1.5rem;

@@ -30,11 +30,12 @@ export function Login() {
   return (
     <div className="min-h-screen bg-dark flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">
-            <span className="text-accent-red">Rental</span>
-            <span className="text-white">Core</span>
-          </h1>
+        <div className="text-center mb-8 flex flex-col items-center gap-2">
+          <img
+            src="/static/images/logos/rentalcore_white_full.svg"
+            alt="RentalCore"
+            className="h-10"
+          />
           <p className="text-gray-400">{companyName}</p>
         </div>
 

@@ -86,10 +86,11 @@ export function Layout({ children }: LayoutProps) {
                 ? (sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)
                 : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="font-bold" style={{ fontSize: '1.125rem' }}>
-              <span style={{ color: 'var(--accent-red)' }}>Rental</span>
-              <span style={{ color: 'var(--text-primary)' }}>Core</span>
-            </h1>
+            <img
+              src="/static/images/logos/rentalcore_white_full.svg"
+              alt="RentalCore"
+              className="h-6"
+            />
           </div>
           <div className="text-sm hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{companyName}</div>
         </div>
@@ -106,26 +107,31 @@ export function Layout({ children }: LayoutProps) {
       } ${isMobile ? 'w-64' : sidebarOpen ? 'w-64' : 'w-20'}`}
         style={{ borderRight: '1px solid var(--border-subtle)' }}>
 
-        {/* Mobile header */}
+        {/* Sidebar header (mobile + desktop) */}
         <div
-          className="flex items-center justify-between px-4 py-4 md:hidden"
+          className="flex items-center justify-between px-4 py-4"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <h2 className="font-bold" style={{ fontSize: '1.125rem' }}>
-            <span style={{ color: 'var(--accent-red)' }}>Rental</span>
-            <span style={{ color: 'var(--text-primary)' }}>Core</span>
-          </h2>
-          <button
-            onClick={close}
-            className="p-2 rounded-lg cursor-pointer"
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <img
+            src={sidebarOpen || isMobile
+              ? '/static/images/logos/rentalcore_white_full.svg'
+              : '/static/images/logos/rentalcore_white_icon.svg'}
+            alt="RentalCore"
+            className={sidebarOpen || isMobile ? 'h-6' : 'h-7 mx-auto'}
+          />
+          {isMobile && (
+            <button
+              onClick={close}
+              className="p-2 rounded-lg cursor-pointer"
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <nav
-          className={`flex-1 overflow-y-auto p-3 space-y-1 ${isMobile ? 'mt-12' : 'mt-[60px]'}`}
+          className="flex-1 overflow-y-auto p-3 space-y-1"
           style={{ scrollbarWidth: 'none' }}
         >
           {/* Cores Dashboard link */}

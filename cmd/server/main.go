@@ -774,7 +774,7 @@ func main() {
 	// Favicon route
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.Header("Cache-Control", "public, max-age=86400") // Cache for 24 hours
-		c.File("web/static/images/icon-180.png")
+		c.File("web/static/images/logos/rentalcore_black_icon.png")
 	})
 
 	// Initialize default roles
