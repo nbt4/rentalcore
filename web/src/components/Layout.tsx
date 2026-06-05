@@ -89,7 +89,7 @@ export function Layout({ children }: LayoutProps) {
             <img
               src="/static/images/logos/rentalcore_white_full.svg"
               alt="RentalCore"
-              className="h-6"
+              className="h-7"
             />
           </div>
           <div className="text-sm hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{companyName}</div>
@@ -117,7 +117,7 @@ export function Layout({ children }: LayoutProps) {
               ? '/static/images/logos/rentalcore_white_full.svg'
               : '/static/images/logos/rentalcore_white_icon.svg'}
             alt="RentalCore"
-            className={sidebarOpen || isMobile ? 'h-6' : 'h-7 mx-auto'}
+            className={sidebarOpen || isMobile ? 'h-7' : 'h-8 mx-auto'}
           />
           {isMobile && (
             <button

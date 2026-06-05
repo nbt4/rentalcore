@@ -3415,12 +3415,12 @@ body:has(.rc-sidebar.collapsed) .rc-header {
 }
 
 .rc-header-logo {
-    height: 1.5rem;
+    height: 1.75rem;
     display: block;
 }
 
 .rc-sidebar-logo {
-    height: 1.25rem;
+    height: 1.5rem;
     display: block;
 }
 
