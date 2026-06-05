@@ -32,7 +32,7 @@ export function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center gap-2">
           <img
-            src="/static/images/logos/rentalcore_white_full.svg"
+            src="/static/images/logos/rentalcore_white_side.svg"
             alt="RentalCore"
             className="h-10"
           />

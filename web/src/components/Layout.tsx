@@ -87,7 +87,7 @@ export function Layout({ children }: LayoutProps) {
                 : <Menu className="w-5 h-5" />}
             </button>
             <img
-              src="/static/images/logos/rentalcore_white_full.svg"
+              src="/static/images/logos/rentalcore_white_side.svg"
               alt="RentalCore"
               className="h-7"
             />
@@ -114,7 +114,7 @@ export function Layout({ children }: LayoutProps) {
         >
           <img
             src={sidebarOpen || isMobile
-              ? '/static/images/logos/rentalcore_white_full.svg'
+              ? '/static/images/logos/rentalcore_white_side.svg'
               : '/static/images/logos/rentalcore_white_icon.svg'}
             alt="RentalCore"
             className={sidebarOpen || isMobile ? 'h-7' : 'h-8 mx-auto'}
