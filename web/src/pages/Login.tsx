@@ -34,7 +34,7 @@ export function Login() {
           <img
             src="/static/images/logos/rentalcore_white_side.svg"
             alt="RentalCore"
-            className="h-10"
+            className="h-20"
           />
           <p className="text-gray-400">{companyName}</p>
         </div>
