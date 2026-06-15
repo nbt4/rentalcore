@@ -22,6 +22,7 @@ import (
 	"go-barcode-webapp/internal/handlers"
 	"go-barcode-webapp/internal/logger"
 	"go-barcode-webapp/internal/middleware"
+	"go-barcode-webapp/internal/metrics"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/monitoring"
 	"go-barcode-webapp/internal/repository"
@@ -31,6 +32,8 @@ import (
 	m365sync "go-barcode-webapp/internal/sync/m365"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func buildWarehouseProductsURL(r *http.Request) string {
@@ -288,6 +291,11 @@ func main() {
 		logger.LogFatal("Failed to ping database: %v", err)
 	}
 
+	// Set initial DB connection gauge
+	if sqlDB, err := db.DB.DB(); err == nil {
+		metrics.DBConnectionsOpen.Set(float64(sqlDB.Stats().OpenConnections))
+	}
+
 	// Ensure M365 sync columns exist on production databases
 	if sqlDB, err := db.DB.DB(); err == nil {
 		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
@@ -509,6 +517,7 @@ func main() {
 		r.Use(complianceMiddleware.ComplianceStatusMiddleware())
 	}
 	r.Use(handlers.GlobalErrorHandler()) // Custom recovery with proper error pages
+	r.Use(metrics.Middleware()) // Prometheus metrics
 
 	// Load HTML templates with custom functions
 	funcMap := template.FuncMap{
@@ -749,6 +758,7 @@ func main() {
 
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "2.1.0")))
 
 	// Serve React SPA build assets
