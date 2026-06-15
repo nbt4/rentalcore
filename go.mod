@@ -1,6 +1,6 @@
 module go-barcode-webapp
 
-go 1.24.1
+go 1.25.0
 
 require (
 	github.com/boombuler/barcode v1.0.1
@@ -9,13 +9,15 @@ require (
 	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/makiuchi-d/gozxing v0.1.1
+	github.com/nbt4/cores-common v0.0.0-00010101000000-000000000000
 	github.com/pquerna/otp v1.5.0
+	github.com/rs/zerolog v1.35.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/crypto v0.40.0
 	golang.org/x/image v0.0.0-20190910094157-69e4b8554b2a
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.30.0
+	gorm.io/gorm v1.31.1
 )
 
 require (
@@ -44,7 +46,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
-	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -58,3 +59,5 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/nbt4/cores-common => /opt/dev/cores-common

@@ -16,6 +16,8 @@ import (
 
 	"go-barcode-webapp/internal/cache"
 	"go-barcode-webapp/internal/compliance"
+	commonhealth "github.com/nbt4/cores-common/pkg/health"
+
 	"go-barcode-webapp/internal/config"
 	"go-barcode-webapp/internal/handlers"
 	"go-barcode-webapp/internal/logger"
@@ -746,13 +748,8 @@ func main() {
 	}
 
 	// Health check endpoint (no auth required)
-	r.GET("/health", func(c *gin.Context) {
-		if err := db.Ping(); err != nil {
-			c.JSON(503, gin.H{"status": "error", "service": "rentalcore", "version": "2.1.0", "error": err.Error()})
-			return
-		}
-		c.JSON(200, gin.H{"status": "ok", "service": "rentalcore", "version": "2.1.0"})
-	})
+	sqlDB, _ := db.DB.DB()
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "2.1.0")))
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))

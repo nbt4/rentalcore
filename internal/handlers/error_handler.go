@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"go-barcode-webapp/internal/logger"
+
+	commonresponse "github.com/nbt4/cores-common/pkg/response"
 )
 
 // ErrorHandler provides centralized error handling and recovery
@@ -67,7 +69,7 @@ func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.LogInfo("SafeJSON: JSON rendering panic: %v", r)
-			c.JSON(http.StatusInternalServerError, gin.H{
+			commonresponse.JSON(c.Writer, http.StatusInternalServerError, gin.H{
 				"error": "Internal server error",
 				"code":  "RENDER_ERROR",
 			})
@@ -75,7 +77,7 @@ func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 	}()
 	
 	logger.LogInfo("SafeJSON: Rendering JSON with status %d", statusCode)
-	c.JSON(statusCode, data)
+	commonresponse.JSON(c.Writer, statusCode, data)
 }
 
 // renderErrorPage renders a safe error page that should never fail
