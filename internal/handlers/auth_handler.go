@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,15 +19,20 @@ import (
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type AuthHandler struct {
-	db     *gorm.DB
-	config *config.Config
+	db           *gorm.DB
+	config       *config.Config
+	debugEnabled bool // FIXED: gate debug prints behind flag
 }
 
 func NewAuthHandler(db *gorm.DB, cfg *config.Config) *AuthHandler {
-	return &AuthHandler{db: db, config: cfg}
+	// FIXED: gate debug prints behind DEBUG env var
+	debugEnabled := os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1"
+	return &AuthHandler{db: db, config: cfg, debugEnabled: debugEnabled}
 }
 
 // LoginForm displays the login page
@@ -104,7 +108,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 		// Redirect to 2FA verification page
 		cookieDomain := getCookieDomain(c)
-		c.SetCookie("temp_session_id", tempSessionID, 300, "/", cookieDomain, false, true) // 5 minutes
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+		c.SetCookie("temp_session_id", tempSessionID, 300, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax // 5 minutes
 		c.Redirect(http.StatusSeeOther, "/login/2fa")
 		return
 	}
@@ -119,9 +124,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	fmt.Printf("DEBUG: Creating session for user %s (ID: %d)\n", user.Username, user.UserID)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Creating session for user %s (ID: %d)\n", user.Username, user.UserID) }
 	if err := h.db.Create(&session).Error; err != nil {
-		fmt.Printf("DEBUG: Session creation failed: %v\n", err)
+		h.debugf("DEBUG: Session creation failed: %v\n", err)
 		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
 			"title": "Login",
 			"error": "Login failed. Please try again.",
@@ -136,12 +141,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Set cookie with shared domain for SSO
 	cookieDomain := getCookieDomain(c)
-	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, false, true)
-	fmt.Printf("DEBUG: Login successful, session created: %s with cookie domain: %s\n", sessionID, cookieDomain)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Login successful, session created: %s with cookie domain: %s\n", sessionID, cookieDomain) }
 
 	// Check if password change is required
 	if user.ForcePasswordChange {
-		fmt.Printf("DEBUG: User %s must change password on first login\n", user.Username)
+		h.debugf("DEBUG: User %s must change password on first login\n", user.Username)
 		c.Redirect(http.StatusSeeOther, "/auth/force-password-change")
 		return
 	}
@@ -159,7 +165,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	// Clear cookie with same domain used for setting
 	cookieDomain := getCookieDomain(c)
-	c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+	c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 
 	// Redirect to login
 	c.Redirect(http.StatusSeeOther, "/login")
@@ -272,7 +279,7 @@ func (h *AuthHandler) HandleForcePasswordChange(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: User %s successfully changed password on first login\n", user.Username)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: User %s successfully changed password on first login\n", user.Username) }
 
 	// Redirect to home with success message
 	c.Redirect(http.StatusSeeOther, "/?password_changed=1")
@@ -310,7 +317,8 @@ func (h *AuthHandler) Login2FAVerify(c *gin.Context) {
 	var tempSession models.Session
 	if err := h.db.Where("session_id = ? AND expires_at > ?", tempSessionID, time.Now()).First(&tempSession).Error; err != nil {
 		cookieDomain := getCookieDomain(c)
-		c.SetCookie("temp_session_id", "", -1, "/", cookieDomain, false, true) // Clear cookie
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+		c.SetCookie("temp_session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax // Clear cookie
 		c.HTML(http.StatusUnauthorized, "login_2fa.html", gin.H{
 			"title": "Two-Factor Authentication",
 			"error": "Session expired. Please log in again.",
@@ -369,8 +377,9 @@ func (h *AuthHandler) Login2FAVerify(c *gin.Context) {
 
 	// Delete temporary session
 	cookieDomain := getCookieDomain(c)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
 	h.db.Delete(&tempSession)
-	c.SetCookie("temp_session_id", "", -1, "/", cookieDomain, false, true)
+	c.SetCookie("temp_session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 
 	// Create full session
 	sessionID := h.generateSessionID()
@@ -396,7 +405,7 @@ func (h *AuthHandler) Login2FAVerify(c *gin.Context) {
 	h.db.Save(&user)
 
 	// Set cookie with shared domain for SSO
-	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, false, true)
+	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 
 	// Redirect to home
 	c.Redirect(http.StatusSeeOther, "/")
@@ -416,19 +425,21 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			// Validate session
 			var session models.Session
 			if err := h.db.Where("session_id = ? AND expires_at > ?", sessionID, time.Now()).First(&session).Error; err != nil {
-				log.Printf("DEBUG: AuthMiddleware: Session validation failed for %s: %v", sessionID, err)
+				logger.LogInfo("DEBUG: AuthMiddleware: Session validation failed for %s: %v", sessionID, err)
 				// Clean up invalid session cookie and fall through to cores_token
 				cookieDomain := getCookieDomain(c)
-				c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+				c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 			} else {
 				// Load the user and verify they are still active
 				var user models.User
 				if err := h.db.Where("userID = ? AND is_active = ?", session.UserID, true).First(&user).Error; err != nil {
-					log.Printf("DEBUG: AuthMiddleware: User not found or inactive for session %s (UserID: %d): %v", sessionID, session.UserID, err)
+					logger.LogInfo("DEBUG: AuthMiddleware: User not found or inactive for session %s (UserID: %d): %v", sessionID, session.UserID, err)
 					// Delete the session since user is inactive/deleted and fall through to cores_token
 					cookieDomain := getCookieDomain(c)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
 					h.db.Where("session_id = ?", sessionID).Delete(&models.Session{})
-					c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+					c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 				} else {
 					// Session valid and user active — authenticated
 					c.Set("user", &user)
@@ -454,7 +465,7 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		if isAPI {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "code": "NO_SESSION"})
 		} else {
-			log.Printf("DEBUG: AuthMiddleware: No valid session or cores_token for %s, redirecting to /login", c.Request.URL.Path)
+			logger.LogInfo("DEBUG: AuthMiddleware: No valid session or cores_token for %s, redirecting to /login", c.Request.URL.Path)
 			c.Redirect(http.StatusSeeOther, "/login")
 			c.Abort()
 		}
@@ -564,25 +575,25 @@ func getCookieDomain(c *gin.Context) string {
 		domainParts = append(domainParts, temp)
 	}
 
-	fmt.Printf("DEBUG: getCookieDomain: host=%s, parsed parts=%v\n", host, domainParts)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: getCookieDomain: host=%s, parsed parts=%v\n", host, domainParts) }
 
 	// If we have at least 3 parts (e.g., rent.server-nt.de), use parent domain
 	// For rent.server-nt.de -> parts=["rent", "server-nt", "de"] -> return ".server-nt.de"
 	if len(domainParts) >= 3 {
 		parentDomain := domainParts[len(domainParts)-2] + "." + domainParts[len(domainParts)-1]
-		fmt.Printf("DEBUG: getCookieDomain: returning parent domain: .%s\n", parentDomain)
+		if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: getCookieDomain: returning parent domain: .%s\n", parentDomain) }
 		return "." + parentDomain // Leading dot for all subdomains
 	}
 
 	// If we have 2 parts (e.g., server-nt.de), also use it with leading dot
 	if len(domainParts) == 2 {
 		parentDomain := domainParts[0] + "." + domainParts[1]
-		fmt.Printf("DEBUG: getCookieDomain: returning domain with dot: .%s\n", parentDomain)
+		if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: getCookieDomain: returning domain with dot: .%s\n", parentDomain) }
 		return "." + parentDomain
 	}
 
 	// Fallback: no domain restriction
-	fmt.Printf("DEBUG: getCookieDomain: fallback to empty string\n")
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: getCookieDomain: fallback to empty string\n") }
 	return ""
 }
 
@@ -594,7 +605,7 @@ func (h *AuthHandler) CleanupExpiredSessions() error {
 	}
 
 	if result.RowsAffected > 0 {
-		fmt.Printf("DEBUG: Cleaned up %d expired sessions\n", result.RowsAffected)
+		h.debugf("DEBUG: Cleaned up %d expired sessions\n", result.RowsAffected)
 	}
 
 	return nil
@@ -610,7 +621,7 @@ func (h *AuthHandler) StartSessionCleanup() {
 			select {
 			case <-ticker.C:
 				if err := h.CleanupExpiredSessions(); err != nil {
-					fmt.Printf("ERROR: Failed to cleanup expired sessions: %v\n", err)
+					logger.LogWarn("ERROR: Failed to cleanup expired sessions: %v\n", err)
 				}
 			}
 		}
@@ -689,51 +700,51 @@ func GetAppDomains(c *gin.Context) (string, string) {
 
 // ListUsers displays all users
 func (h *AuthHandler) ListUsers(c *gin.Context) {
-	fmt.Printf("DEBUG: ListUsers called - URL: %s\n", c.Request.URL.Path)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: ListUsers called - URL: %s\n", c.Request.URL.Path) }
 
 	var users []models.User
 	if err := h.db.Order("created_at DESC").Find(&users).Error; err != nil {
-		fmt.Printf("DEBUG: Database error: %v\n", err)
+		h.debugf("DEBUG: Database error: %v\n", err)
 		currentUser, _ := GetCurrentUser(c)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": err.Error(), "user": currentUser})
 		return
 	}
 
-	fmt.Printf("DEBUG: Found %d users\n", len(users))
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Found %d users\n", len(users)) }
 	currentUser, exists := GetCurrentUser(c)
-	fmt.Printf("DEBUG: Current user exists: %v, User: %+v\n", exists, currentUser)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Current user exists: %v, User: %+v\n", exists, currentUser) }
 
-	fmt.Printf("DEBUG: Rendering users_list.html with currentPage = 'users'\n")
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Rendering users_list.html with currentPage = 'users'\n") }
 	c.HTML(http.StatusOK, "users_list.html", gin.H{
 		"title":       "User Management",
 		"users":       users,
 		"user":        currentUser,
 		"currentPage": "users",
 	})
-	fmt.Printf("DEBUG: ListUsers template rendered\n")
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: ListUsers template rendered\n") }
 }
 
 // NewUserForm displays the create user form
 func (h *AuthHandler) NewUserForm(c *gin.Context) {
 	// Debug: Let's see what's happening
-	fmt.Printf("DEBUG: NewUserForm called - URL: %s\n", c.Request.URL.Path)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: NewUserForm called - URL: %s\n", c.Request.URL.Path) }
 
 	currentUser, exists := GetCurrentUser(c)
-	fmt.Printf("DEBUG: User exists: %v, User: %+v\n", exists, currentUser)
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: User exists: %v, User: %+v\n", exists, currentUser) }
 
 	if !exists || currentUser == nil {
-		fmt.Printf("DEBUG: No user found, redirecting to login\n")
+		h.debugf("DEBUG: No user found, redirecting to login\n")
 		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
 
-	fmt.Printf("DEBUG: Rendering user_form.html template\n")
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Rendering user_form.html template\n") }
 	c.HTML(http.StatusOK, "user_form.html", gin.H{
 		"title":    "Create New User",
 		"formUser": &models.User{},
 		"user":     currentUser,
 	})
-	fmt.Printf("DEBUG: Template rendered successfully\n")
+	if os.Getenv("DEBUG") == "true" || os.Getenv("DEBUG") == "1" { logger.LogWarn("DEBUG: Template rendered successfully\n") }
 }
 
 // CreateUserWeb handles user creation from web form
@@ -1327,7 +1338,8 @@ func (h *AuthHandler) LoginAPI(c *gin.Context) {
 	h.db.Save(&user)
 
 	cookieDomain := getCookieDomain(c)
-	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, false, true)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 
 	var userRoles []models.UserRole
 	h.db.Preload("Role").Where("user_id = ?", user.UserID).Find(&userRoles)
@@ -1365,7 +1377,8 @@ func (h *AuthHandler) LogoutAPI(c *gin.Context) {
 		h.db.Where("session_id = ?", sessionID).Delete(&models.Session{})
 	}
 	cookieDomain := getCookieDomain(c)
-	c.SetCookie("session_id", "", -1, "/", cookieDomain, false, true)
+	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
+	c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -1449,6 +1462,14 @@ func (h *AuthHandler) ChangePasswordAPI(c *gin.Context) {
 }
 
 // logAdminAction logs admin actions for auditing
+
+// FIXED: debugf only prints when debug is enabled
+func (h *AuthHandler) debugf(format string, args ...interface{}) {
+	if h.debugEnabled {
+		logger.LogWarn(format, args...)
+	}
+}
+
 func (h *AuthHandler) logAdminAction(c *gin.Context, action, entityType, entityID string, adminUserID uint) {
 	auditLog := models.AuditLog{
 		UserID:     &adminUserID,

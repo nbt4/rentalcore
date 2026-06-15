@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Search, RefreshCw, Users, ArrowLeft, X, Check, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { customersApi } from '../lib/api';
 import type { Customer } from '../lib/api';
+import { toast } from '../lib/toast';
 
 function customerDisplayName(c: Customer) {
   if (c.companyname) return c.companyname;
@@ -25,7 +26,7 @@ function CustomerDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    customersApi.getById(id).then((r) => setCustomer(r.data)).catch(console.error).finally(() => setLoading(false));
+    customersApi.getById(id).then((r) => setCustomer(r.data)).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
@@ -95,7 +96,7 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
   useEffect(() => {
     if (!customerId) return;
     setLoading(true);
-    customersApi.getById(customerId).then((r) => setForm(r.data)).catch(console.error).finally(() => setLoading(false));
+    customersApi.getById(customerId).then((r) => setForm(r.data)).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [customerId]);
 
   const save = async (e: React.FormEvent) => {
@@ -229,7 +230,7 @@ export function CustomersPage() {
   const load = useCallback(() => {
     setLoading(true);
     customersApi.getAll(roleFilter === 'all' ? {} : { role: roleFilter })
-      .then((r) => setCustomers(r.data.customers || [])).catch(console.error).finally(() => setLoading(false));
+      .then((r) => setCustomers(r.data.customers || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [roleFilter]);
 
   useEffect(() => { load(); }, [load]);

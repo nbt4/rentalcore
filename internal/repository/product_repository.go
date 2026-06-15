@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"log"
 	"go-barcode-webapp/internal/models"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type ProductRepository struct {
@@ -78,12 +79,12 @@ func (r *ProductRepository) GetAllCategories() ([]models.Category, error) {
 	var categories []models.Category
 	err := r.db.Order("name ASC").Find(&categories).Error
 	if err != nil {
-		log.Printf("❌ GetAllCategories error: %v", err)
+		logger.LogInfo("❌ GetAllCategories error: %v", err)
 		return nil, err
 	}
-	log.Printf("🔧 GetAllCategories: Found %d categories in database", len(categories))
+	logger.LogInfo("🔧 GetAllCategories: Found %d categories in database", len(categories))
 	for _, cat := range categories {
-		log.Printf("🔧 Category from DB: %s (ID: %d)", cat.Name, cat.CategoryID)
+		logger.LogInfo("🔧 Category from DB: %s (ID: %d)", cat.Name, cat.CategoryID)
 	}
 	return categories, err
 }
@@ -172,7 +173,7 @@ func (r *ProductRepository) GetDevicesBySubcategory(subcategoryID string) ([]mod
 }
 
 func (r *ProductRepository) GetDevicesByCategory(categoryID uint) ([]models.DeviceWithJobInfo, error) {
-	log.Printf("🔍 GetDevicesByCategory: Searching for devices in category %d", categoryID)
+	logger.LogInfo("🔍 GetDevicesByCategory: Searching for devices in category %d", categoryID)
 	var devices []models.Device
 	
 	err := r.db.Model(&models.Device{}).
@@ -186,11 +187,11 @@ func (r *ProductRepository) GetDevicesByCategory(categoryID uint) ([]models.Devi
 		Find(&devices).Error
 	
 	if err != nil {
-		log.Printf("❌ GetDevicesByCategory: Database error for category %d: %v", categoryID, err)
+		logger.LogInfo("❌ GetDevicesByCategory: Database error for category %d: %v", categoryID, err)
 		return nil, err
 	}
 	
-	log.Printf("🔍 GetDevicesByCategory: Found %d devices for category %d", len(devices), categoryID)
+	logger.LogInfo("🔍 GetDevicesByCategory: Found %d devices for category %d", len(devices), categoryID)
 	
 	// Convert to DeviceWithJobInfo format
 	var result []models.DeviceWithJobInfo

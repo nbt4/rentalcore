@@ -2,7 +2,8 @@ package schema
 
 import (
 	"database/sql"
-	"log"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 func EnsureVenuesTable(db *sql.DB) error {
@@ -25,7 +26,7 @@ func EnsureVenuesTable(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	log.Println("venues schema: table verified")
+	logger.LogInfo("venues schema: table verified")
 	return nil
 }
 
@@ -45,6 +46,6 @@ func EnsureJobsVenueID(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	log.Println("venues schema: venue_id column added to jobs")
+	logger.LogInfo("venues schema: venue_id column added to jobs")
 	return nil
 }

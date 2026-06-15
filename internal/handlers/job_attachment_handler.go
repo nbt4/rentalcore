@@ -7,7 +7,6 @@ import (
 	"go-barcode-webapp/internal/repository"
 	"go-barcode-webapp/internal/services"
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -18,6 +17,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type JobAttachmentHandler struct {
@@ -36,7 +37,7 @@ func NewJobAttachmentHandler(repo *repository.JobAttachmentRepository, jobRepo *
 
 	// Create upload directory if it doesn't exist
 	if err := os.MkdirAll(uploadPath, 0755); err != nil {
-		log.Printf("Error creating upload directory: %v", err)
+		logger.LogInfo("Error creating upload directory: %v", err)
 	}
 
 	// Get DB from repo for documents query
@@ -72,7 +73,7 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Verify job exists
 	_, err = h.jobRepo.GetByID(uint(jobID))
 	if err != nil {
-		log.Printf("Job not found for ID %d: %v", jobID, err)
+		logger.LogInfo("Job not found for ID %d: %v", jobID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
 		return
 	}
@@ -80,7 +81,7 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Get uploaded file
 	file, fileHeader, err := c.Request.FormFile("file")
 	if err != nil {
-		log.Printf("Error getting uploaded file: %v", err)
+		logger.LogInfo("Error getting uploaded file: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
 		return
 	}
@@ -110,7 +111,7 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Create destination file
 	dst, err := os.Create(fullPath)
 	if err != nil {
-		log.Printf("Error creating destination file: %v", err)
+		logger.LogInfo("Error creating destination file: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
 	}
@@ -119,7 +120,7 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 	// Copy file content
 	fileSize, err := io.Copy(dst, file)
 	if err != nil {
-		log.Printf("Error copying file content: %v", err)
+		logger.LogInfo("Error copying file content: %v", err)
 		// Clean up created file
 		os.Remove(fullPath)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
@@ -151,21 +152,21 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 
 	err = h.repo.Create(attachment)
 	if err != nil {
-		log.Printf("Error saving attachment to database: %v", err)
+		logger.LogInfo("Error saving attachment to database: %v", err)
 		// Clean up created file
 		os.Remove(fullPath)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save attachment"})
 		return
 	}
 
-	log.Printf("✅ Successfully uploaded attachment %s for job %d", originalFilename, jobID)
+	logger.LogInfo("✅ Successfully uploaded attachment %s for job %d", originalFilename, jobID)
 
 	// Log file upload to job history
 	if h.historyService != nil {
 		ipAddress := c.ClientIP()
 		userAgent := c.Request.UserAgent()
 		if err := h.historyService.LogFileAdded(uint(jobID), originalFilename, userID, ipAddress, userAgent); err != nil {
-			log.Printf("Warning: Failed to log file upload to history: %v", err)
+			logger.LogInfo("Warning: Failed to log file upload to history: %v", err)
 			// Don't fail the upload if history logging fails
 		}
 	}
@@ -193,7 +194,7 @@ func (h *JobAttachmentHandler) GetJobAttachments(c *gin.Context) {
 	// Query traditional job_attachments table
 	attachments, err := h.repo.GetByJobID(uint(jobID))
 	if err != nil {
-		log.Printf("Error getting attachments for job %d: %v", jobID, err)
+		logger.LogInfo("Error getting attachments for job %d: %v", jobID, err)
 		// Continue with documents query even if this fails
 	}
 
@@ -225,7 +226,7 @@ func (h *JobAttachmentHandler) GetJobAttachments(c *gin.Context) {
 		if err := h.db.Where("entity_type = ? AND entity_id = ?", "job", jobIDEntityID).
 			Order("uploaded_at DESC").
 			Find(&documents).Error; err != nil {
-			log.Printf("Error getting documents for job %d: %v", jobID, err)
+			logger.LogInfo("Error getting documents for job %d: %v", jobID, err)
 		} else {
 			// Convert documents to response format
 			for _, doc := range documents {
@@ -267,14 +268,14 @@ func (h *JobAttachmentHandler) ViewAttachment(c *gin.Context) {
 
 	attachment, err := h.repo.GetByID(uint(attachmentID))
 	if err != nil {
-		log.Printf("Attachment not found for ID %d: %v", attachmentID, err)
+		logger.LogInfo("Attachment not found for ID %d: %v", attachmentID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 		return
 	}
 
 	// Check if file exists
 	if _, err := os.Stat(attachment.FilePath); os.IsNotExist(err) {
-		log.Printf("File not found on disk: %s", attachment.FilePath)
+		logger.LogInfo("File not found on disk: %s", attachment.FilePath)
 		c.JSON(http.StatusNotFound, gin.H{"error": "File not found on disk"})
 		return
 	}
@@ -307,14 +308,14 @@ func (h *JobAttachmentHandler) DownloadAttachment(c *gin.Context) {
 
 	attachment, err := h.repo.GetByID(uint(attachmentID))
 	if err != nil {
-		log.Printf("Attachment not found for ID %d: %v", attachmentID, err)
+		logger.LogInfo("Attachment not found for ID %d: %v", attachmentID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 		return
 	}
 
 	// Check if file exists
 	if _, err := os.Stat(attachment.FilePath); os.IsNotExist(err) {
-		log.Printf("File not found on disk: %s", attachment.FilePath)
+		logger.LogInfo("File not found on disk: %s", attachment.FilePath)
 		c.JSON(http.StatusNotFound, gin.H{"error": "File not found on disk"})
 		return
 	}
@@ -342,7 +343,7 @@ func (h *JobAttachmentHandler) DeleteAttachment(c *gin.Context) {
 	// Get attachment to verify it exists
 	attachment, err := h.repo.GetByID(uint(attachmentID))
 	if err != nil {
-		log.Printf("Attachment not found for ID %d: %v", attachmentID, err)
+		logger.LogInfo("Attachment not found for ID %d: %v", attachmentID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 		return
 	}
@@ -350,12 +351,12 @@ func (h *JobAttachmentHandler) DeleteAttachment(c *gin.Context) {
 	// Soft delete (set is_active to false)
 	err = h.repo.Delete(uint(attachmentID))
 	if err != nil {
-		log.Printf("Error deleting attachment %d: %v", attachmentID, err)
+		logger.LogInfo("Error deleting attachment %d: %v", attachmentID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete attachment"})
 		return
 	}
 
-	log.Printf("✅ Successfully deleted attachment %s (ID: %d)", attachment.OriginalFilename, attachmentID)
+	logger.LogInfo("✅ Successfully deleted attachment %s (ID: %d)", attachment.OriginalFilename, attachmentID)
 
 	// Log file removal to job history
 	if h.historyService != nil {
@@ -363,7 +364,7 @@ func (h *JobAttachmentHandler) DeleteAttachment(c *gin.Context) {
 		ipAddress := c.ClientIP()
 		userAgent := c.Request.UserAgent()
 		if err := h.historyService.LogFileRemoved(attachment.JobID, attachment.OriginalFilename, userID, ipAddress, userAgent); err != nil {
-			log.Printf("Warning: Failed to log file removal to history: %v", err)
+			logger.LogInfo("Warning: Failed to log file removal to history: %v", err)
 		}
 	}
 
@@ -390,7 +391,7 @@ func (h *JobAttachmentHandler) UpdateAttachmentDescription(c *gin.Context) {
 
 	attachment, err := h.repo.GetByID(uint(attachmentID))
 	if err != nil {
-		log.Printf("Attachment not found for ID %d: %v", attachmentID, err)
+		logger.LogInfo("Attachment not found for ID %d: %v", attachmentID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 		return
 	}
@@ -398,12 +399,12 @@ func (h *JobAttachmentHandler) UpdateAttachmentDescription(c *gin.Context) {
 	attachment.Description = req.Description
 	err = h.repo.Update(attachment)
 	if err != nil {
-		log.Printf("Error updating attachment description for ID %d: %v", attachmentID, err)
+		logger.LogInfo("Error updating attachment description for ID %d: %v", attachmentID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update attachment"})
 		return
 	}
 
-	log.Printf("✅ Successfully updated description for attachment %d", attachmentID)
+	logger.LogInfo("✅ Successfully updated description for attachment %d", attachmentID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Description updated successfully"})
 }

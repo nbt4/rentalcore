@@ -15,6 +15,8 @@ import (
 	"go-barcode-webapp/internal/services/warehousecore"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 const (
@@ -26,7 +28,7 @@ func jobDebugLog(format string, args ...interface{}) {
 	if !jobDebugLogsEnabled {
 		return
 	}
-	fmt.Printf(format, args...)
+	logger.LogWarn(format, args...)
 }
 
 func normalizeProductSelections(selections []JobProductSelection) []JobProductSelection {
@@ -516,7 +518,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		userAgent := c.Request.UserAgent()
 		if err := h.jobHistoryService.LogJobCreation(job.JobID, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
-			fmt.Printf("Warning: Failed to log job creation: %v\n", err)
+			logger.LogWarn("Warning: Failed to log job creation: %v\n", err)
 		}
 	}
 
@@ -539,10 +541,10 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		rentalSelections, err := parseRentalEquipmentSelections(rentalStr)
 		if err != nil {
 			// Log but don't fail - rental equipment is optional
-			fmt.Printf("Warning: Failed to parse rental equipment selections: %v\n", err)
+			logger.LogWarn("Warning: Failed to parse rental equipment selections: %v\n", err)
 		} else if len(rentalSelections) > 0 {
 			if err := h.processRentalEquipmentSelections(job.JobID, rentalSelections); err != nil {
-				fmt.Printf("Warning: Failed to process rental equipment: %v\n", err)
+				logger.LogWarn("Warning: Failed to process rental equipment: %v\n", err)
 			}
 		}
 	}
@@ -726,7 +728,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		userAgent := c.Request.UserAgent()
 		if err := h.jobHistoryService.LogJobUpdate(&oldJob, job, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
-			fmt.Printf("Warning: Failed to log job update: %v\n", err)
+			logger.LogWarn("Warning: Failed to log job update: %v\n", err)
 		}
 	}
 
@@ -747,10 +749,10 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		rentalSelections, err := parseRentalEquipmentSelections(rentalStr)
 		if err != nil {
 			// Log but don't fail - rental equipment is optional
-			fmt.Printf("Warning: Failed to parse rental equipment selections: %v\n", err)
+			logger.LogWarn("Warning: Failed to parse rental equipment selections: %v\n", err)
 		} else if len(rentalSelections) > 0 {
 			if err := h.processRentalEquipmentSelections(job.JobID, rentalSelections); err != nil {
-				fmt.Printf("Warning: Failed to process rental equipment: %v\n", err)
+				logger.LogWarn("Warning: Failed to process rental equipment: %v\n", err)
 			}
 		}
 	}
@@ -1034,7 +1036,7 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		userAgent := c.Request.UserAgent()
 		if err := h.jobHistoryService.LogJobCreation(job.JobID, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
-			fmt.Printf("Warning: Failed to log job creation: %v\n", err)
+			logger.LogWarn("Warning: Failed to log job creation: %v\n", err)
 		}
 	}
 
@@ -1220,7 +1222,7 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		userAgent := c.Request.UserAgent()
 		if err := h.jobHistoryService.LogJobUpdate(&oldJob, &job, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
-			fmt.Printf("Warning: Failed to log job update: %v\n", err)
+			logger.LogWarn("Warning: Failed to log job update: %v\n", err)
 		}
 	}
 
@@ -1581,7 +1583,7 @@ func (h *JobHandler) GetScanBoardData(c *gin.Context) {
 
 	rows, err := h.jobRepo.GetDB().Raw(query, jobID).Rows()
 	if err != nil {
-		fmt.Printf("Error getting scan board devices: %v\n", err)
+		logger.LogWarn("Error getting scan board devices: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load devices"})
 		return
 	}
@@ -1651,7 +1653,7 @@ func (h *JobHandler) ScanDeviceForPack(c *gin.Context) {
 		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
 		Count(&count).Error
 	if err != nil {
-		fmt.Printf("Error checking device job membership: %v\n", err)
+		logger.LogWarn("Error checking device job membership: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
@@ -1670,7 +1672,7 @@ func (h *JobHandler) ScanDeviceForPack(c *gin.Context) {
 			"pack_ts":     now,
 		}).Error
 	if err != nil {
-		fmt.Printf("Error updating pack status: %v\n", err)
+		logger.LogWarn("Error updating pack status: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pack status"})
 		return
 	}
@@ -1721,7 +1723,7 @@ func (h *JobHandler) UpdateDevicePackStatus(c *gin.Context) {
 		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
 		Count(&count).Error
 	if err != nil {
-		fmt.Printf("Error checking device assignment: %v\n", err)
+		logger.LogWarn("Error checking device assignment: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
@@ -1746,7 +1748,7 @@ func (h *JobHandler) UpdateDevicePackStatus(c *gin.Context) {
 		Where("jobID = ? AND deviceID = ?", jobID, deviceID).
 		Updates(updateData).Error
 	if err != nil {
-		fmt.Printf("Error updating pack status: %v\n", err)
+		logger.LogWarn("Error updating pack status: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pack status"})
 		return
 	}
@@ -1791,7 +1793,7 @@ func (h *JobHandler) FinishPack(c *gin.Context) {
 
 	rows, err := h.jobRepo.GetDB().Raw(query, jobID).Rows()
 	if err != nil {
-		fmt.Printf("Error getting missing items: %v\n", err)
+		logger.LogWarn("Error getting missing items: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check missing items"})
 		return
 	}
@@ -1828,7 +1830,7 @@ func (h *JobHandler) FinishPack(c *gin.Context) {
 				"pack_ts":     now,
 			}).Error
 		if err != nil {
-			fmt.Printf("Error marking all as packed: %v\n", err)
+			logger.LogWarn("Error marking all as packed: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finish packing"})
 			return
 		}

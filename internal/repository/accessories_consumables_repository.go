@@ -2,10 +2,11 @@ package repository
 
 import (
 	"fmt"
-	"log"
 
 	"go-barcode-webapp/internal/models"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type AccessoriesConsumablesRepository struct {
@@ -400,5 +401,5 @@ func (r *AccessoriesConsumablesRepository) GetDB() *Database {
 }
 
 func init() {
-	log.Println("📦 Accessories and Consumables Repository initialized")
+	logger.LogInfo("📦 Accessories and Consumables Repository initialized")
 }

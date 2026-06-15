@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type ProductHandler struct {
@@ -25,13 +26,13 @@ func NewProductHandler(productRepo *repository.ProductRepository) *ProductHandle
 // Web interface handlers
 func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 	startTime := time.Now()
-	log.Printf("🚀 ProductHandler.ListProductsWeb() started")
+	logger.LogInfo("🚀 ProductHandler.ListProductsWeb() started")
 	
 	user, _ := GetCurrentUser(c)
 	
 	params := &models.FilterParams{}
 	if err := c.ShouldBindQuery(params); err != nil {
-		log.Printf("❌ Error binding query parameters: %v", err)
+		logger.LogInfo("❌ Error binding query parameters: %v", err)
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=400&message=Bad Request&details=%s", err.Error()))
 		return
 	}
@@ -54,7 +55,7 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 	params.Page = page
 
 	viewType := c.DefaultQuery("view", "list") // Default to list view
-	log.Printf("🐛 DEBUG: Product view requested: viewType='%s'", viewType)
+	logger.LogInfo("🐛 DEBUG: Product view requested: viewType='%s'", viewType)
 
 	// Get total product count first (without pagination) for proper pagination calculation
 	var totalProducts int64
@@ -67,7 +68,7 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 		countQuery = countQuery.Where("category = ?", params.Category)
 	}
 	if err := countQuery.Count(&totalProducts).Error; err != nil {
-		log.Printf("❌ Count query error: %v", err)
+		logger.LogInfo("❌ Count query error: %v", err)
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
@@ -81,10 +82,10 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 	dbStart := time.Now()
 	products, err := h.productRepo.List(params)
 	dbTime := time.Since(dbStart)
-	log.Printf("⏱️  Database query took: %v", dbTime)
+	logger.LogInfo("⏱️  Database query took: %v", dbTime)
 	
 	if err != nil {
-		log.Printf("❌ Database error: %v", err)
+		logger.LogInfo("❌ Database error: %v", err)
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
@@ -105,8 +106,8 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 	
 	templateTime := time.Since(templateStart)
 	totalTime := time.Since(startTime)
-	log.Printf("⏱️  Template rendering took: %v", templateTime)
-	log.Printf("🏁 ProductHandler.ListProductsWeb() completed in %v", totalTime)
+	logger.LogInfo("⏱️  Template rendering took: %v", templateTime)
+	logger.LogInfo("🏁 ProductHandler.ListProductsWeb() completed in %v", totalTime)
 }
 
 func (h *ProductHandler) NewProductForm(c *gin.Context) {
@@ -180,15 +181,15 @@ func (h *ProductHandler) GetProductAPI(c *gin.Context) {
 func (h *ProductHandler) CreateProductAPI(c *gin.Context) {
 	var product models.Product
 	if err := c.ShouldBindJSON(&product); err != nil {
-		log.Printf("❌ Error binding product JSON: %v", err)
+		logger.LogInfo("❌ Error binding product JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid product data: %v", err)})
 		return
 	}
 
-	log.Printf("📦 Creating product: %+v", product)
+	logger.LogInfo("📦 Creating product: %+v", product)
 
 	if err := h.productRepo.Create(&product); err != nil {
-		log.Printf("❌ Error creating product: %v", err)
+		logger.LogInfo("❌ Error creating product: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 		return
 	}
@@ -206,16 +207,16 @@ func (h *ProductHandler) UpdateProductAPI(c *gin.Context) {
 
 	var product models.Product
 	if err := c.ShouldBindJSON(&product); err != nil {
-		log.Printf("❌ Error binding product JSON for update: %v", err)
+		logger.LogInfo("❌ Error binding product JSON for update: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid product data: %v", err)})
 		return
 	}
 
-	log.Printf("📦 Updating product %d: %+v", id, product)
+	logger.LogInfo("📦 Updating product %d: %+v", id, product)
 
 	product.ProductID = uint(id)
 	if err := h.productRepo.Update(&product); err != nil {
-		log.Printf("❌ Error updating product: %v", err)
+		logger.LogInfo("❌ Error updating product: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update product"})
 		return
 	}
@@ -227,7 +228,7 @@ func (h *ProductHandler) UpdateProductAPI(c *gin.Context) {
 func (h *ProductHandler) GetSubcategoriesAPI(c *gin.Context) {
 	var subcategories []models.Subcategory
 	if err := h.productRepo.GetAllSubcategories(&subcategories); err != nil {
-		log.Printf("❌ Error fetching subcategories: %v", err)
+		logger.LogInfo("❌ Error fetching subcategories: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subcategories"})
 		return
 	}
@@ -239,7 +240,7 @@ func (h *ProductHandler) GetSubcategoriesAPI(c *gin.Context) {
 func (h *ProductHandler) GetSubbiercategoriesAPI(c *gin.Context) {
 	var subbiercategories []models.Subbiercategory
 	if err := h.productRepo.GetAllSubbiercategories(&subbiercategories); err != nil {
-		log.Printf("❌ Error fetching subbiercategories: %v", err)
+		logger.LogInfo("❌ Error fetching subbiercategories: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subbiercategories"})
 		return
 	}
@@ -263,7 +264,7 @@ func (h *ProductHandler) GetSubcategoriesByCategoryAPI(c *gin.Context) {
 
 	var subcategories []models.Subcategory
 	if err := h.productRepo.GetSubcategoriesByCategory(uint(categoryID), &subcategories); err != nil {
-		log.Printf("❌ Error fetching subcategories for category %d: %v", categoryID, err)
+		logger.LogInfo("❌ Error fetching subcategories for category %d: %v", categoryID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subcategories"})
 		return
 	}
@@ -281,7 +282,7 @@ func (h *ProductHandler) GetSubbiercategoriesBySubcategoryAPI(c *gin.Context) {
 
 	var subbiercategories []models.Subbiercategory
 	if err := h.productRepo.GetSubbiercategoriesBySubcategory(subcategoryIDStr, &subbiercategories); err != nil {
-		log.Printf("❌ Error fetching subbiercategories for subcategory %s: %v", subcategoryIDStr, err)
+		logger.LogInfo("❌ Error fetching subbiercategories for subcategory %s: %v", subcategoryIDStr, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subbiercategories"})
 		return
 	}
@@ -293,7 +294,7 @@ func (h *ProductHandler) GetSubbiercategoriesBySubcategoryAPI(c *gin.Context) {
 func (h *ProductHandler) GetBrandsAPI(c *gin.Context) {
 	var brands []models.Brand
 	if err := h.productRepo.GetAllBrands(&brands); err != nil {
-		log.Printf("❌ Error fetching brands: %v", err)
+		logger.LogInfo("❌ Error fetching brands: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch brands"})
 		return
 	}
@@ -305,7 +306,7 @@ func (h *ProductHandler) GetBrandsAPI(c *gin.Context) {
 func (h *ProductHandler) GetManufacturersAPI(c *gin.Context) {
 	var manufacturers []models.Manufacturer
 	if err := h.productRepo.GetAllManufacturers(&manufacturers); err != nil {
-		log.Printf("❌ Error fetching manufacturers: %v", err)
+		logger.LogInfo("❌ Error fetching manufacturers: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch manufacturers"})
 		return
 	}

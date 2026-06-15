@@ -15,6 +15,8 @@ import (
 	"go-barcode-webapp/internal/services"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // Simple cache for devices
@@ -1082,9 +1084,9 @@ func (h *DeviceHandler) buildProductTreeData(startDate, endDate *time.Time, excl
 	if err := db.Order("name ASC").Find(&categories).Error; err != nil {
 		return nil, fmt.Errorf("failed to load categories: %v", err)
 	}
-	fmt.Printf("🔍 Loaded %d categories from DB\n", len(categories))
+	logger.LogWarn("🔍 Loaded %d categories from DB\n", len(categories))
 	for i, c := range categories {
-		fmt.Printf("  Cat %d: ID=%d Name=%q\n", i+1, c.CategoryID, c.Name)
+		logger.LogWarn("  Cat %d: ID=%d Name=%q\n", i+1, c.CategoryID, c.Name)
 	}
 
 	if err := db.Order("name ASC").Find(&subcategories).Error; err != nil {
@@ -1098,7 +1100,7 @@ func (h *DeviceHandler) buildProductTreeData(startDate, endDate *time.Time, excl
 	if err := db.Preload("Brand").Preload("Manufacturer").Preload("CountType").Order("name ASC").Find(&products).Error; err != nil {
 		return nil, fmt.Errorf("failed to load products: %v", err)
 	}
-	fmt.Printf("🔍 Loaded %d products from DB\n", len(products))
+	logger.LogWarn("🔍 Loaded %d products from DB\n", len(products))
 
 	// 3. Build Tree Structure - Create Maps
 	categoryMap := make(map[uint]*TreeCategory)
@@ -1299,9 +1301,9 @@ func (h *DeviceHandler) buildProductTreeData(startDate, endDate *time.Time, excl
 		return strings.ToLower(treeCategories[i].Name) < strings.ToLower(treeCategories[j].Name)
 	})
 
-	fmt.Printf("🌳 Returning %d tree categories\n", len(treeCategories))
+	logger.LogWarn("🌳 Returning %d tree categories\n", len(treeCategories))
 	for i, tc := range treeCategories {
-		fmt.Printf("  TreeCat %d: ID=%d Name=%q Subcats=%d Products=%d\n",
+		logger.LogWarn("  TreeCat %d: ID=%d Name=%q Subcats=%d Products=%d\n",
 			i+1, tc.ID, tc.Name, len(tc.Subcategories), len(tc.Products))
 	}
 
@@ -1379,7 +1381,7 @@ func (h *DeviceHandler) buildTreeFromDevices(devices []models.Device) ([]TreeCat
 
 		// Debug logging for MIX1001 devices
 		if device.Product.Subbiercategory != nil && device.Product.Subbiercategory.SubbiercategoryID == "MIX1001" {
-			fmt.Printf("🔧 DEBUG MIX1001 Device: %s, Product: %s, SerialNumber: %v\n",
+			logger.LogWarn("🔧 DEBUG MIX1001 Device: %s, Product: %s, SerialNumber: %v\n",
 				device.DeviceID, device.Product.Name, device.SerialNumber)
 		}
 
@@ -1496,10 +1498,10 @@ func (h *DeviceHandler) buildTreeFromDevices(devices []models.Device) ([]TreeCat
 
 						// Debug logging for MIX1001
 						if subbiercategoryID == "MIX1001" {
-							fmt.Printf("🔧 DEBUG Creating MIX1001 TreeSubbiercategory: Name='%s', DeviceCount=%d\n",
+							logger.LogWarn("🔧 DEBUG Creating MIX1001 TreeSubbiercategory: Name='%s', DeviceCount=%d\n",
 								subbiercategoryName, len(treeDevices))
 							for i, device := range treeDevices {
-								fmt.Printf("🔧 DEBUG MIX1001 TreeDevice[%d]: %s - %s\n",
+								logger.LogWarn("🔧 DEBUG MIX1001 TreeDevice[%d]: %s - %s\n",
 									i, device.DeviceID, device.ProductName)
 							}
 						}

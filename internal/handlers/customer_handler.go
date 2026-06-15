@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // SyncServiceInterface erlaubt nil-Check ohne Import-Zyklus.
@@ -88,15 +89,15 @@ func (h *CustomerHandler) NewCustomerForm(c *gin.Context) {
 
 func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	// Debug: Print all form data
-	fmt.Printf("🚨 DEBUG: Customer creation called!\n")
-	fmt.Printf("🚨 DEBUG: HTTP Method: %s\n", c.Request.Method)
-	fmt.Printf("🚨 DEBUG: Content-Type: %s\n", c.ContentType())
-	fmt.Printf("🚨 DEBUG: All form fields:\n")
+	logger.LogWarn("🚨 DEBUG: Customer creation called!\n")
+	logger.LogWarn("🚨 DEBUG: HTTP Method: %s\n", c.Request.Method)
+	logger.LogWarn("🚨 DEBUG: Content-Type: %s\n", c.ContentType())
+	logger.LogWarn("🚨 DEBUG: All form fields:\n")
 	
 	// Parse form first
 	c.Request.ParseForm()
 	for key, values := range c.Request.PostForm {
-		fmt.Printf("   %s: %v\n", key, values)
+		logger.LogWarn("   %s: %v\n", key, values)
 	}
 	
 	companyName := c.PostForm("company_name")
@@ -114,13 +115,13 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	notes := c.PostForm("notes")
 	
 	// Debug logging
-	fmt.Printf("🔧 DEBUG: Creating customer with parsed data:\n")
-	fmt.Printf("   CompanyName: '%s'\n", companyName)
-	fmt.Printf("   FirstName: '%s'\n", firstName)
-	fmt.Printf("   LastName: '%s'\n", lastName)
-	fmt.Printf("   Email: '%s'\n", email)
-	fmt.Printf("   PhoneNumber: '%s'\n", phoneNumber)
-	fmt.Printf("   CustomerType: '%s'\n", customerType)
+	logger.LogWarn("🔧 DEBUG: Creating customer with parsed data:\n")
+	logger.LogWarn("   CompanyName: '%s'\n", companyName)
+	logger.LogWarn("   FirstName: '%s'\n", firstName)
+	logger.LogWarn("   LastName: '%s'\n", lastName)
+	logger.LogWarn("   Email: '%s'\n", email)
+	logger.LogWarn("   PhoneNumber: '%s'\n", phoneNumber)
+	logger.LogWarn("   CustomerType: '%s'\n", customerType)
 	
 	customer := models.Customer{
 		CompanyName:  &companyName,
@@ -138,9 +139,9 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		Notes:        &notes,
 	}
 
-	fmt.Printf("🔧 DEBUG: Calling customerRepo.Create()\n")
+	logger.LogWarn("🔧 DEBUG: Calling customerRepo.Create()\n")
 	if err := h.customerRepo.Create(&customer); err != nil {
-		fmt.Printf("❌ DEBUG: Customer creation failed: %v\n", err)
+		logger.LogWarn("❌ DEBUG: Customer creation failed: %v\n", err)
 		user, _ := GetCurrentUser(c)
 		c.HTML(http.StatusInternalServerError, "customer_form.html", gin.H{
 			"title":    "New Customer",
@@ -153,11 +154,11 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 
 	if h.syncService != nil {
 		if err := h.syncService.PushCreate(&customer); err != nil {
-			log.Printf("M365 sync PushCreate failed: %v", err)
+			logger.LogInfo("M365 sync PushCreate failed: %v", err)
 		}
 	}
 
-	fmt.Printf("✅ DEBUG: Customer creation succeeded, ID: %d\n", customer.CustomerID)
+	logger.LogWarn("✅ DEBUG: Customer creation succeeded, ID: %d\n", customer.CustomerID)
 	
 	// Add a simple success page instead of redirect for debugging
 	c.HTML(http.StatusOK, "customers.html", gin.H{
@@ -294,7 +295,7 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	if h.syncService != nil {
 		if saved, err := h.customerRepo.GetByID(customer.CustomerID); err == nil {
 			if err := h.syncService.PushUpdate(saved); err != nil {
-				log.Printf("M365 sync PushUpdate failed: %v", err)
+				logger.LogInfo("M365 sync PushUpdate failed: %v", err)
 			}
 		}
 	}
@@ -345,38 +346,38 @@ func (h *CustomerHandler) ListCustomersAPI(c *gin.Context) {
 }
 
 func (h *CustomerHandler) CreateCustomerAPI(c *gin.Context) {
-	fmt.Printf("🚨 DEBUG API: CreateCustomerAPI called\n")
-	fmt.Printf("🚨 DEBUG API: Content-Type: %s\n", c.ContentType())
+	logger.LogWarn("🚨 DEBUG API: CreateCustomerAPI called\n")
+	logger.LogWarn("🚨 DEBUG API: Content-Type: %s\n", c.ContentType())
 	
 	// Debug: Print raw request body
 	bodyBytes, _ := c.GetRawData()
-	fmt.Printf("🚨 DEBUG API: Raw request body: %s\n", string(bodyBytes))
+	logger.LogWarn("🚨 DEBUG API: Raw request body: %s\n", string(bodyBytes))
 	
 	// Reset the request body so it can be read again
 	c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 	
 	var customer models.Customer
 	if err := c.ShouldBindJSON(&customer); err != nil {
-		fmt.Printf("❌ DEBUG API: JSON binding error: %v\n", err)
+		logger.LogWarn("❌ DEBUG API: JSON binding error: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("✅ DEBUG API: Parsed customer: %+v\n", customer)
+	logger.LogWarn("✅ DEBUG API: Parsed customer: %+v\n", customer)
 
 	if err := h.customerRepo.Create(&customer); err != nil {
-		fmt.Printf("❌ DEBUG API: Database error: %v\n", err)
+		logger.LogWarn("❌ DEBUG API: Database error: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if h.syncService != nil {
 		if err := h.syncService.PushCreate(&customer); err != nil {
-			log.Printf("M365 sync PushCreate failed: %v", err)
+			logger.LogInfo("M365 sync PushCreate failed: %v", err)
 		}
 	}
 
-	fmt.Printf("🎉 DEBUG API: Customer created successfully with ID: %d\n", customer.CustomerID)
+	logger.LogWarn("🎉 DEBUG API: Customer created successfully with ID: %d\n", customer.CustomerID)
 	c.JSON(http.StatusCreated, customer)
 }
 
@@ -418,7 +419,7 @@ func (h *CustomerHandler) UpdateCustomerAPI(c *gin.Context) {
 	if h.syncService != nil {
 		if saved, err := h.customerRepo.GetByID(customer.CustomerID); err == nil {
 			if err := h.syncService.PushUpdate(saved); err != nil {
-				log.Printf("M365 sync PushUpdate failed: %v", err)
+				logger.LogInfo("M365 sync PushUpdate failed: %v", err)
 			}
 		}
 	}

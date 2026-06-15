@@ -3,7 +3,6 @@ package pdf
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"net/http"
 	"sort"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"go-barcode-webapp/internal/models"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type packageAliasAPIEntry struct {
@@ -65,7 +66,7 @@ func (c *PackageAliasCache) Warm() {
 		return
 	}
 	if err := c.refresh(); err != nil {
-		log.Printf("warning: failed to warm WarehouseCore alias cache: %v", err)
+		logger.LogInfo("warning: failed to warm WarehouseCore alias cache: %v", err)
 	}
 }
 
@@ -81,7 +82,7 @@ func (c *PackageAliasCache) FindMatches(productText string, limit int) []models.
 	}
 
 	if err := c.ensureFresh(); err != nil {
-		log.Printf("warning: unable to refresh WarehouseCore alias cache: %v", err)
+		logger.LogInfo("warning: unable to refresh WarehouseCore alias cache: %v", err)
 	}
 
 	c.mu.RLock()

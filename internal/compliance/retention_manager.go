@@ -2,10 +2,11 @@ package compliance
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // RetentionManager handles data retention policies according to German law
@@ -106,20 +107,20 @@ func (rm *RetentionManager) PerformRetentionCleanup() (*RetentionCleanupReport, 
 		// Check if auto-deletion is allowed
 		canDelete, err := rm.CanAutoDelete(record.DocumentType)
 		if err != nil {
-			log.Printf("Warning: Failed to check auto-delete policy for %s: %v", record.DocumentType, err)
+			logger.LogInfo("Warning: Failed to check auto-delete policy for %s: %v", record.DocumentType, err)
 			report.Errors = append(report.Errors, fmt.Sprintf("Failed to check policy for %s: %v", record.DocumentType, err))
 			continue
 		}
 
 		if !canDelete {
 			report.SkippedAutoDelete++
-			log.Printf("Auto-deletion disabled for document type %s, skipping record %d", record.DocumentType, record.ID)
+			logger.LogInfo("Auto-deletion disabled for document type %s, skipping record %d", record.DocumentType, record.ID)
 			continue
 		}
 
 		// Mark for deletion (in practice, you might want to move to a "pending deletion" state first)
 		if err := rm.markForDeletion(record); err != nil {
-			log.Printf("Warning: Failed to mark record %d for deletion: %v", record.ID, err)
+			logger.LogInfo("Warning: Failed to mark record %d for deletion: %v", record.ID, err)
 			report.Errors = append(report.Errors, fmt.Sprintf("Failed to mark record %d for deletion: %v", record.ID, err))
 			continue
 		}
@@ -142,7 +143,7 @@ func (rm *RetentionManager) markForDeletion(record GoBDRecord) error {
 	// 4. Log the deletion request in audit logs
 
 	// For now, we'll just log the action
-	log.Printf("Record %d (%s:%s) marked for deletion - retention period expired on %s", 
+	logger.LogInfo("Record %d (%s:%s) marked for deletion - retention period expired on %s", 
 		record.ID, record.DocumentType, record.DocumentID, record.RetentionDate.Format("2006-01-02"))
 
 	return nil
@@ -166,7 +167,7 @@ func (rm *RetentionManager) GetRetentionStatus() (*RetentionStatus, error) {
 		if err := rm.db.Model(&GoBDRecord{}).
 			Where("document_type = ?", policy.DocumentType).
 			Count(&total).Error; err != nil {
-			log.Printf("Warning: Failed to count documents for policy %s: %v", policy.DocumentType, err)
+			logger.LogInfo("Warning: Failed to count documents for policy %s: %v", policy.DocumentType, err)
 			continue
 		}
 
@@ -175,7 +176,7 @@ func (rm *RetentionManager) GetRetentionStatus() (*RetentionStatus, error) {
 		if err := rm.db.Model(&GoBDRecord{}).
 			Where("document_type = ? AND retention_date < ?", policy.DocumentType, time.Now()).
 			Count(&expired).Error; err != nil {
-			log.Printf("Warning: Failed to count expired documents for policy %s: %v", policy.DocumentType, err)
+			logger.LogInfo("Warning: Failed to count expired documents for policy %s: %v", policy.DocumentType, err)
 			continue
 		}
 
@@ -186,7 +187,7 @@ func (rm *RetentionManager) GetRetentionStatus() (*RetentionStatus, error) {
 			Where("document_type = ? AND retention_date BETWEEN ? AND ?", 
 				policy.DocumentType, time.Now(), thirtyDaysFromNow).
 			Count(&expiringSoon).Error; err != nil {
-			log.Printf("Warning: Failed to count expiring documents for policy %s: %v", policy.DocumentType, err)
+			logger.LogInfo("Warning: Failed to count expiring documents for policy %s: %v", policy.DocumentType, err)
 			continue
 		}
 

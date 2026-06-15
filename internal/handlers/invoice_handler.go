@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"go-barcode-webapp/internal/services"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type InvoiceHandlerNew struct {
@@ -56,7 +57,7 @@ func (h *InvoiceHandlerNew) CreateInvoice(c *gin.Context) {
 
 	var request models.InvoiceCreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("CreateInvoice: Validation error: %v", err)
+		logger.LogInfo("CreateInvoice: Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -66,7 +67,7 @@ func (h *InvoiceHandlerNew) CreateInvoice(c *gin.Context) {
 
 	// Additional validation
 	if err := request.Validate(); err != nil {
-		log.Printf("CreateInvoice: Business validation error: %v", err)
+		logger.LogInfo("CreateInvoice: Business validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Validation failed",
 			"details": err.Error(),
@@ -77,7 +78,7 @@ func (h *InvoiceHandlerNew) CreateInvoice(c *gin.Context) {
 	// Create invoice
 	invoice, err := h.invoiceRepo.CreateInvoice(&request)
 	if err != nil {
-		log.Printf("CreateInvoice: Database error: %v", err)
+		logger.LogInfo("CreateInvoice: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create invoice",
 			"details": err.Error(),
@@ -105,7 +106,7 @@ func (h *InvoiceHandlerNew) GenerateInvoicePDF(c *gin.Context) {
 	// Get invoice
 	invoice, err := h.invoiceRepo.GetInvoiceByID(invoiceID)
 	if err != nil {
-		log.Printf("GenerateInvoicePDF: Error fetching invoice: %v", err)
+		logger.LogInfo("GenerateInvoicePDF: Error fetching invoice: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Invoice not found"})
 		return
 	}
@@ -113,21 +114,21 @@ func (h *InvoiceHandlerNew) GenerateInvoicePDF(c *gin.Context) {
 	// Get company settings
 	company, err := h.invoiceRepo.GetCompanySettings()
 	if err != nil {
-		log.Printf("GenerateInvoicePDF: Error fetching company settings: %v", err)
+		logger.LogInfo("GenerateInvoicePDF: Error fetching company settings: %v", err)
 		company = &models.CompanySettings{CompanyName: "RentalCore Company"}
 	}
 
 	// Get invoice settings
 	settings, err := h.invoiceRepo.GetAllInvoiceSettings()
 	if err != nil {
-		log.Printf("GenerateInvoicePDF: Error fetching settings: %v", err)
+		logger.LogInfo("GenerateInvoicePDF: Error fetching settings: %v", err)
 		settings = &models.InvoiceSettings{CurrencySymbol: "€"}
 	}
 
 	// Generate PDF
 	pdfBytes, err := h.pdfService.GenerateInvoicePDF(invoice, company, settings)
 	if err != nil {
-		log.Printf("GenerateInvoicePDF: Error generating PDF: %v", err)
+		logger.LogInfo("GenerateInvoicePDF: Error generating PDF: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to generate PDF",
 			"details": err.Error(),
@@ -143,7 +144,7 @@ func (h *InvoiceHandlerNew) GenerateInvoicePDF(c *gin.Context) {
 
 	// Validate PDF content - ensure it's actually a PDF, not HTML
 	if len(pdfBytes) < 4 || string(pdfBytes[:4]) != "%PDF" {
-		log.Printf("GenerateInvoicePDF: Invalid PDF content returned (not starting with %%PDF)")
+		logger.LogInfo("GenerateInvoicePDF: Invalid PDF content returned (not starting with %%PDF)")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "PDF generation failed - invalid PDF format",
 			"details": "The generated content is not a valid PDF file",
@@ -171,7 +172,7 @@ func (h *InvoiceHandlerNew) GetInvoicesAPI(c *gin.Context) {
 
 	invoices, totalCount, err := h.invoiceRepo.GetInvoices(&filter)
 	if err != nil {
-		log.Printf("GetInvoicesAPI: Error: %v", err)
+		logger.LogInfo("GetInvoicesAPI: Error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load invoices"})
 		return
 	}
@@ -192,7 +193,7 @@ func (h *InvoiceHandlerNew) GetInvoicesAPI(c *gin.Context) {
 func (h *InvoiceHandlerNew) GetInvoiceStatsAPI(c *gin.Context) {
 	stats, err := h.invoiceRepo.GetInvoiceStats()
 	if err != nil {
-		log.Printf("GetInvoiceStatsAPI: Error: %v", err)
+		logger.LogInfo("GetInvoiceStatsAPI: Error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get invoice statistics"})
 		return
 	}
@@ -214,7 +215,7 @@ func (h *InvoiceHandlerNew) ListInvoices(c *gin.Context) {
 	// Parse filter parameters
 	var filter models.InvoiceFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		log.Printf("ListInvoices: Filter binding error: %v", err)
+		logger.LogInfo("ListInvoices: Filter binding error: %v", err)
 	}
 
 	// Set default pagination
@@ -228,7 +229,7 @@ func (h *InvoiceHandlerNew) ListInvoices(c *gin.Context) {
 	// Get invoices using new repository
 	invoices, _, err := h.invoiceRepo.GetInvoices(&filter)
 	if err != nil {
-		log.Printf("ListInvoices: Error fetching invoices: %v", err)
+		logger.LogInfo("ListInvoices: Error fetching invoices: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": "Failed to load invoices",
 			"user":  user,
@@ -255,7 +256,7 @@ func (h *InvoiceHandlerNew) NewInvoiceForm(c *gin.Context) {
 	// Get customers for dropdown
 	customers, err := h.customerRepo.List(&models.FilterParams{Limit: 1000})
 	if err != nil {
-		log.Printf("NewInvoiceForm: Error fetching customers: %v", err)
+		logger.LogInfo("NewInvoiceForm: Error fetching customers: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": "Failed to load customers",
 			"user":  user,
@@ -266,21 +267,21 @@ func (h *InvoiceHandlerNew) NewInvoiceForm(c *gin.Context) {
 	// Get jobs for dropdown
 	jobs, err := h.jobRepo.List(&models.FilterParams{Limit: 1000})
 	if err != nil {
-		log.Printf("NewInvoiceForm: Error fetching jobs: %v", err)
+		logger.LogInfo("NewInvoiceForm: Error fetching jobs: %v", err)
 		jobs = []models.JobWithDetails{} // Continue with empty jobs list
 	}
 
 	// Get products for dropdown
 	products, err := h.productRepo.List(&models.FilterParams{Limit: 1000})
 	if err != nil {
-		log.Printf("NewInvoiceForm: Error fetching products: %v", err)
+		logger.LogInfo("NewInvoiceForm: Error fetching products: %v", err)
 		products = []models.Product{} // Continue with empty products list
 	}
 
 	// Generate a preview invoice number
 	previewInvoiceNumber, err := h.invoiceRepo.GeneratePreviewInvoiceNumber()
 	if err != nil {
-		log.Printf("NewInvoiceForm: Error generating preview invoice number: %v", err)
+		logger.LogInfo("NewInvoiceForm: Error generating preview invoice number: %v", err)
 		previewInvoiceNumber = "INV-PREVIEW" // Fallback
 	}
 
@@ -314,7 +315,7 @@ func (h *InvoiceHandlerNew) GetInvoice(c *gin.Context) {
 	// Get invoice using new repository
 	invoice, err := h.invoiceRepo.GetInvoiceByID(invoiceID)
 	if err != nil {
-		log.Printf("GetInvoice: Error fetching invoice: %v", err)
+		logger.LogInfo("GetInvoice: Error fetching invoice: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"error": "Invoice not found",
 			"user":  user,
@@ -350,7 +351,7 @@ func (h *InvoiceHandlerNew) EditInvoiceForm(c *gin.Context) {
 	// Get invoice
 	invoice, err := h.invoiceRepo.GetInvoiceByID(invoiceID)
 	if err != nil {
-		log.Printf("EditInvoiceForm: Error fetching invoice: %v", err)
+		logger.LogInfo("EditInvoiceForm: Error fetching invoice: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"error": "Invoice not found",
 			"user":  user,
@@ -361,14 +362,14 @@ func (h *InvoiceHandlerNew) EditInvoiceForm(c *gin.Context) {
 	// Get customers for dropdown
 	customers, err := h.customerRepo.List(&models.FilterParams{Limit: 1000})
 	if err != nil {
-		log.Printf("EditInvoiceForm: Error fetching customers: %v", err)
+		logger.LogInfo("EditInvoiceForm: Error fetching customers: %v", err)
 		customers = []models.Customer{}
 	}
 
 	// Get jobs for dropdown
 	jobs, err := h.jobRepo.List(&models.FilterParams{Limit: 1000})
 	if err != nil {
-		log.Printf("EditInvoiceForm: Error fetching jobs: %v", err)
+		logger.LogInfo("EditInvoiceForm: Error fetching jobs: %v", err)
 		jobs = []models.JobWithDetails{}
 	}
 
@@ -399,7 +400,7 @@ func (h *InvoiceHandlerNew) PreviewInvoice(c *gin.Context) {
 	// Get invoice
 	invoice, err := h.invoiceRepo.GetInvoiceByID(invoiceID)
 	if err != nil {
-		log.Printf("PreviewInvoice: Error fetching invoice: %v", err)
+		logger.LogInfo("PreviewInvoice: Error fetching invoice: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"error": "Invoice not found",
 			"user":  user,
@@ -410,14 +411,14 @@ func (h *InvoiceHandlerNew) PreviewInvoice(c *gin.Context) {
 	// Get company settings
 	company, err := h.invoiceRepo.GetCompanySettings()
 	if err != nil {
-		log.Printf("PreviewInvoice: Error fetching company settings: %v", err)
+		logger.LogInfo("PreviewInvoice: Error fetching company settings: %v", err)
 		company = &models.CompanySettings{CompanyName: "RentalCore Company"}
 	}
 
 	// Get invoice settings
 	settings, err := h.invoiceRepo.GetAllInvoiceSettings()
 	if err != nil {
-		log.Printf("PreviewInvoice: Error fetching settings: %v", err)
+		logger.LogInfo("PreviewInvoice: Error fetching settings: %v", err)
 		settings = &models.InvoiceSettings{CurrencySymbol: "€"}
 	}
 
@@ -441,7 +442,7 @@ func (h *InvoiceHandlerNew) UpdateInvoice(c *gin.Context) {
 
 	var request models.InvoiceCreateRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("UpdateInvoice: Validation error: %v", err)
+		logger.LogInfo("UpdateInvoice: Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -451,7 +452,7 @@ func (h *InvoiceHandlerNew) UpdateInvoice(c *gin.Context) {
 
 	// Additional validation
 	if err := request.Validate(); err != nil {
-		log.Printf("UpdateInvoice: Business validation error: %v", err)
+		logger.LogInfo("UpdateInvoice: Business validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Validation failed",
 			"details": err.Error(),
@@ -462,7 +463,7 @@ func (h *InvoiceHandlerNew) UpdateInvoice(c *gin.Context) {
 	// Update invoice using new repository
 	invoice, err := h.invoiceRepo.UpdateInvoice(invoiceID, &request)
 	if err != nil {
-		log.Printf("UpdateInvoice: Database error: %v", err)
+		logger.LogInfo("UpdateInvoice: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update invoice",
 			"details": err.Error(),
@@ -490,7 +491,7 @@ func (h *InvoiceHandlerNew) DeleteInvoice(c *gin.Context) {
 	// Delete invoice using new repository
 	err = h.invoiceRepo.DeleteInvoice(invoiceID)
 	if err != nil {
-		log.Printf("DeleteInvoice: Database error: %v", err)
+		logger.LogInfo("DeleteInvoice: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to delete invoice",
 			"details": err.Error(),
@@ -522,7 +523,7 @@ func (h *InvoiceHandlerNew) GetProductDetails(c *gin.Context) {
 	// Get devices for this product
 	devices, err := h.deviceRepo.GetByProductID(uint(productID))
 	if err != nil {
-		log.Printf("GetProductDetails: Error fetching devices: %v", err)
+		logger.LogInfo("GetProductDetails: Error fetching devices: %v", err)
 		devices = []models.Device{} // Continue with empty devices list
 	}
 
@@ -575,7 +576,7 @@ func (h *InvoiceHandlerNew) UpdateInvoiceStatus(c *gin.Context) {
 	// Update status using new repository
 	err = h.invoiceRepo.UpdateInvoiceStatus(invoiceID, request.Status)
 	if err != nil {
-		log.Printf("UpdateInvoiceStatus: Database error: %v", err)
+		logger.LogInfo("UpdateInvoiceStatus: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update invoice status",
 			"details": err.Error(),

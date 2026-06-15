@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // MonitoringHandler provides monitoring and dashboard endpoints
@@ -42,7 +43,7 @@ func NewMonitoringHandler(
 
 // Dashboard displays the monitoring dashboard
 func (h *MonitoringHandler) Dashboard(c *gin.Context) {
-	log.Printf("⚠️ MONITORING DASHBOARD HANDLER CALLED - URL: %s", c.Request.URL.Path)
+	logger.LogInfo("⚠️ MONITORING DASHBOARD HANDLER CALLED - URL: %s", c.Request.URL.Path)
 	user, exists := GetCurrentUser(c)
 	if !exists {
 		c.Redirect(http.StatusSeeOther, "/login")

@@ -149,6 +149,14 @@ func LoadConfig(path string) (*Config, error) {
 		loadFromEnvironment(config)
 	}
 
+	// FIXED: Validate critical security settings are not empty
+	if config.Database.Password == "" {
+		return nil, fmt.Errorf("DB_PASSWORD environment variable is required")
+	}
+	if config.Security.EncryptionKey == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY environment variable is required")
+	}
+
 	return config, nil
 }
 
@@ -171,7 +179,7 @@ Host:               "localhost",
 Port:               5432,
 Name:               "rentalcore",
 User:               "rentalcore",
-Password:           "rentalcore123",
+Password:           "", // FIXED: removed hardcoded password, must be set via DB_PASSWORD env
 SSLMode:            "disable",
 MaxOpenConns:       25,
 MaxIdleConns:       10,
@@ -243,7 +251,7 @@ DisableForeignKeyConstraintWhenMigrating: true,
 			PasswordMinLength: 8,
 			MaxLoginAttempts:  5,
 			LockoutDuration:   900,
-			EncryptionKey:     "RentalCore-Demo-Key-CHANGE-IN-PRODUCTION-256-BIT",
+			EncryptionKey:     "", // FIXED: removed hardcoded demo key, must be set via ENCRYPTION_KEY env
 		},
 		Logging: LoggingConfig{
 			Level:      "info",

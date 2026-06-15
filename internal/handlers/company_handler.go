@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CompanyHandler struct {
@@ -47,14 +48,14 @@ func (h *CompanyHandler) CompanySettingsForm(c *gin.Context) {
 	// Get current company settings
 	company, err := h.getCompanySettings()
 	if err != nil {
-		log.Printf("CompanySettingsForm: Error fetching company settings: %v", err)
+		logger.LogInfo("CompanySettingsForm: Error fetching company settings: %v", err)
 		// Create default empty company settings
 		company = &models.CompanySettings{
 			CompanyName: h.defaultCompanyName(),
 		}
 	}
 
-	log.Printf("DEBUG: CompanySettingsForm handler called successfully - rendering company_settings.html")
+	logger.LogInfo("DEBUG: CompanySettingsForm handler called successfully - rendering company_settings.html")
 
 	// Check for success message
 	var successMsg string
@@ -92,7 +93,7 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 
 	// Validate required fields
 	if strings.TrimSpace(companyName) == "" {
-		log.Printf("UpdateCompanySettingsForm: Company name is required")
+		logger.LogInfo("UpdateCompanySettingsForm: Company name is required")
 		c.HTML(http.StatusBadRequest, "company_settings.html", gin.H{
 			"title":   "Company Settings",
 			"user":    user,
@@ -124,11 +125,11 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 	if company.ID != 0 {
 		if company.CreatedAt.IsZero() {
 			company.CreatedAt = time.Now()
-			log.Printf("UpdateCompanySettingsForm: Fixed zero CreatedAt value")
+			logger.LogInfo("UpdateCompanySettingsForm: Fixed zero CreatedAt value")
 		}
 		if company.UpdatedAt.IsZero() {
 			company.UpdatedAt = time.Now()
-			log.Printf("UpdateCompanySettingsForm: Fixed zero UpdatedAt value")
+			logger.LogInfo("UpdateCompanySettingsForm: Fixed zero UpdatedAt value")
 		}
 	}
 
@@ -141,7 +142,7 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 	}
 
 	if result.Error != nil {
-		log.Printf("UpdateCompanySettingsForm: Database error: %v", result.Error)
+		logger.LogInfo("UpdateCompanySettingsForm: Database error: %v", result.Error)
 		c.HTML(http.StatusInternalServerError, "company_settings.html", gin.H{
 			"title":   "Company Settings",
 			"user":    user,
@@ -155,7 +156,7 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 		h.companyProvider.UpdateName(company.CompanyName)
 	}
 
-	log.Printf("Company settings updated successfully by user %s", user.Username)
+	logger.LogInfo("Company settings updated successfully by user %s", user.Username)
 	c.Redirect(http.StatusSeeOther, "/settings/company?success=1")
 }
 
@@ -163,7 +164,7 @@ func (h *CompanyHandler) UpdateCompanySettingsForm(c *gin.Context) {
 func (h *CompanyHandler) GetCompanySettings(c *gin.Context) {
 	company, err := h.getCompanySettings()
 	if err != nil {
-		log.Printf("GetCompanySettings: Error: %v", err)
+		logger.LogInfo("GetCompanySettings: Error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load company settings"})
 		return
 	}
@@ -184,7 +185,7 @@ func (h *CompanyHandler) UpdateCompanySettings(c *gin.Context) {
 
 	var request models.CompanySettings
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("UpdateCompanySettings: Validation error: %v", err)
+		logger.LogInfo("UpdateCompanySettings: Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -249,11 +250,11 @@ func (h *CompanyHandler) UpdateCompanySettings(c *gin.Context) {
 	if company.ID != 0 {
 		if company.CreatedAt.IsZero() {
 			company.CreatedAt = time.Now()
-			log.Printf("UpdateCompanySettings: Fixed zero CreatedAt value")
+			logger.LogInfo("UpdateCompanySettings: Fixed zero CreatedAt value")
 		}
 		if company.UpdatedAt.IsZero() {
 			company.UpdatedAt = time.Now()
-			log.Printf("UpdateCompanySettings: Fixed zero UpdatedAt value")
+			logger.LogInfo("UpdateCompanySettings: Fixed zero UpdatedAt value")
 		}
 	}
 
@@ -271,7 +272,7 @@ func (h *CompanyHandler) UpdateCompanySettings(c *gin.Context) {
 	}
 
 	if result.Error != nil {
-		log.Printf("UpdateCompanySettings: Database error: %v", result.Error)
+		logger.LogInfo("UpdateCompanySettings: Database error: %v", result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to save company settings",
 			"details": result.Error.Error(),
@@ -283,7 +284,7 @@ func (h *CompanyHandler) UpdateCompanySettings(c *gin.Context) {
 		h.companyProvider.UpdateName(company.CompanyName)
 	}
 
-	log.Printf("Company settings updated successfully by user %s", user.Username)
+	logger.LogInfo("Company settings updated successfully by user %s", user.Username)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Company settings updated successfully",
@@ -328,7 +329,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 	// Create uploads directory if it doesn't exist
 	uploadsDir := "uploads/logos"
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		log.Printf("UploadCompanyLogo: Failed to create uploads directory: %v", err)
+		logger.LogInfo("UploadCompanyLogo: Failed to create uploads directory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
 		return
 	}
@@ -345,7 +346,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 	// Create destination file
 	dst, err := os.Create(filePath)
 	if err != nil {
-		log.Printf("UploadCompanyLogo: Failed to create destination file: %v", err)
+		logger.LogInfo("UploadCompanyLogo: Failed to create destination file: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
 	}
@@ -353,7 +354,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 
 	// Copy file content
 	if _, err := io.Copy(dst, file); err != nil {
-		log.Printf("UploadCompanyLogo: Failed to copy file: %v", err)
+		logger.LogInfo("UploadCompanyLogo: Failed to copy file: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
 	}
@@ -375,7 +376,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 		oldPath := strings.TrimPrefix(*company.LogoPath, "/")
 		if _, err := os.Stat(oldPath); err == nil {
 			if err := os.Remove(oldPath); err != nil {
-				log.Printf("UploadCompanyLogo: Failed to remove old logo: %v", err)
+				logger.LogInfo("UploadCompanyLogo: Failed to remove old logo: %v", err)
 			}
 		}
 	}
@@ -392,7 +393,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 	}
 
 	if result.Error != nil {
-		log.Printf("UploadCompanyLogo: Database error: %v", result.Error)
+		logger.LogInfo("UploadCompanyLogo: Database error: %v", result.Error)
 		// Clean up uploaded file on database error
 		os.Remove(filePath)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -402,7 +403,7 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Company logo uploaded successfully by user %s: %s", user.Username, filename)
+	logger.LogInfo("Company logo uploaded successfully by user %s: %s", user.Username, filename)
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
 		"message":  "Logo uploaded successfully",
@@ -442,7 +443,7 @@ func (h *CompanyHandler) DeleteCompanyLogo(c *gin.Context) {
 	oldPath := strings.TrimPrefix(*company.LogoPath, "/")
 	if _, err := os.Stat(oldPath); err == nil {
 		if err := os.Remove(oldPath); err != nil {
-			log.Printf("DeleteCompanyLogo: Failed to remove logo file: %v", err)
+			logger.LogInfo("DeleteCompanyLogo: Failed to remove logo file: %v", err)
 		}
 	}
 
@@ -451,7 +452,7 @@ func (h *CompanyHandler) DeleteCompanyLogo(c *gin.Context) {
 	company.UpdatedAt = time.Now()
 
 	if err := h.db.Save(company).Error; err != nil {
-		log.Printf("DeleteCompanyLogo: Database error: %v", err)
+		logger.LogInfo("DeleteCompanyLogo: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update company settings",
 			"details": err.Error(),
@@ -459,7 +460,7 @@ func (h *CompanyHandler) DeleteCompanyLogo(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Company logo deleted successfully by user %s", user.Username)
+	logger.LogInfo("Company logo deleted successfully by user %s", user.Username)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Logo deleted successfully",
@@ -548,16 +549,16 @@ func (h *CompanyHandler) GetSMTPConfig(c *gin.Context) {
 }
 
 func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
-	log.Printf("UpdateSMTPConfig: Request received")
+	logger.LogInfo("UpdateSMTPConfig: Request received")
 
 	user, exists := GetCurrentUser(c)
 	if !exists {
-		log.Printf("UpdateSMTPConfig: Authentication failed")
+		logger.LogInfo("UpdateSMTPConfig: Authentication failed")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 		return
 	}
 
-	log.Printf("UpdateSMTPConfig: User authenticated: %s", user.Username)
+	logger.LogInfo("UpdateSMTPConfig: User authenticated: %s", user.Username)
 
 	var request struct {
 		SMTPHost      string `json:"smtp_host"`
@@ -570,7 +571,7 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("UpdateSMTPConfig: JSON binding error: %v", err)
+		logger.LogInfo("UpdateSMTPConfig: JSON binding error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -578,7 +579,7 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 		return
 	}
 
-	log.Printf("UpdateSMTPConfig: Request data - Host: %s, Port: %d, Username: %s, FromEmail: %s",
+	logger.LogInfo("UpdateSMTPConfig: Request data - Host: %s, Port: %d, Username: %s, FromEmail: %s",
 		request.SMTPHost, request.SMTPPort, request.SMTPUsername, request.SMTPFromEmail)
 
 	// Validate required fields manually
@@ -611,24 +612,24 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	}
 
 	// Get existing company settings or create new
-	log.Printf("UpdateSMTPConfig: Getting company settings...")
+	logger.LogInfo("UpdateSMTPConfig: Getting company settings...")
 	company, err := h.getCompanySettings()
 	if err != nil {
-		log.Printf("UpdateSMTPConfig: No existing company settings found, creating new: %v", err)
+		logger.LogInfo("UpdateSMTPConfig: No existing company settings found, creating new: %v", err)
 		company = &models.CompanySettings{
 			CompanyName: "Ihre Firma GmbH",
 		}
 	} else {
-		log.Printf("UpdateSMTPConfig: Found existing company settings with ID: %d", company.ID)
+		logger.LogInfo("UpdateSMTPConfig: Found existing company settings with ID: %d", company.ID)
 
 		// Fix corrupted datetime values if they exist
 		if company.CreatedAt.IsZero() {
 			company.CreatedAt = time.Now()
-			log.Printf("UpdateSMTPConfig: Fixed zero CreatedAt value")
+			logger.LogInfo("UpdateSMTPConfig: Fixed zero CreatedAt value")
 		}
 		if company.UpdatedAt.IsZero() {
 			company.UpdatedAt = time.Now()
-			log.Printf("UpdateSMTPConfig: Fixed zero UpdatedAt value")
+			logger.LogInfo("UpdateSMTPConfig: Fixed zero UpdatedAt value")
 		}
 	}
 
@@ -649,18 +650,18 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 	}
 
 	// Save to database (GORM will handle UpdatedAt automatically)
-	log.Printf("UpdateSMTPConfig: Saving to database, company ID: %d", company.ID)
+	logger.LogInfo("UpdateSMTPConfig: Saving to database, company ID: %d", company.ID)
 	var result *gorm.DB
 	if company.ID == 0 {
-		log.Printf("UpdateSMTPConfig: Creating new company settings record")
+		logger.LogInfo("UpdateSMTPConfig: Creating new company settings record")
 		result = h.db.Create(company)
 	} else {
-		log.Printf("UpdateSMTPConfig: Updating existing company settings record")
+		logger.LogInfo("UpdateSMTPConfig: Updating existing company settings record")
 		result = h.db.Save(company)
 	}
 
 	if result.Error != nil {
-		log.Printf("UpdateSMTPConfig: Database error: %v", result.Error)
+		logger.LogInfo("UpdateSMTPConfig: Database error: %v", result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to save email configuration",
 			"details": result.Error.Error(),
@@ -668,9 +669,9 @@ func (h *CompanyHandler) UpdateSMTPConfig(c *gin.Context) {
 		return
 	}
 
-	log.Printf("UpdateSMTPConfig: Database save successful, affected rows: %d", result.RowsAffected)
+	logger.LogInfo("UpdateSMTPConfig: Database save successful, affected rows: %d", result.RowsAffected)
 
-	log.Printf("SMTP config updated successfully by user %s: %s:%d", user.Username, request.SMTPHost, request.SMTPPort)
+	logger.LogInfo("SMTP config updated successfully by user %s: %s:%d", user.Username, request.SMTPHost, request.SMTPPort)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -719,7 +720,7 @@ func (h *CompanyHandler) TestSMTPConnection(c *gin.Context) {
 
 	err = emailService.SendTestEmail(testEmail, testData)
 	if err != nil {
-		log.Printf("TestSMTPConnection: Failed to send test email: %v", err)
+		logger.LogInfo("TestSMTPConnection: Failed to send test email: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to send test email",
 			"details": err.Error(),
@@ -727,7 +728,7 @@ func (h *CompanyHandler) TestSMTPConnection(c *gin.Context) {
 		return
 	}
 
-	log.Printf("SMTP connection test successful by user %s, test email sent to %s", user.Username, testEmail)
+	logger.LogInfo("SMTP connection test successful by user %s, test email sent to %s", user.Username, testEmail)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

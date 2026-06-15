@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileText, Download, Trash2, RefreshCw, Upload, Eye, X, Check } from 'lucide-react';
 import { api } from '../lib/api';
+import { toast } from '../lib/toast';
 
 interface Document {
   documentID: number;
@@ -128,7 +129,7 @@ export function DocumentsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Dokument wirklich löschen?')) return;
-    await api.delete(`/documents/${id}`).catch(console.error);
+    await api.delete(`/documents/${id}`).catch((e: any) => toast.error(e));
     load();
   };
 

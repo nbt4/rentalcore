@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"go-barcode-webapp/internal/models"
 
 	"github.com/jung-kurt/gofpdf"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type PDFServiceNew struct {
@@ -28,7 +29,7 @@ func NewPDFServiceNew(pdfConfig *config.PDFConfig) *PDFServiceNew {
 	
 	// Ensure temp directory exists
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
-		log.Printf("Warning: Could not create PDF temp directory: %v", err)
+		logger.LogInfo("Warning: Could not create PDF temp directory: %v", err)
 		tempDir = os.TempDir()
 	}
 
@@ -40,7 +41,7 @@ func NewPDFServiceNew(pdfConfig *config.PDFConfig) *PDFServiceNew {
 
 // GenerateInvoicePDF generates a PDF from an invoice with robust error handling
 func (s *PDFServiceNew) GenerateInvoicePDF(invoice *models.Invoice, company *models.CompanySettings, settings *models.InvoiceSettings) ([]byte, error) {
-	log.Printf("PDFServiceNew: Generating PDF for invoice %s", invoice.InvoiceNumber)
+	logger.LogInfo("PDFServiceNew: Generating PDF for invoice %s", invoice.InvoiceNumber)
 
 	// Validate inputs
 	if invoice == nil {
@@ -69,16 +70,16 @@ func (s *PDFServiceNew) GenerateInvoicePDF(invoice *models.Invoice, company *mod
 		if err == nil && len(pdfBytes) > 0 {
 			// Validate that it's actually PDF content
 			if len(pdfBytes) >= 4 && string(pdfBytes[:4]) == "%PDF" {
-				log.Printf("PDFServiceNew: Successfully generated PDF using %s (%d bytes)", method.name, len(pdfBytes))
+				logger.LogInfo("PDFServiceNew: Successfully generated PDF using %s (%d bytes)", method.name, len(pdfBytes))
 				return pdfBytes, nil
 			} else {
-				log.Printf("PDFServiceNew: %s returned invalid PDF content, trying next method", method.name)
+				logger.LogInfo("PDFServiceNew: %s returned invalid PDF content, trying next method", method.name)
 				lastErr = fmt.Errorf("%s returned invalid PDF content", method.name)
 				continue
 			}
 		}
 		lastErr = err
-		log.Printf("PDFServiceNew: %s failed: %v", method.name, err)
+		logger.LogInfo("PDFServiceNew: %s failed: %v", method.name, err)
 	}
 
 	return nil, fmt.Errorf("all PDF generation methods failed, last error: %v", lastErr)

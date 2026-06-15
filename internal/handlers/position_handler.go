@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type PositionHandler struct {
@@ -23,7 +24,7 @@ type PositionHandler struct {
 
 func NewPositionHandler(positionRepo *repository.PositionRepository, jobRepo *repository.JobRepository, requirementRepo *repository.RequirementRepository, db *gorm.DB) *PositionHandler {
 	if err := ensureJobPriceColumns(db); err != nil {
-		log.Printf("warning: failed to ensure job price columns: %v", err)
+		logger.LogInfo("warning: failed to ensure job price columns: %v", err)
 	}
 	return &PositionHandler{
 		positionRepo:    positionRepo,
@@ -42,7 +43,7 @@ func ensureJobPriceColumns(db *gorm.DB) error {
 func (h *PositionHandler) syncRequirements(jobID uint) {
 	var positions []models.JobPosition
 	if err := h.db.Where("job_id = ? AND position_type = 'product'", jobID).Find(&positions).Error; err != nil {
-		log.Printf("syncRequirements: query failed for job %d: %v", jobID, err)
+		logger.LogInfo("syncRequirements: query failed for job %d: %v", jobID, err)
 		return
 	}
 	reqs := make([]models.JobProductRequirement, 0, len(positions))
@@ -61,7 +62,7 @@ func (h *PositionHandler) syncRequirements(jobID uint) {
 		})
 	}
 	if err := h.requirementRepo.SaveRequirements(jobID, reqs); err != nil {
-		log.Printf("syncRequirements: save failed for job %d: %v", jobID, err)
+		logger.LogInfo("syncRequirements: save failed for job %d: %v", jobID, err)
 	}
 }
 

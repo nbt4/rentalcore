@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 	"math"
 	"mime"
 	"net/http"
@@ -26,6 +25,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // PDFHandler handles PDF upload and processing requests
@@ -245,11 +246,11 @@ func sanitizePackage(pkg *models.ProductPackage) *packageSummary {
 func NewPDFHandler(db *gorm.DB, uploadDir string, jobHandler *JobHandler, attachmentRepo *repository.JobAttachmentRepository, aliasCache *pdf.PackageAliasCache, documentHandler *DocumentHandler) *PDFHandler {
 	attachmentDir := filepath.Join(uploadDir, "job_attachments")
 	if err := os.MkdirAll(attachmentDir, 0755); err != nil {
-		log.Printf("warning: failed to ensure attachment directory %s: %v", attachmentDir, err)
+		logger.LogInfo("warning: failed to ensure attachment directory %s: %v", attachmentDir, err)
 	}
 
 	if err := ensurePackageMappingSchema(db); err != nil {
-		log.Printf("warning: failed to ensure PDF package mapping schema: %v", err)
+		logger.LogInfo("warning: failed to ensure PDF package mapping schema: %v", err)
 	}
 
 	// Initialize repositories
@@ -317,7 +318,7 @@ func (h *PDFHandler) UploadPDF(c *gin.Context) {
 
 	// Save upload record to database
 	if err := h.DB.Create(upload).Error; err != nil {
-		log.Printf("ERROR: Failed to save upload record: %v", err)
+		logger.LogInfo("ERROR: Failed to save upload record: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save upload record: %v", err)})
 		return
 	}
@@ -1080,7 +1081,7 @@ func (h *PDFHandler) ShowMappingScreen(c *gin.Context) {
 			excludeJobID = uint(upload.JobID.Int64)
 		}
 		if matches, err := h.detectDuplicateJobs(currentCustomerID, productCounts, excludeJobID); err != nil {
-			log.Printf("warning: duplicate detection failed: %v", err)
+			logger.LogInfo("warning: duplicate detection failed: %v", err)
 		} else {
 			duplicateMatches = matches
 		}
@@ -1146,7 +1147,7 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				"mapping_confidence":          100.0,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
-				log.Printf("warning: failed to update package mapping for item %d: %v", item.ItemID, err)
+				logger.LogInfo("warning: failed to update package mapping for item %d: %v", item.ItemID, err)
 			} else {
 				autoMappedCount++
 			}
@@ -1168,7 +1169,7 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				"mapping_confidence":          confidence,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
-				log.Printf("warning: failed to update rental mapping for item %d: %v", item.ItemID, err)
+				logger.LogInfo("warning: failed to update rental mapping for item %d: %v", item.ItemID, err)
 			} else if status == "auto_mapped" {
 				autoMappedCount++
 			} else {
@@ -1192,7 +1193,7 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				"mapping_confidence":          serviceConf,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
-				log.Printf("warning: failed to update service mapping for item %d: %v", item.ItemID, err)
+				logger.LogInfo("warning: failed to update service mapping for item %d: %v", item.ItemID, err)
 			} else if status == "auto_mapped" {
 				autoMappedCount++
 			} else {
@@ -1223,7 +1224,7 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 		}
 
 		if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
-			log.Printf("warning: failed to update mapping for item %d: %v", item.ItemID, err)
+			logger.LogInfo("warning: failed to update mapping for item %d: %v", item.ItemID, err)
 		}
 	}
 
@@ -1495,20 +1496,20 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 
 	if targetRental && req.RentalEquipmentID != nil {
 		if err := h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID); err != nil {
-			log.Printf("warning: failed to persist rental mapping for item %d: %v", item.ItemID, err)
+			logger.LogInfo("warning: failed to persist rental mapping for item %d: %v", item.ItemID, err)
 		}
 	} else if targetService && req.ServiceItemID != nil {
 		if err := h.ServiceMapper.SaveMapping(item.RawProductText, *req.ServiceItemID, userID); err != nil {
-			log.Printf("warning: failed to persist service mapping for item %d: %v", item.ItemID, err)
+			logger.LogInfo("warning: failed to persist service mapping for item %d: %v", item.ItemID, err)
 		}
 	} else if targetProduct && req.ProductID != nil {
 		if err := h.Mapper.SaveMapping(item.RawProductText, *req.ProductID, userID); err != nil {
-			log.Printf("warning: failed to persist manual mapping for item %d: %v", item.ItemID, err)
+			logger.LogInfo("warning: failed to persist manual mapping for item %d: %v", item.ItemID, err)
 		}
 		h.recordMappingEvent(item.ExtractionID, item.ItemID, *req.ProductID, 0, item.RawProductText, userID)
 	} else if targetPackage && req.PackageID != nil && h.PackageMapper != nil {
 		if err := h.PackageMapper.SaveMapping(item.RawProductText, *req.PackageID, userID); err != nil {
-			log.Printf("warning: failed to persist manual package mapping for item %d: %v", item.ItemID, err)
+			logger.LogInfo("warning: failed to persist manual package mapping for item %d: %v", item.ItemID, err)
 		}
 		h.recordMappingEvent(item.ExtractionID, item.ItemID, 0, *req.PackageID, item.RawProductText, userID)
 	}
@@ -1635,7 +1636,7 @@ func (h *PDFHandler) CreateCustomerFromExtraction(c *gin.Context) {
 	}
 
 	if err := h.DB.Model(&models.PDFExtraction{}).Where("extraction_id = ?", extraction.ExtractionID).Updates(updates).Error; err != nil {
-		log.Printf("warning: failed to update extraction with new customer: %v", err)
+		logger.LogInfo("warning: failed to update extraction with new customer: %v", err)
 	}
 
 	if h.CustomerMapper != nil && displayName != "" {
@@ -1688,7 +1689,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 	}
 
 	if err := h.persistExtractionMappings(c, extraction.ExtractionID); err != nil {
-		log.Printf("warning: failed to persist mappings for extraction %d: %v", extraction.ExtractionID, err)
+		logger.LogInfo("warning: failed to persist mappings for extraction %d: %v", extraction.ExtractionID, err)
 	}
 
 	var meta map[string]string
@@ -1722,7 +1723,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		if err := h.DB.Model(&models.PDFExtraction{}).
 			Where("extraction_id = ?", extraction.ExtractionID).
 			Update("discount_amount", extraction.DiscountAmount).Error; err != nil {
-			log.Printf("warning: failed to update extraction discount: %v", err)
+			logger.LogInfo("warning: failed to update extraction discount: %v", err)
 		}
 	}
 
@@ -1743,7 +1744,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 				return
 			}
 			if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
-				log.Printf("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
+				logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
 			}
 
 			if err := h.DB.Model(&models.Job{}).Where("job_id = ?", job.JobID).
@@ -1751,7 +1752,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 					"discount":      discountValue,
 					"discount_type": discountType,
 				}).Error; err != nil {
-				log.Printf("warning: failed to persist updated discount for job %d: %v", job.JobID, err)
+				logger.LogInfo("warning: failed to persist updated discount for job %d: %v", job.JobID, err)
 			}
 
 			_ = h.JobHandler.jobRepo.CalculateAndUpdateRevenue(job.JobID)
@@ -1861,7 +1862,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		return
 	}
 	if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
-		log.Printf("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
+		logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
 	}
 
 	h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", upload.UploadID).
@@ -2026,7 +2027,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 				DaysUsed:    uint(daysUsed),
 			}
 			if err := h.JobHandler.rentalEquipRepo.AddRentalToJob(jobRental); err != nil {
-				log.Printf("Warning: failed to add rental equipment %d to job %d: %v", eid, job.JobID, err)
+				logger.LogInfo("Warning: failed to add rental equipment %d to job %d: %v", eid, job.JobID, err)
 			}
 		}
 	}
@@ -2044,7 +2045,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 			var pkg models.ProductPackage
 			if err := h.DB.Where("package_id = ?", pkgID).First(&pkg).Error; err != nil {
 				msg := fmt.Sprintf("Package %d nicht gefunden: %v", pkgID, err)
-				log.Printf("Warning: %s", msg)
+				logger.LogInfo("Warning: %s", msg)
 				warnings = append(warnings, msg)
 				continue
 			}
@@ -2052,7 +2053,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 			var pkgItems []models.ProductPackageItem
 			if err := h.DB.Where("package_id = ?", pkgID).Find(&pkgItems).Error; err != nil {
 				msg := fmt.Sprintf("Package %s: Komponenten nicht ladbar (%v)", pkg.Name, err)
-				log.Printf("Warning: %s", msg)
+				logger.LogInfo("Warning: %s", msg)
 				warnings = append(warnings, msg)
 				continue
 			}
@@ -2098,7 +2099,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 					perPackage = packageTotal / float64(agg.quantity)
 				}
 				if _, err := h.JobPackageRepo.AssignPackageToJob(int(job.JobID), pkgID, uint(agg.quantity), &perPackage, userID); err != nil {
-					log.Printf("Warning: job_package upsert failed for pkg %d job %d: %v", pkgID, job.JobID, err)
+					logger.LogInfo("Warning: job_package upsert failed for pkg %d job %d: %v", pkgID, job.JobID, err)
 					warnings = append(warnings, fmt.Sprintf("Package %s konnte nicht gespeichert werden", pkg.Name))
 				}
 			}
@@ -2240,7 +2241,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 
 			if count < need {
 				msg := fmt.Sprintf("Package %d: nur %d/%d Geräte für Produkt %d gefunden", pkgID, count, need, pid)
-				log.Printf("Warning: %s", msg)
+				logger.LogInfo("Warning: %s", msg)
 				warnings = append(warnings, msg)
 			}
 		}
@@ -2270,7 +2271,7 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 				continue
 			}
 			if err := h.JobHandler.jobRepo.UpdateDevicePrice(job.JobID, jd.DeviceID, price); err != nil {
-				log.Printf("[WARN] Could not update price for device %s in job %d: %v\n", jd.DeviceID, job.JobID, err)
+				logger.LogInfo("[WARN] Could not update price for device %s in job %d: %v\n", jd.DeviceID, job.JobID, err)
 			}
 		}
 	}
@@ -2358,7 +2359,7 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 		}
 
 		if err := h.DB.Create(&pos).Error; err != nil {
-			log.Printf("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
+			logger.LogInfo("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
 		}
 	}
 	return nil
@@ -2765,7 +2766,7 @@ func (h *PDFHandler) applyCustomPriceOverrides(job *models.Job, overrides map[ui
 	jobDevices, err := h.JobHandler.jobRepo.GetJobDevices(job.JobID)
 	if err != nil {
 		// Log warning but don't fail - job creation should still succeed
-		fmt.Printf("[WARN] Could not fetch job devices for price overrides: %v\n", err)
+		logger.LogWarn("[WARN] Could not fetch job devices for price overrides: %v\n", err)
 		return nil
 	}
 
@@ -2792,14 +2793,14 @@ func (h *PDFHandler) applyCustomPriceOverrides(job *models.Job, overrides map[ui
 		}
 		if err := h.JobHandler.jobRepo.UpdateDevicePrice(job.JobID, jd.DeviceID, price); err != nil {
 			// Log warning but continue - don't fail entire job creation
-			fmt.Printf("[WARN] Could not update price for device %s in job %d: %v\n", jd.DeviceID, job.JobID, err)
+			logger.LogWarn("[WARN] Could not update price for device %s in job %d: %v\n", jd.DeviceID, job.JobID, err)
 			failedUpdates++
 			continue
 		}
 	}
 
 	if failedUpdates > 0 {
-		fmt.Printf("[INFO] %d device price updates failed for job %d, but job was created successfully\n", failedUpdates, job.JobID)
+		logger.LogWarn("[INFO] %d device price updates failed for job %d, but job was created successfully\n", failedUpdates, job.JobID)
 	}
 
 	return nil
@@ -2875,7 +2876,7 @@ func (h *PDFHandler) expandPackageProductCounts(packageQuantities map[int]int, c
 
 	var packageItems []models.ProductPackageItem
 	if err := h.DB.Where("package_id IN ?", ids).Find(&packageItems).Error; err != nil {
-		log.Printf("warning: failed to fetch package items: %v", err)
+		logger.LogInfo("warning: failed to fetch package items: %v", err)
 		return
 	}
 
@@ -3153,9 +3154,9 @@ func (h *PDFHandler) attachUploadToJob(upload *models.PDFUpload, jobID uint) {
 	if h.DocumentHandler != nil && upload.DocumentID.Valid && upload.DocumentID.Int64 > 0 {
 		// Document already exists in File Pool, just update its assignment
 		if err := h.DocumentHandler.AssignDocumentToJob(uint(upload.DocumentID.Int64), jobID); err != nil {
-			log.Printf("warning: failed to assign document %d to job %d: %v", upload.DocumentID.Int64, jobID, err)
+			logger.LogInfo("warning: failed to assign document %d to job %d: %v", upload.DocumentID.Int64, jobID, err)
 		} else {
-			log.Printf("Document %d assigned to job %d via File Pool", upload.DocumentID.Int64, jobID)
+			logger.LogInfo("Document %d assigned to job %d via File Pool", upload.DocumentID.Int64, jobID)
 			return
 		}
 	}
@@ -3171,12 +3172,12 @@ func (h *PDFHandler) attachUploadToJob(upload *models.PDFUpload, jobID uint) {
 	}
 
 	if _, err := os.Stat(sourcePath); err != nil {
-		log.Printf("warning: cannot attach OCR upload %d to job %d: %v", upload.UploadID, jobID, err)
+		logger.LogInfo("warning: cannot attach OCR upload %d to job %d: %v", upload.UploadID, jobID, err)
 		return
 	}
 
 	if err := os.MkdirAll(h.attachmentDir, 0755); err != nil {
-		log.Printf("warning: cannot create attachment directory %s: %v", h.attachmentDir, err)
+		logger.LogInfo("warning: cannot create attachment directory %s: %v", h.attachmentDir, err)
 		return
 	}
 
@@ -3189,13 +3190,13 @@ func (h *PDFHandler) attachUploadToJob(upload *models.PDFUpload, jobID uint) {
 
 	destPath := filepath.Join(h.attachmentDir, destFilename)
 	if err := copyFile(sourcePath, destPath); err != nil {
-		log.Printf("warning: failed to copy OCR upload %d for job %d: %v", upload.UploadID, jobID, err)
+		logger.LogInfo("warning: failed to copy OCR upload %d for job %d: %v", upload.UploadID, jobID, err)
 		return
 	}
 
 	info, err := os.Stat(destPath)
 	if err != nil {
-		log.Printf("warning: failed to stat attachment copy for job %d: %v", jobID, err)
+		logger.LogInfo("warning: failed to stat attachment copy for job %d: %v", jobID, err)
 		return
 	}
 
@@ -3222,7 +3223,7 @@ func (h *PDFHandler) attachUploadToJob(upload *models.PDFUpload, jobID uint) {
 	}
 
 	if err := h.AttachmentRepo.Create(attachment); err != nil {
-		log.Printf("warning: failed to create attachment record for job %d: %v", jobID, err)
+		logger.LogInfo("warning: failed to create attachment record for job %d: %v", jobID, err)
 		_ = os.Remove(destPath)
 	}
 }
@@ -3308,7 +3309,7 @@ func (h *PDFHandler) persistExtractionMappings(c *gin.Context, extractionID uint
 		// Handle product mappings
 		if item.MappedProductID.Valid {
 			if err := h.Mapper.SaveMapping(text, int(item.MappedProductID.Int64), userID); err != nil {
-				log.Printf("warning: failed to save product mapping for extraction item %d: %v", item.ItemID, err)
+				logger.LogInfo("warning: failed to save product mapping for extraction item %d: %v", item.ItemID, err)
 			} else {
 				h.recordMappingEvent(item.ExtractionID, item.ItemID, int(item.MappedProductID.Int64), 0, text, userID)
 			}
@@ -3317,7 +3318,7 @@ func (h *PDFHandler) persistExtractionMappings(c *gin.Context, extractionID uint
 		// Handle package mappings
 		if item.MappedPackageID.Valid && h.PackageMapper != nil {
 			if err := h.PackageMapper.SaveMapping(text, int(item.MappedPackageID.Int64), userID); err != nil {
-				log.Printf("warning: failed to save package mapping for extraction item %d: %v", item.ItemID, err)
+				logger.LogInfo("warning: failed to save package mapping for extraction item %d: %v", item.ItemID, err)
 			} else {
 				h.recordMappingEvent(item.ExtractionID, item.ItemID, 0, int(item.MappedPackageID.Int64), text, userID)
 			}
@@ -3354,7 +3355,7 @@ func (h *PDFHandler) recordMappingEvent(extractionID uint64, itemID uint64, prod
 	}
 
 	if err := h.DB.Create(&event).Error; err != nil {
-		log.Printf("warning: failed to record mapping event: %v", err)
+		logger.LogInfo("warning: failed to record mapping event: %v", err)
 	}
 }
 
@@ -3830,7 +3831,7 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 	var customerMappings []models.PDFCustomerMapping
 	if h.CustomerMapper != nil {
 		if err := h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings).Error; err != nil {
-			log.Printf("warning: failed to load customer mappings for management page: %v", err)
+			logger.LogInfo("warning: failed to load customer mappings for management page: %v", err)
 		}
 	}
 	customerIDSet := make(map[int]struct{})

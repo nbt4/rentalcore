@@ -20,6 +20,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type DocumentHandler struct {
@@ -35,11 +37,11 @@ type DocumentHandler struct {
 	unassignedRoot string
 }
 
-func NewDocumentHandler(db *gorm.DB) *DocumentHandler {
+func NewDocumentHandler(db *gorm.DB) (*DocumentHandler, error) { // FIXED: return error instead of panic
 	// Create upload directory if it doesn't exist
 	uploadPath := "uploads"
 	if err := os.MkdirAll(uploadPath, 0755); err != nil {
-		panic("Failed to create upload directory: " + err.Error())
+		return nil, fmt.Errorf("failed to create upload directory: %w", err) // FIXED: return error instead of panic
 	}
 
 	allowedTypes := map[string]bool{
@@ -85,7 +87,7 @@ func NewDocumentHandler(db *gorm.DB) *DocumentHandler {
 	if ncURL != "" && ncUser != "" && ncPass != "" {
 		client, err := storage.NewNextcloudClient(ncURL, ncUser, ncPass, h.ncBasePath)
 		if err != nil {
-			panic("Failed to configure Nextcloud WebDAV client: " + err.Error())
+			return nil, fmt.Errorf("failed to configure Nextcloud WebDAV client: %w", err) // FIXED: return error instead of panic
 		}
 		h.useNextcloud = true
 		h.ncClient = client
@@ -98,7 +100,7 @@ func NewDocumentHandler(db *gorm.DB) *DocumentHandler {
 		}
 	}
 
-	return h
+	return h, nil // FIXED: return DocumentHandler with nil error
 }
 
 // ================================================================
@@ -151,6 +153,15 @@ func (h *DocumentHandler) UploadDocumentForm(c *gin.Context) {
 	entityID := c.Query("entityID")
 
 	if entityType == "" || entityID == "" {
+	// FIXED: validate against path traversal
+	if err := validatePathComponent(entityType); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
+		return
+	}
+	if err := validatePathComponent(entityID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
+		return
+	}
 		user, _ := GetCurrentUser(c)
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
 			"title": "Error",
@@ -178,6 +189,15 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	isPublic := c.PostForm("isPublic") == "true"
 
 	if entityType == "" || entityID == "" {
+	// FIXED: validate against path traversal
+	if err := validatePathComponent(entityType); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
+		return
+	}
+	if err := validatePathComponent(entityID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
+		return
+	}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Entity type and ID are required"})
 		return
 	}
@@ -1185,7 +1205,7 @@ func (h *DocumentHandler) AssignDocumentToJob(documentID uint, jobID uint) error
 	}
 
 	// Log the assignment
-	fmt.Printf("[INFO] Document %d assigned from %s/%s to job/%d\n", documentID, oldEntityType, oldEntityID, jobID)
+	logger.LogWarn("[INFO] Document %d assigned from %s/%s to job/%d\n", documentID, oldEntityType, oldEntityID, jobID)
 
 	return nil
 }
@@ -1239,7 +1259,7 @@ func (h *DocumentHandler) UnassignDocument(documentID uint) error {
 		return fmt.Errorf("failed to update document: %v", err)
 	}
 
-	fmt.Printf("[INFO] Document %d unassigned from %s/%s\n", documentID, oldEntityType, oldEntityID)
+	logger.LogWarn("[INFO] Document %d unassigned from %s/%s\n", documentID, oldEntityType, oldEntityID)
 
 	return nil
 }
@@ -1346,6 +1366,18 @@ func (h *DocumentHandler) GetNextcloudClient() *storage.NextcloudClient {
 // GetUploadPath returns the local upload path
 func (h *DocumentHandler) GetUploadPath() string {
 	return h.uploadPath
+}
+
+
+// FIXED: validatePathComponent prevents path traversal attacks
+func validatePathComponent(name string) error {
+	if name == "" {
+		return fmt.Errorf("path component cannot be empty")
+	}
+	if strings.Contains(name, "..") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return fmt.Errorf("invalid path component: %s", name)
+	}
+	return nil
 }
 
 // GetRemotePath generates the remote path for a document

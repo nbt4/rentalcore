@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type AnalyticsHandler struct {
@@ -28,7 +29,7 @@ func (h *AnalyticsHandler) Dashboard(c *gin.Context) {
 	
 	// Get period from query params (default: 30 days for better initial data)
 	period := c.DefaultQuery("period", "30days")
-	log.Printf("Analytics dashboard requested with period: %s", period)
+	logger.LogInfo("Analytics dashboard requested with period: %s", period)
 	
 	// Calculate date range
 	endDate := time.Now()
@@ -48,11 +49,11 @@ func (h *AnalyticsHandler) Dashboard(c *gin.Context) {
 		period = "30days"
 	}
 
-	log.Printf("Analytics date range: %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	logger.LogInfo("Analytics date range: %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 	
 	// Get analytics data with simplified approach
 	analytics := h.getSimplifiedAnalyticsData(startDate, endDate)
-	log.Printf("Analytics data retrieved for period %s", period)
+	logger.LogInfo("Analytics data retrieved for period %s", period)
 	
 	c.HTML(http.StatusOK, "analytics_dashboard_new.html", gin.H{
 		"title":       "Analytics Dashboard",
@@ -67,7 +68,7 @@ func (h *AnalyticsHandler) Dashboard(c *gin.Context) {
 
 // getSimplifiedAnalyticsData collects simplified analytics data for the new dashboard
 func (h *AnalyticsHandler) getSimplifiedAnalyticsData(startDate, endDate time.Time) map[string]interface{} {
-	log.Printf("Getting simplified analytics data from %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	logger.LogInfo("Getting simplified analytics data from %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 	
 	analytics := map[string]interface{}{
 		"revenue":         h.getSimplifiedRevenue(startDate, endDate),
@@ -80,7 +81,7 @@ func (h *AnalyticsHandler) getSimplifiedAnalyticsData(startDate, endDate time.Ti
 		"utilization":     h.getUtilizationMetrics(),
 	}
 	
-	log.Printf("Simplified analytics data retrieved successfully")
+	logger.LogInfo("Simplified analytics data retrieved successfully")
 	return analytics
 }
 
@@ -106,7 +107,7 @@ func (h *AnalyticsHandler) getSimplifiedRevenue(startDate, endDate time.Time) ma
 		avgJobValue = totalRevenue / float64(totalJobs)
 	}
 	
-	log.Printf("Revenue data: %.2f total, %d jobs, %.2f avg", totalRevenue, totalJobs, avgJobValue)
+	logger.LogInfo("Revenue data: %.2f total, %d jobs, %.2f avg", totalRevenue, totalJobs, avgJobValue)
 	
 	return map[string]interface{}{
 		"totalRevenue": totalRevenue,
@@ -133,7 +134,7 @@ func (h *AnalyticsHandler) getSimplifiedEquipment(startDate, endDate time.Time) 
 	
 	availableDevices := totalDevices - activeDevices
 	
-	log.Printf("Equipment data: %d total, %d active, %.1f%% utilization", totalDevices, activeDevices, utilizationRate)
+	logger.LogInfo("Equipment data: %d total, %d active, %.1f%% utilization", totalDevices, activeDevices, utilizationRate)
 	
 	return map[string]interface{}{
 		"totalDevices":     totalDevices,
@@ -162,7 +163,7 @@ func (h *AnalyticsHandler) getSimplifiedCustomers(startDate, endDate time.Time) 
 		retentionRate = (float64(activeCustomers) / float64(totalCustomers)) * 100
 	}
 	
-	log.Printf("Customer data: %d total, %d active, %.1f%% retention", totalCustomers, activeCustomers, retentionRate)
+	logger.LogInfo("Customer data: %d total, %d active, %.1f%% retention", totalCustomers, activeCustomers, retentionRate)
 	
 	return map[string]interface{}{
 		"totalCustomers":  totalCustomers,
@@ -191,7 +192,7 @@ func (h *AnalyticsHandler) getSimplifiedJobs(startDate, endDate time.Time) map[s
 		AND statusID IN (1, 2)
 	`, endDate, startDate).Scan(&activeJobs)
 	
-	log.Printf("Job data: %d completed, %d active", completedJobs, activeJobs)
+	logger.LogInfo("Job data: %d completed, %d active", completedJobs, activeJobs)
 	
 	return map[string]interface{}{
 		"completedJobs": completedJobs,
@@ -233,7 +234,7 @@ func (h *AnalyticsHandler) getSimplifiedTrends(startDate, endDate time.Time) map
 		}
 	}
 	
-	log.Printf("Trend data: %d data points", len(trends))
+	logger.LogInfo("Trend data: %d data points", len(trends))
 	
 	return map[string]interface{}{
 		"revenue": trends,
@@ -320,8 +321,8 @@ func (h *AnalyticsHandler) getDeviceAnalyticsData(deviceID string, startDate, en
 		WHERE d.deviceID = ?
 	`, deviceID).Scan(&deviceInfo)
 	
-	log.Printf("DEBUG: Device info query error: %v", deviceResult.Error)
-	log.Printf("DEBUG: Device info - ID: %s, Name: %s, Serial: %v, Category: %s, Status: %s", 
+	logger.LogInfo("DEBUG: Device info query error: %v", deviceResult.Error)
+	logger.LogInfo("DEBUG: Device info - ID: %s, Name: %s, Serial: %v, Category: %s, Status: %s", 
 		deviceInfo.DeviceID, deviceInfo.ProductName, deviceInfo.SerialNumber, deviceInfo.CategoryName, deviceInfo.Status)
 
 	// Get total revenue and booking statistics
@@ -395,7 +396,7 @@ func (h *AnalyticsHandler) getDeviceAnalyticsData(deviceID string, startDate, en
 	var customerBookings []CustomerBooking
 	
 	// First try: Simple query to get any bookings for this device
-	log.Printf("DEBUG: Looking for bookings for device: %s", deviceID)
+	logger.LogInfo("DEBUG: Looking for bookings for device: %s", deviceID)
 	result := h.db.Raw(`
 		SELECT 
 			COALESCE(
@@ -454,20 +455,20 @@ func (h *AnalyticsHandler) getDeviceAnalyticsData(deviceID string, startDate, en
 		LIMIT 50
 	`, deviceID).Scan(&customerBookings)
 	
-	log.Printf("DEBUG: Query result error: %v, found %d bookings", result.Error, len(customerBookings))
-	log.Printf("DEBUG: Device ID requested: %s", deviceID)
+	logger.LogInfo("DEBUG: Query result error: %v, found %d bookings", result.Error, len(customerBookings))
+	logger.LogInfo("DEBUG: Device ID requested: %s", deviceID)
 	
 	// Debug: print first booking details if any found
 	if len(customerBookings) > 0 {
 		first := customerBookings[0]
-		log.Printf("DEBUG: First booking - Customer: %s, JobID: %s, Start: %v, End: %v, Days: %d, Rate: %.2f, Discount: %.2f (%s), Revenue: %.2f, Status: %s", 
+		logger.LogInfo("DEBUG: First booking - Customer: %s, JobID: %s, Start: %v, End: %v, Days: %d, Rate: %.2f, Discount: %.2f (%s), Revenue: %.2f, Status: %s", 
 			first.CustomerName, first.JobID, first.StartDate, first.EndDate, first.RentalDays, first.DailyRate, first.Discount, 
 			*first.DiscountType, first.Revenue, first.JobStatus)
 	}
 	
 	// If no bookings found, try even simpler query
 	if len(customerBookings) == 0 {
-		log.Printf("DEBUG: No bookings found, trying simpler query")
+		logger.LogInfo("DEBUG: No bookings found, trying simpler query")
 		h.db.Raw(`
 			SELECT 
 				COALESCE(
@@ -496,10 +497,10 @@ func (h *AnalyticsHandler) getDeviceAnalyticsData(deviceID string, startDate, en
 			WHERE jd.deviceID = ?
 			LIMIT 5
 		`, deviceID).Scan(&customerBookings)
-		log.Printf("DEBUG: Simpler query found %d bookings", len(customerBookings))
+		logger.LogInfo("DEBUG: Simpler query found %d bookings", len(customerBookings))
 		if len(customerBookings) > 0 {
 			first := customerBookings[0]
-			log.Printf("DEBUG: First booking from simpler query - Customer: %s, JobID: %s, Start: %v, End: %v, Days: %d, Rate: %.2f, Revenue: %.2f, Status: %s", 
+			logger.LogInfo("DEBUG: First booking from simpler query - Customer: %s, JobID: %s, Start: %v, End: %v, Days: %d, Rate: %.2f, Revenue: %.2f, Status: %s", 
 				first.CustomerName, first.JobID, first.StartDate, first.EndDate, first.RentalDays, first.DailyRate, first.Revenue, first.JobStatus)
 		}
 	}

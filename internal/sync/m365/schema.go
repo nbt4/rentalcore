@@ -2,7 +2,8 @@ package m365
 
 import (
 	"database/sql"
-	"log"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // EnsureCustomerM365Columns fügt die M365-Sync-Spalten zur customers-Tabelle hinzu
@@ -28,10 +29,10 @@ func EnsureCustomerM365Columns(db *sql.DB) error {
 	}
 
 	if err := ensureM365UniqueIndex(db); err != nil {
-		log.Printf("M365 sync: warning — could not create m365_id index: %v", err)
+		logger.LogInfo("M365 sync: warning — could not create m365_id index: %v", err)
 	}
 
-	log.Println("M365 sync: customer schema columns verified")
+	logger.LogInfo("M365 sync: customer schema columns verified")
 	return nil
 }
 

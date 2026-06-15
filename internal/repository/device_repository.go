@@ -2,11 +2,12 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type ProductDeviceAvailability struct {
@@ -33,7 +34,7 @@ func deviceDebugLog(format string, args ...interface{}) {
 	if !deviceDebugLogsEnabled {
 		return
 	}
-	log.Printf(format, args...)
+	logger.LogInfo(format, args...)
 }
 
 // GetDB returns the underlying database connection for advanced queries
@@ -95,7 +96,7 @@ func (r *DeviceRepository) Delete(deviceID string) error {
 	deviceDebugLog("DeviceRepository.Delete: deleting device %s", deviceID)
 	err := r.db.Where("deviceID = ?", deviceID).Delete(&models.Device{}).Error
 	if err != nil {
-		log.Printf("❌ DEVICE DELETION: Failed to delete device %s: %v", deviceID, err)
+		logger.LogInfo("❌ DEVICE DELETION: Failed to delete device %s: %v", deviceID, err)
 	} else {
 		deviceDebugLog("DeviceRepository.Delete: successfully deleted %s", deviceID)
 	}
@@ -141,7 +142,7 @@ func (r *DeviceRepository) List(params *models.FilterParams) ([]models.DeviceWit
 	deviceDebugLog("DeviceRepository.List: query completed in %v", queryTime)
 
 	if err != nil {
-		log.Printf("❌ Device query error: %v", err)
+		logger.LogInfo("❌ Device query error: %v", err)
 		return nil, err
 	}
 
@@ -289,7 +290,7 @@ func (r *DeviceRepository) GetDeviceStats(deviceID string) (map[string]interface
 		Where("deviceID = ?", deviceID).
 		Count(&totalJobs).Error
 	if err != nil {
-		log.Printf("Error counting jobs for device %s: %v", deviceID, err)
+		logger.LogInfo("Error counting jobs for device %s: %v", deviceID, err)
 		totalJobs = 0
 	}
 
@@ -304,7 +305,7 @@ func (r *DeviceRepository) GetDeviceStats(deviceID string) (map[string]interface
 		WHERE jd.deviceid = ?
 	`, deviceID).Scan(&totalEarnings).Error
 	if err != nil {
-		log.Printf("Error calculating earnings for device %s: %v", deviceID, err)
+		logger.LogInfo("Error calculating earnings for device %s: %v", deviceID, err)
 		totalEarnings = 0.0
 	}
 
@@ -317,7 +318,7 @@ func (r *DeviceRepository) GetDeviceStats(deviceID string) (map[string]interface
 		WHERE jd.deviceid = ?
 	`, deviceID).Scan(&totalDaysRented).Error
 	if err != nil {
-		log.Printf("Error calculating days rented for device %s: %v", deviceID, err)
+		logger.LogInfo("Error calculating days rented for device %s: %v", deviceID, err)
 		totalDaysRented = 0
 	}
 
@@ -331,7 +332,7 @@ func (r *DeviceRepository) GetDeviceStats(deviceID string) (map[string]interface
 	var device models.Device
 	err = r.db.Where("deviceID = ?", deviceID).Preload("Product").First(&device).Error
 	if err != nil {
-		log.Printf("Error getting device details for %s: %v", deviceID, err)
+		logger.LogInfo("Error getting device details for %s: %v", deviceID, err)
 	}
 
 	var pricePerDay float64
@@ -378,7 +379,7 @@ func (r *DeviceRepository) generateDeviceID(device *models.Device) (string, erro
 	`, len(prefix)+1, prefix+"%").Scan(&maxNum).Error
 
 	if err != nil {
-		log.Printf("❌ Error finding max device number for prefix %s: %v", prefix, err)
+		logger.LogInfo("❌ Error finding max device number for prefix %s: %v", prefix, err)
 		return "", fmt.Errorf("failed to find max device number: %v", err)
 	}
 
@@ -592,10 +593,10 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 		Where("devices.productid = ?", productID)
 
 	if err := query.Scan(&rows).Error; err != nil {
-		log.Printf("[availability] query error for product %d: %v", productID, err)
+		logger.LogInfo("[availability] query error for product %d: %v", productID, err)
 		return nil, err
 	}
-	log.Printf("[availability] product %d job %d: found %d device rows", productID, jobIDVal, len(rows))
+	logger.LogInfo("[availability] product %d job %d: found %d device rows", productID, jobIDVal, len(rows))
 
 	conflicts := make(map[string]bool)
 	if startDate != nil && endDate != nil {
@@ -617,10 +618,10 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 		}
 
 		if err := conflictQuery.Scan(&conflictRows).Error; err != nil {
-			log.Printf("[availability] conflict query error for product %d: %v", productID, err)
+			logger.LogInfo("[availability] conflict query error for product %d: %v", productID, err)
 			return nil, err
 		}
-		log.Printf("[availability] product %d: %d conflicting devices in period %s–%s", productID, len(conflictRows), start.Format("2006-01-02"), end.Format("2006-01-02"))
+		logger.LogInfo("[availability] product %d: %d conflicting devices in period %s–%s", productID, len(conflictRows), start.Format("2006-01-02"), end.Format("2006-01-02"))
 
 		for _, row := range conflictRows {
 			conflicts[row.DeviceID] = true

@@ -68,13 +68,16 @@ func (c *CalendarClient) CreateUserEvent(userEmail string, event CalendarEvent) 
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return "", fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("create user event HTTP %d: %s", resp.StatusCode, body)
+		return "", fmt.Errorf("create user event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	var result createdEventResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil { // FIXED: use Unmarshal
 		return "", fmt.Errorf("decode response: %w", err)
 	}
 	return result.ID, nil
@@ -89,10 +92,13 @@ func (c *CalendarClient) UpdateUserEvent(userEmail, eventID string, event Calend
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update user event HTTP %d: %s", resp.StatusCode, body)
+		return fmt.Errorf("update user event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	return nil
 }
@@ -106,10 +112,13 @@ func (c *CalendarClient) DeleteUserEvent(userEmail, eventID string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete user event HTTP %d: %s", resp.StatusCode, body)
+		return fmt.Errorf("delete user event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	return nil
 }
@@ -123,13 +132,16 @@ func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return "", fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("create event HTTP %d: %s", resp.StatusCode, body)
+		return "", fmt.Errorf("create event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	var result createdEventResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil { // FIXED: use Unmarshal
 		return "", fmt.Errorf("decode create response: %w", err)
 	}
 	return result.ID, nil
@@ -144,10 +156,13 @@ func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update event HTTP %d: %s", resp.StatusCode, body)
+		return fmt.Errorf("update event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	return nil
 }
@@ -161,10 +176,13 @@ func (c *CalendarClient) DeleteEvent(eventID string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete event HTTP %d: %s", resp.StatusCode, body)
+		return fmt.Errorf("delete event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 	return nil
 }

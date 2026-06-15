@@ -3,13 +3,14 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"runtime"
 	"time"
 
 	"go-barcode-webapp/internal/models"
 
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type EquipmentPackageRepository struct {
@@ -22,12 +23,12 @@ func NewEquipmentPackageRepository(db *Database) *EquipmentPackageRepository {
 
 // List returns all equipment packages with optional filtering
 func (r *EquipmentPackageRepository) List(params *models.FilterParams) ([]models.EquipmentPackage, error) {
-	log.Printf("📊 PACKAGE LIST: Starting List method with params: %+v", params)
+	logger.LogInfo("📊 PACKAGE LIST: Starting List method with params: %+v", params)
 	
 	// Log call stack to identify which handler is calling this method
 	if pc, file, line, ok := runtime.Caller(1); ok {
 		funcName := runtime.FuncForPC(pc).Name()
-		log.Printf("🔍 CALL STACK: List method called from: %s:%d (%s)", file, line, funcName)
+		logger.LogInfo("🔍 CALL STACK: List method called from: %s:%d (%s)", file, line, funcName)
 	}
 	
 	var packages []models.EquipmentPackage
@@ -69,11 +70,11 @@ func (r *EquipmentPackageRepository) List(params *models.FilterParams) ([]models
 		var deviceCount int64
 		
 		if err := r.db.DB.Table("package_devices").Where("packageID = ?", packages[i].PackageID).Count(&deviceCount).Error; err != nil {
-			log.Printf("Failed to count devices for package %d: %v", packages[i].PackageID, err)
+			logger.LogInfo("Failed to count devices for package %d: %v", packages[i].PackageID, err)
 			deviceCount = 0
 		}
 		
-		log.Printf("📊 PACKAGE COUNT: Package %d ('%s') has %d devices", 
+		logger.LogInfo("📊 PACKAGE COUNT: Package %d ('%s') has %d devices", 
 			packages[i].PackageID, packages[i].Name, deviceCount)
 		
 		packages[i].DeviceCount = int(deviceCount)
@@ -98,7 +99,7 @@ func (r *EquipmentPackageRepository) GetByID(id uint) (*models.EquipmentPackage,
 	// Manually load package devices without preloading device details
 	var packageDevices []models.PackageDevice
 	if err := r.db.DB.Where("packageID = ?", id).Find(&packageDevices).Error; err != nil {
-		log.Printf("Warning: Failed to load package devices for package %d: %v", id, err)
+		logger.LogInfo("Warning: Failed to load package devices for package %d: %v", id, err)
 	}
 	
 	pkg.PackageDevices = packageDevices
@@ -204,7 +205,7 @@ func (r *EquipmentPackageRepository) GetWithDevices(id uint) (*models.EquipmentP
 	// Manually load package devices without preloading device details
 	var packageDevices []models.PackageDevice
 	if err := r.db.DB.Where("packageID = ?", id).Find(&packageDevices).Error; err != nil {
-		log.Printf("Warning: Failed to load package devices for package %d: %v", id, err)
+		logger.LogInfo("Warning: Failed to load package devices for package %d: %v", id, err)
 	}
 	
 	pkg.PackageDevices = packageDevices
@@ -255,11 +256,11 @@ func (r *EquipmentPackageRepository) CreateWithDevices(pkg *models.EquipmentPack
 func (r *EquipmentPackageRepository) UpdateDeviceAssociations(packageID uint, deviceMappings []models.PackageDevice) error {
 	return r.db.DB.Transaction(func(tx *gorm.DB) error {
 		// Delete existing associations using raw SQL to prevent cascading deletes
-		log.Printf("🔄 PACKAGE UPDATE: Deleting existing device associations for package %d", packageID)
+		logger.LogInfo("🔄 PACKAGE UPDATE: Deleting existing device associations for package %d", packageID)
 		if err := tx.Exec("DELETE FROM package_devices WHERE packageID = ?", packageID).Error; err != nil {
 			return fmt.Errorf("failed to delete existing device associations: %v", err)
 		}
-		log.Printf("✅ PACKAGE UPDATE: Successfully deleted existing device associations for package %d", packageID)
+		logger.LogInfo("✅ PACKAGE UPDATE: Successfully deleted existing device associations for package %d", packageID)
 		
 		// Validate and filter device mappings to only include existing devices
 		var validMappings []models.PackageDevice
@@ -269,12 +270,12 @@ func (r *EquipmentPackageRepository) UpdateDeviceAssociations(packageID uint, de
 			// Check if device exists
 			var deviceExists bool
 			if err := tx.Raw("SELECT EXISTS(SELECT 1 FROM devices WHERE deviceID = ?)", mapping.DeviceID).Scan(&deviceExists).Error; err != nil {
-				log.Printf("❌ PACKAGE UPDATE: Failed to check device %s existence: %v", mapping.DeviceID, err)
+				logger.LogInfo("❌ PACKAGE UPDATE: Failed to check device %s existence: %v", mapping.DeviceID, err)
 				continue
 			}
 			
 			if !deviceExists {
-				log.Printf("❌ PACKAGE UPDATE: Device %s does not exist - skipping association", mapping.DeviceID)
+				logger.LogInfo("❌ PACKAGE UPDATE: Device %s does not exist - skipping association", mapping.DeviceID)
 				continue
 			}
 			
@@ -283,27 +284,27 @@ func (r *EquipmentPackageRepository) UpdateDeviceAssociations(packageID uint, de
 			mapping.CreatedAt = now
 			mapping.UpdatedAt = now
 			validMappings = append(validMappings, mapping)
-			log.Printf("✅ PACKAGE UPDATE: Device %s validated and added to mappings", mapping.DeviceID)
+			logger.LogInfo("✅ PACKAGE UPDATE: Device %s validated and added to mappings", mapping.DeviceID)
 		}
 		
 		// Create new associations only for valid devices
 		if len(validMappings) > 0 {
-			log.Printf("🔄 PACKAGE UPDATE: Creating %d validated device associations for package %d", len(validMappings), packageID)
+			logger.LogInfo("🔄 PACKAGE UPDATE: Creating %d validated device associations for package %d", len(validMappings), packageID)
 			
 			// Use raw SQL to prevent GORM from auto-creating devices
 			for _, mapping := range validMappings {
-				log.Printf("🔄 PACKAGE UPDATE: Creating association for device %s", mapping.DeviceID)
+				logger.LogInfo("🔄 PACKAGE UPDATE: Creating association for device %s", mapping.DeviceID)
 				if err := tx.Exec(`
 					INSERT INTO package_devices (packageID, deviceID, quantity, custom_price, is_required, notes, sort_order, created_at, updated_at)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 				`, mapping.PackageID, mapping.DeviceID, mapping.Quantity, mapping.CustomPrice, mapping.IsRequired, mapping.Notes, mapping.SortOrder, mapping.CreatedAt, mapping.UpdatedAt).Error; err != nil {
-					log.Printf("❌ PACKAGE UPDATE: Failed to create association for device %s: %v", mapping.DeviceID, err)
+					logger.LogInfo("❌ PACKAGE UPDATE: Failed to create association for device %s: %v", mapping.DeviceID, err)
 					return fmt.Errorf("failed to create new device association for device %s: %v", mapping.DeviceID, err)
 				}
 			}
-			log.Printf("✅ PACKAGE UPDATE: Successfully created %d device associations for package %d", len(validMappings), packageID)
+			logger.LogInfo("✅ PACKAGE UPDATE: Successfully created %d device associations for package %d", len(validMappings), packageID)
 		} else {
-			log.Printf("✅ PACKAGE UPDATE: No valid device associations to create for package %d", packageID)
+			logger.LogInfo("✅ PACKAGE UPDATE: No valid device associations to create for package %d", packageID)
 		}
 		
 		return nil
@@ -512,7 +513,7 @@ func (r *EquipmentPackageRepository) GetByIDWithoutDevicePreload(id uint) (*mode
 	// Manually load package devices without preloading the actual device records
 	var packageDevices []models.PackageDevice
 	if err := r.db.DB.Where("packageID = ?", id).Find(&packageDevices).Error; err != nil {
-		log.Printf("Warning: Failed to load package devices for package %d: %v", id, err)
+		logger.LogInfo("Warning: Failed to load package devices for package %d: %v", id, err)
 	}
 	
 	// Only attach the package devices without device preloading
@@ -535,14 +536,14 @@ func (r *EquipmentPackageRepository) GetByIDWithDeviceDetails(id uint) (*models.
 	// Manually load package devices
 	var packageDevices []models.PackageDevice
 	if err := r.db.DB.Where("packageID = ?", id).Find(&packageDevices).Error; err != nil {
-		log.Printf("Warning: Failed to load package devices for package %d: %v", id, err)
+		logger.LogInfo("Warning: Failed to load package devices for package %d: %v", id, err)
 	}
 	
 	// Manually load device details for each package device
 	for i := range packageDevices {
 		var device models.Device
 		if err := r.db.DB.Preload("Product").Where("deviceID = ?", packageDevices[i].DeviceID).First(&device).Error; err != nil {
-			log.Printf("Warning: Failed to load device %s for package %d: %v", packageDevices[i].DeviceID, id, err)
+			logger.LogInfo("Warning: Failed to load device %s for package %d: %v", packageDevices[i].DeviceID, id, err)
 			continue
 		}
 		packageDevices[i].Device = &device

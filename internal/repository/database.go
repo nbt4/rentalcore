@@ -2,8 +2,7 @@
 package repository
 
 import (
-"fmt"
-"log"
+	"fmt"
 "time"
 
 "go-barcode-webapp/internal/config"
@@ -12,6 +11,8 @@ import (
 "gorm.io/gorm"
 "gorm.io/gorm/logger"
 "gorm.io/gorm/schema"
+
+	applogger "go-barcode-webapp/internal/logger"
 )
 
 // Database wraps the GORM database connection
@@ -55,7 +56,7 @@ sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 sqlDB.SetConnMaxLifetime(time.Hour)
 sqlDB.SetConnMaxIdleTime(30 * time.Minute)
 
-log.Printf("PostgreSQL database connected: %s:%d/%s", cfg.Host, cfg.Port, cfg.Name)
+applogger.LogInfo("PostgreSQL database connected: %s:%d/%s", cfg.Host, cfg.Port, cfg.Name)
 return &Database{db}, nil
 }
 

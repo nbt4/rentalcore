@@ -1,10 +1,11 @@
 package repository
 
 import (
-	"fmt"
 	"time"
 
 	"go-barcode-webapp/internal/models"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CustomerRepository struct {
@@ -16,10 +17,10 @@ func NewCustomerRepository(db *Database) *CustomerRepository {
 }
 
 func (r *CustomerRepository) Create(customer *models.Customer) error {
-	fmt.Printf("🔧 DEBUG CustomerRepo.Create: Before DB operation, customer ID: %d\n", customer.CustomerID)
+	logger.LogWarn("🔧 DEBUG CustomerRepo.Create: Before DB operation, customer ID: %d\n", customer.CustomerID)
 	result := r.db.Create(customer)
-	fmt.Printf("🔧 DEBUG CustomerRepo.Create: After DB operation, customer ID: %d, Error: %v\n", customer.CustomerID, result.Error)
-	fmt.Printf("🔧 DEBUG CustomerRepo.Create: Rows affected: %d\n", result.RowsAffected)
+	logger.LogWarn("🔧 DEBUG CustomerRepo.Create: After DB operation, customer ID: %d, Error: %v\n", customer.CustomerID, result.Error)
+	logger.LogWarn("🔧 DEBUG CustomerRepo.Create: Rows affected: %d\n", result.RowsAffected)
 	return result.Error
 }
 

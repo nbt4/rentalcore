@@ -2,10 +2,11 @@ package pdf
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/ledongthuc/pdf"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // OCREngine handles text extraction from PDFs using ledongthuc/pdf
@@ -36,7 +37,7 @@ type OCRResult struct {
 // Currently uses text-based extraction only (ledongthuc/pdf)
 // OCR support can be added later if needed
 func (o *OCREngine) ExtractTextWithOCR(pdfPath string) (*OCRResult, error) {
-	log.Printf("Extracting text from PDF: %s", pdfPath)
+	logger.LogInfo("Extracting text from PDF: %s", pdfPath)
 
 	// Use ledongthuc/pdf for text extraction
 	file, reader, err := pdf.Open(pdfPath)
@@ -58,7 +59,7 @@ func (o *OCREngine) ExtractTextWithOCR(pdfPath string) (*OCRResult, error) {
 
 		text, err := page.GetPlainText(nil)
 		if err != nil {
-			log.Printf("Warning: failed to extract text from page %d: %v", pageNum, err)
+			logger.LogInfo("Warning: failed to extract text from page %d: %v", pageNum, err)
 			pageTexts = append(pageTexts, "")
 			continue
 		}
@@ -76,7 +77,7 @@ func (o *OCREngine) ExtractTextWithOCR(pdfPath string) (*OCRResult, error) {
 		confidence = 60.0 // Lower confidence if minimal text found
 	}
 
-	log.Printf("Text extraction complete: %d pages, %d characters", numPages, len(extractedText))
+	logger.LogInfo("Text extraction complete: %d pages, %d characters", numPages, len(extractedText))
 
 	return &OCRResult{
 		Text:           extractedText,

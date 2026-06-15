@@ -1,11 +1,12 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // ErrorHandler provides centralized error handling and recovery
@@ -46,18 +47,18 @@ func SafeHTML(c *gin.Context, statusCode int, templateName string, data gin.H) {
 	// Attempt to render the template
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("SafeHTML: Template rendering panic for %s: %v", templateName, r)
+			logger.LogInfo("SafeHTML: Template rendering panic for %s: %v", templateName, r)
 			renderErrorPage(c, http.StatusInternalServerError, "Template rendering error", data["user"])
 		}
 	}()
 	
-	log.Printf("SafeHTML: Rendering template %s with status %d", templateName, statusCode)
+	logger.LogInfo("SafeHTML: Rendering template %s with status %d", templateName, statusCode)
 	c.HTML(statusCode, templateName, data)
 }
 
 // SafeRedirect safely redirects with proper logging
 func SafeRedirect(c *gin.Context, statusCode int, location string) {
-	log.Printf("SafeRedirect: Redirecting to %s with status %d", location, statusCode)
+	logger.LogInfo("SafeRedirect: Redirecting to %s with status %d", location, statusCode)
 	c.Redirect(statusCode, location)
 }
 
@@ -65,7 +66,7 @@ func SafeRedirect(c *gin.Context, statusCode int, location string) {
 func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("SafeJSON: JSON rendering panic: %v", r)
+			logger.LogInfo("SafeJSON: JSON rendering panic: %v", r)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Internal server error",
 				"code":  "RENDER_ERROR",
@@ -73,17 +74,17 @@ func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 		}
 	}()
 	
-	log.Printf("SafeJSON: Rendering JSON with status %d", statusCode)
+	logger.LogInfo("SafeJSON: Rendering JSON with status %d", statusCode)
 	c.JSON(statusCode, data)
 }
 
 // renderErrorPage renders a safe error page that should never fail
 func renderErrorPage(c *gin.Context, statusCode int, message string, user interface{}) {
-	log.Printf("renderErrorPage: Rendering error page - Status: %d, Message: %s", statusCode, message)
+	logger.LogInfo("renderErrorPage: Rendering error page - Status: %d, Message: %s", statusCode, message)
 	
 	// Check if response has already been written
 	if c.Writer.Written() {
-		log.Printf("renderErrorPage: Response already written, skipping error page")
+		logger.LogInfo("renderErrorPage: Response already written, skipping error page")
 		return
 	}
 	
@@ -96,10 +97,10 @@ func renderErrorPage(c *gin.Context, statusCode int, message string, user interf
 	// Try to use the enhanced error template first
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("renderErrorPage: Error template also failed: %v", r)
+			logger.LogInfo("renderErrorPage: Error template also failed: %v", r)
 			// Check if response has already been written after panic
 			if c.Writer.Written() {
-				log.Printf("renderErrorPage: Response already written after panic, cannot render fallback")
+				logger.LogInfo("renderErrorPage: Response already written after panic, cannot render fallback")
 				return
 			}
 			// Last resort: plain HTML response
@@ -171,7 +172,7 @@ func getErrorMessage(statusCode int, originalMessage string) string {
 // GlobalErrorHandler provides global error recovery middleware
 func GlobalErrorHandler() gin.HandlerFunc {
 	return gin.CustomRecoveryWithWriter(gin.DefaultWriter, func(c *gin.Context, recovered interface{}) {
-		log.Printf("GlobalErrorHandler: Panic recovered: %v", recovered)
+		logger.LogInfo("GlobalErrorHandler: Panic recovered: %v", recovered)
 		
 		// Get user context for error page
 		user, _ := GetCurrentUser(c)
@@ -184,7 +185,7 @@ func GlobalErrorHandler() gin.HandlerFunc {
 // NotFoundHandler handles 404 errors with proper template rendering
 func NotFoundHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Printf("NotFoundHandler: 404 for path: %s", c.Request.URL.Path)
+		logger.LogInfo("NotFoundHandler: 404 for path: %s", c.Request.URL.Path)
 		
 		user, _ := GetCurrentUser(c)
 		
@@ -263,7 +264,7 @@ func TemplateExistsCheck(templateName string) bool {
 
 // LogTemplateRender logs template rendering for debugging
 func LogTemplateRender(templateName string, data gin.H) {
-	log.Printf("Template Render: %s with data keys: %v", templateName, getKeys(data))
+	logger.LogInfo("Template Render: %s with data keys: %v", templateName, getKeys(data))
 }
 
 // getKeys returns the keys of a gin.H map for logging

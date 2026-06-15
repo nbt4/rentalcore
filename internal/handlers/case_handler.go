@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +10,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CaseHandler struct {
@@ -36,18 +37,18 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 	}
 
 	// DEBUG: Log all query parameters
-	fmt.Printf("DEBUG Case Handler: All query params: %+v\n", c.Request.URL.Query())
+	logger.LogWarn("DEBUG Case Handler: All query params: %+v\n", c.Request.URL.Query())
 	
 	// Manual parameter extraction to ensure search works
 	searchParam := c.Query("search")
-	fmt.Printf("DEBUG Case Handler: Raw search parameter: '%s'\n", searchParam)
+	logger.LogWarn("DEBUG Case Handler: Raw search parameter: '%s'\n", searchParam)
 	if searchParam != "" {
 		params.SearchTerm = searchParam
-		fmt.Printf("DEBUG Case Handler: Search parameter SET to: '%s'\n", searchParam)
+		logger.LogWarn("DEBUG Case Handler: Search parameter SET to: '%s'\n", searchParam)
 	}
 	
 	// DEBUG: Log params after binding
-	fmt.Printf("DEBUG Case Handler: Final params: SearchTerm='%s'\n", params.SearchTerm)
+	logger.LogWarn("DEBUG Case Handler: Final params: SearchTerm='%s'\n", params.SearchTerm)
 
 	cases, err := h.caseRepo.List(params)
 	if err != nil {
@@ -55,7 +56,7 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("DEBUG: Found %d cases with search term '%s'\n", len(cases), params.SearchTerm)
+	logger.LogWarn("DEBUG: Found %d cases with search term '%s'\n", len(cases), params.SearchTerm)
 
 	SafeHTML(c, http.StatusOK, "cases_list.html", gin.H{
 		"title":       "Cases",
@@ -235,14 +236,14 @@ func (h *CaseHandler) EditCaseForm(c *gin.Context) {
 	}
 
 	// Debug: Log the number of available devices
-	log.Printf("EditCaseForm: Found %d available devices for case %d", len(availableDevices), caseID)
+	logger.LogInfo("EditCaseForm: Found %d available devices for case %d", len(availableDevices), caseID)
 	for i, device := range availableDevices {
 		if i < 3 { // Only show first 3 for debugging
 			productName := "No Product"
 			if device.Product != nil {
 				productName = device.Product.Name
 			}
-			log.Printf("  Device %d: ID='%s', Status='%s', Product='%s'", i+1, device.DeviceID, device.Status, productName)
+			logger.LogInfo("  Device %d: ID='%s', Status='%s', Product='%s'", i+1, device.DeviceID, device.Status, productName)
 		}
 	}
 
@@ -625,18 +626,18 @@ func (h *CaseHandler) DeleteCaseAPI(c *gin.Context) {
 // GetCaseDevicesAPI returns devices in a case as JSON
 func (h *CaseHandler) GetCaseDevicesAPI(c *gin.Context) {
 	caseIDStr := c.Param("id")
-	log.Printf("GetCaseDevicesAPI: Getting devices for case ID: %s", caseIDStr)
+	logger.LogInfo("GetCaseDevicesAPI: Getting devices for case ID: %s", caseIDStr)
 	
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
-		log.Printf("GetCaseDevicesAPI: Invalid case ID: %s, error: %v", caseIDStr, err)
+		logger.LogInfo("GetCaseDevicesAPI: Invalid case ID: %s, error: %v", caseIDStr, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid case ID"})
 		return
 	}
 
 	deviceCases, err := h.caseRepo.GetDevicesInCase(uint(caseID))
 	if err != nil {
-		log.Printf("GetCaseDevicesAPI: Database error for case %d: %v", caseID, err)
+		logger.LogInfo("GetCaseDevicesAPI: Database error for case %d: %v", caseID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -652,7 +653,7 @@ func (h *CaseHandler) GetCaseDevicesAPI(c *gin.Context) {
 		devices[i] = deviceCase.Device
 	}
 
-	log.Printf("GetCaseDevicesAPI: Found %d devices for case %d", len(devices), caseID)
+	logger.LogInfo("GetCaseDevicesAPI: Found %d devices for case %d", len(devices), caseID)
 	c.JSON(http.StatusOK, gin.H{"devices": devices})
 }
 

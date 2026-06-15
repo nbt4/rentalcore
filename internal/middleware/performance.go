@@ -3,12 +3,13 @@ package middleware
 import (
 	"compress/gzip"
 	"fmt"
-	"log"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // PerformanceMetrics stores request performance metrics
@@ -93,13 +94,13 @@ func (pm *PerformanceMonitor) PerformanceMiddleware() gin.HandlerFunc {
 
 		// Log slow requests
 		if duration > pm.slowThreshold {
-			log.Printf("SLOW REQUEST: %s %s took %v (status: %d)", 
+			logger.LogInfo("SLOW REQUEST: %s %s took %v (status: %d)", 
 				method, c.Request.URL.Path, duration, status)
 		}
 
 		// Log errors
 		if status >= 500 {
-			log.Printf("ERROR REQUEST: %s %s returned %d in %v", 
+			logger.LogInfo("ERROR REQUEST: %s %s returned %d in %v", 
 				method, c.Request.URL.Path, status, duration)
 		}
 

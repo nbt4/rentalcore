@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,6 +11,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type InvoiceTemplateHandler struct {
@@ -26,16 +27,16 @@ func NewInvoiceTemplateHandler(invoiceRepo *repository.InvoiceRepositoryNew) *In
 
 // ListTemplates displays all invoice templates
 func (h *InvoiceTemplateHandler) ListTemplates(c *gin.Context) {
-	log.Printf("=== INVOICE TEMPLATE HANDLER CALLED ===")
-	log.Printf("ListTemplates: Handler called for path: %s", c.Request.URL.Path)
-	log.Printf("ListTemplates: Request method: %s", c.Request.Method)
-	log.Printf("ListTemplates: User-Agent: %s", c.Request.Header.Get("User-Agent"))
+	logger.LogInfo("=== INVOICE TEMPLATE HANDLER CALLED ===")
+	logger.LogInfo("ListTemplates: Handler called for path: %s", c.Request.URL.Path)
+	logger.LogInfo("ListTemplates: Request method: %s", c.Request.Method)
+	logger.LogInfo("ListTemplates: User-Agent: %s", c.Request.Header.Get("User-Agent"))
 	user, _ := GetCurrentUser(c)
-	log.Printf("ListTemplates: Current user: %+v", user)
+	logger.LogInfo("ListTemplates: Current user: %+v", user)
 
 	templates, err := h.invoiceRepo.GetAllTemplates()
 	if err != nil {
-		log.Printf("ListTemplates: Error fetching templates: %v", err)
+		logger.LogInfo("ListTemplates: Error fetching templates: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": "Failed to load templates",
 			"user":  user,
@@ -43,19 +44,19 @@ func (h *InvoiceTemplateHandler) ListTemplates(c *gin.Context) {
 		return
 	}
 
-	log.Printf("ListTemplates: Found %d templates", len(templates))
+	logger.LogInfo("ListTemplates: Found %d templates", len(templates))
 	for i, template := range templates {
-		log.Printf("ListTemplates: Template %d: ID=%d, Name=%s, IsActive=%t", i+1, template.TemplateID, template.Name, template.IsActive)
+		logger.LogInfo("ListTemplates: Template %d: ID=%d, Name=%s, IsActive=%t", i+1, template.TemplateID, template.Name, template.IsActive)
 	}
 
-	log.Printf("ListTemplates: Rendering template 'invoice_templates_list.html' with %d templates", len(templates))
-	log.Printf("=== ABOUT TO RENDER INVOICE_TEMPLATES_LIST.HTML ===")
+	logger.LogInfo("ListTemplates: Rendering template 'invoice_templates_list.html' with %d templates", len(templates))
+	logger.LogInfo("=== ABOUT TO RENDER INVOICE_TEMPLATES_LIST.HTML ===")
 	c.HTML(http.StatusOK, "invoice_templates_list.html", gin.H{
 		"title":     "Invoice Templates",
 		"templates": templates,
 		"user":      user,
 	})
-	log.Printf("=== FINISHED RENDERING INVOICE_TEMPLATES_LIST.HTML ===")
+	logger.LogInfo("=== FINISHED RENDERING INVOICE_TEMPLATES_LIST.HTML ===")
 }
 
 // NewTemplateForm displays the template designer for creating a new template
@@ -96,7 +97,7 @@ func (h *InvoiceTemplateHandler) EditTemplateForm(c *gin.Context) {
 
 	template, err := h.invoiceRepo.GetTemplateByID(templateID)
 	if err != nil {
-		log.Printf("EditTemplateForm: Error fetching template: %v", err)
+		logger.LogInfo("EditTemplateForm: Error fetching template: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"error": "Template not found",
 			"user":  user,
@@ -114,14 +115,14 @@ func (h *InvoiceTemplateHandler) EditTemplateForm(c *gin.Context) {
 
 // CreateTemplate creates a new invoice template
 func (h *InvoiceTemplateHandler) CreateTemplate(c *gin.Context) {
-	log.Printf("CreateTemplate: Handler called")
+	logger.LogInfo("CreateTemplate: Handler called")
 	user, exists := GetCurrentUser(c)
 	if !exists {
-		log.Printf("CreateTemplate: User not authenticated")
+		logger.LogInfo("CreateTemplate: User not authenticated")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 		return
 	}
-	log.Printf("CreateTemplate: User authenticated: %s", user.Username)
+	logger.LogInfo("CreateTemplate: User authenticated: %s", user.Username)
 
 	var request struct {
 		Name         string `json:"name" binding:"required"`
@@ -133,7 +134,7 @@ func (h *InvoiceTemplateHandler) CreateTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("CreateTemplate: Validation error: %v", err)
+		logger.LogInfo("CreateTemplate: Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -153,10 +154,10 @@ func (h *InvoiceTemplateHandler) CreateTemplate(c *gin.Context) {
 		UpdatedAt:    time.Now(),
 	}
 
-	log.Printf("CreateTemplate: Attempting to save template: %s", template.Name)
+	logger.LogInfo("CreateTemplate: Attempting to save template: %s", template.Name)
 	err := h.invoiceRepo.CreateTemplate(template)
 	if err != nil {
-		log.Printf("CreateTemplate: Database error: %v", err)
+		logger.LogInfo("CreateTemplate: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create template",
 			"details": err.Error(),
@@ -164,7 +165,7 @@ func (h *InvoiceTemplateHandler) CreateTemplate(c *gin.Context) {
 		return
 	}
 
-	log.Printf("CreateTemplate: Template created successfully with ID: %d", template.TemplateID)
+	logger.LogInfo("CreateTemplate: Template created successfully with ID: %d", template.TemplateID)
 	c.JSON(http.StatusCreated, gin.H{
 		"success":    true,
 		"message":    "Template created successfully",
@@ -198,7 +199,7 @@ func (h *InvoiceTemplateHandler) UpdateTemplate(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Printf("UpdateTemplate: Validation error: %v", err)
+		logger.LogInfo("UpdateTemplate: Validation error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid input data",
 			"details": err.Error(),
@@ -219,7 +220,7 @@ func (h *InvoiceTemplateHandler) UpdateTemplate(c *gin.Context) {
 
 	err = h.invoiceRepo.UpdateTemplate(template)
 	if err != nil {
-		log.Printf("UpdateTemplate: Database error: %v", err)
+		logger.LogInfo("UpdateTemplate: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to update template",
 			"details": err.Error(),
@@ -257,7 +258,7 @@ func (h *InvoiceTemplateHandler) DeleteTemplate(c *gin.Context) {
 
 	err = h.invoiceRepo.DeleteTemplate(templateID)
 	if err != nil {
-		log.Printf("DeleteTemplate: Database error: %v", err)
+		logger.LogInfo("DeleteTemplate: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to delete template",
 			"details": err.Error(),
@@ -288,7 +289,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 
 	template, err := h.invoiceRepo.GetTemplateByID(templateID)
 	if err != nil {
-		log.Printf("PreviewTemplate: Error fetching template: %v", err)
+		logger.LogInfo("PreviewTemplate: Error fetching template: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"error": "Template not found",
 			"user":  user,
@@ -299,7 +300,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 	// Get company settings or use placeholder for preview
 	company, err := h.invoiceRepo.GetCompanySettings()
 	if err != nil {
-		log.Printf("PreviewTemplate: Error fetching company settings: %v", err)
+		logger.LogInfo("PreviewTemplate: Error fetching company settings: %v", err)
 		addressLine1 := "[Company Address]"
 		postalCode := "[ZIP]"
 		city := "[City]"
@@ -363,7 +364,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 	var designSettings map[string]interface{}
 	if template.CSSStyles != nil && *template.CSSStyles != "" {
 		if err := json.Unmarshal([]byte(*template.CSSStyles), &designSettings); err != nil {
-			log.Printf("PreviewTemplate: Error parsing CSS styles: %v", err)
+			logger.LogInfo("PreviewTemplate: Error parsing CSS styles: %v", err)
 			designSettings = make(map[string]interface{})
 		}
 	}
@@ -383,7 +384,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 func (h *InvoiceTemplateHandler) GetTemplatesAPI(c *gin.Context) {
 	templates, err := h.invoiceRepo.GetAllTemplates()
 	if err != nil {
-		log.Printf("GetTemplatesAPI: Error: %v", err)
+		logger.LogInfo("GetTemplatesAPI: Error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load templates"})
 		return
 	}
@@ -406,7 +407,7 @@ func (h *InvoiceTemplateHandler) SetDefaultTemplate(c *gin.Context) {
 
 	err = h.invoiceRepo.SetDefaultTemplate(templateID)
 	if err != nil {
-		log.Printf("SetDefaultTemplate: Database error: %v", err)
+		logger.LogInfo("SetDefaultTemplate: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to set default template",
 			"details": err.Error(),

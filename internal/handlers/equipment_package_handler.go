@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type EquipmentPackageHandler struct {
@@ -30,13 +31,13 @@ func NewEquipmentPackageHandler(packageRepo *repository.EquipmentPackageReposito
 
 // Equipment Package Templates and Forms
 func (h *EquipmentPackageHandler) ShowPackagesList(c *gin.Context) {
-	log.Printf("🎯 EQUIPMENT PACKAGE HANDLER: ShowPackagesList called")
+	logger.LogInfo("🎯 EQUIPMENT PACKAGE HANDLER: ShowPackagesList called")
 	// Parse filter parameters
 	params := parseFilterParams(c)
 	
 	packages, err := h.packageRepo.List(params)
 	if err != nil {
-		log.Printf("Error fetching equipment packages: %v", err)
+		logger.LogInfo("Error fetching equipment packages: %v", err)
 		c.HTML(http.StatusInternalServerError, "error_page.html", gin.H{
 			"error": "Failed to load equipment packages",
 		})
@@ -45,10 +46,10 @@ func (h *EquipmentPackageHandler) ShowPackagesList(c *gin.Context) {
 
 	// Calculate total values and device counts for display
 	for i := range packages {
-		log.Printf("🎯 BEFORE ENRICH: Package %d ('%s') has %d PackageDevices", 
+		logger.LogInfo("🎯 BEFORE ENRICH: Package %d ('%s') has %d PackageDevices", 
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices))
 		h.enrichPackageData(&packages[i])
-		log.Printf("🎯 AFTER ENRICH: Package %d ('%s') has %d PackageDevices and DeviceCount=%d", 
+		logger.LogInfo("🎯 AFTER ENRICH: Package %d ('%s') has %d PackageDevices and DeviceCount=%d", 
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices), packages[i].DeviceCount)
 	}
 
@@ -59,9 +60,9 @@ func (h *EquipmentPackageHandler) ShowPackagesList(c *gin.Context) {
 	popularPackages, _ := h.packageRepo.GetPopularPackages(5)
 
 	// Debug template data before rendering
-	log.Printf("🎯 TEMPLATE DEBUG: Rendering with %d packages", len(packages))
+	logger.LogInfo("🎯 TEMPLATE DEBUG: Rendering with %d packages", len(packages))
 	for i, pkg := range packages {
-		log.Printf("🎯 TEMPLATE DEBUG: Package %d: ID=%d, Name='%s', PackageDevices=%d, DeviceCount=%d", 
+		logger.LogInfo("🎯 TEMPLATE DEBUG: Package %d: ID=%d, Name='%s', PackageDevices=%d, DeviceCount=%d", 
 			i, pkg.PackageID, pkg.Name, len(pkg.PackageDevices), pkg.DeviceCount)
 	}
 	
@@ -99,7 +100,7 @@ func (h *EquipmentPackageHandler) ShowPackageForm(c *gin.Context) {
 	// Get available devices
 	availableDevices, err := h.packageRepo.GetAvailableDevices()
 	if err != nil {
-		log.Printf("Error fetching available devices: %v", err)
+		logger.LogInfo("Error fetching available devices: %v", err)
 		c.HTML(http.StatusInternalServerError, "error_page.html", gin.H{
 			"error": "Failed to load available devices",
 		})
@@ -161,17 +162,17 @@ func (h *EquipmentPackageHandler) ShowPackageDetail(c *gin.Context) {
 
 // API Endpoints
 func (h *EquipmentPackageHandler) GetPackages(c *gin.Context) {
-	log.Printf("GetPackages called")
+	logger.LogInfo("GetPackages called")
 	params := parseFilterParams(c)
 	
 	packages, err := h.packageRepo.List(params)
 	if err != nil {
-		log.Printf("Error fetching packages: %v", err)
+		logger.LogInfo("Error fetching packages: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("Found %d packages", len(packages))
+	logger.LogInfo("Found %d packages", len(packages))
 	// Enrich packages with calculated data
 	for i := range packages {
 		h.enrichPackageData(&packages[i])
@@ -189,18 +190,18 @@ func (h *EquipmentPackageHandler) GetPackages(c *gin.Context) {
 
 func (h *EquipmentPackageHandler) GetPackage(c *gin.Context) {
 	packageID := c.Param("id")
-	log.Printf("GetPackage called with packageID: %s", packageID)
+	logger.LogInfo("GetPackage called with packageID: %s", packageID)
 	
 	id, err := strconv.ParseUint(packageID, 10, 32)
 	if err != nil {
-		log.Printf("Invalid package ID: %v", err)
+		logger.LogInfo("Invalid package ID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid package ID"})
 		return
 	}
 
 	pkg, err := h.packageRepo.GetByIDWithDeviceDetails(uint(id))
 	if err != nil {
-		log.Printf("Package not found: %v", err)
+		logger.LogInfo("Package not found: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Package not found"})
 		return
 	}
@@ -214,7 +215,7 @@ func (h *EquipmentPackageHandler) GetPackage(c *gin.Context) {
 	// Validate package devices
 	isValid, invalidDevices, _ := h.packageRepo.ValidatePackageDevices(uint(id))
 
-	log.Printf("Successfully returning package data for ID: %d", id)
+	logger.LogInfo("Successfully returning package data for ID: %d", id)
 	c.JSON(http.StatusOK, gin.H{
 		"package":        pkg,
 		"stats":          stats,
@@ -276,31 +277,31 @@ func (h *EquipmentPackageHandler) CreatePackage(c *gin.Context) {
 
 func (h *EquipmentPackageHandler) UpdatePackage(c *gin.Context) {
 	packageID := c.Param("id")
-	log.Printf("🔄 UpdatePackage called with packageID: %s", packageID)
+	logger.LogInfo("🔄 UpdatePackage called with packageID: %s", packageID)
 	
 	id, err := strconv.ParseUint(packageID, 10, 32)
 	if err != nil {
-		log.Printf("Invalid package ID: %v", err)
+		logger.LogInfo("Invalid package ID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid package ID"})
 		return
 	}
 
 	// Log the raw request body
 	bodyBytes, _ := c.GetRawData()
-	log.Printf("Raw request body: %s", string(bodyBytes))
+	logger.LogInfo("Raw request body: %s", string(bodyBytes))
 	
 	// Reset the request body for binding
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	
 	var req models.UpdateEquipmentPackageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("Failed to bind JSON: %v", err)
-		log.Printf("Raw JSON was: %s", string(bodyBytes))
+		logger.LogInfo("Failed to bind JSON: %v", err)
+		logger.LogInfo("Raw JSON was: %s", string(bodyBytes))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	
-	log.Printf("Update request data: %+v", req)
+	logger.LogInfo("Update request data: %+v", req)
 
 	// Get existing package
 	pkg, err := h.packageRepo.GetByID(uint(id))
@@ -312,7 +313,7 @@ func (h *EquipmentPackageHandler) UpdatePackage(c *gin.Context) {
 	// Skip validation for updates - devices are being managed through associations
 	// Validation is only needed for new packages, not for updates
 	// if err := h.validatePackageDevices(convertUpdateToCreateDevices(req.Devices)); err != nil {
-	// 	log.Printf("Device validation failed: %v", err)
+	// 	logger.LogInfo("Device validation failed: %v", err)
 	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	// 	return
 	// }
@@ -330,21 +331,21 @@ func (h *EquipmentPackageHandler) UpdatePackage(c *gin.Context) {
 
 	// Update package
 	if err := h.packageRepo.Update(pkg); err != nil {
-		log.Printf("Package update failed: %v", err)
+		logger.LogInfo("Package update failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Update device associations
 	var deviceMappings []models.PackageDevice
-	log.Printf("🔄 Building device mappings for %d devices", len(req.Devices))
+	logger.LogInfo("🔄 Building device mappings for %d devices", len(req.Devices))
 	for _, deviceReq := range req.Devices {
-		log.Printf("🔄 Adding device mapping: %s (quantity: %d)", deviceReq.DeviceID, deviceReq.Quantity)
+		logger.LogInfo("🔄 Adding device mapping: %s (quantity: %d)", deviceReq.DeviceID, deviceReq.Quantity)
 		
 		// Validate device exists before adding to mappings
 		_, err := h.deviceRepo.GetByID(deviceReq.DeviceID)
 		if err != nil {
-			log.Printf("❌ Device %s does not exist or is not accessible - skipping", deviceReq.DeviceID)
+			logger.LogInfo("❌ Device %s does not exist or is not accessible - skipping", deviceReq.DeviceID)
 			continue
 		}
 		
@@ -359,7 +360,7 @@ func (h *EquipmentPackageHandler) UpdatePackage(c *gin.Context) {
 	}
 
 	if err := h.packageRepo.UpdateDeviceAssociations(uint(id), deviceMappings); err != nil {
-		log.Printf("Device association update failed: %v", err)
+		logger.LogInfo("Device association update failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -373,22 +374,22 @@ func (h *EquipmentPackageHandler) UpdatePackage(c *gin.Context) {
 
 func (h *EquipmentPackageHandler) DeletePackage(c *gin.Context) {
 	packageID := c.Param("id")
-	log.Printf("DeletePackage called with packageID: %s", packageID)
+	logger.LogInfo("DeletePackage called with packageID: %s", packageID)
 	
 	id, err := strconv.ParseUint(packageID, 10, 32)
 	if err != nil {
-		log.Printf("Invalid package ID: %v", err)
+		logger.LogInfo("Invalid package ID: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid package ID"})
 		return
 	}
 
 	if err := h.packageRepo.Delete(uint(id)); err != nil {
-		log.Printf("Failed to delete package: %v", err)
+		logger.LogInfo("Failed to delete package: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("Package deleted successfully: %d", id)
+	logger.LogInfo("Package deleted successfully: %d", id)
 	c.JSON(http.StatusOK, gin.H{"message": "Package deleted successfully"})
 }
 
@@ -635,23 +636,23 @@ func (h *EquipmentPackageHandler) enrichPackageData(pkg *models.EquipmentPackage
 }
 
 func (h *EquipmentPackageHandler) validatePackageDevices(devices []models.CreatePackageDeviceRequest) error {
-	log.Printf("🔍 VALIDATION: Starting validation for %d devices", len(devices))
+	logger.LogInfo("🔍 VALIDATION: Starting validation for %d devices", len(devices))
 	for _, device := range devices {
-		log.Printf("🔍 VALIDATION: Validating device %s", device.DeviceID)
+		logger.LogInfo("🔍 VALIDATION: Validating device %s", device.DeviceID)
 		// Check if device exists and is available
 		existingDevice, err := h.deviceRepo.GetByID(device.DeviceID)
 		if err != nil {
-			log.Printf("❌ VALIDATION: Device %s not found: %v", device.DeviceID, err)
+			logger.LogInfo("❌ VALIDATION: Device %s not found: %v", device.DeviceID, err)
 			return fmt.Errorf("device %s not found", device.DeviceID)
 		}
 
-		log.Printf("✅ VALIDATION: Device %s exists with status: %s", device.DeviceID, existingDevice.Status)
+		logger.LogInfo("✅ VALIDATION: Device %s exists with status: %s", device.DeviceID, existingDevice.Status)
 		if existingDevice.Status != "free" && existingDevice.Status != "available" && existingDevice.Status != "ready" {
-			log.Printf("❌ VALIDATION: Device %s is not available (status: %s)", device.DeviceID, existingDevice.Status)
+			logger.LogInfo("❌ VALIDATION: Device %s is not available (status: %s)", device.DeviceID, existingDevice.Status)
 			return fmt.Errorf("device %s is not available (status: %s)", device.DeviceID, existingDevice.Status)
 		}
 	}
-	log.Printf("✅ VALIDATION: All devices validated successfully")
+	logger.LogInfo("✅ VALIDATION: All devices validated successfully")
 	return nil
 }
 

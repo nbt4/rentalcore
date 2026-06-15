@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // PythonParser wraps the Python OCR parser tool
@@ -100,7 +101,7 @@ func (p *PythonParser) ParseDocument(rawText string) (*ParsedDocument, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	log.Printf("[PythonParser] Executing: %s %s", p.PythonPath, p.ParserPath)
+	logger.LogInfo("[PythonParser] Executing: %s %s", p.PythonPath, p.ParserPath)
 
 	err = cmd.Run()
 	if err != nil {
@@ -118,7 +119,7 @@ func (p *PythonParser) ParseDocument(rawText string) (*ParsedDocument, error) {
 
 	// Log warnings
 	if len(output.Warnings) > 0 {
-		log.Printf("[PythonParser] Warnings: %v", output.Warnings)
+		logger.LogInfo("[PythonParser] Warnings: %v", output.Warnings)
 	}
 
 	// Convert to ParsedDocument
@@ -166,7 +167,7 @@ func (p *PythonParser) ParseDocument(rawText string) (*ParsedDocument, error) {
 	doc.Metadata["warnings"] = output.Warnings
 	doc.Metadata["item_count"] = len(output.Items)
 
-	log.Printf("[PythonParser] Parsed successfully: items=%d, confidence=%.2f", len(doc.Items), doc.ConfidenceScore)
+	logger.LogInfo("[PythonParser] Parsed successfully: items=%d, confidence=%.2f", len(doc.Items), doc.ConfidenceScore)
 
 	return doc, nil
 }
@@ -202,13 +203,13 @@ func (p *PythonParser) calculateConfidence(doc *ParsedDocument) float64 {
 func (p *PythonParser) IsAvailable() bool {
 	// Check if Python is available
 	if _, err := exec.LookPath(p.PythonPath); err != nil {
-		log.Printf("[PythonParser] Python not found in PATH: %v", err)
+		logger.LogInfo("[PythonParser] Python not found in PATH: %v", err)
 		return false
 	}
 
 	// Check if parser script exists
 	if _, err := os.Stat(p.ParserPath); os.IsNotExist(err) {
-		log.Printf("[PythonParser] Parser script not found at: %s", p.ParserPath)
+		logger.LogInfo("[PythonParser] Parser script not found at: %s", p.ParserPath)
 		return false
 	}
 

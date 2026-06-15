@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CableHandler struct {
@@ -27,13 +28,13 @@ func NewCableHandler(cableRepo *repository.CableRepository) *CableHandler {
 // Web interface handlers
 func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 	startTime := time.Now()
-	log.Printf("🚀 CableHandler.ListCablesWeb() started")
+	logger.LogInfo("🚀 CableHandler.ListCablesWeb() started")
 
 	user, _ := GetCurrentUser(c)
 
 	params := &models.FilterParams{}
 	if err := c.ShouldBindQuery(params); err != nil {
-		log.Printf("❌ Error binding query parameters: %v", err)
+		logger.LogInfo("❌ Error binding query parameters: %v", err)
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=400&message=Bad Request&details=%s", err.Error()))
 		return
 	}
@@ -79,7 +80,7 @@ func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 
 	lengthMin, lengthMax, boundsErr := h.cableRepo.GetLengthBounds()
 	if boundsErr != nil {
-		log.Printf("⚠️  Failed to determine cable length bounds: %v", boundsErr)
+		logger.LogInfo("⚠️  Failed to determine cable length bounds: %v", boundsErr)
 		lengthMin = 0
 		lengthMax = 0
 	}
@@ -99,16 +100,16 @@ func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 	params.Page = page
 
 	viewType := c.DefaultQuery("view", "list") // Default to list view
-	log.Printf("🐛 DEBUG: Cable view requested: viewType='%s'", viewType)
+	logger.LogInfo("🐛 DEBUG: Cable view requested: viewType='%s'", viewType)
 
 	// Get cables from database (grouped by specifications)
 	dbStart := time.Now()
 	cableGroups, err := h.cableRepo.ListGrouped(params)
 	dbTime := time.Since(dbStart)
-	log.Printf("⏱️  Database query took: %v", dbTime)
+	logger.LogInfo("⏱️  Database query took: %v", dbTime)
 
 	if err != nil {
-		log.Printf("❌ Database error: %v", err)
+		logger.LogInfo("❌ Database error: %v", err)
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
@@ -128,9 +129,9 @@ func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 
 	connectorPairsJSON := template.JS("{}")
 	if connectorPairs, err := h.cableRepo.GetConnectorPairings(); err != nil {
-		log.Printf("⚠️  Failed to load connector pairings: %v", err)
+		logger.LogInfo("⚠️  Failed to load connector pairings: %v", err)
 	} else if jsonData, err := json.Marshal(connectorPairs); err != nil {
-		log.Printf("⚠️  Failed to marshal connector pairings: %v", err)
+		logger.LogInfo("⚠️  Failed to marshal connector pairings: %v", err)
 	} else {
 		connectorPairsJSON = template.JS(jsonData)
 	}
@@ -138,7 +139,7 @@ func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 	// Get total cable count for pagination
 	totalCables, err := h.cableRepo.GetGroupedTotalCount(params)
 	if err != nil {
-		log.Printf("❌ Error getting total cable count: %v", err)
+		logger.LogInfo("❌ Error getting total cable count: %v", err)
 		totalCables = 0
 	}
 
@@ -170,8 +171,8 @@ func (h *CableHandler) ListCablesWeb(c *gin.Context) {
 
 	templateTime := time.Since(templateStart)
 	totalTime := time.Since(startTime)
-	log.Printf("⏱️  Template rendering took: %v", templateTime)
-	log.Printf("🏁 CableHandler.ListCablesWeb() completed in %v", totalTime)
+	logger.LogInfo("⏱️  Template rendering took: %v", templateTime)
+	logger.LogInfo("🏁 CableHandler.ListCablesWeb() completed in %v", totalTime)
 }
 
 func (h *CableHandler) NewCableForm(c *gin.Context) {
@@ -216,7 +217,7 @@ func (h *CableHandler) NewCableForm(c *gin.Context) {
 }
 
 func (h *CableHandler) CreateCable(c *gin.Context) {
-	log.Printf("🔥 CREATE CABLE HANDLER CALLED")
+	logger.LogInfo("🔥 CREATE CABLE HANDLER CALLED")
 
 	// Parse form values
 	connector1Str := c.PostForm("connector1")
@@ -226,34 +227,34 @@ func (h *CableHandler) CreateCable(c *gin.Context) {
 	mm2Str := c.PostForm("mm2")
 	amountStr := c.PostForm("amount")
 
-	log.Printf("📝 Form values: connector1='%s', connector2='%s', type='%s', length='%s', mm2='%s', amount='%s'",
+	logger.LogInfo("📝 Form values: connector1='%s', connector2='%s', type='%s', length='%s', mm2='%s', amount='%s'",
 		connector1Str, connector2Str, typeStr, lengthStr, mm2Str, amountStr)
 
 	// Parse required fields
 	connector1, err := strconv.Atoi(connector1Str)
 	if err != nil {
-		log.Printf("❌ Invalid connector1: %v", err)
+		logger.LogInfo("❌ Invalid connector1: %v", err)
 		h.renderCableFormWithError(c, "Invalid connector 1 value", nil)
 		return
 	}
 
 	connector2, err := strconv.Atoi(connector2Str)
 	if err != nil {
-		log.Printf("❌ Invalid connector2: %v", err)
+		logger.LogInfo("❌ Invalid connector2: %v", err)
 		h.renderCableFormWithError(c, "Invalid connector 2 value", nil)
 		return
 	}
 
 	cableType, err := strconv.Atoi(typeStr)
 	if err != nil {
-		log.Printf("❌ Invalid type: %v", err)
+		logger.LogInfo("❌ Invalid type: %v", err)
 		h.renderCableFormWithError(c, "Invalid cable type value", nil)
 		return
 	}
 
 	length, err := strconv.ParseFloat(lengthStr, 64)
 	if err != nil {
-		log.Printf("❌ Invalid length: %v", err)
+		logger.LogInfo("❌ Invalid length: %v", err)
 		h.renderCableFormWithError(c, "Invalid length value", nil)
 		return
 	}
@@ -262,7 +263,7 @@ func (h *CableHandler) CreateCable(c *gin.Context) {
 	if mm2Str != "" {
 		parsedMM2, err := strconv.ParseFloat(mm2Str, 64)
 		if err != nil {
-			log.Printf("❌ Invalid mm2: %v", err)
+			logger.LogInfo("❌ Invalid mm2: %v", err)
 			h.renderCableFormWithError(c, "Invalid mm² value", nil)
 			return
 		}
@@ -274,7 +275,7 @@ func (h *CableHandler) CreateCable(c *gin.Context) {
 	if amountStr != "" {
 		amount, err = strconv.Atoi(amountStr)
 		if err != nil || amount < 1 {
-			log.Printf("❌ Invalid amount: %v", err)
+			logger.LogInfo("❌ Invalid amount: %v", err)
 			h.renderCableFormWithError(c, "Invalid amount value", nil)
 			return
 		}
@@ -294,7 +295,7 @@ func (h *CableHandler) CreateCable(c *gin.Context) {
 		}
 
 		if err := h.cableRepo.Create(&cable); err != nil {
-			log.Printf("❌ Error creating cable %d of %d: %v", i+1, amount, err)
+			logger.LogInfo("❌ Error creating cable %d of %d: %v", i+1, amount, err)
 			h.renderCableFormWithError(c, fmt.Sprintf("Error creating cable %d of %d: %v", i+1, amount, err), &cable)
 			return
 		}
@@ -303,7 +304,7 @@ func (h *CableHandler) CreateCable(c *gin.Context) {
 		createdIDs = append(createdIDs, cable.CableID)
 	}
 
-	log.Printf("✅ Successfully created %d cables with IDs: %v", amount, createdIDs)
+	logger.LogInfo("✅ Successfully created %d cables with IDs: %v", amount, createdIDs)
 	c.Redirect(http.StatusFound, "/cables")
 }
 
@@ -358,10 +359,10 @@ func (h *CableHandler) GetCableAPI(c *gin.Context) {
 		return
 	}
 
-	log.Printf("🐛 DEBUG GetCableAPI: Cable ID=%d, Type=%d, Connector1=%d, Connector2=%d", cable.CableID, cable.Type, cable.Connector1, cable.Connector2)
-	log.Printf("🐛 DEBUG GetCableAPI: TypeInfo=%+v", cable.TypeInfo)
-	log.Printf("🐛 DEBUG GetCableAPI: Connector1Info=%+v", cable.Connector1Info)
-	log.Printf("🐛 DEBUG GetCableAPI: Connector2Info=%+v", cable.Connector2Info)
+	logger.LogInfo("🐛 DEBUG GetCableAPI: Cable ID=%d, Type=%d, Connector1=%d, Connector2=%d", cable.CableID, cable.Type, cable.Connector1, cable.Connector2)
+	logger.LogInfo("🐛 DEBUG GetCableAPI: TypeInfo=%+v", cable.TypeInfo)
+	logger.LogInfo("🐛 DEBUG GetCableAPI: Connector1Info=%+v", cable.Connector1Info)
+	logger.LogInfo("🐛 DEBUG GetCableAPI: Connector2Info=%+v", cable.Connector2Info)
 
 	c.JSON(http.StatusOK, gin.H{"cable": cable})
 }
@@ -427,9 +428,9 @@ func (h *CableHandler) GetCableTypesAPI(c *gin.Context) {
 		return
 	}
 
-	log.Printf("🐛 DEBUG GetCableTypesAPI: Found %d types", len(types))
+	logger.LogInfo("🐛 DEBUG GetCableTypesAPI: Found %d types", len(types))
 	for i, t := range types {
-		log.Printf("🐛 DEBUG GetCableTypesAPI: Type[%d] ID=%d, Name=%s", i, t.CableTypesID, t.Name)
+		logger.LogInfo("🐛 DEBUG GetCableTypesAPI: Type[%d] ID=%d, Name=%s", i, t.CableTypesID, t.Name)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"types": types})
@@ -442,9 +443,9 @@ func (h *CableHandler) GetCableConnectorsAPI(c *gin.Context) {
 		return
 	}
 
-	log.Printf("🐛 DEBUG GetCableConnectorsAPI: Found %d connectors", len(connectors))
+	logger.LogInfo("🐛 DEBUG GetCableConnectorsAPI: Found %d connectors", len(connectors))
 	for i, conn := range connectors {
-		log.Printf("🐛 DEBUG GetCableConnectorsAPI: Connector[%d] ID=%d, Name=%s", i, conn.CableConnectorsID, conn.Name)
+		logger.LogInfo("🐛 DEBUG GetCableConnectorsAPI: Connector[%d] ID=%d, Name=%s", i, conn.CableConnectorsID, conn.Name)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"connectors": connectors})

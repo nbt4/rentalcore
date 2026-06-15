@@ -3,10 +3,11 @@ package repository
 import (
 	"fmt"
 	"go-barcode-webapp/internal/models"
-	"log"
 	"strings"
 
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type JobRepository struct {
@@ -19,7 +20,7 @@ func jobRepoDebugLog(format string, args ...interface{}) {
 	if !jobRepoDebugLogsEnabled {
 		return
 	}
-	fmt.Printf(format, args...)
+	logger.LogWarn(format, args...)
 }
 
 func computeFinalRevenue(revenue, discount float64, discountType string) float64 {
@@ -75,7 +76,7 @@ func (r *JobRepository) loadProductsForJobDevices(jobDevices []models.JobDevice)
 
 	var products []models.Product
 	if err := r.db.Where("productID IN ?", productIDs).Find(&products).Error; err != nil {
-		log.Printf("Warning: failed to preload products for job devices: %v", err)
+		logger.LogInfo("Warning: failed to preload products for job devices: %v", err)
 		return
 	}
 
@@ -808,7 +809,7 @@ func (r *JobRepository) GetJobDevicesPaginated(jobID uint, productName string, p
 // handlePackageDeviceAssignment handles the assignment of a package device to a job
 // It calculates discounts, adds the package device, and reserves all real devices
 func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceID string, job *models.Job, price float64, pkg *models.ProductPackage) error {
-	log.Printf("[PACKAGE] Starting package assignment: jobID=%d, packageDeviceID=%s, packageID=%d", jobID, packageDeviceID, pkg.PackageID)
+	logger.LogInfo("[PACKAGE] Starting package assignment: jobID=%d, packageDeviceID=%s, packageID=%d", jobID, packageDeviceID, pkg.PackageID)
 
 	// Load all items in this package
 	var packageItems []models.ProductPackageItem
@@ -816,21 +817,21 @@ func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceI
 		return fmt.Errorf("failed to load package items: %w", err)
 	}
 
-	log.Printf("[PACKAGE] Found %d items in package %d", len(packageItems), pkg.PackageID)
+	logger.LogInfo("[PACKAGE] Found %d items in package %d", len(packageItems), pkg.PackageID)
 
 	// Calculate total regular price of all items
 	var regularTotal float64
 	for _, item := range packageItems {
 		var product models.Product
 		if err := r.db.First(&product, item.ProductID).Error; err != nil {
-			log.Printf("[PACKAGE] Warning: Could not load product %d: %v", item.ProductID, err)
+			logger.LogInfo("[PACKAGE] Warning: Could not load product %d: %v", item.ProductID, err)
 			continue
 		}
 
 		if product.ItemCostPerDay != nil {
 			itemPrice := *product.ItemCostPerDay * float64(item.Quantity)
 			regularTotal += itemPrice
-			log.Printf("[PACKAGE] Product %d (%s): %.2f x %d = %.2f", product.ProductID, product.Name, *product.ItemCostPerDay, item.Quantity, itemPrice)
+			logger.LogInfo("[PACKAGE] Product %d (%s): %.2f x %d = %.2f", product.ProductID, product.Name, *product.ItemCostPerDay, item.Quantity, itemPrice)
 		}
 	}
 
@@ -846,7 +847,7 @@ func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceI
 		discountPercent = (regularTotal - packagePrice) / regularTotal
 	}
 
-	log.Printf("[PACKAGE] Regular total: %.2f, Package price: %.2f, Discount: %.2f%%", regularTotal, packagePrice, discountPercent*100)
+	logger.LogInfo("[PACKAGE] Regular total: %.2f, Package price: %.2f, Discount: %.2f%%", regularTotal, packagePrice, discountPercent*100)
 
 	// Start transaction
 	tx := r.db.Begin()
@@ -867,13 +868,13 @@ func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceI
 		return fmt.Errorf("failed to add package device to job: %w", err)
 	}
 
-	log.Printf("[PACKAGE] ✓ Added package device %s with price %.2f", packageDeviceID, packagePrice)
+	logger.LogInfo("[PACKAGE] ✓ Added package device %s with price %.2f", packageDeviceID, packagePrice)
 
 	// 2. Reserve real devices for each package item
 	for _, item := range packageItems {
 		var product models.Product
 		if err := tx.First(&product, item.ProductID).Error; err != nil {
-			log.Printf("[PACKAGE] Warning: Could not load product %d: %v", item.ProductID, err)
+			logger.LogInfo("[PACKAGE] Warning: Could not load product %d: %v", item.ProductID, err)
 			continue
 		}
 
@@ -915,7 +916,7 @@ func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceI
 				return fmt.Errorf("failed to add device %s to job: %w", device.DeviceID, err)
 			}
 
-			log.Printf("[PACKAGE] ✓ Added device %s (product: %s) with discounted price %.2f (is_package_item=true)",
+			logger.LogInfo("[PACKAGE] ✓ Added device %s (product: %s) with discounted price %.2f (is_package_item=true)",
 				device.DeviceID, product.Name, *discountedPrice)
 		}
 	}
@@ -925,7 +926,7 @@ func (r *JobRepository) handlePackageDeviceAssignment(jobID uint, packageDeviceI
 		return fmt.Errorf("failed to commit package assignment: %w", err)
 	}
 
-	log.Printf("[PACKAGE] ✓ Successfully assigned package %s to job %d", packageDeviceID, jobID)
+	logger.LogInfo("[PACKAGE] ✓ Successfully assigned package %s to job %d", packageDeviceID, jobID)
 
 	// Update revenue calculation
 	return r.CalculateAndUpdateRevenue(jobID)

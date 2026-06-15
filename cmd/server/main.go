@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"go-barcode-webapp/internal/cache"
@@ -254,13 +255,13 @@ func main() {
 	// Set production mode if environment variable is set
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
-		log.Println("Running in production mode")
+		logger.LogInfo("Running in production mode")
 	}
 
 	// Load configuration
 	cfg, err := config.LoadConfig(*configFile)
 	if err != nil {
-		log.Printf("Failed to load config, using defaults: %v", err)
+		logger.LogInfo("Failed to load config, using defaults: %v", err)
 		cfg = &config.Config{}
 		cfg.Database.Host = "localhost"
 		cfg.Database.Port = 5432
@@ -276,37 +277,37 @@ func main() {
 	// Initialize database
 	db, err := repository.NewDatabase(&cfg.Database)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.LogFatal("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	// Test database connection
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		logger.LogFatal("Failed to ping database: %v", err)
 	}
 
 	// Ensure M365 sync columns exist on production databases
 	if sqlDB, err := db.DB.DB(); err == nil {
 		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
-			log.Printf("Warning: M365 column migration failed: %v", err)
+			logger.LogInfo("Warning: M365 column migration failed: %v", err)
 		}
 		if err := schema.EnsureVenuesTable(sqlDB); err != nil {
-			log.Printf("Warning: venues table migration failed: %v", err)
+			logger.LogInfo("Warning: venues table migration failed: %v", err)
 		}
 		if err := schema.EnsureJobsVenueID(sqlDB); err != nil {
-			log.Printf("Warning: jobs.venue_id migration failed: %v", err)
+			logger.LogInfo("Warning: jobs.venue_id migration failed: %v", err)
 		}
 	}
 	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
-		log.Printf("Warning: M365Settings AutoMigrate failed: %v", err)
+		logger.LogInfo("Warning: M365Settings AutoMigrate failed: %v", err)
 	}
 
 	// Apply performance indexes for optimal database performance
 	go func() {
 		if err := config.ApplyPerformanceIndexes(db.DB); err != nil {
-			log.Printf("Warning: Failed to apply performance indexes: %v", err)
+			logger.LogInfo("Warning: Failed to apply performance indexes: %v", err)
 		} else {
-			log.Printf("Performance indexes applied successfully")
+			logger.LogInfo("Performance indexes applied successfully")
 		}
 	}()
 
@@ -318,15 +319,15 @@ func main() {
 
 	loggerConfig := logger.LoggerConfig{
 		Level:        logger.INFO,
-		Service:      "go-barcode-webapp",
-		Version:      "1.0.0",
+		Service:      "rentalcore",
+		Version:      "2.1.0",
 		Environment:  environment,
 		OutputPath:   "", // stdout
 		EnableCaller: true,
 	}
 
 	if err := logger.InitializeLogger(loggerConfig); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
+		logger.LogFatal("Failed to initialize logger: %v", err)
 	}
 	defer logger.GlobalLogger.Close()
 
@@ -346,13 +347,13 @@ func main() {
 		cfg.Security.EncryptionKey,
 	)
 	if err != nil {
-		log.Printf("Warning: Failed to create compliance middleware: %v", err)
+		logger.LogInfo("Warning: Failed to create compliance middleware: %v", err)
 		// Use a dummy middleware for development
 		complianceMiddleware = nil
 	} else {
 		// Initialize compliance database tables
 		if err := complianceMiddleware.InitializeCompliance(); err != nil {
-			log.Printf("Warning: Failed to initialize compliance system: %v", err)
+			logger.LogInfo("Warning: Failed to initialize compliance system: %v", err)
 		}
 	}
 
@@ -395,15 +396,15 @@ func main() {
 		m365SyncService = svc
 		syncCtx, _ := context.WithCancel(context.Background())
 		svc.Start(syncCtx)
-		log.Println("M365 sync: service initialized")
+		logger.LogInfo("M365 sync: service initialized")
 
 		calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
 		calendarSync = m365sync.NewCalendarSyncService(
 			calendarClient, jobRepo, positionRepo, jobEmployeeRepo, db, cfg.M365.AppBaseURL,
 		)
-		log.Printf("M365 calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
+		logger.LogInfo("M365 calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
 	} else {
-		log.Println("M365 sync: not configured (M365_TENANT_ID etc. not set)")
+		logger.LogInfo("M365 sync: not configured (M365_TENANT_ID etc. not set)")
 	}
 	statusRepo := repository.NewStatusRepository(db)
 	productRepo := repository.NewProductRepository(db)
@@ -421,7 +422,7 @@ func main() {
 	jobHistoryService := services.NewJobHistoryService(db.DB)
 
 	// Auto-migration disabled - database schema managed manually
-	log.Printf("Database auto-migration disabled - using manual schema management")
+	logger.LogInfo("Database auto-migration disabled - using manual schema management")
 
 	// Initialize job package repository
 	jobPackageRepo := repository.NewJobPackageRepository(db)
@@ -454,7 +455,10 @@ func main() {
 	workflowHandler := handlers.NewWorkflowHandler(jobRepo, customerRepo, equipmentPackageRepo, deviceRepo, db.DB, barcodeService)
 	equipmentPackageHandler := handlers.NewEquipmentPackageHandler(equipmentPackageRepo, deviceRepo)
 	rentalEquipmentHandler := handlers.NewRentalEquipmentHandler(rentalEquipmentRepo)
-	documentHandler := handlers.NewDocumentHandler(db.DB)
+	documentHandler, err := handlers.NewDocumentHandler(db.DB)
+	if err != nil {
+		logger.LogFatal("Failed to create document handler: %v", err)
+	}
 	financialHandler := handlers.NewFinancialHandler(db.DB)
 	securityHandler := handlers.NewSecurityHandler(db.DB)
 	invoiceHandler := handlers.NewInvoiceHandlerNew(invoiceRepo, customerRepo, jobRepo, deviceRepo, equipmentPackageRepo, productRepo, &cfg.PDF)
@@ -468,7 +472,7 @@ func main() {
 		packageAliasCache = pdfsvc.NewPackageAliasCache(aliasEndpoint)
 		if packageAliasCache != nil {
 			go packageAliasCache.Warm()
-			log.Printf("WarehouseCore package alias cache enabled: %s", aliasEndpoint)
+			logger.LogInfo("WarehouseCore package alias cache enabled: %s", aliasEndpoint)
 		}
 	}
 
@@ -486,7 +490,7 @@ func main() {
 
 	// Create default invoice template if none exists
 	if err := createDefaultTemplate(templateHandler, invoiceRepo); err != nil {
-		log.Printf("Warning: Failed to create default template: %v", err)
+		logger.LogInfo("Warning: Failed to create default template: %v", err)
 	}
 
 	// Setup Gin router with error handling
@@ -741,9 +745,13 @@ func main() {
 		r.LoadHTMLGlob("web/templates/*")
 	}
 
-	// Simple health check endpoint for Docker
+	// Health check endpoint (no auth required)
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok", "service": "RentalCore"})
+		if err := db.Ping(); err != nil {
+			c.JSON(503, gin.H{"status": "error", "service": "rentalcore", "version": "2.1.0", "error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok", "service": "rentalcore", "version": "2.1.0"})
 	})
 
 	// Serve React SPA build assets
@@ -779,11 +787,11 @@ func main() {
 
 	// Initialize default roles
 	if err := securityHandler.InitializeDefaultRoles(); err != nil {
-		log.Printf("Failed to initialize default roles: %v", err)
+		logger.LogInfo("Failed to initialize default roles: %v", err)
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, venueHandler, m365SettingsHandler)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, db, venueHandler, m365SettingsHandler)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -815,16 +823,16 @@ func main() {
 		originalMethod := req.Method
 		if req.Method == "POST" {
 			contentType := req.Header.Get("Content-Type")
-			log.Printf("POST request to %s with Content-Type: '%s'", req.URL.Path, contentType)
+			logger.LogInfo("POST request to %s with Content-Type: '%s'", req.URL.Path, contentType)
 
 			if contentType == "application/x-www-form-urlencoded" ||
 				strings.HasPrefix(contentType, "application/x-www-form-urlencoded") {
 
 				if err := req.ParseForm(); err == nil {
 					methodParam := req.FormValue("_method")
-					log.Printf("Form _method parameter: '%s'", methodParam)
+					logger.LogInfo("Form _method parameter: '%s'", methodParam)
 					if methodParam == "PUT" || methodParam == "DELETE" {
-						log.Printf("Method override: %s -> %s for path: %s", originalMethod, methodParam, req.URL.Path)
+						logger.LogInfo("Method override: %s -> %s for path: %s", originalMethod, methodParam, req.URL.Path)
 						req.Method = methodParam
 					}
 				}
@@ -834,8 +842,35 @@ func main() {
 		r.ServeHTTP(w, req)
 	})
 
-	log.Printf("Server starting on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, methodOverrideHandler))
+	zlog := logger.GlobalLogger.Raw()
+	zlog.Info().Str("addr", addr).Msg("Server starting")
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: methodOverrideHandler,
+	}
+
+	// Graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			zlog.Fatal().Err(err).Msg("Server failed")
+		}
+	}()
+
+	<-ctx.Done()
+	zlog.Info().Msg("Shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		zlog.Error().Err(err).Msg("Server forced to shutdown")
+	}
+
+	zlog.Info().Msg("Server exited gracefully")
 }
 
 func setupRoutes(r *gin.Engine,
@@ -875,6 +910,7 @@ func setupRoutes(r *gin.Engine,
 	complianceMiddleware *compliance.ComplianceMiddleware,
 	skillHandler *handlers.SkillHandler,
 	employeeHandler *handlers.EmployeeHandler,
+	db *repository.Database,
 	venueHandler *handlers.VenueHandler,
 	m365SettingsHandler *handlers.M365SettingsHandler) {
 
@@ -1830,7 +1866,7 @@ func createDefaultTemplate(templateHandler *handlers.InvoiceTemplateHandler, rep
 
 	// If templates exist, skip creation
 	if len(templates) > 0 {
-		log.Printf("Templates already exist (%d), skipping default template creation", len(templates))
+		logger.LogInfo("Templates already exist (%d), skipping default template creation", len(templates))
 		return nil
 	}
 
@@ -1854,7 +1890,7 @@ func createDefaultTemplate(templateHandler *handlers.InvoiceTemplateHandler, rep
 		return fmt.Errorf("failed to create default template: %v", err)
 	}
 
-	log.Printf("Successfully created default invoice template")
+	logger.LogInfo("Successfully created default invoice template")
 	return nil
 }
 

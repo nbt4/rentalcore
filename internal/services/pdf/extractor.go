@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -19,6 +18,8 @@ import (
 	"go-barcode-webapp/internal/models"
 
 	"github.com/ledongthuc/pdf"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // PDFExtractor handles PDF text extraction and data parsing
@@ -38,10 +39,10 @@ func NewPDFExtractor(uploadDir string) *PDFExtractor {
 
 	// Verify Python parser is available
 	if !pythonParser.IsAvailable() {
-		log.Fatal("[PDFExtractor] FATAL: Python parser is not available. Cannot start without OCR parser.")
+		logger.LogFatal("[PDFExtractor] FATAL: Python parser is not available. Cannot start without OCR parser.")
 	}
 
-	log.Println("[PDFExtractor] Using Python OCR parser (exclusive mode)")
+	logger.LogInfo("[PDFExtractor] Using Python OCR parser (exclusive mode)")
 
 	return &PDFExtractor{
 		UploadDir:    uploadDir,
@@ -130,7 +131,7 @@ func (e *PDFExtractor) ExtractText(filePath string) (string, error) {
 		text, err := page.GetPlainText(nil)
 		if err != nil {
 			// Log error but continue with next page
-			fmt.Printf("Warning: failed to extract text from page %d: %v\n", pageNum, err)
+			logger.LogWarn("Warning: failed to extract text from page %d: %v\n", pageNum, err)
 			continue
 		}
 
@@ -148,12 +149,12 @@ func (e *PDFExtractor) ExtractText(filePath string) (string, error) {
 
 // ExtractWithOCR extracts text from PDF using OCR when needed
 func (e *PDFExtractor) ExtractWithOCR(filePath string) (*OCRResult, error) {
-	log.Printf("Starting OCR extraction for: %s", filePath)
+	logger.LogInfo("Starting OCR extraction for: %s", filePath)
 
 	// Use OCR engine to extract text
 	ocrResult, err := e.OCREngine.ExtractTextWithOCR(filePath)
 	if err != nil {
-		log.Printf("OCR extraction failed: %v", err)
+		logger.LogInfo("OCR extraction failed: %v", err)
 		// Fallback to simple text extraction
 		text, fallbackErr := e.ExtractText(filePath)
 		if fallbackErr != nil {
@@ -168,7 +169,7 @@ func (e *PDFExtractor) ExtractWithOCR(filePath string) (*OCRResult, error) {
 		}, nil
 	}
 
-	log.Printf("OCR extraction successful: method=%s, confidence=%.2f, pages=%d",
+	logger.LogInfo("OCR extraction successful: method=%s, confidence=%.2f, pages=%d",
 		ocrResult.Method, ocrResult.Confidence, ocrResult.PageCount)
 
 	return ocrResult, nil
@@ -176,14 +177,14 @@ func (e *PDFExtractor) ExtractWithOCR(filePath string) (*OCRResult, error) {
 
 // ParseDocumentIntelligently parses extracted text using Python OCR parser
 func (e *PDFExtractor) ParseDocumentIntelligently(rawText string) (*ParsedDocument, error) {
-	log.Printf("[PDFExtractor] Parsing document with Python parser (text length: %d)", len(rawText))
+	logger.LogInfo("[PDFExtractor] Parsing document with Python parser (text length: %d)", len(rawText))
 
 	doc, err := e.PythonParser.ParseDocument(rawText)
 	if err != nil {
 		return nil, fmt.Errorf("Python parser failed: %v", err)
 	}
 
-	log.Printf("[PDFExtractor] Document parsed successfully: type=%s, items=%d, confidence=%.2f",
+	logger.LogInfo("[PDFExtractor] Document parsed successfully: type=%s, items=%d, confidence=%.2f",
 		doc.DocumentType, len(doc.Items), doc.ConfidenceScore)
 
 	return doc, nil

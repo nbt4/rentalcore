@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Briefcase, Users, TrendingUp, Calendar, ArrowRight } from 'lucide-react';
 import { api } from '../lib/api';
 import type { Job } from '../lib/api';
+import { toast } from '../lib/toast';
 
 interface Stats {
   total_jobs?: number;
@@ -43,7 +44,7 @@ export function Dashboard() {
         });
         setRecentJobs(jobs.slice(0, 5));
       } catch (e) {
-        console.error(e);
+        toast.error(e);
       } finally {
         setLoading(false);
       }

@@ -1,0 +1,10 @@
+// FIXED: validatePathComponent prevents path traversal attacks
+func validatePathComponent(name string) error {
+    if name == "" {
+        return fmt.Errorf("path component cannot be empty")
+    }
+    if strings.Contains(name, "..") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+        return fmt.Errorf("invalid path component: %s", name)
+    }
+    return nil
+}

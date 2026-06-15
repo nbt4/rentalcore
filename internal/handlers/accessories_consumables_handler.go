@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -10,6 +9,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type AccessoriesConsumablesHandler struct {
@@ -28,7 +29,7 @@ func NewAccessoriesConsumablesHandler(repo *repository.AccessoriesConsumablesRep
 func (h *AccessoriesConsumablesHandler) GetCountTypesAPI(c *gin.Context) {
 	countTypes, err := h.repo.GetAllCountTypes()
 	if err != nil {
-		log.Printf("❌ Error fetching count types: %v", err)
+		logger.LogInfo("❌ Error fetching count types: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch count types"})
 		return
 	}
@@ -49,7 +50,7 @@ func (h *AccessoriesConsumablesHandler) GetProductDependenciesAPI(c *gin.Context
 
 	dependencies, err := h.repo.GetProductDependencies(uint(productID))
 	if err != nil {
-		log.Printf("❌ Error fetching product dependencies: %v", err)
+		logger.LogInfo("❌ Error fetching product dependencies: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch product dependencies"})
 		return
 	}
@@ -71,7 +72,7 @@ func (h *AccessoriesConsumablesHandler) GetProductAccessoriesAPI(c *gin.Context)
 
 	accessories, err := h.repo.GetProductAccessories(uint(productID))
 	if err != nil {
-		log.Printf("❌ Error fetching product accessories: %v", err)
+		logger.LogInfo("❌ Error fetching product accessories: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch product accessories"})
 		return
 	}
@@ -82,13 +83,13 @@ func (h *AccessoriesConsumablesHandler) GetProductAccessoriesAPI(c *gin.Context)
 func (h *AccessoriesConsumablesHandler) AddProductAccessoryAPI(c *gin.Context) {
 	var pa models.ProductAccessory
 	if err := c.ShouldBindJSON(&pa); err != nil {
-		log.Printf("❌ Error binding product accessory JSON: %v", err)
+		logger.LogInfo("❌ Error binding product accessory JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	if err := h.repo.AddProductAccessory(&pa); err != nil {
-		log.Printf("❌ Error adding product accessory: %v", err)
+		logger.LogInfo("❌ Error adding product accessory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add accessory"})
 		return
 	}
@@ -113,7 +114,7 @@ func (h *AccessoriesConsumablesHandler) RemoveProductAccessoryAPI(c *gin.Context
 	}
 
 	if err := h.repo.RemoveProductAccessory(uint(productID), uint(accessoryID)); err != nil {
-		log.Printf("❌ Error removing product accessory: %v", err)
+		logger.LogInfo("❌ Error removing product accessory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove accessory"})
 		return
 	}
@@ -124,7 +125,7 @@ func (h *AccessoriesConsumablesHandler) RemoveProductAccessoryAPI(c *gin.Context
 func (h *AccessoriesConsumablesHandler) GetAccessoryProductsAPI(c *gin.Context) {
 	products, err := h.repo.GetAccessoryProducts()
 	if err != nil {
-		log.Printf("❌ Error fetching accessory products: %v", err)
+		logger.LogInfo("❌ Error fetching accessory products: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch accessory products"})
 		return
 	}
@@ -146,7 +147,7 @@ func (h *AccessoriesConsumablesHandler) GetProductConsumablesAPI(c *gin.Context)
 
 	consumables, err := h.repo.GetProductConsumables(uint(productID))
 	if err != nil {
-		log.Printf("❌ Error fetching product consumables: %v", err)
+		logger.LogInfo("❌ Error fetching product consumables: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch product consumables"})
 		return
 	}
@@ -157,13 +158,13 @@ func (h *AccessoriesConsumablesHandler) GetProductConsumablesAPI(c *gin.Context)
 func (h *AccessoriesConsumablesHandler) AddProductConsumableAPI(c *gin.Context) {
 	var pc models.ProductConsumable
 	if err := c.ShouldBindJSON(&pc); err != nil {
-		log.Printf("❌ Error binding product consumable JSON: %v", err)
+		logger.LogInfo("❌ Error binding product consumable JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	if err := h.repo.AddProductConsumable(&pc); err != nil {
-		log.Printf("❌ Error adding product consumable: %v", err)
+		logger.LogInfo("❌ Error adding product consumable: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add consumable"})
 		return
 	}
@@ -188,7 +189,7 @@ func (h *AccessoriesConsumablesHandler) RemoveProductConsumableAPI(c *gin.Contex
 	}
 
 	if err := h.repo.RemoveProductConsumable(uint(productID), uint(consumableID)); err != nil {
-		log.Printf("❌ Error removing product consumable: %v", err)
+		logger.LogInfo("❌ Error removing product consumable: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove consumable"})
 		return
 	}
@@ -199,7 +200,7 @@ func (h *AccessoriesConsumablesHandler) RemoveProductConsumableAPI(c *gin.Contex
 func (h *AccessoriesConsumablesHandler) GetConsumableProductsAPI(c *gin.Context) {
 	products, err := h.repo.GetConsumableProducts()
 	if err != nil {
-		log.Printf("❌ Error fetching consumable products: %v", err)
+		logger.LogInfo("❌ Error fetching consumable products: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch consumable products"})
 		return
 	}
@@ -221,7 +222,7 @@ func (h *AccessoriesConsumablesHandler) GetJobAccessoriesAPI(c *gin.Context) {
 
 	accessories, err := h.repo.GetJobAccessories(uint(jobID))
 	if err != nil {
-		log.Printf("❌ Error fetching job accessories: %v", err)
+		logger.LogInfo("❌ Error fetching job accessories: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch job accessories"})
 		return
 	}
@@ -232,13 +233,13 @@ func (h *AccessoriesConsumablesHandler) GetJobAccessoriesAPI(c *gin.Context) {
 func (h *AccessoriesConsumablesHandler) CreateJobAccessoryAPI(c *gin.Context) {
 	var ja models.JobAccessory
 	if err := c.ShouldBindJSON(&ja); err != nil {
-		log.Printf("❌ Error binding job accessory JSON: %v", err)
+		logger.LogInfo("❌ Error binding job accessory JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	if err := h.repo.CreateJobAccessory(&ja); err != nil {
-		log.Printf("❌ Error creating job accessory: %v", err)
+		logger.LogInfo("❌ Error creating job accessory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job accessory"})
 		return
 	}
@@ -256,14 +257,14 @@ func (h *AccessoriesConsumablesHandler) UpdateJobAccessoryAPI(c *gin.Context) {
 
 	var ja models.JobAccessory
 	if err := c.ShouldBindJSON(&ja); err != nil {
-		log.Printf("❌ Error binding job accessory JSON: %v", err)
+		logger.LogInfo("❌ Error binding job accessory JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	ja.JobAccessoryID = id
 	if err := h.repo.UpdateJobAccessory(&ja); err != nil {
-		log.Printf("❌ Error updating job accessory: %v", err)
+		logger.LogInfo("❌ Error updating job accessory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update job accessory"})
 		return
 	}
@@ -280,7 +281,7 @@ func (h *AccessoriesConsumablesHandler) DeleteJobAccessoryAPI(c *gin.Context) {
 	}
 
 	if err := h.repo.DeleteJobAccessory(id); err != nil {
-		log.Printf("❌ Error deleting job accessory: %v", err)
+		logger.LogInfo("❌ Error deleting job accessory: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete job accessory"})
 		return
 	}
@@ -302,7 +303,7 @@ func (h *AccessoriesConsumablesHandler) GetJobConsumablesAPI(c *gin.Context) {
 
 	consumables, err := h.repo.GetJobConsumables(uint(jobID))
 	if err != nil {
-		log.Printf("❌ Error fetching job consumables: %v", err)
+		logger.LogInfo("❌ Error fetching job consumables: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch job consumables"})
 		return
 	}
@@ -313,13 +314,13 @@ func (h *AccessoriesConsumablesHandler) GetJobConsumablesAPI(c *gin.Context) {
 func (h *AccessoriesConsumablesHandler) CreateJobConsumableAPI(c *gin.Context) {
 	var jc models.JobConsumable
 	if err := c.ShouldBindJSON(&jc); err != nil {
-		log.Printf("❌ Error binding job consumable JSON: %v", err)
+		logger.LogInfo("❌ Error binding job consumable JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	if err := h.repo.CreateJobConsumable(&jc); err != nil {
-		log.Printf("❌ Error creating job consumable: %v", err)
+		logger.LogInfo("❌ Error creating job consumable: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job consumable"})
 		return
 	}
@@ -337,14 +338,14 @@ func (h *AccessoriesConsumablesHandler) UpdateJobConsumableAPI(c *gin.Context) {
 
 	var jc models.JobConsumable
 	if err := c.ShouldBindJSON(&jc); err != nil {
-		log.Printf("❌ Error binding job consumable JSON: %v", err)
+		logger.LogInfo("❌ Error binding job consumable JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid data: %v", err)})
 		return
 	}
 
 	jc.JobConsumableID = id
 	if err := h.repo.UpdateJobConsumable(&jc); err != nil {
-		log.Printf("❌ Error updating job consumable: %v", err)
+		logger.LogInfo("❌ Error updating job consumable: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update job consumable"})
 		return
 	}
@@ -361,7 +362,7 @@ func (h *AccessoriesConsumablesHandler) DeleteJobConsumableAPI(c *gin.Context) {
 	}
 
 	if err := h.repo.DeleteJobConsumable(id); err != nil {
-		log.Printf("❌ Error deleting job consumable: %v", err)
+		logger.LogInfo("❌ Error deleting job consumable: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete job consumable"})
 		return
 	}
@@ -420,13 +421,13 @@ func (h *AccessoriesConsumablesHandler) ScanAccessoryAPI(c *gin.Context) {
 	// Perform scan
 	if req.Direction == "out" {
 		if err := h.repo.ScanAccessoryOut(ja.JobAccessoryID, req.Quantity, userID); err != nil {
-			log.Printf("❌ Error scanning accessory out: %v", err)
+			logger.LogInfo("❌ Error scanning accessory out: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	} else if req.Direction == "in" {
 		if err := h.repo.ScanAccessoryIn(ja.JobAccessoryID, req.Quantity, userID); err != nil {
-			log.Printf("❌ Error scanning accessory in: %v", err)
+			logger.LogInfo("❌ Error scanning accessory in: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -485,13 +486,13 @@ func (h *AccessoriesConsumablesHandler) ScanConsumableAPI(c *gin.Context) {
 	// Perform scan
 	if req.Direction == "out" {
 		if err := h.repo.ScanConsumableOut(jc.JobConsumableID, req.Quantity, userID); err != nil {
-			log.Printf("❌ Error scanning consumable out: %v", err)
+			logger.LogInfo("❌ Error scanning consumable out: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	} else if req.Direction == "in" {
 		if err := h.repo.ScanConsumableIn(jc.JobConsumableID, req.Quantity, userID); err != nil {
-			log.Printf("❌ Error scanning consumable in: %v", err)
+			logger.LogInfo("❌ Error scanning consumable in: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

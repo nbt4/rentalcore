@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BarChart2, TrendingUp, Euro, Briefcase } from 'lucide-react';
 import { api } from '../lib/api';
 import type { Job } from '../lib/api';
+import { toast } from '../lib/toast';
 
 interface RevenueData {
   month: string;
@@ -41,7 +42,7 @@ export function AnalyticsPage() {
   useEffect(() => {
     api.get<{ jobs: Job[] }>('/jobs')
       .then((r) => setJobs(r.data.jobs || []))
-      .catch(console.error)
+      .catch((e: any) => toast.error(e))
       .finally(() => setLoading(false));
   }, []);
 

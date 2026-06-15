@@ -2,12 +2,13 @@ package m365
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CalendarSyncService struct {
@@ -42,7 +43,7 @@ func NewCalendarSyncService(
 func (s *CalendarSyncService) SyncAllEmployeeEvents(jobID uint) {
 	job, err := s.jobRepo.GetByID(jobID)
 	if err != nil {
-		log.Printf("[CalendarSync] job %d not found: %v", jobID, err)
+		logger.LogInfo("[CalendarSync] job %d not found: %v", jobID, err)
 		return
 	}
 	if job.StartDate == nil {
@@ -50,7 +51,7 @@ func (s *CalendarSyncService) SyncAllEmployeeEvents(jobID uint) {
 	}
 	employees, err := s.empRepo.ListForJob(jobID)
 	if err != nil {
-		log.Printf("[CalendarSync] list employees for job %d: %v", jobID, err)
+		logger.LogInfo("[CalendarSync] list employees for job %d: %v", jobID, err)
 		return
 	}
 	for _, je := range employees {
@@ -77,7 +78,7 @@ func (s *CalendarSyncService) SyncEmployeeEvent(jobID, employeeID uint) {
 	}
 	je, err := s.empRepo.GetOne(jobID, employeeID)
 	if err != nil {
-		log.Printf("[CalendarSync] get job_employee %d/%d: %v", jobID, employeeID, err)
+		logger.LogInfo("[CalendarSync] get job_employee %d/%d: %v", jobID, employeeID, err)
 		return
 	}
 	s.syncOne(job, *je)
@@ -99,22 +100,22 @@ func (s *CalendarSyncService) syncOne(job *models.Job, je models.JobEmployee) {
 	email := *je.Employee.Email
 	event, err := s.buildEvent(job)
 	if err != nil {
-		log.Printf("[CalendarSync] build event for job %d: %v", job.JobID, err)
+		logger.LogInfo("[CalendarSync] build event for job %d: %v", job.JobID, err)
 		return
 	}
 	if je.M365EventID != nil && *je.M365EventID != "" {
 		if err := s.client.UpdateUserEvent(email, *je.M365EventID, *event); err != nil {
-			log.Printf("[CalendarSync] update event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
+			logger.LogInfo("[CalendarSync] update event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
 		}
 		return
 	}
 	eventID, err := s.client.CreateUserEvent(email, *event)
 	if err != nil {
-		log.Printf("[CalendarSync] create event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
+		logger.LogInfo("[CalendarSync] create event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
 		return
 	}
 	if err := s.empRepo.SaveM365EventID(je.JobID, je.EmployeeID, eventID); err != nil {
-		log.Printf("[CalendarSync] save event id for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
+		logger.LogInfo("[CalendarSync] save event id for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
 	}
 }
 
@@ -123,7 +124,7 @@ func (s *CalendarSyncService) deleteOne(je models.JobEmployee) {
 		return
 	}
 	if err := s.client.DeleteUserEvent(*je.Employee.Email, *je.M365EventID); err != nil {
-		log.Printf("[CalendarSync] delete event for employee %d: %v", je.EmployeeID, err)
+		logger.LogInfo("[CalendarSync] delete event for employee %d: %v", je.EmployeeID, err)
 		return
 	}
 	s.empRepo.ClearM365EventID(je.JobID, je.EmployeeID)

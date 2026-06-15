@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Package, Wrench, Plus, Trash2, Check, Cpu, Building2 } from 'lucide-react';
 import { positionsApi, api } from '../lib/api';
 import type { JobPosition, JobTotals, RentalCatalogItem } from '../lib/api';
+import { toast } from '../lib/toast';
 
 interface Props {
   jobId: number;
@@ -30,7 +31,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       setMultiplyByDays(totRes.data.multiply_by_days ?? true);
       setPricesIncludeTax(totRes.data.prices_include_tax ?? false);
     } catch (e) {
-      console.error(e);
+      toast.error(e);
     } finally {
       setLoading(false);
     }

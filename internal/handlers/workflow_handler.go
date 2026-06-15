@@ -9,7 +9,6 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -26,6 +25,8 @@ import (
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type WorkflowHandler struct {
@@ -66,7 +67,7 @@ func getDefaultStatusID() *uint {
 
 // ListEquipmentPackages displays all equipment packages
 func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
-	log.Printf("🎯 WORKFLOW HANDLER: ListEquipmentPackages called")
+	logger.LogInfo("🎯 WORKFLOW HANDLER: ListEquipmentPackages called")
 	user, _ := GetCurrentUser(c)
 	
 	params := &models.FilterParams{}
@@ -77,16 +78,16 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 
 	packages, err := h.packageRepo.List(params)
 	if err != nil {
-		log.Printf("ListEquipmentPackages: Error fetching packages: %v", err)
+		logger.LogInfo("ListEquipmentPackages: Error fetching packages: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to load equipment packages", "user": user})
 		return
 	}
 
-	log.Printf("🎯 WORKFLOW HANDLER: Got %d packages from repository", len(packages))
+	logger.LogInfo("🎯 WORKFLOW HANDLER: Got %d packages from repository", len(packages))
 
 	// Use the same enrichment logic as equipment package handler
 	for i := range packages {
-		log.Printf("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices BEFORE enrichment", 
+		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices BEFORE enrichment", 
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices))
 		// Calculate total value and price
 		totalValue := 0.0
@@ -115,7 +116,7 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 		packages[i].TotalValue = totalValue
 		packages[i].CalculatedPrice = calculatedPrice
 		packages[i].DeviceCount = len(packages[i].PackageDevices)
-		log.Printf("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices AFTER enrichment, DeviceCount=%d", 
+		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices AFTER enrichment, DeviceCount=%d", 
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices), packages[i].DeviceCount)
 	}
 
@@ -123,7 +124,7 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 	totalCount, _ := h.packageRepo.GetTotalCount(params)
 	popularPackages, _ := h.packageRepo.GetPopularPackages(5)
 
-	log.Printf("DEBUG: ListEquipmentPackages: Attempting to render equipment_packages_standalone.html")
+	logger.LogInfo("DEBUG: ListEquipmentPackages: Attempting to render equipment_packages_standalone.html")
 	c.HTML(http.StatusOK, "equipment_packages_standalone.html", gin.H{
 		"packages":        packages,
 		"popularPackages": popularPackages,
@@ -138,7 +139,7 @@ func (h *WorkflowHandler) NewEquipmentPackageForm(c *gin.Context) {
 	// Get current user for base template
 	currentUser, exists := GetCurrentUser(c)
 	if !exists {
-		log.Printf("NewEquipmentPackageForm: User not authenticated")
+		logger.LogInfo("NewEquipmentPackageForm: User not authenticated")
 		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
@@ -146,13 +147,13 @@ func (h *WorkflowHandler) NewEquipmentPackageForm(c *gin.Context) {
 	// Get available devices for the dropdown
 	availableDevices, err := h.packageRepo.GetAvailableDevices()
 	if err != nil {
-		log.Printf("NewEquipmentPackageForm: Error fetching available devices: %v", err)
+		logger.LogInfo("NewEquipmentPackageForm: Error fetching available devices: %v", err)
 		availableDevices = []models.Device{} // Use empty slice if error
 	}
 	
-	log.Printf("NewEquipmentPackageForm: Found %d available devices", len(availableDevices))
+	logger.LogInfo("NewEquipmentPackageForm: Found %d available devices", len(availableDevices))
 	if len(availableDevices) > 0 {
-		log.Printf("NewEquipmentPackageForm: Sample device: ID=%s, Product=%v", 
+		logger.LogInfo("NewEquipmentPackageForm: Sample device: ID=%s, Product=%v", 
 			availableDevices[0].DeviceID, 
 			func() string { if availableDevices[0].Product != nil { return availableDevices[0].Product.Name } else { return "nil" } }())
 	}
@@ -281,7 +282,7 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 	
 	// Save to database with device associations
 	if err := h.packageRepo.CreateWithDevices(&pkg, deviceMappings); err != nil {
-		log.Printf("CreateEquipmentPackage: Database error: %v", err)
+		logger.LogInfo("CreateEquipmentPackage: Database error: %v", err)
 		availableDevices, _ := h.packageRepo.GetAvailableDevices()
 		c.HTML(http.StatusInternalServerError, "equipment_package_form.html", gin.H{
 			"title":            "New Equipment Package",
@@ -294,7 +295,7 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 		return
 	}
 	
-	log.Printf("CreateEquipmentPackage: Successfully created package '%s' (ID: %d) with %d devices by user %s", 
+	logger.LogInfo("CreateEquipmentPackage: Successfully created package '%s' (ID: %d) with %d devices by user %s", 
 		pkg.Name, pkg.PackageID, len(deviceMappings), currentUser.Username)
 	
 	// Redirect to packages list on success
@@ -347,7 +348,7 @@ func (h *WorkflowHandler) GetEquipmentPackageForm(c *gin.Context) {
 	if packageIDStr == "new" {
 		availableDevices, err := h.packageRepo.GetAvailableDevices()
 		if err != nil {
-			log.Printf("GetEquipmentPackageForm: Error fetching available devices: %v", err)
+			logger.LogInfo("GetEquipmentPackageForm: Error fetching available devices: %v", err)
 		}
 		c.HTML(http.StatusOK, "equipment_package_form.html", gin.H{
 			"title":            "New Equipment Package",
@@ -373,7 +374,7 @@ func (h *WorkflowHandler) GetEquipmentPackageForm(c *gin.Context) {
 
 	availableDevices, err := h.packageRepo.GetAvailableDevices()
 	if err != nil {
-		log.Printf("GetEquipmentPackageForm: Error fetching available devices: %v", err)
+		logger.LogInfo("GetEquipmentPackageForm: Error fetching available devices: %v", err)
 	}
 
 	c.HTML(http.StatusOK, "equipment_package_form.html", gin.H{
@@ -494,19 +495,19 @@ func (h *WorkflowHandler) UpdateEquipmentPackage(c *gin.Context) {
 
 	// Update device associations
 	if err := h.packageRepo.UpdateDeviceAssociations(uint(packageID), deviceMappings); err != nil {
-		log.Printf("UpdateEquipmentPackage: Database error: %v", err)
+		logger.LogInfo("UpdateEquipmentPackage: Database error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update device associations: " + err.Error()})
 		return
 	}
 
 	// Save changes to the package
 	if err := h.packageRepo.Update(&pkg); err != nil {
-		log.Printf("UpdateEquipmentPackage: Error updating package %d: %v", packageID, err)
+		logger.LogInfo("UpdateEquipmentPackage: Error updating package %d: %v", packageID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update package"})
 		return
 	}
 
-	log.Printf("UpdateEquipmentPackage: Package %d updated successfully by user %s", packageID, currentUser.Username)
+	logger.LogInfo("UpdateEquipmentPackage: Package %d updated successfully by user %s", packageID, currentUser.Username)
 	c.Redirect(http.StatusSeeOther, "/workflow/packages")
 }
 
@@ -539,19 +540,19 @@ func (h *WorkflowHandler) DeleteEquipmentPackage(c *gin.Context) {
 
 	// Delete associated package devices first
 	if err := h.db.Where("packageID = ?", packageID).Delete(&models.PackageDevice{}).Error; err != nil {
-		log.Printf("DeleteEquipmentPackage: Error deleting package devices for package %d: %v", packageID, err)
+		logger.LogInfo("DeleteEquipmentPackage: Error deleting package devices for package %d: %v", packageID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete package devices"})
 		return
 	}
 
 	// Delete the package
 	if err := h.db.Delete(&pkg).Error; err != nil {
-		log.Printf("DeleteEquipmentPackage: Error deleting package %d: %v", packageID, err)
+		logger.LogInfo("DeleteEquipmentPackage: Error deleting package %d: %v", packageID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete package"})
 		return
 	}
 
-	log.Printf("DeleteEquipmentPackage: Package %d deleted successfully by user %s", packageID, currentUser.Username)
+	logger.LogInfo("DeleteEquipmentPackage: Package %d deleted successfully by user %s", packageID, currentUser.Username)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Package deleted successfully",
 	})
@@ -568,7 +569,7 @@ func (h *WorkflowHandler) DebugPackageForm(c *gin.Context) {
 	// Get available devices for debugging
 	availableDevices, err := h.packageRepo.GetAvailableDevices()
 	if err != nil {
-		log.Printf("DebugPackageForm: Error fetching available devices: %v", err)
+		logger.LogInfo("DebugPackageForm: Error fetching available devices: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -598,7 +599,7 @@ func (h *WorkflowHandler) BulkOperationsForm(c *gin.Context) {
 // BulkUpdateDeviceStatus updates multiple device statuses
 func (h *WorkflowHandler) BulkUpdateDeviceStatus(c *gin.Context) {
 	// TODO: Implement bulk device status update
-	log.Printf("BulkUpdateDeviceStatus: Not yet implemented")
+	logger.LogInfo("BulkUpdateDeviceStatus: Not yet implemented")
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"error": "Bulk device status update not yet implemented",
 	})
@@ -607,7 +608,7 @@ func (h *WorkflowHandler) BulkUpdateDeviceStatus(c *gin.Context) {
 // BulkAssignToJob assigns multiple devices to a job
 func (h *WorkflowHandler) BulkAssignToJob(c *gin.Context) {
 	// TODO: Implement bulk device assignment
-	log.Printf("BulkAssignToJob: Not yet implemented")
+	logger.LogInfo("BulkAssignToJob: Not yet implemented")
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"error": "Bulk device assignment not yet implemented",
 	})
@@ -642,14 +643,14 @@ func (h *WorkflowHandler) BulkGenerateQRCodes(c *gin.Context) {
 		request.LabelFormat = "simple"
 	}
 
-	log.Printf("Generating QR codes for %d devices, format: %s", len(request.DeviceIDs), request.Format)
+	logger.LogInfo("Generating QR codes for %d devices, format: %s", len(request.DeviceIDs), request.Format)
 
 	// Fetch device information
 	devices := make([]models.Device, 0, len(request.DeviceIDs))
 	for _, deviceID := range request.DeviceIDs {
 		var device models.Device
 		if err := h.db.Preload("Product").Preload("Product.Brand").Where("deviceID = ?", deviceID).First(&device).Error; err != nil {
-			log.Printf("Warning: Device %s not found in database, will generate QR anyway", deviceID)
+			logger.LogInfo("Warning: Device %s not found in database, will generate QR anyway", deviceID)
 			// Create a minimal device record for QR generation
 			device = models.Device{
 				DeviceID: deviceID,
@@ -664,7 +665,7 @@ func (h *WorkflowHandler) BulkGenerateQRCodes(c *gin.Context) {
 		// Generate PNG files and create ZIP
 		zipBytes, err := h.generateDeviceLabelsZIP(devices, request.LabelFormat, request.PrintReady)
 		if err != nil {
-			log.Printf("Error generating device labels ZIP: %v", err)
+			logger.LogInfo("Error generating device labels ZIP: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate device labels ZIP"})
 			return
 		}
@@ -681,7 +682,7 @@ func (h *WorkflowHandler) BulkGenerateQRCodes(c *gin.Context) {
 		// Generate PDF with multiple labels per page
 		pdfBytes, err := h.generateDeviceLabelsPDF(devices, request.LabelFormat, request.PrintReady)
 		if err != nil {
-			log.Printf("Error generating device labels PDF: %v", err)
+			logger.LogInfo("Error generating device labels PDF: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate device labels PDF"})
 			return
 		}
@@ -847,7 +848,7 @@ func (h *WorkflowHandler) generateDeviceLabelsZIP(devices []models.Device, label
 		// Create PNG image for this device
 		pngBytes, err := h.createLabelPNG(device, logoImg)
 		if err != nil {
-			log.Printf("Error generating PNG for device %s: %v", device.DeviceID, err)
+			logger.LogInfo("Error generating PNG for device %s: %v", device.DeviceID, err)
 			continue
 		}
 		
@@ -856,13 +857,13 @@ func (h *WorkflowHandler) generateDeviceLabelsZIP(devices []models.Device, label
 		
 		zipFile, err := zipWriter.Create(filename)
 		if err != nil {
-			log.Printf("Error creating zip file for device %s: %v", device.DeviceID, err)
+			logger.LogInfo("Error creating zip file for device %s: %v", device.DeviceID, err)
 			continue
 		}
 		
 		_, err = zipFile.Write(pngBytes)
 		if err != nil {
-			log.Printf("Error writing to zip file for device %s: %v", device.DeviceID, err)
+			logger.LogInfo("Error writing to zip file for device %s: %v", device.DeviceID, err)
 			continue
 		}
 	}

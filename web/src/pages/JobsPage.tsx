@@ -10,6 +10,7 @@ import type { Job, Customer, JobStatus, JobDevice, JobEmployee, Employee, Venue 
 import MappingModal from '../components/MappingModal';
 import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
 import JobPositionsPanel from '../components/JobPositionsPanel';
+import { toast } from '../lib/toast';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -65,7 +66,7 @@ function ProductPicker({
     setLoading(true);
     let url = `/devices/tree/availability?start_date=${startDate}&end_date=${endDate}`;
     if (jobId) url += `&job_id=${jobId}`;
-    api.get(url).then((r) => setTree(r.data.treeData || [])).catch(console.error).finally(() => setLoading(false));
+    api.get(url).then((r) => setTree(r.data.treeData || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [startDate, endDate, jobId]);
 
   const toggle = (id: string) =>
@@ -157,7 +158,7 @@ export function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]
       await api.delete(`/jobs/${jobId}/devices/${deviceId}`);
       onChanged?.();
     } catch (e) {
-      console.error(e);
+      toast.error(e);
     } finally {
       setRemoving(null);
     }
@@ -234,7 +235,7 @@ export function RequirementsPanel({ jobId, onDeviceAssigned }: { jobId: number; 
   const load = useCallback(() => {
     api.get(`/jobs/${jobId}/requirements`)
       .then((r) => setRequirements(r.data.requirements || []))
-      .catch(console.error);
+      .catch((e: any) => toast.error(e));
   }, [jobId]);
 
   useEffect(() => { load(); }, [load]);
@@ -379,7 +380,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
     ]).then(([jRes, dRes]) => {
       setJob(jRes.data);
       setDevices(dRes.data.devices || []);
-    }).catch(console.error).finally(() => setLoading(false));
+    }).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -391,7 +392,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
       await jobsApi.delete(id);
       onBack();
     } catch (e) {
-      console.error(e);
+      toast.error(e);
     } finally {
       setDeleting(false);
     }
@@ -630,7 +631,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
 
   const loadDevices = useCallback(() => {
     if (!jobId) return;
-    jobsApi.getDevices(jobId).then((r) => setDevices(r.data.devices || [])).catch(console.error);
+    jobsApi.getDevices(jobId).then((r) => setDevices(r.data.devices || [])).catch((e: any) => toast.error(e));
   }, [jobId]);
 
   useEffect(() => {
@@ -656,7 +657,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
           quantity: r.quantity,
         })));
       }
-    }).catch(console.error).finally(() => setLoading(false));
+    }).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [jobId]);
 
   const isValidDateStr = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -1038,7 +1039,7 @@ export function JobsPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    jobsApi.getAll().then((r) => setJobs(r.data.jobs || [])).catch(console.error).finally(() => setLoading(false));
+    jobsApi.getAll().then((r) => setJobs(r.data.jobs || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);

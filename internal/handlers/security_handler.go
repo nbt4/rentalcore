@@ -11,6 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type SecurityHandler struct {
@@ -364,7 +366,7 @@ func (h *SecurityHandler) AssignUserRole(c *gin.Context) {
 			
 			result = h.db.Save(&existing)
 			if result.Error != nil {
-				fmt.Printf("ERROR reactivating user role: %v\n", result.Error)
+				logger.LogWarn("ERROR reactivating user role: %v\n", result.Error)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role", "details": result.Error.Error()})
 				return
 			}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +9,8 @@ import (
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type ScanBoardHandler struct {
@@ -45,7 +46,7 @@ func (h *ScanBoardHandler) GetScanBoardData(c *gin.Context) {
 	// Get devices for this job with pack status
 	devices, err := h.getScanBoardDevices(uint(jobID))
 	if err != nil {
-		fmt.Printf("Error getting scan board devices: %v\n", err)
+		logger.LogWarn("Error getting scan board devices: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load devices"})
 		return
 	}
@@ -88,7 +89,7 @@ func (h *ScanBoardHandler) ScanDevice(c *gin.Context) {
 	// Validate that device belongs to this job
 	exists, err := h.deviceBelongsToJob(deviceID, uint(jobID))
 	if err != nil {
-		fmt.Printf("Error checking device job membership: %v\n", err)
+		logger.LogWarn("Error checking device job membership: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
@@ -101,7 +102,7 @@ func (h *ScanBoardHandler) ScanDevice(c *gin.Context) {
 	// Update pack status to 'packed'
 	err = h.updatePackStatus(uint(jobID), deviceID, "packed")
 	if err != nil {
-		fmt.Printf("Error updating pack status: %v\n", err)
+		logger.LogWarn("Error updating pack status: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pack status"})
 		return
 	}
@@ -109,7 +110,7 @@ func (h *ScanBoardHandler) ScanDevice(c *gin.Context) {
 	// Log the event
 	err = h.logDeviceEvent(uint(jobID), deviceID, "scanned", "system")
 	if err != nil {
-		fmt.Printf("Error logging device event: %v\n", err)
+		logger.LogWarn("Error logging device event: %v\n", err)
 		// Don't fail the request for logging errors
 	}
 
@@ -138,7 +139,7 @@ func (h *ScanBoardHandler) FinishPack(c *gin.Context) {
 	// Check for missing items
 	missingItems, err := h.getMissingItems(uint(jobID))
 	if err != nil {
-		fmt.Printf("Error getting missing items: %v\n", err)
+		logger.LogWarn("Error getting missing items: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check missing items"})
 		return
 	}
@@ -157,7 +158,7 @@ func (h *ScanBoardHandler) FinishPack(c *gin.Context) {
 	if finishReq.Force && len(missingItems) > 0 {
 		err = h.markAllAsPacked(uint(jobID))
 		if err != nil {
-			fmt.Printf("Error marking all as packed: %v\n", err)
+			logger.LogWarn("Error marking all as packed: %v\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to finish packing"})
 			return
 		}
@@ -166,7 +167,7 @@ func (h *ScanBoardHandler) FinishPack(c *gin.Context) {
 	// Log completion event
 	err = h.logJobEvent(uint(jobID), "pack_completed")
 	if err != nil {
-		fmt.Printf("Error logging job completion: %v\n", err)
+		logger.LogWarn("Error logging job completion: %v\n", err)
 	}
 
 	c.JSON(http.StatusOK, models.FinishPackResponse{

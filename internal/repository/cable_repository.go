@@ -2,11 +2,12 @@ package repository
 
 import (
 	"database/sql"
-	"log"
 
 	"go-barcode-webapp/internal/models"
 
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CableRepository struct {
@@ -177,7 +178,7 @@ func (r *CableRepository) GetAllCableTypes() ([]models.CableType, error) {
 	var types []models.CableType
 	err := r.db.Order("name ASC").Find(&types).Error
 	if err != nil {
-		log.Printf("❌ GetAllCableTypes error: %v", err)
+		logger.LogInfo("❌ GetAllCableTypes error: %v", err)
 		return nil, err
 	}
 	return types, nil
@@ -188,7 +189,7 @@ func (r *CableRepository) GetAllCableConnectors() ([]models.CableConnector, erro
 	var connectors []models.CableConnector
 	err := r.db.Order("name ASC").Find(&connectors).Error
 	if err != nil {
-		log.Printf("❌ GetAllCableConnectors error: %v", err)
+		logger.LogInfo("❌ GetAllCableConnectors error: %v", err)
 		return nil, err
 	}
 	return connectors, nil

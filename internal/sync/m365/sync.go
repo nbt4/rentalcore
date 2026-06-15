@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // SyncService koordiniert den bidirektionalen Sync zwischen RentalCore und M365.
@@ -37,7 +38,7 @@ func NewSyncService(client *GraphClient, exchangeClient *ExchangeAdminClient, cu
 // ohne m365_id angestoßen, bevor der Delta-Loop beginnt.
 func (s *SyncService) Start(ctx context.Context) {
 	if err := s.ensureSyncStateTable(); err != nil {
-		log.Printf("M365 sync: could not ensure sync_state table: %v", err)
+		logger.LogInfo("M365 sync: could not ensure sync_state table: %v", err)
 		return
 	}
 	go func() {
@@ -45,7 +46,7 @@ func (s *SyncService) Start(ctx context.Context) {
 		s.BulkPushToGAL()
 		s.runDeltaLoop(ctx)
 	}()
-	log.Printf("M365 sync: started (interval: %s)", s.syncInterval)
+	logger.LogInfo("M365 sync: started (interval: %s)", s.syncInterval)
 }
 
 func (s *SyncService) runDeltaLoop(ctx context.Context) {
@@ -57,7 +58,7 @@ func (s *SyncService) runDeltaLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("M365 sync: stopping delta loop")
+			logger.LogInfo("M365 sync: stopping delta loop")
 			return
 		case <-ticker.C:
 			s.runOnce()
@@ -69,7 +70,7 @@ func (s *SyncService) runOnce() {
 	deltaToken, _ := s.loadDeltaToken()
 	contacts, newToken, err := s.client.GetDelta(deltaToken)
 	if err != nil {
-		log.Printf("M365 sync: delta fetch failed: %v", err)
+		logger.LogInfo("M365 sync: delta fetch failed: %v", err)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (s *SyncService) runOnce() {
 
 	if newToken != "" {
 		if err := s.saveDeltaToken(newToken); err != nil {
-			log.Printf("M365 sync: failed to save delta token: %v", err)
+			logger.LogInfo("M365 sync: failed to save delta token: %v", err)
 		}
 	}
 }
@@ -95,7 +96,7 @@ func (s *SyncService) handleM365Change(contact M365Contact) {
 		m365ID := contact.ID
 		newCustomer.M365ID = &m365ID
 		if createErr := s.customerRepo.Create(&newCustomer); createErr != nil {
-			log.Printf("M365 sync: create customer failed for contact %s: %v", contact.ID, createErr)
+			logger.LogInfo("M365 sync: create customer failed for contact %s: %v", contact.ID, createErr)
 		}
 		return
 	}
@@ -117,7 +118,7 @@ func (s *SyncService) handleM365Change(contact M365Contact) {
 	updated.CustomerType = existing.CustomerType
 
 	if err := s.customerRepo.Update(&updated); err != nil {
-		log.Printf("M365 sync: update customer %d failed: %v", existing.CustomerID, err)
+		logger.LogInfo("M365 sync: update customer %d failed: %v", existing.CustomerID, err)
 	}
 }
 
@@ -127,7 +128,7 @@ func (s *SyncService) handleM365Deletion(contactID string) {
 		return
 	}
 	if err := s.customerRepo.Archive(existing.CustomerID); err != nil {
-		log.Printf("M365 sync: archive customer %d failed: %v", existing.CustomerID, err)
+		logger.LogInfo("M365 sync: archive customer %d failed: %v", existing.CustomerID, err)
 	}
 }
 
@@ -136,30 +137,30 @@ func (s *SyncService) handleM365Deletion(contactID string) {
 func (s *SyncService) BulkPushUnsynced() {
 	customers, err := s.customerRepo.GetUnsynced()
 	if err != nil {
-		log.Printf("M365 bulk-push: could not fetch unsynced customers: %v", err)
+		logger.LogInfo("M365 bulk-push: could not fetch unsynced customers: %v", err)
 		return
 	}
 	if len(customers) == 0 {
-		log.Println("M365 bulk-push: all customers already synced")
+		logger.LogInfo("M365 bulk-push: all customers already synced")
 		return
 	}
-	log.Printf("M365 bulk-push: pushing %d unsynced customers to M365", len(customers))
+	logger.LogInfo("M365 bulk-push: pushing %d unsynced customers to M365", len(customers))
 
 	ok, failed := 0, 0
 	for i := range customers {
 		if err := s.PushCreate(&customers[i]); err != nil {
-			log.Printf("M365 bulk-push: customer %d failed: %v", customers[i].CustomerID, err)
+			logger.LogInfo("M365 bulk-push: customer %d failed: %v", customers[i].CustomerID, err)
 			failed++
 		} else {
 			ok++
 		}
 		if i > 0 && i%10 == 0 {
-			log.Printf("M365 bulk-push: progress %d/%d", i+1, len(customers))
+			logger.LogInfo("M365 bulk-push: progress %d/%d", i+1, len(customers))
 		}
 		// ~4 req/s Graph-API-Limit einhalten
 		time.Sleep(250 * time.Millisecond)
 	}
-	log.Printf("M365 bulk-push: done — %d pushed, %d failed", ok, failed)
+	logger.LogInfo("M365 bulk-push: done — %d pushed, %d failed", ok, failed)
 }
 
 // PushCreate sendet einen neuen Kunden an M365 (Shared Mailbox + GAL).
@@ -173,7 +174,7 @@ func (s *SyncService) PushCreate(customer *models.Customer) error {
 		return err
 	}
 	if galErr := s.GALPushCreate(customer); galErr != nil {
-		log.Printf("M365 GAL: PushCreate for customer %d failed: %v", customer.CustomerID, galErr)
+		logger.LogInfo("M365 GAL: PushCreate for customer %d failed: %v", customer.CustomerID, galErr)
 	}
 	return nil
 }
@@ -188,7 +189,7 @@ func (s *SyncService) PushUpdate(customer *models.Customer) error {
 		return err
 	}
 	if galErr := s.GALPushUpdate(customer); galErr != nil {
-		log.Printf("M365 GAL: PushUpdate for customer %d failed: %v", customer.CustomerID, galErr)
+		logger.LogInfo("M365 GAL: PushUpdate for customer %d failed: %v", customer.CustomerID, galErr)
 	}
 	return nil
 }
@@ -197,7 +198,7 @@ func (s *SyncService) PushUpdate(customer *models.Customer) error {
 func (s *SyncService) PushDelete(customer *models.Customer) {
 	if customer.M365ID != nil && *customer.M365ID != "" {
 		if err := s.client.DeleteContact(*customer.M365ID); err != nil {
-			log.Printf("M365 sync: PushDelete mailbox contact %s failed: %v", *customer.M365ID, err)
+			logger.LogInfo("M365 sync: PushDelete mailbox contact %s failed: %v", *customer.M365ID, err)
 		}
 	}
 	s.GALPushDelete(customer)
@@ -237,7 +238,7 @@ func (s *SyncService) GALPushUpdate(customer *models.Customer) error {
 	if oldEmail != *customer.Email {
 		// E-Mail geändert — alten Kontakt löschen, neuen anlegen
 		if err := s.exchangeClient.DeleteMailContact(oldEmail); err != nil {
-			log.Printf("M365 GAL: delete old contact %s failed: %v", oldEmail, err)
+			logger.LogInfo("M365 GAL: delete old contact %s failed: %v", oldEmail, err)
 		}
 		if err := s.exchangeClient.CreateMailContact(contact); err != nil {
 			return fmt.Errorf("GALPushUpdate (re-create): %w", err)
@@ -257,7 +258,7 @@ func (s *SyncService) GALPushDelete(customer *models.Customer) {
 		return
 	}
 	if err := s.exchangeClient.DeleteMailContact(*customer.GALContactID); err != nil {
-		log.Printf("M365 GAL: PushDelete %s failed: %v", *customer.GALContactID, err)
+		logger.LogInfo("M365 GAL: PushDelete %s failed: %v", *customer.GALContactID, err)
 	}
 }
 
@@ -268,14 +269,14 @@ func (s *SyncService) BulkPushToGAL() {
 	}
 	customers, err := s.customerRepo.GetGALUnsynced()
 	if err != nil {
-		log.Printf("M365 GAL bulk-push: could not fetch unsynced customers: %v", err)
+		logger.LogInfo("M365 GAL bulk-push: could not fetch unsynced customers: %v", err)
 		return
 	}
 
 	// Bereits in der GAL vorhandene Kontakte ermitteln (Erst-Sync-Schutz)
 	existing, err := s.exchangeClient.ListMailContactEmails()
 	if err != nil {
-		log.Printf("M365 GAL bulk-push: could not list existing GAL contacts: %v", err)
+		logger.LogInfo("M365 GAL bulk-push: could not list existing GAL contacts: %v", err)
 		existing = map[string]bool{}
 	}
 
@@ -287,7 +288,7 @@ func (s *SyncService) BulkPushToGAL() {
 		if existing[*c.Email] {
 			// Bereits in GAL — nur ID in DB setzen
 			if dbErr := s.customerRepo.SetGALContactID(c.CustomerID, *c.Email); dbErr != nil {
-				log.Printf("M365 GAL bulk-push: set existing GAL ID for %d failed: %v", c.CustomerID, dbErr)
+				logger.LogInfo("M365 GAL bulk-push: set existing GAL ID for %d failed: %v", c.CustomerID, dbErr)
 			}
 			continue
 		}
@@ -295,32 +296,32 @@ func (s *SyncService) BulkPushToGAL() {
 	}
 
 	if len(toCreate) == 0 {
-		log.Println("M365 GAL bulk-push: all customers already in GAL")
+		logger.LogInfo("M365 GAL bulk-push: all customers already in GAL")
 		return
 	}
 
-	log.Printf("M365 GAL bulk-push: creating %d contacts in GAL", len(toCreate))
+	logger.LogInfo("M365 GAL bulk-push: creating %d contacts in GAL", len(toCreate))
 	ok, failed := 0, 0
 	for i := range toCreate {
 		if err := s.GALPushCreate(&toCreate[i]); err != nil {
 			// 409 = E-Mail gehört bereits einem Exchange-Postfach — als gesynct markieren
 			if strings.Contains(err.Error(), "409") || strings.Contains(err.Error(), "ProxyAddressExists") {
 				_ = s.customerRepo.SetGALContactID(toCreate[i].CustomerID, *toCreate[i].Email)
-				log.Printf("M365 GAL bulk-push: customer %d email already in Exchange (mailbox) — marked synced", toCreate[i].CustomerID)
+				logger.LogInfo("M365 GAL bulk-push: customer %d email already in Exchange (mailbox) — marked synced", toCreate[i].CustomerID)
 				ok++
 			} else {
-				log.Printf("M365 GAL bulk-push: customer %d failed: %v", toCreate[i].CustomerID, err)
+				logger.LogInfo("M365 GAL bulk-push: customer %d failed: %v", toCreate[i].CustomerID, err)
 				failed++
 			}
 		} else {
 			ok++
 		}
 		if i > 0 && i%10 == 0 {
-			log.Printf("M365 GAL bulk-push: progress %d/%d", i+1, len(toCreate))
+			logger.LogInfo("M365 GAL bulk-push: progress %d/%d", i+1, len(toCreate))
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	log.Printf("M365 GAL bulk-push: done — %d created, %d failed", ok, failed)
+	logger.LogInfo("M365 GAL bulk-push: done — %d created, %d failed", ok, failed)
 }
 
 // ShouldApplyM365Change gibt true zurück wenn m365Time neuer als rcTime ist.

@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"go-barcode-webapp/internal/models"
-	"log"
 	"time"
 
 	"gorm.io/gorm/clause"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type JobPackageRepository struct {
@@ -21,7 +22,7 @@ func NewJobPackageRepository(db *Database) *JobPackageRepository {
 // AssignPackageToJob assigns package devices to a job
 // v5.0: Only records the package on the job (no package devices, expansion handled elsewhere)
 func (r *JobPackageRepository) AssignPackageToJob(jobID int, packageID int, quantity uint, customPrice *float64, userID uint) (*models.JobPackage, error) {
-	log.Printf("=== AssignPackageToJob v5.0 START: jobID=%d, packageID=%d, qty=%d ===", jobID, packageID, quantity)
+	logger.LogInfo("=== AssignPackageToJob v5.0 START: jobID=%d, packageID=%d, qty=%d ===", jobID, packageID, quantity)
 
 	// Verify package exists
 	var pkg models.ProductPackage
@@ -59,7 +60,7 @@ func (r *JobPackageRepository) AssignPackageToJob(jobID int, packageID int, quan
 		return nil, fmt.Errorf("failed to upsert job_package: %w", err)
 	}
 
-	log.Printf("=== AssignPackageToJob v5.0 RECORDED package %d on job %d (qty=%d, price=%v) ===", packageID, jobID, quantity, priceValue)
+	logger.LogInfo("=== AssignPackageToJob v5.0 RECORDED package %d on job %d (qty=%d, price=%v) ===", packageID, jobID, quantity, priceValue)
 	return jobPackage, nil
 }
 

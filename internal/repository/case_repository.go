@@ -1,9 +1,10 @@
 package repository
 
 import (
-	"log"
 	"go-barcode-webapp/internal/models"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type CaseRepository struct {
@@ -157,7 +158,7 @@ func (r *CaseRepository) GetDeviceCount(caseID uint) (int64, error) {
 
 // List returns cases with optional filtering
 func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error) {
-	log.Printf("CaseRepository.List called")
+	logger.LogInfo("CaseRepository.List called")
 	
 	// Use direct SQL with COUNT for better performance
 	sqlQuery := `
@@ -183,7 +184,7 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 	
 	sqlQuery += " GROUP BY c.caseid ORDER BY c.caseid"
 	
-	log.Printf("Executing SQL: %s", sqlQuery)
+	logger.LogInfo("Executing SQL: %s", sqlQuery)
 	
 	type CaseResult struct {
 		CaseID      uint     `json:"caseID" gorm:"column:caseID"`
@@ -200,15 +201,15 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 	var results []CaseResult
 	err := r.db.DB.Raw(sqlQuery, args...).Scan(&results).Error
 	if err != nil {
-		log.Printf("SQL ERROR: %v", err)
+		logger.LogInfo("SQL ERROR: %v", err)
 		return nil, err
 	}
 	
-	log.Printf("Found %d cases", len(results))
+	logger.LogInfo("Found %d cases", len(results))
 	
 	var cases []models.Case
 	for _, result := range results {
-		log.Printf("Case %d ('%s') = %d devices", result.CaseID, result.Name, result.DeviceCount)
+		logger.LogInfo("Case %d ('%s') = %d devices", result.CaseID, result.Name, result.DeviceCount)
 		
 		case_ := models.Case{
 			CaseID:      result.CaseID,
@@ -226,7 +227,7 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 		cases = append(cases, case_)
 	}
 	
-	log.Printf("Returning %d cases", len(cases))
+	logger.LogInfo("Returning %d cases", len(cases))
 	return cases, nil
 }
 

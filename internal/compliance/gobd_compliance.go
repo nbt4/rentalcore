@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"go-barcode-webapp/internal/models"
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // GoBDCompliance handles German GoBD (Grundsätze zur ordnungsmäßigen Führung und Aufbewahrung von Büchern) compliance
@@ -121,7 +122,7 @@ func NewGoBDCompliance(db *gorm.DB, archivePath string) (*GoBDCompliance, error)
 
 	// Initialize default retention policies
 	if err := gbc.initializeDefaultPolicies(); err != nil {
-		log.Printf("Warning: Failed to initialize default retention policies: %v", err)
+		logger.LogInfo("Warning: Failed to initialize default retention policies: %v", err)
 	}
 
 	return gbc, nil
@@ -130,7 +131,7 @@ func NewGoBDCompliance(db *gorm.DB, archivePath string) (*GoBDCompliance, error)
 // migrate auto-migrates GoBD compliance tables
 func (gbc *GoBDCompliance) migrate() error {
 	// Migration disabled - tables should be created manually
-	log.Printf("GoBD compliance table migration disabled")
+	logger.LogInfo("GoBD compliance table migration disabled")
 	return nil
 }
 
@@ -314,26 +315,26 @@ func (gbc *GoBDCompliance) CleanupExpiredRecords() error {
 		// Check if auto-deletion is allowed for this document type
 		canDelete, err := gbc.retentionMgr.CanAutoDelete(record.DocumentType)
 		if err != nil {
-			log.Printf("Warning: Failed to check auto-delete policy for %s: %v", record.DocumentType, err)
+			logger.LogInfo("Warning: Failed to check auto-delete policy for %s: %v", record.DocumentType, err)
 			continue
 		}
 
 		if !canDelete {
-			log.Printf("Auto-deletion disabled for document type %s, skipping record %d", record.DocumentType, record.ID)
+			logger.LogInfo("Auto-deletion disabled for document type %s, skipping record %d", record.DocumentType, record.ID)
 			continue
 		}
 
 		// Delete archive file
 		filePath := filepath.Join(gbc.archivePath, record.DocumentType, record.ArchiveFileName)
 		if err := os.Remove(filePath); err != nil {
-			log.Printf("Warning: Failed to delete archive file %s: %v", filePath, err)
+			logger.LogInfo("Warning: Failed to delete archive file %s: %v", filePath, err)
 		}
 
 		// Delete database record
 		if err := gbc.db.Delete(&record).Error; err != nil {
-			log.Printf("Warning: Failed to delete GoBD record %d: %v", record.ID, err)
+			logger.LogInfo("Warning: Failed to delete GoBD record %d: %v", record.ID, err)
 		} else {
-			log.Printf("Deleted expired GoBD record %d (%s)", record.ID, record.DocumentType)
+			logger.LogInfo("Deleted expired GoBD record %d (%s)", record.ID, record.DocumentType)
 		}
 	}
 
@@ -374,7 +375,7 @@ func (gbc *GoBDCompliance) GetComplianceReport() (*ComplianceReport, error) {
 		}
 		return nil
 	}); err != nil {
-		log.Printf("Warning: Failed to calculate archive size: %v", err)
+		logger.LogInfo("Warning: Failed to calculate archive size: %v", err)
 	}
 
 	// Count upcoming expirations
@@ -382,13 +383,13 @@ func (gbc *GoBDCompliance) GetComplianceReport() (*ComplianceReport, error) {
 	if err := gbc.db.Model(&GoBDRecord{}).
 		Where("retention_date BETWEEN ? AND ?", time.Now(), nextMonth).
 		Count(&report.ExpiringRecords).Error; err != nil {
-		log.Printf("Warning: Failed to count expiring records: %v", err)
+		logger.LogInfo("Warning: Failed to count expiring records: %v", err)
 	}
 
 	// Get audit statistics
 	auditStats, err := gbc.auditLogger.GetStatistics()
 	if err != nil {
-		log.Printf("Warning: Failed to get audit statistics: %v", err)
+		logger.LogInfo("Warning: Failed to get audit statistics: %v", err)
 	} else {
 		report.AuditEvents = auditStats.TotalEvents
 		report.IntegrityChecks = auditStats.IntegrityChecks

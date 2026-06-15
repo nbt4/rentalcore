@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +9,8 @@ import (
 	"go-barcode-webapp/internal/models"
 
 	"gorm.io/gorm"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 type InvoiceRepositoryNew struct {
@@ -106,11 +107,11 @@ func (r *InvoiceRepositoryNew) CreateInvoice(request *models.InvoiceCreateReques
 		return nil, fmt.Errorf("failed to load created invoice: %v", err)
 	}
 
-	log.Printf("Successfully created invoice %s with ID %d, CustomerID: %d", invoice.InvoiceNumber, invoice.InvoiceID, invoice.CustomerID)
+	logger.LogInfo("Successfully created invoice %s with ID %d, CustomerID: %d", invoice.InvoiceNumber, invoice.InvoiceID, invoice.CustomerID)
 	if invoice.Customer != nil {
-		log.Printf("Loaded customer: ID=%d, Name=%s", invoice.Customer.CustomerID, invoice.Customer.GetDisplayName())
+		logger.LogInfo("Loaded customer: ID=%d, Name=%s", invoice.Customer.CustomerID, invoice.Customer.GetDisplayName())
 	} else {
-		log.Printf("WARNING: Customer not loaded for CustomerID %d", invoice.CustomerID)
+		logger.LogInfo("WARNING: Customer not loaded for CustomerID %d", invoice.CustomerID)
 	}
 	return invoice, nil
 }
@@ -252,7 +253,7 @@ func (r *InvoiceRepositoryNew) UpdateInvoice(id uint64, request *models.InvoiceC
 		return nil, fmt.Errorf("failed to load updated invoice: %v", err)
 	}
 
-	log.Printf("Successfully updated invoice %s", invoice.InvoiceNumber)
+	logger.LogInfo("Successfully updated invoice %s", invoice.InvoiceNumber)
 	return &invoice, nil
 }
 
@@ -297,7 +298,7 @@ func (r *InvoiceRepositoryNew) UpdateInvoiceStatus(id uint64, status string) err
 		return fmt.Errorf("invoice with ID %d not found", id)
 	}
 
-	log.Printf("Successfully updated invoice %d status to %s", id, status)
+	logger.LogInfo("Successfully updated invoice %d status to %s", id, status)
 	return nil
 }
 
@@ -318,7 +319,7 @@ func (r *InvoiceRepositoryNew) DeleteInvoice(id uint64) error {
 		return fmt.Errorf("invoice with ID %d not found", id)
 	}
 
-	log.Printf("Successfully deleted invoice %d", id)
+	logger.LogInfo("Successfully deleted invoice %d", id)
 	return nil
 }
 
@@ -352,7 +353,7 @@ func (r *InvoiceRepositoryNew) generateInvoiceNumber(tx *gorm.DB) (string, error
 	if err != nil {
 		// Fallback: use timestamp-based number
 		maxNumber = int(time.Now().Unix()) % 100000
-		log.Printf("Warning: Could not get max invoice number, using fallback: %d", maxNumber)
+		logger.LogInfo("Warning: Could not get max invoice number, using fallback: %d", maxNumber)
 	}
 
 	nextNumber := maxNumber + 1
@@ -414,7 +415,7 @@ func (r *InvoiceRepositoryNew) GeneratePreviewInvoiceNumber() (string, error) {
 	if err != nil {
 		// Fallback: use 1 as the next number
 		maxNumber = 0
-		log.Printf("Warning: Could not get max invoice number for preview, using fallback")
+		logger.LogInfo("Warning: Could not get max invoice number for preview, using fallback")
 	}
 	
 	nextNumber := maxNumber + 1

@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"go-barcode-webapp/internal/models"
+
+	"go-barcode-webapp/internal/logger"
 )
 
 // ComplianceMiddleware handles all compliance-related operations
@@ -187,12 +189,12 @@ func (cm *ComplianceMiddleware) handleInvoiceCompliance(invoiceID uint, method s
 
 	// Archive the invoice for GoBD compliance
 	if err := cm.gobdCompliance.ArchiveDocument("invoice", fmt.Sprintf("%d", invoiceID), invoiceData, 0); err != nil {
-		fmt.Printf("Failed to archive invoice %d: %v\n", invoiceID, err)
+		logger.LogWarn("Failed to archive invoice %d: %v\n", invoiceID, err)
 	}
 
 	// Create digital signature for the invoice
 	if _, err := cm.digitalSigner.SignDocument("invoice", fmt.Sprintf("%d", invoiceID), invoiceData, "TS-Lager System"); err != nil {
-		fmt.Printf("Failed to sign invoice %d: %v\n", invoiceID, err)
+		logger.LogWarn("Failed to sign invoice %d: %v\n", invoiceID, err)
 	}
 
 	// Log the action
@@ -233,12 +235,12 @@ func (cm *ComplianceMiddleware) RetentionCleanupMiddleware() gin.HandlerFunc {
 func (cm *ComplianceMiddleware) runRetentionCleanup() {
 	// Clean up expired GDPR data
 	if err := cm.gdprCompliance.CleanupExpiredData(); err != nil {
-		fmt.Printf("GDPR cleanup failed: %v\n", err)
+		logger.LogWarn("GDPR cleanup failed: %v\n", err)
 	}
 
 	// Clean up expired archived documents
 	if _, err := cm.retentionMgr.PerformRetentionCleanup(); err != nil {
-		fmt.Printf("Retention cleanup failed: %v\n", err)
+		logger.LogWarn("Retention cleanup failed: %v\n", err)
 	}
 
 	// Log the cleanup action
@@ -418,7 +420,7 @@ func (cm *ComplianceMiddleware) PeriodicComplianceCheck(ctx context.Context) {
 func (cm *ComplianceMiddleware) runDailyComplianceChecks() {
 	// 1. Verify audit log integrity
 	if _, err := cm.auditLogger.VerifyChainIntegrity(); err != nil {
-		fmt.Printf("Audit log integrity check failed: %v\n", err)
+		logger.LogWarn("Audit log integrity check failed: %v\n", err)
 	}
 
 	// 2. Check for expired consents
