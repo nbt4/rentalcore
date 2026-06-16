@@ -3,12 +3,6 @@
 
 type ToastType = 'error' | 'success' | 'info';
 
-interface Toast {
-  id: number;
-  message: string;
-  type: ToastType;
-}
-
 let toastId = 0;
 let container: HTMLDivElement | null = null;
 
@@ -56,6 +50,7 @@ function showToast(message: string, type: ToastType): void {
     max-width: 400px;
     word-break: break-word;
   `;
+  el.id = `toast-${id}`;
   el.textContent = message;
 
   // Inject keyframes once
