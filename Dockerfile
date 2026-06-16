@@ -9,10 +9,23 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-# Stage 2: Build Backend
+# Stage 2: Build OCR Python venv (Python 3.12 for pandas compat)
+FROM python:3.12-alpine AS ocr-builder
+
+RUN apk add --no-cache gcc musl-dev
+
+WORKDIR /app
+
+COPY tools/ocr_parser/requirements.txt tools/ocr_parser/
+
+RUN python3 -m venv /opt/ocr-venv && \
+    /opt/ocr-venv/bin/pip install --upgrade pip && \
+    /opt/ocr-venv/bin/pip install -r tools/ocr_parser/requirements.txt
+
+# Stage 3: Build Backend
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git python3 py3-pip gcc musl-dev sqlite-dev
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
 WORKDIR /app
 
@@ -21,14 +34,9 @@ RUN go mod download
 
 COPY . .
 
-RUN python3 -m venv /opt/ocr-venv && \
-    /opt/ocr-venv/bin/pip install --upgrade pip && \
-    /opt/ocr-venv/bin/pip install -r tools/ocr_parser/requirements.txt && \
-    chmod +x tools/ocr_parser/parser.py
-
 RUN CGO_ENABLED=1 GOOS=linux go build -o server cmd/server/main.go
 
-# Stage 3: Production image
+# Stage 4: Production image
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates tzdata python3 sqlite
@@ -38,7 +46,7 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=builder /app/server .
-COPY --from=builder /opt/ocr-venv /opt/ocr-venv
+COPY --from=ocr-builder /opt/ocr-venv /opt/ocr-venv
 COPY --from=builder /app/tools/ocr_parser tools/ocr_parser
 
 COPY --from=frontend-builder /app/web/dist web/dist
