@@ -1332,8 +1332,6 @@ func setupRoutes(r *gin.Engine,
 		// Profile Settings routes (moved to end to avoid potential conflicts)
 		profile := protected.Group("/profile")
 		{
-			profile.GET("/settings", profileHandler.ProfileSettingsForm)
-			profile.POST("/settings", profileHandler.UpdateProfileSettings)
 			profile.GET("/security-status", profileHandler.SecurityStatus)
 
 			// WebAuthn (Passkey) routes
