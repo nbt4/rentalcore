@@ -4259,6 +4259,32 @@ func (h *PDFHandler) ListServiceItems(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"service_items": items})
 }
 
+// GetServiceItem returns one active service item by ID.
+// GET /api/v1/pdf/service-items/:id
+func (h *PDFHandler) GetServiceItem(c *gin.Context) {
+	type serviceItem struct {
+		ID           int64   `json:"id"`
+		Name         string  `json:"name"`
+		Description  *string `json:"description,omitempty"`
+		DefaultPrice float64 `json:"default_price"`
+		Category     *string `json:"category,omitempty"`
+		Unit         string  `json:"unit"`
+	}
+	var item serviceItem
+	if err := h.DB.Raw(
+		`SELECT id, name, description, COALESCE(default_price, 0) AS default_price, category, COALESCE(unit, 'pauschal') AS unit
+		 FROM service_items WHERE id = ? AND is_active = true`, c.Param("id"),
+	).Scan(&item).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load service item"})
+		return
+	}
+	if item.ID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "service item not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
 // SearchServiceItems searches service items by name/category
 // GET /api/v1/pdf/service-items/search?q=term
 func (h *PDFHandler) SearchServiceItems(c *gin.Context) {
