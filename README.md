@@ -11,7 +11,7 @@
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
 - **OCR-Belegverarbeitung** — Python-basierte OCR-Pipeline (via venv) zur Extraktion von Positionsdaten aus gescannten Lieferscheinen
-- **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 / Entra ID Shared Mailbox-Kontakten
+- **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
 - **Analytics Dashboard** — Umsatz- und Equipment-Auswertungen mit grafischer Aufbereitung
@@ -140,6 +140,8 @@ rentalcore:
 | `M365_SYNC_INTERVAL`           | Sync-Intervall (z. B. `5m`)                       | `5m`                   |
 | `WAREHOUSECORE_DOMAIN`         | WarehouseCore-Domain für Cross-Navigation         | –                      |
 | `CORES_JWT_SECRET`             | JWT-Secret (Cores-weit identisch)                 | –                      |
+
+Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard unter **Microsoft 365 & Entra** Werte gespeichert sind, lädt RentalCore Tenant-ID, Client-ID, Secret, Mailboxen, Intervall und App-URL beim Start aus der gemeinsamen Tabelle `m365_settings`. Damit wird für Entra-Benutzer, Login, Kontakte und Kalender nur eine registrierte Tenant-App benötigt.
 
 ---
 

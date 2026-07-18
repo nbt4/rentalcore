@@ -10,6 +10,7 @@ type M365Settings struct {
 	MailboxID       string    `gorm:"column:mailbox_id;not null;default:''" json:"mailboxId"`
 	SyncInterval    string    `gorm:"column:sync_interval;not null;default:'5m'" json:"syncInterval"`
 	CalendarMailbox string    `gorm:"column:calendar_mailbox;not null;default:''" json:"calendarMailbox"`
+	AppBaseURL      string    `gorm:"column:app_base_url;not null;default:''" json:"appBaseUrl"`
 	UpdatedAt       time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 }
 

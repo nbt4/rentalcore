@@ -14,15 +14,15 @@ import (
 	"syscall"
 	"time"
 
+	commonhealth "github.com/nbt4/cores-common/pkg/health"
 	"go-barcode-webapp/internal/cache"
 	"go-barcode-webapp/internal/compliance"
-	commonhealth "github.com/nbt4/cores-common/pkg/health"
 
 	"go-barcode-webapp/internal/config"
 	"go-barcode-webapp/internal/handlers"
 	"go-barcode-webapp/internal/logger"
-	"go-barcode-webapp/internal/middleware"
 	"go-barcode-webapp/internal/metrics"
+	"go-barcode-webapp/internal/middleware"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/monitoring"
 	"go-barcode-webapp/internal/repository"
@@ -32,6 +32,7 @@ import (
 	m365sync "go-barcode-webapp/internal/sync/m365"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -311,6 +312,7 @@ func main() {
 	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
 		logger.LogInfo("Warning: M365Settings AutoMigrate failed: %v", err)
 	}
+	loadSharedM365Settings(db.DB, &cfg.M365)
 
 	// Apply performance indexes for optimal database performance
 	go func() {
@@ -378,9 +380,9 @@ func main() {
 	requirementRepo := repository.NewRequirementRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	jobEmployeeRepo := repository.NewJobEmployeeRepository(db.DB)
-	skillRepo       := repository.NewSkillRepository(db.DB)
-	employeeRepo    := repository.NewEmployeeRepository(db.DB)
-	positionRepo    := repository.NewPositionRepository(db)
+	skillRepo := repository.NewSkillRepository(db.DB)
+	employeeRepo := repository.NewEmployeeRepository(db.DB)
+	positionRepo := repository.NewPositionRepository(db)
 
 	// M365 Sync Service (optional — nur wenn Env-Vars gesetzt)
 	var m365SyncService handlers.SyncServiceInterface
@@ -517,7 +519,7 @@ func main() {
 		r.Use(complianceMiddleware.ComplianceStatusMiddleware())
 	}
 	r.Use(handlers.GlobalErrorHandler()) // Custom recovery with proper error pages
-	r.Use(metrics.Middleware()) // Prometheus metrics
+	r.Use(metrics.Middleware())          // Prometheus metrics
 
 	// Load HTML templates with custom functions
 	funcMap := template.FuncMap{
@@ -759,7 +761,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "2.1.0")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.70")))
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))
@@ -878,6 +880,40 @@ func main() {
 	}
 
 	zlog.Info().Msg("Server exited gracefully")
+}
+
+// loadSharedM365Settings makes the Cores dashboard's single Microsoft app
+// registration authoritative for RentalCore's existing contacts/calendar sync.
+// Environment/config values remain a fallback for installations that have not
+// configured the central dashboard yet.
+func loadSharedM365Settings(db *gorm.DB, target *config.M365Config) {
+	var settings models.M365Settings
+	if err := db.First(&settings, 1).Error; err != nil {
+		logger.LogInfo("M365 settings: central dashboard configuration not available, using environment fallback")
+		return
+	}
+	if settings.TenantID != "" {
+		target.TenantID = settings.TenantID
+	}
+	if settings.ClientID != "" {
+		target.ClientID = settings.ClientID
+	}
+	if settings.ClientSecret != "" {
+		target.ClientSecret = settings.ClientSecret
+	}
+	if settings.MailboxID != "" {
+		target.MailboxID = settings.MailboxID
+	}
+	if settings.SyncInterval != "" {
+		target.SyncInterval = settings.SyncInterval
+	}
+	if settings.CalendarMailbox != "" {
+		target.CalendarMailbox = settings.CalendarMailbox
+	}
+	if settings.AppBaseURL != "" {
+		target.AppBaseURL = settings.AppBaseURL
+	}
+	logger.LogInfo("M365 settings: loaded shared app registration from Cores dashboard")
 }
 
 func setupRoutes(r *gin.Engine,
