@@ -21,7 +21,7 @@
 - ✅ API documentation created
 
 #### Git & Deployment
-- ✅ Committed to GitLab (commit: 44e9670)
+- ✅ Committed to GitHub (commit: 44e9670)
 - ✅ Pushed to origin/main
 - ⏳ Docker image building (version 4.1.36)
 

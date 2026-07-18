@@ -665,7 +665,7 @@ In `README.md` neuen Eintrag unter der aktuellen Version hinzufügen (Version au
 - Start/End-Datum im OCR Mapping-Modal editierbar
 ```
 
-- [ ] **Schritt 3: GitLab pushen**
+- [ ] **Schritt 3: GitHub pushen**
 
 ```bash
 cd /opt/dev/cores/rentalcore
@@ -849,7 +849,7 @@ Notiere aktuelle Version und erhöhe Patch um 1.
 - ScanResponse enthält swapped/swapped_from Felder zur UI-Rückmeldung
 ```
 
-- [ ] **Schritt 3: GitLab pushen**
+- [ ] **Schritt 3: GitHub pushen**
 
 ```bash
 cd /opt/dev/cores/warehousecore

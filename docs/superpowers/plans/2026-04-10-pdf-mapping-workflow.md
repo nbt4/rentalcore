@@ -1314,7 +1314,7 @@ docker tag nobentie/rentalcore:5.X.Y nobentie/rentalcore:latest
 docker push nobentie/rentalcore:latest
 ```
 
-- [ ] **Step 5: Push to GitLab**
+- [ ] **Step 5: Push to GitHub**
 
 ```bash
 cd /opt/dev/cores/rentalcore && git push origin main

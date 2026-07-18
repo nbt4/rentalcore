@@ -1011,7 +1011,7 @@ In `README.md`, find the version history section. Add at the top:
 ### **v5.3.28** - Feature: two-stage device availability — job form saves requirements, job detail assigns specific devices
 ```
 
-- [ ] **Step 3: Git push to GitLab**
+- [ ] **Step 3: Git push to GitHub**
 
 ```bash
 cd /opt/dev/cores/rentalcore
