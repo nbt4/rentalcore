@@ -143,4 +143,4 @@ rentalcore:
 
 ---
 
-[📦 Monorepo auf GitHub](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
+[Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`

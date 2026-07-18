@@ -281,7 +281,7 @@ All tables and views exist and are functional:
 - ✅ Docker image built successfully
 
 **Git Status**:
-- ✅ All changes committed to GitLab
+- ✅ All changes committed to GitHub
 - ✅ Docker image pushed to Docker Hub: `nobentie/rentalcore:4.1.36`
 
 ---
@@ -393,4 +393,4 @@ For questions or issues:
 
 **Last Updated**: 2025-11-24
 **Version**: 4.1.36
-**Issue**: GitLab #37
+**Issue**: legacy tracker issue #37
