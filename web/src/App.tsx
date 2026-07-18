@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
@@ -18,6 +18,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<Navigate to="/" replace />} />
+          <Route path="/profile/settings" element={<Navigate to="/" replace />} />
           <Route path="/change-password" element={
             <ProtectedRoute bypassForcePasswordChange><ChangePassword /></ProtectedRoute>
           } />

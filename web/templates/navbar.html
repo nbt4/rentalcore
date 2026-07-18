@@ -127,10 +127,6 @@
 
             <!-- User Dropdown Menu -->
             <div class="rc-user-dropdown-menu" id="userDropdownMenu">
-                <a href="/profile/settings" class="rc-user-dropdown-item {{if or (eq .currentPage "profile") (eq .currentPage "profile-settings")}}active{{end}}">
-                    <i class="bi bi-person-gear"></i>
-                    <span class="rc-nav-label">Profile Settings</span>
-                </a>
                 <a href="/settings/company" class="rc-user-dropdown-item {{if eq .currentPage "settings"}}active{{end}}">
                     <i class="bi bi-building-gear"></i>
                     <span class="rc-nav-label">Company Settings</span>
