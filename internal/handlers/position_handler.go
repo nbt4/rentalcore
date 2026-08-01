@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-barcode-webapp/internal/models"
+	"go-barcode-webapp/internal/pricing"
 	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -163,6 +164,10 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 	if input.PositionType == "product" {
 		h.syncRequirements(uint(jobID))
 	}
+	if err := h.jobRepo.CalculateAndUpdateRevenue(uint(jobID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{"position": created})
 }
@@ -234,6 +239,10 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	if pos.PositionType == "product" {
 		h.syncRequirements(uint(jobID))
 	}
+	if err := h.jobRepo.CalculateAndUpdateRevenue(uint(jobID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"position": updated})
 }
@@ -258,6 +267,10 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 
 	if pos.PositionType == "product" {
 		h.syncRequirements(pos.JobID)
+	}
+	if err := h.jobRepo.CalculateAndUpdateRevenue(pos.JobID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "position deleted"})
@@ -398,48 +411,16 @@ func (h *PositionHandler) GetTotals(c *gin.Context) {
 		return
 	}
 
-	eventDays := calcEventDays(job.StartDate, job.EndDate)
-
-	subtotal := 0.0
-	for _, p := range positions {
-		dayFactor := 1.0
-		if job.MultiplyByDays && eventDays > 1 && p.FollowDayFactor > 0 {
-			dayFactor = 1 + float64(eventDays-1)*p.FollowDayFactor
-		}
-		unitPrice := p.UnitPrice
-		if job.PricesIncludeTax {
-			taxDivisor := 1 + p.TaxRate/100
-			if taxDivisor > 0 {
-				unitPrice = p.UnitPrice / taxDivisor
-			}
-		}
-		lineTotal := p.Quantity * unitPrice * dayFactor
-		discount := p.DiscountAmount + (lineTotal * p.DiscountPercent / 100)
-		subtotal += lineTotal - discount
-	}
-
-	globalDiscount := 0.0
-	if job.Discount > 0 {
-		if job.DiscountType == "percent" {
-			globalDiscount = subtotal * job.Discount / 100
-		} else {
-			globalDiscount = job.Discount
-		}
-	}
-
-	netto := subtotal - globalDiscount
-	taxRate := 19.0
-	tax := netto * taxRate / 100
-	brutto := netto + tax
+	totals := pricing.CalculatePositionTotals(job, positions)
 
 	c.JSON(http.StatusOK, gin.H{
-		"event_days":         eventDays,
-		"subtotal":           math.Round(subtotal*100) / 100,
-		"global_discount":    math.Round(globalDiscount*100) / 100,
-		"netto":              math.Round(netto*100) / 100,
-		"tax_rate":           taxRate,
-		"tax":                math.Round(tax*100) / 100,
-		"brutto":             math.Round(brutto*100) / 100,
+		"event_days":         totals.EventDays,
+		"subtotal":           totals.Subtotal,
+		"global_discount":    totals.GlobalDiscount,
+		"netto":              totals.Net,
+		"tax_rate":           totals.TaxRate,
+		"tax":                totals.Tax,
+		"brutto":             totals.Gross,
 		"multiply_by_days":   job.MultiplyByDays,
 		"prices_include_tax": job.PricesIncludeTax,
 	})
@@ -480,19 +461,12 @@ func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if err := h.jobRepo.CalculateAndUpdateRevenue(uint(jobID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "updated"})
-}
-
-func calcEventDays(start, end *time.Time) int {
-	if start == nil || end == nil {
-		return 1
-	}
-	days := int(end.Sub(*start).Hours() / 24)
-	if days < 1 {
-		return 1
-	}
-	return days
 }
 
 // GetRentalCatalog returns all active rental equipment items for selection in job positions.

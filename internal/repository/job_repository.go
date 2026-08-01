@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"go-barcode-webapp/internal/models"
+	"go-barcode-webapp/internal/pricing"
 	"strings"
 
 	"gorm.io/gorm"
@@ -210,6 +211,14 @@ func (r *JobRepository) Update(job *models.Job) error {
 		}())
 	} else {
 		jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Verification failed: %v\n", verifyResult.Error)
+	}
+
+	var positionCount int64
+	if err := r.db.Model(&models.JobPosition{}).Where("job_id = ?", job.JobID).Count(&positionCount).Error; err != nil {
+		return err
+	}
+	if positionCount > 0 {
+		return r.CalculateAndUpdateRevenue(job.JobID)
 	}
 
 	return nil
@@ -616,6 +625,21 @@ func (r *JobRepository) CalculateAndUpdateRevenue(jobID uint) error {
 	err := r.db.First(&job, jobID).Error
 	if err != nil {
 		return err
+	}
+
+	// Position-based jobs use their invoice positions as the authoritative total.
+	// This includes OCR imports, where assigned devices may only represent a
+	// fraction of the invoice amount.
+	var positions []models.JobPosition
+	if err := r.db.Where("job_id = ?", jobID).Find(&positions).Error; err != nil {
+		return err
+	}
+	if len(positions) > 0 {
+		totals := pricing.CalculatePositionTotals(&job, positions)
+		return r.db.Model(&models.Job{}).Where("jobid = ?", jobID).Updates(map[string]interface{}{
+			"revenue":       totals.GrossBeforeDiscount,
+			"final_revenue": totals.Gross,
+		}).Error
 	}
 
 	// Revenue is calculated as flat rates, not per day

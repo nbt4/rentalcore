@@ -2389,6 +2389,9 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 			logger.LogInfo("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
 		}
 	}
+	if err := h.JobHandler.jobRepo.CalculateAndUpdateRevenue(job.JobID); err != nil {
+		return fmt.Errorf("calculate position revenue: %w", err)
+	}
 	return nil
 }
 

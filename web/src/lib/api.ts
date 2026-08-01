@@ -57,8 +57,10 @@ export interface Job {
   job_code: string;
   customer_id: number;
   customer?: Customer;
+  customer_name?: string;
   status_id: number;
   status?: JobStatus;
+  status_name?: string;
   description?: string | null;
   startDate?: string | null;
   endDate?: string | null;

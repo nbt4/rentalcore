@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type EventLocation struct {
@@ -12,12 +13,12 @@ type EventLocation struct {
 }
 
 type CalendarEvent struct {
-	Subject   string          `json:"subject"`
-	Body      EventBody       `json:"body"`
-	Start     EventDateTime   `json:"start"`
-	End       EventDateTime   `json:"end"`
-	Location  *EventLocation  `json:"location,omitempty"`
-	Attendees []Attendee      `json:"attendees,omitempty"`
+	Subject   string         `json:"subject"`
+	Body      EventBody      `json:"body"`
+	Start     EventDateTime  `json:"start"`
+	End       EventDateTime  `json:"end"`
+	Location  *EventLocation `json:"location,omitempty"`
+	Attendees []Attendee     `json:"attendees,omitempty"`
 }
 
 type EventBody struct {
@@ -41,18 +42,13 @@ type createdEventResponse struct {
 
 // CalendarClient bettet GraphClient ein und verwendet seinen Token-Cache.
 type CalendarClient struct {
-	gc      *GraphClient
-	mailbox string
+	gc        *GraphClient
+	recipient string
+	organizer string
 }
 
-func NewCalendarClient(gc *GraphClient, mailbox string) *CalendarClient {
-	return &CalendarClient{gc: gc, mailbox: mailbox}
-}
-
-func (c *CalendarClient) groupHeaders() map[string]string {
-	return map[string]string{
-		"x-anchor-mailbox": "GroupMailbox:" + c.mailbox,
-	}
+func NewCalendarClient(gc *GraphClient, recipient, organizer string) *CalendarClient {
+	return &CalendarClient{gc: gc, recipient: recipient, organizer: organizer}
 }
 
 func (c *CalendarClient) userHeaders(email string) map[string]string {
@@ -124,65 +120,31 @@ func (c *CalendarClient) DeleteUserEvent(userEmail, eventID string) error {
 }
 
 func (c *CalendarClient) CreateEvent(event CalendarEvent) (string, error) {
-	resp, err := c.gc.doRequestWithHeaders("POST",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events", c.mailbox),
-		event,
-		c.groupHeaders(),
-	)
-	if err != nil {
-		return "", err
-	}
-	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
-	resp.Body.Close()
-	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("create event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-	var result createdEventResponse
-	if err := json.Unmarshal(bodyBytes, &result); err != nil { // FIXED: use Unmarshal
-		return "", fmt.Errorf("decode create response: %w", err)
-	}
-	return result.ID, nil
+	event = withCalendarRecipient(event, c.recipient)
+	return c.CreateUserEvent(c.organizer, event)
 }
 
 func (c *CalendarClient) UpdateEvent(eventID string, event CalendarEvent) error {
-	resp, err := c.gc.doRequestWithHeaders("PATCH",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
-		event,
-		c.groupHeaders(),
-	)
-	if err != nil {
-		return err
-	}
-	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
-	resp.Body.Close()
-	if err != nil {
-		return fmt.Errorf("read response: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("update event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-	return nil
+	event = withCalendarRecipient(event, c.recipient)
+	return c.UpdateUserEvent(c.organizer, eventID, event)
 }
 
 func (c *CalendarClient) DeleteEvent(eventID string) error {
-	resp, err := c.gc.doRequestWithHeaders("DELETE",
-		fmt.Sprintf("https://graph.microsoft.com/v1.0/groups/%s/events/%s", c.mailbox, eventID),
-		nil,
-		c.groupHeaders(),
-	)
-	if err != nil {
-		return err
+	return c.DeleteUserEvent(c.organizer, eventID)
+}
+
+func withCalendarRecipient(event CalendarEvent, recipient string) CalendarEvent {
+	if strings.TrimSpace(recipient) == "" {
+		return event
 	}
-	bodyBytes, err := io.ReadAll(resp.Body) // FIXED: read body once, reuse
-	resp.Body.Close()
-	if err != nil {
-		return fmt.Errorf("read response: %w", err)
+	for _, attendee := range event.Attendees {
+		if strings.EqualFold(attendee.EmailAddress.Address, recipient) {
+			return event
+		}
 	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("delete event HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-	return nil
+	event.Attendees = append(event.Attendees, Attendee{
+		EmailAddress: EmailAddr{Address: recipient},
+		Type:         "required",
+	})
+	return event
 }

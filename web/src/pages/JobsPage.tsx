@@ -27,6 +27,15 @@ function customerName(c?: Customer | null) {
   return `${c.firstname || ''} ${c.lastname || ''}`.trim() || '—';
 }
 
+function jobCustomerName(job: Job) {
+  const nestedName = customerName(job.customer);
+  return nestedName !== '—' ? nestedName : job.customer_name?.trim() || '—';
+}
+
+function jobStatusName(job: Job) {
+  return job.status?.status || job.status_name || '';
+}
+
 function formatDate(d?: string | null) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('de-DE');
@@ -1049,7 +1058,7 @@ export function JobsPage() {
     return (
       j.job_code.toLowerCase().includes(q) ||
       (j.description || '').toLowerCase().includes(q) ||
-      customerName(j.customer).toLowerCase().includes(q)
+      jobCustomerName(j).toLowerCase().includes(q)
     );
   });
 
@@ -1132,7 +1141,7 @@ export function JobsPage() {
                     <td className="px-6 py-4 text-gray-300">
                       <div className="flex items-center gap-2">
                         <User className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                        {customerName(job.customer)}
+                        {jobCustomerName(job)}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-400 hidden md:table-cell">
@@ -1142,9 +1151,9 @@ export function JobsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden sm:table-cell">
-                      {job.status && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(job.status.status)}`}>
-                          {job.status.status}
+                      {jobStatusName(job) && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(jobStatusName(job))}`}>
+                          {jobStatusName(job)}
                         </span>
                       )}
                     </td>

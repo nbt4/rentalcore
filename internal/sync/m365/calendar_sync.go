@@ -130,13 +130,44 @@ func (s *CalendarSyncService) deleteOne(je models.JobEmployee) {
 	s.empRepo.ClearM365EventID(je.JobID, je.EmployeeID)
 }
 
-// SyncJobEvent — rückwärtskompatibel, delegiert an SyncAllEmployeeEvents.
+// SyncJobEvent creates or updates both the central calendar appointment and
+// every assigned employee's personal appointment.
 func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
+	job, err := s.jobRepo.GetByID(jobID)
+	if err != nil {
+		logger.LogInfo("[CalendarSync] job %d not found: %v", jobID, err)
+	} else if job.StartDate != nil {
+		event, buildErr := s.buildEvent(job)
+		if buildErr != nil {
+			logger.LogInfo("[CalendarSync] build central event for job %d: %v", jobID, buildErr)
+		} else if job.M365EventID != nil && *job.M365EventID != "" {
+			if updateErr := s.client.UpdateEvent(*job.M365EventID, *event); updateErr != nil {
+				logger.LogInfo("[CalendarSync] update central event for job %d: %v", jobID, updateErr)
+			}
+		} else {
+			eventID, createErr := s.client.CreateEvent(*event)
+			if createErr != nil {
+				logger.LogInfo("[CalendarSync] create central event for job %d: %v", jobID, createErr)
+			} else if saveErr := s.db.Model(&models.Job{}).Where("jobid = ?", jobID).
+				Update("m365_event_id", eventID).Error; saveErr != nil {
+				logger.LogInfo("[CalendarSync] save central event id for job %d: %v", jobID, saveErr)
+			}
+		}
+	}
 	s.SyncAllEmployeeEvents(jobID)
 }
 
-// DeleteJobEvent — rückwärtskompatibel, delegiert an DeleteAllEmployeeEvents.
+// DeleteJobEvent removes the central and all personal employee appointments.
 func (s *CalendarSyncService) DeleteJobEvent(jobID uint) {
+	job, err := s.jobRepo.GetByID(jobID)
+	if err == nil && job.M365EventID != nil && *job.M365EventID != "" {
+		if deleteErr := s.client.DeleteEvent(*job.M365EventID); deleteErr != nil {
+			logger.LogInfo("[CalendarSync] delete central event for job %d: %v", jobID, deleteErr)
+		} else if clearErr := s.db.Model(&models.Job{}).Where("jobid = ?", jobID).
+			Update("m365_event_id", nil).Error; clearErr != nil {
+			logger.LogInfo("[CalendarSync] clear central event id for job %d: %v", jobID, clearErr)
+		}
+	}
 	s.DeleteAllEmployeeEvents(jobID)
 }
 
@@ -158,9 +189,9 @@ func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error
 	start := job.StartDate.Format("2006-01-02") + "T00:00:00"
 	var end string
 	if job.EndDate != nil {
-		end = job.EndDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
+		end = job.EndDate.Add(24*time.Hour).Format("2006-01-02") + "T00:00:00"
 	} else {
-		end = job.StartDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
+		end = job.StartDate.Add(24*time.Hour).Format("2006-01-02") + "T00:00:00"
 	}
 
 	location := buildLocation(job)

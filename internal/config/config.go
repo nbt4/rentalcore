@@ -398,13 +398,14 @@ func loadFromEnvironment(config *Config) {
 }
 
 type M365Config struct {
-	TenantID        string `json:"tenant_id"`
-	ClientID        string `json:"client_id"`
-	ClientSecret    string `json:"client_secret"`
-	MailboxID       string `json:"mailbox_id"`
-	SyncInterval    string `json:"sync_interval"`
-	CalendarMailbox string `json:"calendar_mailbox"`
-	AppBaseURL      string `json:"app_base_url"`
+	TenantID          string `json:"tenant_id"`
+	ClientID          string `json:"client_id"`
+	ClientSecret      string `json:"client_secret"`
+	MailboxID         string `json:"mailbox_id"`
+	SyncInterval      string `json:"sync_interval"`
+	CalendarMailbox   string `json:"calendar_mailbox"`
+	CalendarOrganizer string `json:"calendar_organizer"`
+	AppBaseURL        string `json:"app_base_url"`
 }
 
 func (c *M365Config) LoadFromEnv() {
@@ -429,6 +430,11 @@ func (c *M365Config) LoadFromEnv() {
 		c.CalendarMailbox = v
 	} else {
 		c.CalendarMailbox = "events@tsunami-events.de"
+	}
+	if v := os.Getenv("M365_CALENDAR_ORGANIZER"); v != "" {
+		c.CalendarOrganizer = v
+	} else {
+		c.CalendarOrganizer = c.MailboxID
 	}
 	if v := os.Getenv("APP_BASE_URL"); v != "" {
 		c.AppBaseURL = v

@@ -137,11 +137,15 @@ rentalcore:
 | `M365_CLIENT_ID`               | Entra ID Client-ID                                | –                      |
 | `M365_CLIENT_SECRET`           | Entra ID Client-Secret                            | –                      |
 | `M365_SHARED_MAILBOX_ID`       | Shared Mailbox-ID                                 | –                      |
+| `M365_CALENDAR_MAILBOX`        | Empfänger für zentrale Jobtermine                 | `events@tsunami-events.de` |
+| `M365_CALENDAR_ORGANIZER`      | Benutzerpostfach, das zentrale Jobtermine anlegt  | `M365_SHARED_MAILBOX_ID` |
 | `M365_SYNC_INTERVAL`           | Sync-Intervall (z. B. `5m`)                       | `5m`                   |
 | `WAREHOUSECORE_DOMAIN`         | WarehouseCore-Domain für Cross-Navigation         | –                      |
 | `CORES_JWT_SECRET`             | JWT-Secret (Cores-weit identisch)                 | –                      |
 
 Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard unter **Microsoft 365 & Entra** Werte gespeichert sind, lädt RentalCore Tenant-ID, Client-ID, Secret, Mailboxen, Intervall und App-URL beim Start aus der gemeinsamen Tabelle `m365_settings`. Damit wird für Entra-Benutzer, Login, Kontakte und Kalender nur eine registrierte Tenant-App benötigt.
+
+Zentrale Jobtermine werden mit `Calendars.ReadWrite` (Anwendungsberechtigung) im Kalender von `M365_CALENDAR_ORGANIZER` erstellt und als Besprechung an `M365_CALENDAR_MAILBOX` gesendet. Der Organisator muss ein gültiges Benutzerpostfach sein; als Empfänger kann auch eine Microsoft-365-Gruppe verwendet werden.
 
 ---
 

@@ -332,7 +332,7 @@ func main() {
 	loggerConfig := logger.LoggerConfig{
 		Level:        logger.INFO,
 		Service:      "rentalcore",
-		Version:      "5.3.71",
+		Version:      "5.3.72",
 		Environment:  environment,
 		OutputPath:   "", // stdout
 		EnableCaller: true,
@@ -410,7 +410,11 @@ func main() {
 		svc.Start(syncCtx)
 		logger.LogInfo("M365 sync: service initialized")
 
-		calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
+		calendarClient := m365sync.NewCalendarClient(
+			graphClient,
+			cfg.M365.CalendarMailbox,
+			cfg.M365.CalendarOrganizer,
+		)
 		calendarSync = m365sync.NewCalendarSyncService(
 			calendarClient, jobRepo, positionRepo, jobEmployeeRepo, db, cfg.M365.AppBaseURL,
 		)
@@ -761,7 +765,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.71")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.72")))
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))
