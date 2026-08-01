@@ -12,6 +12,7 @@ export interface User {
   Email: string;
   FirstName: string;
   LastName: string;
+  IsAdmin?: boolean;
   IsActive: boolean;
   Roles?: Role[];
   roles?: Role[];

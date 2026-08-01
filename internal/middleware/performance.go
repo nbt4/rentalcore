@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,12 +33,12 @@ type SlowQuery struct {
 
 // MemoryStats represents memory usage statistics
 type MemoryStats struct {
-	Allocated     uint64 `json:"allocated"`
-	TotalAlloc    uint64 `json:"total_alloc"`
-	Sys           uint64 `json:"sys"`
-	GCRuns        uint32 `json:"gc_runs"`
-	HeapInUse     uint64 `json:"heap_in_use"`
-	HeapReleased  uint64 `json:"heap_released"`
+	Allocated    uint64 `json:"allocated"`
+	TotalAlloc   uint64 `json:"total_alloc"`
+	Sys          uint64 `json:"sys"`
+	GCRuns       uint32 `json:"gc_runs"`
+	HeapInUse    uint64 `json:"heap_in_use"`
+	HeapReleased uint64 `json:"heap_released"`
 }
 
 // Stats represents endpoint-specific statistics
@@ -51,6 +52,7 @@ type Stats struct {
 
 // PerformanceMonitor tracks application performance
 type PerformanceMonitor struct {
+	mu            sync.RWMutex
 	metrics       *PerformanceMetrics
 	slowThreshold time.Duration
 	startTime     time.Time
@@ -94,13 +96,13 @@ func (pm *PerformanceMonitor) PerformanceMiddleware() gin.HandlerFunc {
 
 		// Log slow requests
 		if duration > pm.slowThreshold {
-			logger.LogInfo("SLOW REQUEST: %s %s took %v (status: %d)", 
+			logger.LogInfo("SLOW REQUEST: %s %s took %v (status: %d)",
 				method, c.Request.URL.Path, duration, status)
 		}
 
 		// Log errors
 		if status >= 500 {
-			logger.LogInfo("ERROR REQUEST: %s %s returned %d in %v", 
+			logger.LogInfo("ERROR REQUEST: %s %s returned %d in %v",
 				method, c.Request.URL.Path, status, duration)
 		}
 
@@ -112,6 +114,11 @@ func (pm *PerformanceMonitor) PerformanceMiddleware() gin.HandlerFunc {
 
 // updateMetrics updates performance metrics
 func (pm *PerformanceMonitor) updateMetrics(endpoint string, duration time.Duration, isError bool) {
+	memoryStats := readMemoryStats()
+
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	pm.metrics.RequestCount++
 
 	// Update endpoint stats
@@ -131,7 +138,7 @@ func (pm *PerformanceMonitor) updateMetrics(endpoint string, duration time.Durat
 	pm.metrics.EndpointStats[endpoint] = stats
 
 	// Update memory stats
-	pm.updateMemoryStats()
+	pm.metrics.MemoryUsage = memoryStats
 
 	// Calculate error rate
 	totalErrors := int64(0)
@@ -142,11 +149,11 @@ func (pm *PerformanceMonitor) updateMetrics(endpoint string, duration time.Durat
 }
 
 // updateMemoryStats updates memory usage statistics
-func (pm *PerformanceMonitor) updateMemoryStats() {
+func readMemoryStats() MemoryStats {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	pm.metrics.MemoryUsage = MemoryStats{
+	return MemoryStats{
 		Allocated:    m.Alloc,
 		TotalAlloc:   m.TotalAlloc,
 		Sys:          m.Sys,
@@ -158,12 +165,26 @@ func (pm *PerformanceMonitor) updateMemoryStats() {
 
 // GetMetrics returns current performance metrics
 func (pm *PerformanceMonitor) GetMetrics() *PerformanceMetrics {
-	pm.updateMemoryStats()
-	return pm.metrics
+	memoryStats := readMemoryStats()
+
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.metrics.MemoryUsage = memoryStats
+
+	snapshot := *pm.metrics
+	snapshot.SlowQueries = append([]SlowQuery(nil), pm.metrics.SlowQueries...)
+	snapshot.EndpointStats = make(map[string]Stats, len(pm.metrics.EndpointStats))
+	for endpoint, stats := range pm.metrics.EndpointStats {
+		snapshot.EndpointStats[endpoint] = stats
+	}
+	return &snapshot
 }
 
 // GetTopSlowEndpoints returns the slowest endpoints
 func (pm *PerformanceMonitor) GetTopSlowEndpoints(limit int) []EndpointSummary {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+
 	endpoints := make([]EndpointSummary, 0, len(pm.metrics.EndpointStats))
 
 	for endpoint, stats := range pm.metrics.EndpointStats {
@@ -212,9 +233,9 @@ func CompressionMiddleware() gin.HandlerFunc {
 
 		// Skip compression for small responses or binary content
 		contentType := c.GetHeader("Content-Type")
-		if strings.Contains(contentType, "image/") || 
-		   strings.Contains(contentType, "video/") ||
-		   strings.Contains(contentType, "application/octet-stream") {
+		if strings.Contains(contentType, "image/") ||
+			strings.Contains(contentType, "video/") ||
+			strings.Contains(contentType, "application/octet-stream") {
 			c.Next()
 			return
 		}
@@ -255,10 +276,10 @@ func CacheControlMiddleware() gin.HandlerFunc {
 		// Cache static assets for 1 year
 		if strings.HasPrefix(path, "/static/") {
 			if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".js") ||
-			   strings.HasSuffix(path, ".png") || strings.HasSuffix(path, ".jpg") ||
-			   strings.HasSuffix(path, ".jpeg") || strings.HasSuffix(path, ".gif") ||
-			   strings.HasSuffix(path, ".ico") || strings.HasSuffix(path, ".woff") ||
-			   strings.HasSuffix(path, ".woff2") || strings.HasSuffix(path, ".ttf") {
+				strings.HasSuffix(path, ".png") || strings.HasSuffix(path, ".jpg") ||
+				strings.HasSuffix(path, ".jpeg") || strings.HasSuffix(path, ".gif") ||
+				strings.HasSuffix(path, ".ico") || strings.HasSuffix(path, ".woff") ||
+				strings.HasSuffix(path, ".woff2") || strings.HasSuffix(path, ".ttf") {
 				c.Header("Cache-Control", "public, max-age=31536000") // 1 year
 				c.Header("Expires", time.Now().AddDate(1, 0, 0).Format(time.RFC1123))
 			}
@@ -281,7 +302,7 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-		
+
 		// Don't set HSTS in development
 		if gin.Mode() == gin.ReleaseMode {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -307,11 +328,13 @@ func RequestSizeLimitMiddleware(maxSize int64) gin.HandlerFunc {
 // RateLimitMiddleware provides basic rate limiting
 func RateLimitMiddleware(requestsPerMinute int) gin.HandlerFunc {
 	clients := make(map[string][]time.Time)
-	
+	var mu sync.Mutex
+
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
 		now := time.Now()
-		
+		mu.Lock()
+
 		// Clean old requests (older than 1 minute)
 		if requests, exists := clients[clientIP]; exists {
 			var recent []time.Time
@@ -325,6 +348,7 @@ func RateLimitMiddleware(requestsPerMinute int) gin.HandlerFunc {
 
 		// Check rate limit
 		if requests := clients[clientIP]; len(requests) >= requestsPerMinute {
+			mu.Unlock()
 			c.JSON(429, gin.H{"error": "Rate limit exceeded"})
 			c.Abort()
 			return
@@ -332,6 +356,7 @@ func RateLimitMiddleware(requestsPerMinute int) gin.HandlerFunc {
 
 		// Add current request
 		clients[clientIP] = append(clients[clientIP], now)
+		mu.Unlock()
 		c.Next()
 	}
 }
@@ -345,7 +370,7 @@ func HealthCheckMiddleware(pm *PerformanceMonitor) gin.HandlerFunc {
 		}
 
 		metrics := pm.GetMetrics()
-		
+
 		// Simple health check
 		health := gin.H{
 			"status":     "healthy",

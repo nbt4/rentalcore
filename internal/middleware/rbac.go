@@ -90,7 +90,7 @@ func (m *RBACMiddleware) RequireAdminOrManager() gin.HandlerFunc {
 // hasAnyRole checks if user has any of the specified roles
 func (m *RBACMiddleware) hasAnyRole(user *models.User, roleNames []string) bool {
 	// System admin always has access
-	if user.Username == "admin" {
+	if user.IsAdmin || user.Username == "admin" {
 		return true
 	}
 
@@ -119,7 +119,7 @@ func (m *RBACMiddleware) hasAnyRole(user *models.User, roleNames []string) bool 
 // hasPermission checks if user has a specific permission
 func (m *RBACMiddleware) hasPermission(user *models.User, permission string) bool {
 	// System admin always has all permissions
-	if user.Username == "admin" {
+	if user.IsAdmin || user.Username == "admin" {
 		return true
 	}
 
@@ -164,6 +164,10 @@ func (m *RBACMiddleware) hasPermission(user *models.User, permission string) boo
 
 // GetUserRoles returns all active roles for a user
 func (m *RBACMiddleware) GetUserRoles(user *models.User) []models.Role {
+	if user.IsAdmin {
+		return []models.Role{{Name: "admin", DisplayName: "Administrator", IsActive: true}}
+	}
+
 	var userRoles []models.UserRole
 	if err := m.db.Preload("Role").Where("userID = ? AND is_active = ?", user.UserID, true).Find(&userRoles).Error; err != nil {
 		return []models.Role{}

@@ -39,13 +39,12 @@ func (h *WebAuthnHandler) GetDB() *gorm.DB {
 
 // StartPasskeyRegistration initiates passkey registration for a user
 func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
-	
+
 	currentUser, exists := GetCurrentUser(c)
 	if !exists || currentUser == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	
 
 	// Check if running over HTTPS or localhost (WebAuthn requirement)
 	host := c.Request.Host
@@ -53,25 +52,22 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 	if c.Request.TLS != nil {
 		scheme = "https"
 	}
-	
-	
+
 	// WebAuthn requires HTTPS except for localhost, internal networks, and Docker containers
 	isLocalhost := strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1")
 	isInternalHost := strings.Contains(host, "debian01") || strings.Contains(host, ".local") || strings.Contains(host, "10.0.0.") || strings.Contains(host, "192.168.") || strings.Contains(host, "172.16.") || strings.Contains(host, "172.17.") || strings.Contains(host, "172.18.") || strings.Contains(host, "172.19.") || strings.Contains(host, "172.20.") || strings.Contains(host, "172.21.") || strings.Contains(host, "172.22.") || strings.Contains(host, "172.23.") || strings.Contains(host, "172.24.") || strings.Contains(host, "172.25.") || strings.Contains(host, "172.26.") || strings.Contains(host, "172.27.") || strings.Contains(host, "172.28.") || strings.Contains(host, "172.29.") || strings.Contains(host, "172.30.") || strings.Contains(host, "172.31.")
 	// Allow development and container environments - be very permissive for development
-	isDevelopmentHost := strings.Contains(host, "rentalcore") || strings.Contains(host, "app") || strings.Contains(host, "webapp") || 
-		                strings.Contains(host, "docker") || strings.Contains(host, "container") ||
-		                (strings.Contains(host, ":8080") || strings.Contains(host, ":3000") || strings.Contains(host, ":8000")) ||
-		                // Allow any host for development - this makes WebAuthn work on any system
-		                true // TEMPORARY: Allow all hosts for development
-	
-	
+	isDevelopmentHost := strings.Contains(host, "rentalcore") || strings.Contains(host, "app") || strings.Contains(host, "webapp") ||
+		strings.Contains(host, "docker") || strings.Contains(host, "container") ||
+		(strings.Contains(host, ":8080") || strings.Contains(host, ":3000") || strings.Contains(host, ":8000")) ||
+		// Allow any host for development - this makes WebAuthn work on any system
+		true // TEMPORARY: Allow all hosts for development
+
 	if scheme != "https" && !isLocalhost && !isInternalHost && !isDevelopmentHost {
 		errorMsg := fmt.Sprintf("WebAuthn requires HTTPS for security. Host '%s' with scheme '%s' not allowed. Use HTTPS or configure for development.", host, scheme)
 		c.JSON(http.StatusBadRequest, gin.H{"error": errorMsg, "host": host, "scheme": scheme})
 		return
 	}
-	
 
 	// Generate challenge
 	challenge := make([]byte, 32)
@@ -79,7 +75,6 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate challenge"})
 		return
 	}
-	
 
 	// Create WebAuthn session
 	sessionID := generateSessionID()
@@ -96,14 +91,12 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
 		return
 	}
-	
 
 	// Return registration options - challenge and user.id need to be base64url encoded strings
 	// but the client will need to convert them to Uint8Array
 	challengeB64 := base64.URLEncoding.EncodeToString(challenge)
 	userIdB64 := base64.URLEncoding.EncodeToString([]byte(fmt.Sprintf("%d", currentUser.UserID)))
-	
-	
+
 	// For WebAuthn RP ID, it must be a valid domain suffix of the origin
 	// For .local domains, we need to use the full domain or a valid suffix
 	rpID := host
@@ -111,8 +104,7 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 		// Remove port if present
 		rpID = strings.Split(host, ":")[0]
 	}
-	
-	
+
 	options := map[string]interface{}{
 		"challenge": challengeB64,
 		"rp": map[string]string{
@@ -125,7 +117,7 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 			"displayName": fmt.Sprintf("%s %s", currentUser.FirstName, currentUser.LastName),
 		},
 		"pubKeyCredParams": []map[string]interface{}{
-			{"type": "public-key", "alg": -7},  // ES256
+			{"type": "public-key", "alg": -7},   // ES256
 			{"type": "public-key", "alg": -257}, // RS256
 		},
 		"attestation": "direct",
@@ -145,7 +137,7 @@ func (h *WebAuthnHandler) StartPasskeyRegistration(c *gin.Context) {
 
 // CompletePasskeyRegistration completes passkey registration
 func (h *WebAuthnHandler) CompletePasskeyRegistration(c *gin.Context) {
-	
+
 	currentUser, exists := GetCurrentUser(c)
 	if !exists || currentUser == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -154,24 +146,32 @@ func (h *WebAuthnHandler) CompletePasskeyRegistration(c *gin.Context) {
 
 	// Use flexible JSON parsing to avoid validation errors
 	var request map[string]interface{}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON request format", "details": err.Error()})
 		return
 	}
-	
+
 	// Extract fields manually
 	sessionID, _ := request["sessionId"].(string)
 	name, _ := request["name"].(string)
 	credential, _ := request["credential"].(string)
 	credentialID, _ := request["credentialId"].(string)
-	
+
 	if sessionID == "" || name == "" || credential == "" || credentialID == "" {
 		missingFields := []string{}
-		if sessionID == "" { missingFields = append(missingFields, "sessionId") }
-		if name == "" { missingFields = append(missingFields, "name") }
-		if credential == "" { missingFields = append(missingFields, "credential") }
-		if credentialID == "" { missingFields = append(missingFields, "credentialId") }
+		if sessionID == "" {
+			missingFields = append(missingFields, "sessionId")
+		}
+		if name == "" {
+			missingFields = append(missingFields, "name")
+		}
+		if credential == "" {
+			missingFields = append(missingFields, "credential")
+		}
+		if credentialID == "" {
+			missingFields = append(missingFields, "credentialId")
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields", "missing": missingFields})
 		return
 	}
@@ -222,38 +222,37 @@ func (h *WebAuthnHandler) CompletePasskeyRegistration(c *gin.Context) {
 
 // StartPasskeyAuthentication initiates passkey authentication for login
 func (h *WebAuthnHandler) StartPasskeyAuthentication(c *gin.Context) {
-	
+
 	// Check if running over HTTPS or localhost (WebAuthn requirement)
 	host := c.Request.Host
 	scheme := "http"
 	if c.Request.TLS != nil {
 		scheme = "https"
 	}
-	
-	
+
 	// WebAuthn requires HTTPS except for localhost, internal networks, and Docker containers
 	isLocalhost := strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1")
 	isInternalHost := strings.Contains(host, "debian01") || strings.Contains(host, ".local") || strings.Contains(host, "10.0.0.") || strings.Contains(host, "192.168.") || strings.Contains(host, "172.16.") || strings.Contains(host, "172.17.") || strings.Contains(host, "172.18.") || strings.Contains(host, "172.19.") || strings.Contains(host, "172.20.") || strings.Contains(host, "172.21.") || strings.Contains(host, "172.22.") || strings.Contains(host, "172.23.") || strings.Contains(host, "172.24.") || strings.Contains(host, "172.25.") || strings.Contains(host, "172.26.") || strings.Contains(host, "172.27.") || strings.Contains(host, "172.28.") || strings.Contains(host, "172.29.") || strings.Contains(host, "172.30.") || strings.Contains(host, "172.31.")
-	// Allow development and container environments - be very permissive for development  
-	isDevelopmentHost := strings.Contains(host, "rentalcore") || strings.Contains(host, "app") || strings.Contains(host, "webapp") || 
-		                strings.Contains(host, "docker") || strings.Contains(host, "container") ||
-		                (strings.Contains(host, ":8080") || strings.Contains(host, ":3000") || strings.Contains(host, ":8000")) ||
-		                // Allow any host for development - this makes WebAuthn work on any system
-		                true // TEMPORARY: Allow all hosts for development
-	
+	// Allow development and container environments - be very permissive for development
+	isDevelopmentHost := strings.Contains(host, "rentalcore") || strings.Contains(host, "app") || strings.Contains(host, "webapp") ||
+		strings.Contains(host, "docker") || strings.Contains(host, "container") ||
+		(strings.Contains(host, ":8080") || strings.Contains(host, ":3000") || strings.Contains(host, ":8000")) ||
+		// Allow any host for development - this makes WebAuthn work on any system
+		true // TEMPORARY: Allow all hosts for development
+
 	if scheme != "https" && !isLocalhost && !isInternalHost && !isDevelopmentHost {
 		errorMsg := fmt.Sprintf("WebAuthn requires HTTPS for security. Host '%s' with scheme '%s' not allowed. Use HTTPS or configure for development.", host, scheme)
 		c.JSON(http.StatusBadRequest, gin.H{"error": errorMsg, "host": host, "scheme": scheme})
 		return
 	}
-	
+
 	// Generate challenge
 	challenge := make([]byte, 32)
 	if _, err := rand.Read(challenge); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate challenge"})
 		return
 	}
-	
+
 	// Create WebAuthn session for authentication
 	sessionID := generateSessionID()
 	session := models.WebAuthnSession{
@@ -269,12 +268,11 @@ func (h *WebAuthnHandler) StartPasskeyAuthentication(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
 		return
 	}
-	
+
 	// For authentication, we can allow any registered passkey
 	var passkeys []models.UserPasskey
 	h.db.Where("is_active = ?", true).Find(&passkeys)
-	
-	
+
 	allowCredentials := make([]map[string]interface{}, len(passkeys))
 	for i, passkey := range passkeys {
 		allowCredentials[i] = map[string]interface{}{
@@ -282,15 +280,14 @@ func (h *WebAuthnHandler) StartPasskeyAuthentication(c *gin.Context) {
 			"id":   passkey.CredentialID, // Use the credential ID directly as it's already base64url encoded
 		}
 	}
-	
+
 	// For WebAuthn RP ID, it must be a valid domain suffix of the origin
 	rpID := host
 	if strings.Contains(host, ":") {
 		// Remove port if present
 		rpID = strings.Split(host, ":")[0]
 	}
-	
-	
+
 	// Return authentication options
 	challengeB64 := base64.URLEncoding.EncodeToString(challenge)
 	options := map[string]interface{}{
@@ -309,18 +306,18 @@ func (h *WebAuthnHandler) StartPasskeyAuthentication(c *gin.Context) {
 
 // CompletePasskeyAuthentication completes passkey authentication for login
 func (h *WebAuthnHandler) CompletePasskeyAuthentication(c *gin.Context) {
-	
+
 	var request map[string]interface{}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Extract fields manually
 	sessionID, _ := request["sessionId"].(string)
 	credentialID, _ := request["credentialId"].(string)
-	
+
 	if sessionID == "" || credentialID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields"})
 		return
@@ -353,7 +350,7 @@ func (h *WebAuthnHandler) CompletePasskeyAuthentication(c *gin.Context) {
 	// 1. Verify the authenticator data
 	// 2. Verify the client data JSON
 	// 3. Verify the signature using the stored public key
-	
+
 	// Update passkey usage
 	passkey.LastUsed = &[]time.Time{time.Now()}[0]
 	passkey.SignCount++
@@ -366,16 +363,19 @@ func (h *WebAuthnHandler) CompletePasskeyAuthentication(c *gin.Context) {
 		ExpiresAt: time.Now().Add(24 * time.Hour), // 24 hour session
 		CreatedAt: time.Now(),
 	}
-	
+
 	if err := h.db.Create(&userSession).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
 		return
 	}
 
-		// Set session cookie with shared domain for SSO
+	// Set session cookie with shared domain for SSO
 	cookieDomain := getCookieDomain(c)
 	logger.LogWarn("DEBUG: WebAuthn login - setting cookie with domain: '%s' for session: %s\n", cookieDomain, userSession.SessionID)
 	c.SetCookie("session_id", userSession.SessionID, 24*60*60, "/", cookieDomain, false, true)
+	if err := setCoresToken(c, &user, 24*60*60); err != nil {
+		logger.LogWarn("Failed to issue shared Cores login token after WebAuthn: %v", err)
+	}
 
 	// Clean up WebAuthn session
 	h.db.Delete(&session)
@@ -464,13 +464,12 @@ func (h *WebAuthnHandler) SecurityStatus(c *gin.Context) {
 
 // Setup2FA generates a new TOTP secret and QR code for the user
 func (h *WebAuthnHandler) Setup2FA(c *gin.Context) {
-	
+
 	currentUser, exists := GetCurrentUser(c)
 	if !exists || currentUser == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	
 
 	// Check if 2FA is already setup - use raw SQL to avoid GORM JSON scanning issues
 	var count int64
@@ -478,12 +477,12 @@ func (h *WebAuthnHandler) Setup2FA(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to setup 2FA"})
 		return
 	}
-	
+
 	if count > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "2FA is already enabled"})
 		return
 	}
-	
+
 	// Delete any existing incomplete setup records
 	h.db.Exec("DELETE FROM user_2fa WHERE user_id = ? AND is_enabled = 0", currentUser.UserID)
 
@@ -507,26 +506,24 @@ func (h *WebAuthnHandler) Setup2FA(c *gin.Context) {
 	}
 
 	// Create 2FA record with manual JSON serialization
-	
+
 	// Convert backup codes to JSON manually
 	backupCodesJSON, err := json.Marshal(backupCodes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to setup 2FA"})
 		return
 	}
-	
-	
+
 	// Use raw SQL to insert the record to avoid GORM's JSON handling
 	result := h.db.Exec(`
 		INSERT INTO user_2fa (user_id, secret, qr_code_url, is_enabled, is_verified, backup_codes, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, currentUser.UserID, key.Secret(), key.URL(), false, false, string(backupCodesJSON), time.Now(), time.Now())
-	
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to setup 2FA"})
 		return
 	}
-	
 
 	c.JSON(http.StatusOK, gin.H{
 		"qrCodeURL":   key.URL(),
@@ -559,7 +556,7 @@ func (h *WebAuthnHandler) Verify2FA(c *gin.Context) {
 		Secret    string `db:"secret"`
 		IsEnabled bool   `db:"is_enabled"`
 	}
-	
+
 	if err := h.db.Raw("SELECT two_fa_id, user_id, secret, is_enabled FROM user_2fa WHERE user_id = ?", currentUser.UserID).Scan(&twoFA).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "2FA not setup"})
 		return
@@ -575,7 +572,7 @@ func (h *WebAuthnHandler) Verify2FA(c *gin.Context) {
 
 	// Enable 2FA using raw SQL
 	now := time.Now()
-	if err := h.db.Exec("UPDATE user_2fa SET is_enabled = 1, is_verified = 1, last_used = ?, updated_at = ? WHERE user_id = ?", 
+	if err := h.db.Exec("UPDATE user_2fa SET is_enabled = 1, is_verified = 1, last_used = ?, updated_at = ? WHERE user_id = ?",
 		now, now, currentUser.UserID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable 2FA"})
 		return
@@ -608,7 +605,7 @@ func (h *WebAuthnHandler) Disable2FA(c *gin.Context) {
 	var secret string
 	var backupCodes string
 	var isEnabled bool
-	
+
 	row := h.db.Raw("SELECT secret, COALESCE(backup_codes, '[]'), is_enabled FROM user_2fa WHERE user_id = ? LIMIT 1", currentUser.UserID).Row()
 	if err := row.Scan(&secret, &backupCodes, &isEnabled); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "2FA not found"})
@@ -634,7 +631,7 @@ func (h *WebAuthnHandler) Disable2FA(c *gin.Context) {
 				}
 			}
 		}
-		
+
 		if !valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid verification code"})
 			return
@@ -666,15 +663,15 @@ func (h *WebAuthnHandler) Get2FAStatus(c *gin.Context) {
 		LastUsed    *time.Time `db:"last_used"`
 		BackupCodes string     `db:"backup_codes"`
 	}
-	
+
 	err := h.db.Raw("SELECT is_enabled, is_verified, created_at, last_used, backup_codes FROM user_2fa WHERE user_id = ?", currentUser.UserID).Scan(&twoFA).Error
 
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"enabled":    false,
-			"verified":   false,
-			"setupDate":  nil,
-			"lastUsed":   nil,
+			"enabled":   false,
+			"verified":  false,
+			"setupDate": nil,
+			"lastUsed":  nil,
 		})
 		return
 	}
@@ -689,10 +686,10 @@ func (h *WebAuthnHandler) Get2FAStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":    twoFA.IsEnabled,
-		"verified":   twoFA.IsVerified,
-		"setupDate":  twoFA.CreatedAt,
-		"lastUsed":   twoFA.LastUsed,
+		"enabled":          twoFA.IsEnabled,
+		"verified":         twoFA.IsVerified,
+		"setupDate":        twoFA.CreatedAt,
+		"lastUsed":         twoFA.LastUsed,
 		"backupCodesCount": backupCodesCount,
 	})
 }

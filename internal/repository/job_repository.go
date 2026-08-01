@@ -365,6 +365,57 @@ func (r *JobRepository) List(params *models.FilterParams) ([]models.JobWithDetai
 	}
 
 	err := r.db.Raw(sqlQuery, args...).Scan(&jobs).Error
+	if err != nil || len(jobs) == 0 {
+		return jobs, err
+	}
+
+	customerIDs := make([]uint, 0, len(jobs))
+	statusIDs := make([]uint, 0, len(jobs))
+	seenCustomers := make(map[uint]struct{}, len(jobs))
+	seenStatuses := make(map[uint]struct{}, len(jobs))
+	for _, job := range jobs {
+		if _, seen := seenCustomers[job.CustomerID]; !seen && job.CustomerID > 0 {
+			customerIDs = append(customerIDs, job.CustomerID)
+			seenCustomers[job.CustomerID] = struct{}{}
+		}
+		if _, seen := seenStatuses[job.StatusID]; !seen && job.StatusID > 0 {
+			statusIDs = append(statusIDs, job.StatusID)
+			seenStatuses[job.StatusID] = struct{}{}
+		}
+	}
+
+	customersByID := make(map[uint]models.Customer, len(customerIDs))
+	if len(customerIDs) > 0 {
+		var customers []models.Customer
+		if queryErr := r.db.Where("customerID IN ?", customerIDs).Find(&customers).Error; queryErr != nil {
+			return nil, queryErr
+		}
+		for _, customer := range customers {
+			customersByID[customer.CustomerID] = customer
+		}
+	}
+
+	statusesByID := make(map[uint]models.Status, len(statusIDs))
+	if len(statusIDs) > 0 {
+		var statuses []models.Status
+		if queryErr := r.db.Where("statusID IN ?", statusIDs).Find(&statuses).Error; queryErr != nil {
+			return nil, queryErr
+		}
+		for _, status := range statuses {
+			statusesByID[status.StatusID] = status
+		}
+	}
+
+	for i := range jobs {
+		if customer, ok := customersByID[jobs[i].CustomerID]; ok {
+			customerCopy := customer
+			jobs[i].Customer = &customerCopy
+		}
+		if status, ok := statusesByID[jobs[i].StatusID]; ok {
+			statusCopy := status
+			jobs[i].Status = &statusCopy
+		}
+	}
 	return jobs, err
 }
 

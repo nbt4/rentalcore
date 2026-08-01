@@ -68,12 +68,17 @@ rentalcore:
     ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     GIN_MODE: release
     CORES_JWT_SECRET: ${CORES_JWT_SECRET}
+    COOKIE_DOMAIN: ${COOKIE_DOMAIN}
     NEXTCLOUD_WEBDAV_URL: ${NEXTCLOUD_WEBDAV_URL}
   depends_on:
     - postgres
   volumes:
     - rental_uploads:/app/uploads
 ```
+
+Mit einem gemeinsamen `CORES_JWT_SECRET` und einer übergeordneten `COOKIE_DOMAIN`
+(zum Beispiel `.example.com`) stellt auch ein direkter RentalCore-Login den
+`cores_token` für Dashboard, WarehouseCore und PlannerCore aus.
 
 ---
 

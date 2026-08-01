@@ -80,22 +80,22 @@ type Job struct {
 	UpdatedAt     *time.Time   `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP;index"`
 
 	// Relations
-	Creator      *User        `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
-	Description  *string      `json:"description" gorm:"column:description"`
-	Discount     float64      `json:"discount" gorm:"column:discount;default:0"`
-	DiscountType string       `json:"discount_type" gorm:"column:discount_type;default:amount"`
-	Revenue      float64      `json:"revenue" gorm:"column:revenue;default:0"`
-	FinalRevenue    *float64     `json:"final_revenue" gorm:"column:final_revenue"`
-	StartDate       *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
-	EndDate         *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
-	MultiplyByDays  bool         `json:"multiply_by_days" gorm:"column:multiply_by_days;default:true"`
-	M365EventID     *string      `json:"m365_event_id,omitempty" gorm:"column:m365_event_id;size:255"`
-	PricesIncludeTax bool        `json:"prices_include_tax" gorm:"column:prices_include_tax;default:false"`
-	VenueID      *uint        `json:"venue_id" gorm:"column:venue_id"`
-	Venue        *Venue       `json:"venue,omitempty" gorm:"foreignKey:VenueID"`
-	JobDevices   []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
-	JobPackages  []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
-	DeviceCount  int          `json:"device_count" gorm:"-:all"`
+	Creator          *User        `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
+	Description      *string      `json:"description" gorm:"column:description"`
+	Discount         float64      `json:"discount" gorm:"column:discount;default:0"`
+	DiscountType     string       `json:"discount_type" gorm:"column:discount_type;default:amount"`
+	Revenue          float64      `json:"revenue" gorm:"column:revenue;default:0"`
+	FinalRevenue     *float64     `json:"final_revenue" gorm:"column:final_revenue"`
+	StartDate        *time.Time   `json:"startDate" gorm:"column:startdate;type:date"`
+	EndDate          *time.Time   `json:"endDate" gorm:"column:enddate;type:date"`
+	MultiplyByDays   bool         `json:"multiply_by_days" gorm:"column:multiply_by_days;default:true"`
+	M365EventID      *string      `json:"m365_event_id,omitempty" gorm:"column:m365_event_id;size:255"`
+	PricesIncludeTax bool         `json:"prices_include_tax" gorm:"column:prices_include_tax;default:false"`
+	VenueID          *uint        `json:"venue_id" gorm:"column:venue_id"`
+	Venue            *Venue       `json:"venue,omitempty" gorm:"foreignKey:VenueID"`
+	JobDevices       []JobDevice  `json:"job_devices,omitempty" gorm:"foreignKey:JobID"`
+	JobPackages      []JobPackage `json:"job_packages,omitempty" gorm:"foreignKey:JobID;references:JobID"`
+	DeviceCount      int          `json:"device_count" gorm:"-:all"`
 }
 
 func (Job) TableName() string {
@@ -247,6 +247,8 @@ type JobWithDetails struct {
 	CategoryName  *string    `json:"category_name" gorm:"column:category_name"`
 	DeviceCount   int        `json:"device_count" gorm:"column:device_count"`
 	TotalRevenue  float64    `json:"total_revenue" gorm:"column:total_revenue"`
+	Customer      *Customer  `json:"customer,omitempty" gorm:"-"`
+	Status        *Status    `json:"status,omitempty" gorm:"-"`
 }
 
 // DeviceWithJobInfo represents a device with its current job assignment

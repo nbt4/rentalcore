@@ -12,7 +12,7 @@ export function RoleGuard({ requiredRoles, children }: RoleGuardProps) {
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center text-gray-400">Lade...</div>;
 
   const roles = (user?.Roles ?? user?.roles ?? []) as { name?: string; Name?: string }[];
-  const hasRole = roles.some((r) => {
+  const hasRole = user?.IsAdmin === true || roles.some((r) => {
     const name = (r?.name || r?.Name || '').toLowerCase();
     return requiredRoles.some((req) => req.toLowerCase() === name);
   });

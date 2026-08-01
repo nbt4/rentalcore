@@ -122,7 +122,7 @@ export function Dashboard() {
                   <div className="text-sm text-gray-400">
                     {job.customer
                       ? (job.customer.companyname || `${job.customer.firstname || ''} ${job.customer.lastname || ''}`.trim() || 'Kein Kontakt')
-                      : 'Kein Kontakt'}
+                      : (job.customer_name?.trim() || 'Kein Kontakt')}
                     {job.description && ` · ${job.description}`}
                   </div>
                 </div>
