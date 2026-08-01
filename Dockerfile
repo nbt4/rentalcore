@@ -37,9 +37,12 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -o server cmd/server/main.go
 
 # Stage 4: Production image
-FROM alpine:latest
+# Keep the Python runtime identical to the OCR builder. Virtual environments
+# contain an absolute interpreter symlink and are not portable to plain Alpine's
+# independently versioned /usr/bin/python3.
+FROM python:3.12-alpine
 
-RUN apk --no-cache add ca-certificates tzdata python3 sqlite
+RUN apk --no-cache add ca-certificates tzdata sqlite
 
 WORKDIR /app
 
@@ -53,9 +56,8 @@ COPY --from=frontend-builder /app/web/dist web/dist
 COPY --from=builder /app/web/static web/static
 COPY --from=builder /app/web/templates web/templates
 COPY --chown=appuser:appgroup migrations/ migrations/
-COPY --chown=appuser:appgroup keys/ keys/
 
-RUN mkdir -p uploads logs archives && \
+RUN mkdir -p uploads logs archives keys && \
     chown -R appuser:appgroup /app
 
 USER appuser

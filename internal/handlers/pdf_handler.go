@@ -475,11 +475,14 @@ func (h *PDFHandler) processUploadAsync(uploadID uint64) {
 
 // markProcessingFailed marks upload as failed
 func (h *PDFHandler) markProcessingFailed(uploadID uint64, errorMsg string) {
-	h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", uploadID).Updates(map[string]interface{}{
+	logger.LogInfo("[PDFExtractor] Upload %d failed: %s", uploadID, errorMsg)
+	if err := h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", uploadID).Updates(map[string]interface{}{
 		"processing_status":       "failed",
 		"processing_completed_at": time.Now(),
 		"error_message":           errorMsg,
-	})
+	}).Error; err != nil {
+		logger.LogInfo("[PDFExtractor] Failed to persist error for upload %d: %v", uploadID, err)
+	}
 }
 
 // GetExtractionResult retrieves extraction results
@@ -495,7 +498,31 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 
 	var extraction models.PDFExtraction
 	if err := h.DB.Where("upload_id = ?", uploadID).First(&extraction).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Extraction not found"})
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load extraction"})
+			return
+		}
+
+		switch upload.ProcessingStatus {
+		case "pending", "processing":
+			c.JSON(http.StatusAccepted, gin.H{
+				"processing_status": upload.ProcessingStatus,
+				"upload_id":         upload.UploadID,
+			})
+		case "failed":
+			details := "Unknown OCR processing error"
+			if upload.ErrorMessage.Valid && upload.ErrorMessage.String != "" {
+				details = upload.ErrorMessage.String
+			}
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"error":             "OCR processing failed",
+				"details":           details,
+				"processing_status": upload.ProcessingStatus,
+				"upload_id":         upload.UploadID,
+			})
+		default:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Extraction not found"})
+		}
 		return
 	}
 

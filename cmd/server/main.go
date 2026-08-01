@@ -332,7 +332,7 @@ func main() {
 	loggerConfig := logger.LoggerConfig{
 		Level:        logger.INFO,
 		Service:      "rentalcore",
-		Version:      "2.1.0",
+		Version:      "5.3.71",
 		Environment:  environment,
 		OutputPath:   "", // stdout
 		EnableCaller: true,
@@ -761,7 +761,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.70")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.71")))
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))

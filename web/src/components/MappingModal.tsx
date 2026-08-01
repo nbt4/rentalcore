@@ -648,7 +648,11 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         for (let i = 0; i < 30; i++) {
           await new Promise((r) => setTimeout(r, 500));
           const res = await fetch(`/api/pdf/extraction/${uploadId}`, { credentials: 'include' });
-          if (res.ok) { const d = await res.json(); if (d.extraction_id) { extraction = d; break; } }
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) throw new Error('Sitzung abgelaufen — bitte neu anmelden');
+          if (res.status === 202) continue;
+          if (!res.ok) throw new Error(data.details || data.error || 'OCR-Verarbeitung fehlgeschlagen');
+          if (data.extraction_id) { extraction = data; break; }
         }
         if (!extraction) throw new Error('OCR-Timeout — bitte erneut versuchen');
         if (cancelled) return;

@@ -17,7 +17,7 @@ func TestBuildMappingRows_ProductsAndPackages(t *testing.T) {
 	productNames := map[int]string{10: "Sennheiser e935"}
 	packageNames := map[int]string{7: "PA Set S"}
 
-	rows := buildMappingRows(productMappings, packageMappings, productNames, packageNames)
+	rows := buildAllMappingRows(productMappings, packageMappings, nil, productNames, packageNames, nil)
 
 	if len(rows) != 3 {
 		t.Fatalf("expected 3 rows, got %d", len(rows))
@@ -40,7 +40,7 @@ func TestBuildMappingRows_ProductsAndPackages(t *testing.T) {
 }
 
 func TestBuildMappingRows_Empty(t *testing.T) {
-	rows := buildMappingRows(nil, nil, nil, nil)
+	rows := buildAllMappingRows(nil, nil, nil, nil, nil, nil)
 	if len(rows) != 0 {
 		t.Errorf("expected empty, got %d rows", len(rows))
 	}

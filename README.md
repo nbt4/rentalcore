@@ -28,7 +28,7 @@
 | Auth          | JWT (golang-jwt/jwt/v5), bcrypt, WebAuthn          |
 | Barcodes      | boombuler/barcode, skip2/go-qrcode                 |
 | PDF           | jung-kurt/gofpdf                                   |
-| OCR           | Python 3 venv mit custom OCR-Pipeline              |
+| OCR           | Python 3.12 venv mit custom OCR-Pipeline           |
 | Dateiablage   | Nextcloud WebDAV                                   |
 | Container     | Docker (Multi-Stage: Node 20 + Go 1.24 + Alpine)   |
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/logger"
@@ -210,6 +211,14 @@ func (p *PythonParser) IsAvailable() bool {
 	// Check if parser script exists
 	if _, err := os.Stat(p.ParserPath); os.IsNotExist(err) {
 		logger.LogInfo("[PythonParser] Parser script not found at: %s", p.ParserPath)
+		return false
+	}
+
+	// Verify the runtime can import the parser's direct dependency. Checking the
+	// executable alone misses broken or incomplete copied virtual environments.
+	cmd := exec.Command(p.PythonPath, "-c", "import click")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		logger.LogInfo("[PythonParser] Python environment is incomplete: %v: %s", err, strings.TrimSpace(string(output)))
 		return false
 	}
 
