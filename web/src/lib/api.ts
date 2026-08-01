@@ -78,6 +78,35 @@ export interface DashboardStats {
   jobs_this_month: number;
 }
 
+export interface RevenueDrilldownNode {
+  id: string;
+  type: 'category' | 'product' | 'rental_product' | 'service' | 'package' | 'device';
+  label: string;
+  revenue: number;
+  cost: number;
+  margin: number;
+  margin_percent: number;
+  has_cost: boolean;
+  quantity: number;
+  bookings: number;
+  children: RevenueDrilldownNode[];
+}
+
+export interface RevenueDrilldown {
+  period: string;
+  start_date?: string;
+  end_date?: string;
+  total_revenue: number;
+  attributed_revenue: number;
+  unattributed_revenue: number;
+  rental_revenue: number;
+  rental_cost: number;
+  rental_margin: number;
+  rental_margin_percent: number;
+  job_count: number;
+  categories: RevenueDrilldownNode[];
+}
+
 // ── API functions ────────────────────────────────────────
 
 export const jobsApi = {
@@ -115,6 +144,8 @@ export const statusApi = {
 export const analyticsApi = {
   getRevenue: (params?: Record<string, string>) =>
     api.get('/analytics/revenue', { params }),
+  getRevenueDrilldown: (period = 'all') =>
+    api.get<RevenueDrilldown>('/analytics/revenue/drilldown', { params: { period } }),
   getEquipment: () =>
     api.get('/analytics/equipment'),
 };

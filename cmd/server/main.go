@@ -1156,6 +1156,7 @@ func setupRoutes(r *gin.Engine,
 		{
 			analytics.GET("", spaHandler)
 			analytics.GET("/revenue", analyticsHandler.GetRevenueAPI)
+			analytics.GET("/revenue/drilldown", analyticsHandler.GetRevenueDrilldown)
 			analytics.GET("/equipment", analyticsHandler.GetEquipmentAPI)
 			analytics.GET("/devices/all", analyticsHandler.GetAllDeviceRevenuesAPI)
 			analytics.GET("/devices/:deviceId", analyticsHandler.GetDeviceAnalytics)

@@ -14,7 +14,7 @@
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
-- **Analytics Dashboard** — Umsatz- und Equipment-Auswertungen mit grafischer Aufbereitung
+- **Analytics Dashboard** — Interaktiver Umsatz-Drilldown von Gesamtumsatz über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät
 
 ---
 
@@ -103,6 +103,7 @@ rentalcore:
 | `GET`    | `/barcodes/device/:serialNo/qr`             | QR-Code pro Gerät generieren (🔒)              |
 | `GET`    | `/barcodes/device/:serialNo/barcode`        | Barcode pro Gerät generieren (🔒)              |
 | `GET`    | `/analytics/revenue`                        | Umsatz-Analytics (🔒)                          |
+| `GET`    | `/analytics/revenue/drilldown`              | Hierarchischer Umsatz-Drilldown (🔒)           |
 | `GET`    | `/analytics/equipment`                      | Equipment-Analytics (🔒)                       |
 | `GET`    | `/statuses`                                 | Status-Liste (🔒)                              |
 | `GET`    | `/health`                                   | Health Check (öffentlich)                      |
