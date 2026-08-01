@@ -44,6 +44,12 @@ func TestSetCoresTokenCreatesSharedDomainCookie(t *testing.T) {
 		if claims.UserID != user.UserID || claims.Username != user.Username || !claims.IsAdmin {
 			t.Fatalf("unexpected claims: %+v", claims)
 		}
+		if !coresTokenBelongsToUser(cookie.Value, user.UserID) {
+			t.Fatal("shared token was not recognized for its user")
+		}
+		if coresTokenBelongsToUser(cookie.Value, user.UserID+1) {
+			t.Fatal("shared token was accepted for a different user")
+		}
 	}
 	if !tokenCookieFound {
 		t.Fatal("cores_token cookie was not set")

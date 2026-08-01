@@ -455,6 +455,11 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 					c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 				} else {
 					// Session valid and user active — authenticated
+					if coresToken, tokenErr := c.Cookie("cores_token"); tokenErr != nil || !coresTokenBelongsToUser(coresToken, user.UserID) {
+						if tokenErr := setCoresToken(c, &user, h.config.Security.SessionTimeout); tokenErr != nil {
+							logger.LogWarn("Failed to promote local session to shared Cores login: %v", tokenErr)
+						}
+					}
 					c.Set("user", &user)
 					c.Set("userid", session.UserID)
 					c.Next()
@@ -497,21 +502,21 @@ func (h *AuthHandler) validateSession(sessionID string) bool {
 	return h.db.Where("userID = ? AND is_active = ?", session.UserID, true).First(&user).Error == nil
 }
 
-// validateCoresToken checks a cores_token JWT cookie issued by cores-dashboard.
-func (h *AuthHandler) validateCoresToken(tokenStr string) (*models.User, bool) {
+type coresClaims struct {
+	UserID   uint   `json:"uid"`
+	Username string `json:"username"`
+	IsAdmin  bool   `json:"is_admin"`
+	jwt.RegisteredClaims
+}
+
+func parseCoresToken(tokenStr string) (*coresClaims, bool) {
 	coresSecret := os.Getenv("CORES_JWT_SECRET")
 	if coresSecret == "" {
 		return nil, false
 	}
 
-	type coresClaims struct {
-		UserID   uint   `json:"uid"`
-		Username string `json:"username"`
-		IsAdmin  bool   `json:"is_admin"`
-		jwt.RegisteredClaims
-	}
-
-	token, err := jwt.ParseWithClaims(tokenStr, &coresClaims{}, func(t *jwt.Token) (interface{}, error) {
+	claims := &coresClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
@@ -520,8 +525,21 @@ func (h *AuthHandler) validateCoresToken(tokenStr string) (*models.User, bool) {
 	if err != nil || !token.Valid {
 		return nil, false
 	}
+	return claims, true
+}
 
-	claims := token.Claims.(*coresClaims)
+func coresTokenBelongsToUser(tokenStr string, userID uint) bool {
+	claims, ok := parseCoresToken(tokenStr)
+	return ok && claims.UserID == userID
+}
+
+// validateCoresToken checks a cores_token JWT cookie issued by a Cores service.
+func (h *AuthHandler) validateCoresToken(tokenStr string) (*models.User, bool) {
+	claims, ok := parseCoresToken(tokenStr)
+	if !ok {
+		return nil, false
+	}
+
 	var user models.User
 	if err := h.db.Where("userID = ? AND is_active = ?", claims.UserID, true).First(&user).Error; err != nil {
 		return nil, false
