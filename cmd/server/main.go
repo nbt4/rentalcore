@@ -1415,6 +1415,8 @@ func setupRoutes(r *gin.Engine,
 		// API routes
 		api := protected.Group("/api/v1")
 		{
+			api.GET("/analytics/revenue/drilldown", analyticsHandler.GetRevenueDrilldown)
+
 			// Statuses API
 			api.GET("/statuses", statusHandler.ListStatuses)
 
