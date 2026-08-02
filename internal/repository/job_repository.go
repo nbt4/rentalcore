@@ -355,8 +355,58 @@ func (r *JobRepository) List(params *models.FilterParams) ([]models.JobWithDetai
 		sqlQuery += fmt.Sprintf(" OFFSET %d", params.Offset)
 	}
 
-	err := r.db.Raw(sqlQuery, args...).Scan(&jobs).Error
-	return jobs, err
+	if err := r.db.Raw(sqlQuery, args...).Scan(&jobs).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.loadJobListRelations(jobs); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+func (r *JobRepository) loadJobListRelations(jobs []models.JobWithDetails) error {
+	customerIDs := make([]uint, 0, len(jobs))
+	statusIDs := make([]uint, 0, len(jobs))
+	for _, job := range jobs {
+		if job.CustomerID != 0 {
+			customerIDs = append(customerIDs, job.CustomerID)
+		}
+		if job.StatusID != 0 {
+			statusIDs = append(statusIDs, job.StatusID)
+		}
+	}
+
+	var customers []models.Customer
+	if len(customerIDs) > 0 {
+		if err := r.db.Where("customerID IN ?", customerIDs).Find(&customers).Error; err != nil {
+			return fmt.Errorf("failed to load job customers: %w", err)
+		}
+	}
+	var statuses []models.Status
+	if len(statusIDs) > 0 {
+		if err := r.db.Where("statusID IN ?", statusIDs).Find(&statuses).Error; err != nil {
+			return fmt.Errorf("failed to load job statuses: %w", err)
+		}
+	}
+
+	attachJobListRelations(jobs, customers, statuses)
+	return nil
+}
+
+func attachJobListRelations(jobs []models.JobWithDetails, customers []models.Customer, statuses []models.Status) {
+	customersByID := make(map[uint]*models.Customer, len(customers))
+	for i := range customers {
+		customersByID[customers[i].CustomerID] = &customers[i]
+	}
+	statusesByID := make(map[uint]*models.Status, len(statuses))
+	for i := range statuses {
+		statusesByID[statuses[i].StatusID] = &statuses[i]
+	}
+	for i := range jobs {
+		jobs[i].Customer = customersByID[jobs[i].CustomerID]
+		jobs[i].Status = statusesByID[jobs[i].StatusID]
+	}
 }
 
 func (r *JobRepository) GetJobDevices(jobID uint) ([]models.JobDevice, error) {

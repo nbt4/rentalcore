@@ -160,6 +160,14 @@ func analyticsLineRevenue(job revenueDrilldownJob, position revenueDrilldownPosi
 	return math.Max(0, lineTotal-discount)
 }
 
+func analyticsRentalCost(job revenueDrilldownJob, position revenueDrilldownPosition) float64 {
+	dayFactor := 1.0
+	if job.MultiplyByDays {
+		dayFactor = float64(analyticsEventDays(job))
+	}
+	return position.SupplierUnitCost * math.Max(position.Quantity, 1) * dayFactor
+}
+
 func drilldownItemKey(prefix string, id *uint, label string) string {
 	if id != nil {
 		return fmt.Sprintf("%s:%d", prefix, *id)
@@ -231,7 +239,7 @@ func buildRevenueDrilldown(
 		weights := make(map[uint]float64, len(groupedPositions))
 		for _, position := range groupedPositions {
 			job := jobsByID[position.JobID]
-			weight := position.SupplierUnitCost * math.Max(position.Quantity, 1) * float64(analyticsEventDays(job))
+			weight := analyticsRentalCost(job, position)
 			if weight <= 0 {
 				weight = math.Max(position.Quantity, 1)
 			}
@@ -242,7 +250,7 @@ func buildRevenueDrilldown(
 			if hasStoredCost && totalWeight > 0 {
 				rentalCostByPosition[position.PositionID] = storedCost.TotalCost * weights[position.PositionID] / totalWeight
 			} else {
-				rentalCostByPosition[position.PositionID] = position.SupplierUnitCost * math.Max(position.Quantity, 1) * float64(analyticsEventDays(jobsByID[position.JobID]))
+				rentalCostByPosition[position.PositionID] = analyticsRentalCost(jobsByID[position.JobID], position)
 			}
 		}
 	}

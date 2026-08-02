@@ -476,7 +476,40 @@ func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
 		return
 	}
 
-	if err := h.jobRepo.UpdateFields(uint(jobID), updates); err != nil {
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		var currentMultiplyByDays bool
+		result := tx.Raw("SELECT multiply_by_days FROM jobs WHERE jobid = ? FOR UPDATE", uint(jobID)).Scan(&currentMultiplyByDays)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
+		result = tx.Model(&models.Job{}).Where("jobid = ?", uint(jobID)).Updates(updates)
+		if result.Error != nil {
+			return result.Error
+		}
+		if input.MultiplyByDays == nil || currentMultiplyByDays == *input.MultiplyByDays {
+			return nil
+		}
+
+		return tx.Exec(`
+			UPDATE job_rental_equipment AS jre
+			SET total_cost = ROUND((
+				jre.total_cost * CASE
+					WHEN ? THEN GREATEST(jre.days_used, 1)::numeric
+					ELSE 1.0 / GREATEST(jre.days_used, 1)::numeric
+				END
+			)::numeric, 2),
+			updated_at = NOW()
+			WHERE jre.job_id = ?`, *input.MultiplyByDays, uint(jobID)).Error
+	})
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

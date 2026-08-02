@@ -2,6 +2,8 @@ package repository
 
 import (
 	"fmt"
+	"math"
+
 	"go-barcode-webapp/internal/models"
 
 	"gorm.io/gorm"
@@ -53,15 +55,25 @@ func (r *RentalEquipmentRepository) DeleteRentalEquipment(equipmentID uint) erro
 
 // AddRentalToJob adds rental equipment to a job
 func (r *RentalEquipmentRepository) AddRentalToJob(jobRental *models.JobRentalEquipment) error {
-	// Use raw SQL because live DB uses column "id" not "equipment_id"
-	var rentalPrice float64
-	if err := r.db.Raw("SELECT rental_price FROM rental_equipment WHERE id = ?", jobRental.EquipmentID).
-		Scan(&rentalPrice).Error; err != nil {
-		return fmt.Errorf("rental equipment not found: %v", err)
+	// Use raw SQL because live DB uses column "id" not "equipment_id".
+	// Rental costs follow the same per-event-day setting as the job price.
+	var pricing struct {
+		RentalPrice    float64 `gorm:"column:rental_price"`
+		MultiplyByDays bool    `gorm:"column:multiply_by_days"`
+	}
+	result := r.db.Raw(`
+		SELECT re.rental_price, COALESCE(j.multiply_by_days, TRUE) AS multiply_by_days
+		FROM rental_equipment re
+		JOIN jobs j ON j.jobid = ?
+		WHERE re.id = ?`, jobRental.JobID, jobRental.EquipmentID).Scan(&pricing)
+	if result.Error != nil {
+		return fmt.Errorf("failed to load rental pricing: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("rental equipment or job not found")
 	}
 
-	// Calculate total cost
-	jobRental.TotalCost = rentalPrice * float64(jobRental.Quantity) * float64(jobRental.DaysUsed)
+	jobRental.TotalCost = calculateRentalTotalCost(pricing.RentalPrice, jobRental.Quantity, jobRental.DaysUsed, pricing.MultiplyByDays)
 
 	// Check if already exists, then update or create
 	var existingRental models.JobRentalEquipment
@@ -104,8 +116,17 @@ func (r *RentalEquipmentRepository) CreateRentalEquipmentFromManualEntry(request
 			return fmt.Errorf("failed to create rental equipment: %v", err)
 		}
 
-		// Add to job
-		totalCost := request.RentalPrice * float64(request.Quantity) * float64(request.DaysUsed)
+		var multiplyByDays bool
+		result := tx.Raw("SELECT COALESCE(multiply_by_days, TRUE) FROM jobs WHERE jobid = ?", request.JobID).Scan(&multiplyByDays)
+		if result.Error != nil {
+			return fmt.Errorf("failed to load job price settings: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("job not found")
+		}
+
+		// Add to job using the order's per-event-day setting.
+		totalCost := calculateRentalTotalCost(request.RentalPrice, request.Quantity, request.DaysUsed, multiplyByDays)
 
 		jobRental = &models.JobRentalEquipment{
 			JobID:       request.JobID,
@@ -124,6 +145,14 @@ func (r *RentalEquipmentRepository) CreateRentalEquipmentFromManualEntry(request
 	})
 
 	return rentalEquipment, jobRental, err
+}
+
+func calculateRentalTotalCost(rentalPrice float64, quantity, daysUsed uint, multiplyByDays bool) float64 {
+	dayFactor := uint(1)
+	if multiplyByDays && daysUsed > 1 {
+		dayFactor = daysUsed
+	}
+	return math.Round(rentalPrice*float64(quantity)*float64(dayFactor)*100) / 100
 }
 
 // GetJobRentalEquipment returns all rental equipment for a specific job
@@ -180,8 +209,8 @@ func (r *RentalEquipmentRepository) GetRentalEquipmentAnalytics() (*models.Renta
 		categories = append(categories, models.RentalCategoryBreakdown{
 			Category:               summary.Category,
 			EquipmentCount:         int(summary.EquipmentCount),
-			TotalRevenue:          summary.TotalRevenue,
-			UsageCount:            0, // Simplified for now
+			TotalRevenue:           summary.TotalRevenue,
+			UsageCount:             0, // Simplified for now
 			AvgRevenuePerEquipment: avgRevenue,
 		})
 	}

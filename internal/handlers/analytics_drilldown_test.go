@@ -60,6 +60,36 @@ func TestBuildRevenueDrilldownKeepsUnattributedRevenueVisible(t *testing.T) {
 	assertClose(t, result.Categories[4].Revenue, 50)
 }
 
+func TestBuildRevenueDrilldownRentalFallbackFollowsJobDaySetting(t *testing.T) {
+	start := time.Date(2026, time.May, 28, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 0, 3)
+	rentalID := uint(4)
+	position := revenueDrilldownPosition{
+		PositionID:        1,
+		JobID:             1,
+		PositionType:      "rental",
+		RentalEquipmentID: &rentalID,
+		ItemName:          "Mikrofone 8x Funkmikrofon 2x Headset",
+		Quantity:          1,
+		UnitPrice:         600,
+		SupplierUnitCost:  474.74,
+	}
+
+	flat := buildRevenueDrilldown(
+		"all", nil, nil,
+		[]revenueDrilldownJob{{JobID: 1, Revenue: 600, StartDate: &start, EndDate: &end, MultiplyByDays: false}},
+		[]revenueDrilldownPosition{position}, nil, nil,
+	)
+	assertClose(t, flat.RentalCost, 474.74)
+
+	perDay := buildRevenueDrilldown(
+		"all", nil, nil,
+		[]revenueDrilldownJob{{JobID: 1, Revenue: 600, StartDate: &start, EndDate: &end, MultiplyByDays: true}},
+		[]revenueDrilldownPosition{position}, nil, nil,
+	)
+	assertClose(t, perDay.RentalCost, 1424.22)
+}
+
 func TestRevenueDrilldownPeriodRejectsUnknownValue(t *testing.T) {
 	if _, _, err := revenueDrilldownPeriod("quarter", time.Now()); err == nil {
 		t.Fatal("expected unsupported period to fail")
