@@ -29,26 +29,8 @@
     <link rel="stylesheet" href="/static/css/rental-core-design.css?v={{.timestamp}}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        /* Keep package controls aligned with RentalCore's red/neutral palette. */
-        .product-packages-page {
-            --info: var(--accent-red);
-        }
-
-        .product-packages-page .rc-checkbox {
-            accent-color: var(--accent-red);
-        }
-
-        .product-packages-page .rc-select {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23D0021B' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-        }
-
-        .product-packages-page .rc-text-info {
-            color: var(--accent-red);
-        }
-    </style>
 </head>
-<body class="rc-animate-fade-in product-packages-page">
+<body class="rc-animate-fade-in">
     {{template "navbar.html" .}}
 
     
