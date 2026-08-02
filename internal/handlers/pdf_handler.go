@@ -489,13 +489,26 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 
 	var upload models.PDFUpload
 	if err := h.DB.First(&upload, uploadID).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Upload not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "PDF-Upload nicht gefunden"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "PDF-Upload konnte nicht geladen werden"})
+		return
+	}
+
+	if status, response, handled := extractionProcessingResponse(upload); handled {
+		c.JSON(status, response)
 		return
 	}
 
 	var extraction models.PDFExtraction
 	if err := h.DB.Where("upload_id = ?", uploadID).First(&extraction).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Extraction not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "PDF-Verarbeitung wurde ohne Ergebnis abgeschlossen"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "PDF-Ergebnis konnte nicht geladen werden"})
 		return
 	}
 

@@ -37,9 +37,12 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -o server cmd/server/main.go
 
 # Stage 4: Production image
-FROM alpine:latest
+# Keep the runtime Python version aligned with the venv built above. A plain
+# alpine:latest image can ship a newer /usr/bin/python while the copied venv
+# still points at /usr/local/bin/python3 from Python 3.12.
+FROM python:3.12-alpine
 
-RUN apk --no-cache add ca-certificates tzdata python3 sqlite
+RUN apk --no-cache add ca-certificates tzdata sqlite
 
 WORKDIR /app
 
@@ -48,6 +51,10 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY --from=builder /app/server .
 COPY --from=ocr-builder /opt/ocr-venv /opt/ocr-venv
 COPY --from=builder /app/tools/ocr_parser tools/ocr_parser
+
+# Fail the image build immediately if the OCR runtime or one of its direct
+# imports cannot be loaded in the final stage.
+RUN /opt/ocr-venv/bin/python3 -c "import click, pandas, pdfplumber, rapidfuzz"
 
 COPY --from=frontend-builder /app/web/dist web/dist
 COPY --from=builder /app/web/static web/static

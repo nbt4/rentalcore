@@ -10,7 +10,7 @@
 - **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
-- **OCR-Belegverarbeitung** — Python-basierte OCR-Pipeline (via venv) zur Extraktion von Positionsdaten aus gescannten Lieferscheinen
+- **OCR-Belegverarbeitung** — Python-3.12-Pipeline in einer geprüften venv zur Extraktion von Positionsdaten; laufende Verarbeitung liefert HTTP 202, Fehler beenden das Frontend-Polling sofort
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
@@ -30,7 +30,7 @@
 | PDF           | jung-kurt/gofpdf                                   |
 | OCR           | Python 3 venv mit custom OCR-Pipeline              |
 | Dateiablage   | Nextcloud WebDAV                                   |
-| Container     | Docker (Multi-Stage: Node 20 + Go 1.24 + Alpine)   |
+| Container     | Docker (Multi-Stage: Node 20 + Go 1.25 + Python 3.12 Alpine) |
 
 ---
 

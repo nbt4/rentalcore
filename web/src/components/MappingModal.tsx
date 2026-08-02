@@ -642,13 +642,28 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const load = async () => {
       try {
         let extraction = null;
         for (let i = 0; i < 30; i++) {
           await new Promise((r) => setTimeout(r, 500));
-          const res = await fetch(`/api/pdf/extraction/${uploadId}`, { credentials: 'include' });
-          if (res.ok) { const d = await res.json(); if (d.extraction_id) { extraction = d; break; } }
+          if (cancelled) return;
+
+          const res = await fetch(`/api/pdf/extraction/${uploadId}`, {
+            credentials: 'include',
+            signal: controller.signal,
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (res.status === 202) continue;
+          if (!res.ok) {
+            throw new Error(data.error || 'Fehler bei der PDF-Verarbeitung');
+          }
+          if (data.extraction_id) {
+            extraction = data;
+            break;
+          }
         }
         if (!extraction) throw new Error('OCR-Timeout — bitte erneut versuchen');
         if (cancelled) return;
@@ -668,11 +683,17 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         setItems(final.items || []);
         setPhase('mapping');
       } catch (e) {
-        if (!cancelled) { setErrorMsg(e instanceof Error ? e.message : 'Fehler'); setPhase('error'); }
+        if (!cancelled && !(e instanceof DOMException && e.name === 'AbortError')) {
+          setErrorMsg(e instanceof Error ? e.message : 'Fehler');
+          setPhase('error');
+        }
       }
     };
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [uploadId]);
 
   const mappedCount = items.filter(isMapped).length;
