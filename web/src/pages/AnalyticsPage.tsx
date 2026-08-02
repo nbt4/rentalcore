@@ -6,11 +6,12 @@ import { toast } from '../lib/toast';
 
 interface RevenueData {
   month: string;
-  revenue: number;
+  netRevenue: number;
+  grossRevenue: number;
   jobs: number;
 }
 
-function buildMonthlyData(jobs: Job[]): RevenueData[] {
+function buildMonthlyData(months: RevenueDrilldown['monthly_revenue']): RevenueData[] {
   const map = new Map<string, RevenueData>();
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
@@ -18,18 +19,17 @@ function buildMonthlyData(jobs: Job[]): RevenueData[] {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     map.set(key, {
       month: d.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' }),
-      revenue: 0,
+      netRevenue: 0,
+      grossRevenue: 0,
       jobs: 0,
     });
   }
-  for (const job of jobs) {
-    const d = job.created_at ? new Date(job.created_at) : null;
-    if (!d) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const entry = map.get(key);
+  for (const month of months) {
+    const entry = map.get(month.month);
     if (entry) {
-      entry.revenue += job.final_revenue ?? job.revenue ?? 0;
-      entry.jobs += 1;
+      entry.netRevenue = month.net_revenue;
+      entry.grossRevenue = month.gross_revenue;
+      entry.jobs = month.job_count;
     }
   }
   return Array.from(map.values());
@@ -85,9 +85,11 @@ export function AnalyticsPage() {
       .finally(() => setDrilldownLoading(false));
   }, [period]);
 
-  const monthly = buildMonthlyData(jobs);
-  const totalRevenue = drilldown?.total_revenue ?? jobs.reduce((s, j) => s + (j.final_revenue ?? j.revenue ?? 0), 0);
-  const maxRevenue = Math.max(...monthly.map((m) => m.revenue), 1);
+  const monthly = buildMonthlyData(drilldown?.monthly_revenue || []);
+  const totalGrossRevenue = drilldown?.total_gross_revenue ?? jobs.reduce((s, j) => s + (j.final_revenue ?? j.revenue ?? 0), 0);
+  const totalNetRevenue = drilldown?.total_net_revenue ?? totalGrossRevenue;
+  const totalTaxAmount = drilldown?.total_tax_amount ?? 0;
+  const maxRevenue = Math.max(...monthly.map((m) => m.grossRevenue), 1);
 
   const selectedNodes = useMemo(
     () => resolveDrilldownPath(drilldown?.categories || [], drilldownPath),
@@ -95,9 +97,9 @@ export function AnalyticsPage() {
   );
   const selectedNode = selectedNodes[selectedNodes.length - 1];
   const visibleDrilldownNodes = selectedNode?.children || drilldown?.categories || [];
-  const parentRevenue = selectedNode?.revenue || drilldown?.total_revenue || 0;
-  const ownProductRevenue = drilldown?.categories.find((node) => node.id === 'own-products')?.revenue || 0;
-  const serviceRevenue = drilldown?.categories.find((node) => node.id === 'services')?.revenue || 0;
+  const parentRevenue = selectedNode?.gross_revenue || drilldown?.total_gross_revenue || 0;
+  const ownProductRevenue = drilldown?.categories.find((node) => node.id === 'own-products')?.gross_revenue || 0;
+  const serviceRevenue = drilldown?.categories.find((node) => node.id === 'services')?.gross_revenue || 0;
 
   const statusGroups = jobs.reduce<Record<string, number>>((acc, j) => {
     const s = j.status?.status || 'Unbekannt';
@@ -127,13 +129,27 @@ export function AnalyticsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Gesamtumsatz</span>
+            <span className="text-gray-400 text-sm">Bruttoumsatz</span>
             <Euro className="w-5 h-5 text-yellow-400" />
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+          <div className="text-2xl font-bold">{formatCurrency(totalGrossRevenue)}</div>
+        </div>
+        <div className="glass-dark rounded-xl border border-white/10 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm">Nettoumsatz</span>
+            <ReceiptEuro className="w-5 h-5 text-green-400" />
+          </div>
+          <div className="text-2xl font-bold">{formatCurrency(totalNetRevenue)}</div>
+        </div>
+        <div className="glass-dark rounded-xl border border-white/10 p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm">MwSt.</span>
+            <Euro className="w-5 h-5 text-gray-300" />
+          </div>
+          <div className="text-2xl font-bold">{formatCurrency(totalTaxAmount)}</div>
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
@@ -144,11 +160,11 @@ export function AnalyticsPage() {
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Ø Umsatz / Job</span>
+            <span className="text-gray-400 text-sm">Ø Brutto / Job</span>
             <TrendingUp className="w-5 h-5 text-green-400" />
           </div>
           <div className="text-2xl font-bold">
-            {formatCurrency((drilldown?.job_count ?? jobs.length) > 0 ? totalRevenue / (drilldown?.job_count ?? jobs.length) : 0)}
+            {formatCurrency((drilldown?.job_count ?? jobs.length) > 0 ? totalGrossRevenue / (drilldown?.job_count ?? jobs.length) : 0)}
           </div>
         </div>
       </div>
@@ -161,7 +177,7 @@ export function AnalyticsPage() {
             <h2 className="font-semibold text-white">Umsatz-Drilldown</h2>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Positionen werden auf den Auftragsumsatz abgestimmt. Die Mietmarge entspricht Mietumsatz minus Lieferantenkosten; weitere Betriebskosten sind nicht enthalten.
+            Brutto und Netto werden direkt aus den aktuellen Auftragspositionen, der Brutto-/Netto-Einstellung und dem jeweiligen MwSt.-Satz berechnet. Die Mietmarge verwendet den Bruttoumsatz abzüglich Lieferantenkosten.
           </p>
         </div>
 
@@ -171,8 +187,8 @@ export function AnalyticsPage() {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-white/10 border-b border-white/10">
               {[
-                ['Eigene Produkte', ownProductRevenue],
-                ['Mietumsatz', drilldown.rental_revenue],
+                ['Eigene Produkte (brutto)', ownProductRevenue],
+                ['Mietumsatz (brutto)', drilldown.rental_gross_revenue],
                 ['Mietausgaben', drilldown.rental_cost],
                 ['Mietmarge', drilldown.rental_margin],
                 ['Dienstleistungen', serviceRevenue],
@@ -209,11 +225,12 @@ export function AnalyticsPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead className="text-xs uppercase tracking-wide text-gray-500 bg-white/[0.02]">
                   <tr>
                     <th className="text-left px-5 py-3">Aufschlüsselung</th>
-                    <th className="text-right px-4 py-3">Umsatz</th>
+                    <th className="text-right px-4 py-3">Brutto</th>
+                    <th className="text-right px-4 py-3">Netto</th>
                     <th className="text-left px-4 py-3 w-44">Anteil</th>
                     <th className="text-right px-4 py-3">Ausgaben</th>
                     <th className="text-right px-4 py-3">Marge</th>
@@ -222,7 +239,7 @@ export function AnalyticsPage() {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {visibleDrilldownNodes.map((node) => {
-                    const share = parentRevenue > 0 ? Math.max(0, Math.min(100, node.revenue / parentRevenue * 100)) : 0;
+                    const share = parentRevenue > 0 ? Math.max(0, Math.min(100, node.gross_revenue / parentRevenue * 100)) : 0;
                     const canOpen = node.children?.length > 0;
                     return (
                       <tr
@@ -238,7 +255,8 @@ export function AnalyticsPage() {
                           </div>
                           {node.quantity > 0 && <div className="text-xs text-gray-600 mt-0.5">Menge {node.quantity.toLocaleString('de-DE')}</div>}
                         </td>
-                        <td className="px-4 py-3.5 text-right font-medium text-white">{formatCurrency(node.revenue)}</td>
+                        <td className="px-4 py-3.5 text-right font-medium text-white">{formatCurrency(node.gross_revenue)}</td>
+                        <td className="px-4 py-3.5 text-right text-gray-300">{formatCurrency(node.net_revenue)}</td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-white/5 rounded-full h-1.5 overflow-hidden">
@@ -256,7 +274,7 @@ export function AnalyticsPage() {
                     );
                   })}
                   {visibleDrilldownNodes.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-500">Für diesen Zeitraum liegen keine Umsatzdaten vor.</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-500">Für diesen Zeitraum liegen keine Umsatzdaten vor.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -275,17 +293,31 @@ export function AnalyticsPage() {
 
       {/* Revenue chart */}
       <div className="glass-dark rounded-xl border border-white/10 p-6">
-        <h2 className="font-semibold text-white mb-6">Monatlicher Umsatz (letzte 6 Monate)</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h2 className="font-semibold text-white">Monatlicher Umsatz (letzte 6 Monate)</h2>
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent-red" /> Brutto</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500/70" /> Netto</span>
+          </div>
+        </div>
         <div className="flex items-end gap-3 h-40">
           {monthly.map((m) => (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-2">
               <span className="text-xs text-gray-400">
-                €{m.revenue >= 1000 ? `${(m.revenue / 1000).toFixed(1)}k` : m.revenue.toFixed(0)}
+                €{m.grossRevenue >= 1000 ? `${(m.grossRevenue / 1000).toFixed(1)}k` : m.grossRevenue.toFixed(0)}
               </span>
-              <div
-                className="w-full rounded-t-sm bg-accent-red/60 hover:bg-accent-red transition-colors"
-                style={{ height: `${(m.revenue / maxRevenue) * 100}%`, minHeight: m.revenue > 0 ? '4px' : '0' }}
-              />
+              <div className="w-full flex items-end gap-1 h-full">
+                <div
+                  className="w-1/2 rounded-t-sm bg-accent-red/70 hover:bg-accent-red transition-colors"
+                  style={{ height: `${(m.grossRevenue / maxRevenue) * 100}%`, minHeight: m.grossRevenue > 0 ? '4px' : '0' }}
+                  title={`Brutto ${formatCurrency(m.grossRevenue)}`}
+                />
+                <div
+                  className="w-1/2 rounded-t-sm bg-green-500/50 hover:bg-green-500/70 transition-colors"
+                  style={{ height: `${(m.netRevenue / maxRevenue) * 100}%`, minHeight: m.netRevenue > 0 ? '4px' : '0' }}
+                  title={`Netto ${formatCurrency(m.netRevenue)}`}
+                />
+              </div>
               <span className="text-xs text-gray-400">{m.month}</span>
             </div>
           ))}

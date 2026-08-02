@@ -83,6 +83,9 @@ export interface RevenueDrilldownNode {
   type: 'category' | 'product' | 'rental_product' | 'service' | 'package' | 'device';
   label: string;
   revenue: number;
+  net_revenue: number;
+  gross_revenue: number;
+  tax_amount: number;
   cost: number;
   margin: number;
   margin_percent: number;
@@ -97,14 +100,27 @@ export interface RevenueDrilldown {
   start_date?: string;
   end_date?: string;
   total_revenue: number;
+  total_net_revenue: number;
+  total_gross_revenue: number;
+  total_tax_amount: number;
   attributed_revenue: number;
+  attributed_net_revenue: number;
+  attributed_gross_revenue: number;
   unattributed_revenue: number;
   rental_revenue: number;
+  rental_net_revenue: number;
+  rental_gross_revenue: number;
   rental_cost: number;
   rental_margin: number;
   rental_margin_percent: number;
   job_count: number;
   categories: RevenueDrilldownNode[];
+  monthly_revenue: Array<{
+    month: string;
+    net_revenue: number;
+    gross_revenue: number;
+    job_count: number;
+  }>;
 }
 
 // ── API functions ────────────────────────────────────────

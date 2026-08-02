@@ -717,6 +717,9 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		})
 		return
 	}
+	if err := syncJobRevenueIfPositions(h.jobRepo.GetDB().DB, job.JobID); err != nil {
+		logger.LogWarn("failed to sync job %d revenue from positions: %v", job.JobID, err)
+	}
 
 	// Log job update to history
 	if h.jobHistoryService != nil {
@@ -1207,6 +1210,10 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 	}
 
 	if err := h.jobRepo.Update(&job); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := syncJobRevenueIfPositions(h.jobRepo.GetDB().DB, job.JobID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

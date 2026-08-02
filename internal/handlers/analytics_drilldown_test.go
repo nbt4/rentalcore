@@ -53,11 +53,50 @@ func TestBuildRevenueDrilldownKeepsUnattributedRevenueVisible(t *testing.T) {
 	)
 
 	assertClose(t, result.TotalRevenue, 300)
-	assertClose(t, result.AttributedRevenue, 250)
-	assertClose(t, result.UnattributedRevenue, 50)
-	assertClose(t, result.Categories[0].Revenue, 125)
-	assertClose(t, result.Categories[2].Revenue, 125)
-	assertClose(t, result.Categories[4].Revenue, 50)
+	assertClose(t, result.AttributedRevenue, 200)
+	assertClose(t, result.UnattributedRevenue, 100)
+	assertClose(t, result.Categories[0].Revenue, 100)
+	assertClose(t, result.Categories[2].Revenue, 100)
+	assertClose(t, result.Categories[4].Revenue, 100)
+}
+
+func TestBuildRevenueDrilldownKeepsInvoicePositionPriceAndSplitsTax(t *testing.T) {
+	rentalID := uint(4)
+	result := buildRevenueDrilldown(
+		"all", nil, nil,
+		[]revenueDrilldownJob{{JobID: 1148, Revenue: 531.41, PricesIncludeTax: true}},
+		[]revenueDrilldownPosition{{
+			PositionID: 29, JobID: 1148, PositionType: "rental", RentalEquipmentID: &rentalID,
+			ItemName: "Mikrofone 8x Funkmikrofon 2x Headset", Quantity: 1, UnitPrice: 600, TaxRate: 19,
+		}},
+		nil, nil,
+	)
+
+	assertClose(t, result.TotalGrossRevenue, 600)
+	assertClose(t, result.TotalNetRevenue, 504.20)
+	assertClose(t, result.AttributedGrossRevenue, 600)
+	assertClose(t, result.AttributedNetRevenue, 504.20)
+	microphones := result.Categories[1].Children[0]
+	assertClose(t, microphones.GrossRevenue, 600)
+	assertClose(t, microphones.NetRevenue, 504.20)
+	assertClose(t, microphones.TaxAmount, 95.80)
+}
+
+func TestBuildRevenueDrilldownConvertsNetAndTaxFreePositions(t *testing.T) {
+	result := buildRevenueDrilldown(
+		"all", nil, nil,
+		[]revenueDrilldownJob{{JobID: 1, Revenue: 700, PricesIncludeTax: false}},
+		[]revenueDrilldownPosition{
+			{PositionID: 1, JobID: 1, PositionType: "service", ItemName: "Technik", Quantity: 1, UnitPrice: 600, TaxRate: 19},
+			{PositionID: 2, JobID: 1, PositionType: "service", ItemName: "Steuerfrei", Quantity: 1, UnitPrice: 100, TaxRate: 0},
+		},
+		nil, nil,
+	)
+
+	assertClose(t, result.TotalNetRevenue, 700)
+	assertClose(t, result.TotalGrossRevenue, 814)
+	assertClose(t, result.TotalTaxAmount, 114)
+	assertClose(t, result.Categories[2].NetRevenue, 700)
 }
 
 func TestBuildRevenueDrilldownRentalFallbackFollowsJobDaySetting(t *testing.T) {

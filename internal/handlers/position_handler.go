@@ -153,7 +153,12 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 		SortOrder:         nextOrder,
 	}
 
-	if err := h.positionRepo.Create(&pos); err != nil {
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&pos).Error; err != nil {
+			return err
+		}
+		return syncJobRevenue(tx, uint(jobID))
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -191,6 +196,10 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
 		return
 	}
+	if pos.JobID != uint(jobID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
+		return
+	}
 
 	var input UpdatePositionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -224,7 +233,12 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	}
 	pos.UpdatedAt = time.Now()
 
-	if err := h.positionRepo.Update(pos); err != nil {
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(pos).Error; err != nil {
+			return err
+		}
+		return syncJobRevenue(tx, pos.JobID)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -239,19 +253,32 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 }
 
 func (h *PositionHandler) DeletePosition(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		return
+	}
 	posID, err := strconv.ParseUint(c.Param("posId"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid position ID"})
 		return
 	}
-
 	pos, err := h.positionRepo.GetByID(uint(posID))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
 		return
 	}
+	if pos.JobID != uint(jobID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
+		return
+	}
 
-	if err := h.positionRepo.Delete(uint(posID)); err != nil {
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("position_id = ?", uint(posID)).Delete(&models.JobPosition{}).Error; err != nil {
+			return err
+		}
+		return syncJobRevenue(tx, pos.JobID)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -400,46 +427,34 @@ func (h *PositionHandler) GetTotals(c *gin.Context) {
 
 	eventDays := calcEventDays(job.StartDate, job.EndDate)
 
-	subtotal := 0.0
+	subtotalInvoice := 0.0
+	totals := revenueAmounts{}
 	for _, p := range positions {
-		dayFactor := 1.0
-		if job.MultiplyByDays && eventDays > 1 && p.FollowDayFactor > 0 {
-			dayFactor = 1 + float64(eventDays-1)*p.FollowDayFactor
-		}
-		unitPrice := p.UnitPrice
-		if job.PricesIncludeTax {
-			taxDivisor := 1 + p.TaxRate/100
-			if taxDivisor > 0 {
-				unitPrice = p.UnitPrice / taxDivisor
-			}
-		}
-		lineTotal := p.Quantity * unitPrice * dayFactor
-		discount := p.DiscountAmount + (lineTotal * p.DiscountPercent / 100)
-		subtotal += lineTotal - discount
+		invoiceAmount := positionInvoiceRevenue(p, job.MultiplyByDays, eventDays)
+		amounts := splitInvoiceRevenue(invoiceAmount, p.TaxRate, job.PricesIncludeTax)
+		subtotalInvoice += invoiceAmount
+		totals.Net += amounts.Net
+		totals.Gross += amounts.Gross
 	}
 
-	globalDiscount := 0.0
-	if job.Discount > 0 {
-		if job.DiscountType == "percent" {
-			globalDiscount = subtotal * job.Discount / 100
-		} else {
-			globalDiscount = job.Discount
-		}
+	discountFactor := jobDiscountFactor(subtotalInvoice, job.Discount, job.DiscountType)
+	subtotalNet := totals.Net
+	totals = totals.scale(discountFactor)
+	globalDiscount := subtotalNet - totals.Net
+	tax := totals.Gross - totals.Net
+	effectiveTaxRate := 0.0
+	if totals.Net > 0 {
+		effectiveTaxRate = tax / totals.Net * 100
 	}
-
-	netto := subtotal - globalDiscount
-	taxRate := 19.0
-	tax := netto * taxRate / 100
-	brutto := netto + tax
 
 	c.JSON(http.StatusOK, gin.H{
 		"event_days":         eventDays,
-		"subtotal":           math.Round(subtotal*100) / 100,
+		"subtotal":           roundAnalyticsMoney(subtotalNet),
 		"global_discount":    math.Round(globalDiscount*100) / 100,
-		"netto":              math.Round(netto*100) / 100,
-		"tax_rate":           taxRate,
+		"netto":              roundAnalyticsMoney(totals.Net),
+		"tax_rate":           math.Round(effectiveTaxRate*100) / 100,
 		"tax":                math.Round(tax*100) / 100,
-		"brutto":             math.Round(brutto*100) / 100,
+		"brutto":             roundAnalyticsMoney(totals.Gross),
 		"multiply_by_days":   job.MultiplyByDays,
 		"prices_include_tax": job.PricesIncludeTax,
 	})
@@ -490,20 +505,21 @@ func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
 		if result.Error != nil {
 			return result.Error
 		}
-		if input.MultiplyByDays == nil || currentMultiplyByDays == *input.MultiplyByDays {
-			return nil
+		if input.MultiplyByDays != nil && currentMultiplyByDays != *input.MultiplyByDays {
+			if err := tx.Exec(`
+				UPDATE job_rental_equipment AS jre
+				SET total_cost = ROUND((
+					jre.total_cost * CASE
+						WHEN ? THEN GREATEST(jre.days_used, 1)::numeric
+						ELSE 1.0 / GREATEST(jre.days_used, 1)::numeric
+					END
+				)::numeric, 2),
+				updated_at = NOW()
+				WHERE jre.job_id = ?`, *input.MultiplyByDays, uint(jobID)).Error; err != nil {
+				return err
+			}
 		}
-
-		return tx.Exec(`
-			UPDATE job_rental_equipment AS jre
-			SET total_cost = ROUND((
-				jre.total_cost * CASE
-					WHEN ? THEN GREATEST(jre.days_used, 1)::numeric
-					ELSE 1.0 / GREATEST(jre.days_used, 1)::numeric
-				END
-			)::numeric, 2),
-			updated_at = NOW()
-			WHERE jre.job_id = ?`, *input.MultiplyByDays, uint(jobID)).Error
+		return syncJobRevenueIfPositions(tx, uint(jobID))
 	})
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

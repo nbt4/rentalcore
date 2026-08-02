@@ -509,36 +509,58 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	}
 	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
 	for _, it := range items {
-		if it.MappedProductID.Valid { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
-		if it.MappedPackageID.Valid { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
-		if it.MappedRentalEquipmentID.Valid { rentalIDs = append(rentalIDs, int(it.MappedRentalEquipmentID.Int64)) }
-		if it.MappedServiceItemID.Valid { serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64)) }
+		if it.MappedProductID.Valid {
+			productIDs = append(productIDs, int(it.MappedProductID.Int64))
+		}
+		if it.MappedPackageID.Valid {
+			packageIDs = append(packageIDs, int(it.MappedPackageID.Int64))
+		}
+		if it.MappedRentalEquipmentID.Valid {
+			rentalIDs = append(rentalIDs, int(it.MappedRentalEquipmentID.Int64))
+		}
+		if it.MappedServiceItemID.Valid {
+			serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64))
+		}
 	}
 	productNames := make(map[int]string)
 	if len(productIDs) > 0 {
 		var prods []models.Product
 		h.DB.Select("productid, name").Where("productid IN ?", productIDs).Find(&prods)
-		for _, p := range prods { productNames[int(p.ProductID)] = p.Name }
+		for _, p := range prods {
+			productNames[int(p.ProductID)] = p.Name
+		}
 	}
 	packageNames := make(map[int]string)
 	if len(packageIDs) > 0 {
 		var pkgs []models.ProductPackage
 		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&pkgs)
-		for _, p := range pkgs { packageNames[p.PackageID] = p.Name }
+		for _, p := range pkgs {
+			packageNames[p.PackageID] = p.Name
+		}
 	}
 	rentalNames := make(map[int]string)
 	if len(rentalIDs) > 0 {
-		type rentalRow struct { ID int; Name string }
+		type rentalRow struct {
+			ID   int
+			Name string
+		}
 		var rows []rentalRow
 		h.DB.Raw("SELECT id, name FROM rental_equipment WHERE id IN ?", rentalIDs).Scan(&rows)
-		for _, r := range rows { rentalNames[r.ID] = r.Name }
+		for _, r := range rows {
+			rentalNames[r.ID] = r.Name
+		}
 	}
 	serviceNames := make(map[int]string)
 	if len(serviceIDs) > 0 {
-		type serviceRow struct { ID int; Name string }
+		type serviceRow struct {
+			ID   int
+			Name string
+		}
 		var sRows []serviceRow
 		h.DB.Raw("SELECT id, name FROM service_items WHERE id IN ?", serviceIDs).Scan(&sRows)
-		for _, s := range sRows { serviceNames[s.ID] = s.Name }
+		for _, s := range sRows {
+			serviceNames[s.ID] = s.Name
+		}
 	}
 	enrichedItems := make([]ItemWithName, 0, len(items))
 	for _, it := range items {
@@ -677,11 +699,11 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	itemID := c.Param("item_id")
 
 	var req struct {
-		ProductID          *int   `json:"product_id"`
-		PackageID          *int   `json:"package_id"`
-		RentalEquipmentID  *int   `json:"rental_equipment_id"`
-		ServiceItemID      *int   `json:"service_item_id"`
-		Status             string `json:"status"`
+		ProductID         *int   `json:"product_id"`
+		PackageID         *int   `json:"package_id"`
+		RentalEquipmentID *int   `json:"rental_equipment_id"`
+		ServiceItemID     *int   `json:"service_item_id"`
+		Status            string `json:"status"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -705,12 +727,12 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{
-		"mapping_status":              status,
-		"mapping_confidence":          100.0,
-		"mapped_product_id":           nil,
-		"mapped_package_id":           nil,
-		"mapped_rental_equipment_id":  nil,
-		"mapped_service_item_id":      nil,
+		"mapping_status":             status,
+		"mapping_confidence":         100.0,
+		"mapped_product_id":          nil,
+		"mapped_package_id":          nil,
+		"mapped_rental_equipment_id": nil,
+		"mapped_service_item_id":     nil,
 	}
 
 	if hasPackage {
@@ -733,7 +755,9 @@ func (h *PDFHandler) UpdateItemMapping(c *gin.Context) {
 	if err := h.DB.First(&item, itemID).Error; err == nil && item.RawProductText != "" {
 		userID := int64(1)
 		if uid, exists := c.Get("userid"); exists {
-			if id, ok := uid.(int64); ok { userID = id }
+			if id, ok := uid.(int64); ok {
+				userID = id
+			}
 		}
 		if hasRental {
 			_ = h.RentalMapper.SaveMapping(item.RawProductText, *req.RentalEquipmentID, userID)
@@ -1140,11 +1164,11 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 
 		if packageMatch != nil {
 			updates := map[string]interface{}{
-				"mapped_package_id":           packageMatch.PackageID,
-				"mapped_product_id":           nil,
-				"mapped_rental_equipment_id":  nil,
-				"mapping_status":              "auto_mapped",
-				"mapping_confidence":          100.0,
+				"mapped_package_id":          packageMatch.PackageID,
+				"mapped_product_id":          nil,
+				"mapped_rental_equipment_id": nil,
+				"mapping_status":             "auto_mapped",
+				"mapping_confidence":         100.0,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
 				logger.LogInfo("warning: failed to update package mapping for item %d: %v", item.ItemID, err)
@@ -1161,12 +1185,12 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				status = "pending"
 			}
 			updates := map[string]interface{}{
-				"mapped_rental_equipment_id":  rentalMatch.ID,
-				"mapped_product_id":           nil,
-				"mapped_package_id":           nil,
-				"mapped_service_item_id":      nil,
-				"mapping_status":              status,
-				"mapping_confidence":          confidence,
+				"mapped_rental_equipment_id": rentalMatch.ID,
+				"mapped_product_id":          nil,
+				"mapped_package_id":          nil,
+				"mapped_service_item_id":     nil,
+				"mapping_status":             status,
+				"mapping_confidence":         confidence,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
 				logger.LogInfo("warning: failed to update rental mapping for item %d: %v", item.ItemID, err)
@@ -1185,12 +1209,12 @@ func (h *PDFHandler) RunAutoMapping(c *gin.Context) {
 				status = "pending"
 			}
 			updates := map[string]interface{}{
-				"mapped_service_item_id":      serviceMatch.ID,
-				"mapped_product_id":           nil,
-				"mapped_package_id":           nil,
-				"mapped_rental_equipment_id":  nil,
-				"mapping_status":              status,
-				"mapping_confidence":          serviceConf,
+				"mapped_service_item_id":     serviceMatch.ID,
+				"mapped_product_id":          nil,
+				"mapped_package_id":          nil,
+				"mapped_rental_equipment_id": nil,
+				"mapping_status":             status,
+				"mapping_confidence":         serviceConf,
 			}
 			if err := h.DB.Model(&models.PDFExtractionItem{}).Where("item_id = ?", item.ItemID).Updates(updates).Error; err != nil {
 				logger.LogInfo("warning: failed to update service mapping for item %d: %v", item.ItemID, err)
@@ -1425,11 +1449,11 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	itemID := c.Param("item_id")
 
 	var req struct {
-		ProductID          *int   `json:"product_id"`
-		PackageID          *int   `json:"package_id"`
-		RentalEquipmentID  *int   `json:"rental_equipment_id"`
-		ServiceItemID      *int   `json:"service_item_id"`
-		ItemType           string `json:"item_type"`
+		ProductID         *int   `json:"product_id"`
+		PackageID         *int   `json:"package_id"`
+		RentalEquipmentID *int   `json:"rental_equipment_id"`
+		ServiceItemID     *int   `json:"service_item_id"`
+		ItemType          string `json:"item_type"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1453,12 +1477,12 @@ func (h *PDFHandler) SaveManualMapping(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{
-		"mapping_status":              "user_confirmed",
-		"mapping_confidence":          100.0,
-		"mapped_product_id":           nil,
-		"mapped_package_id":           nil,
-		"mapped_rental_equipment_id":  nil,
-		"mapped_service_item_id":      nil,
+		"mapping_status":             "user_confirmed",
+		"mapping_confidence":         100.0,
+		"mapped_product_id":          nil,
+		"mapped_package_id":          nil,
+		"mapped_rental_equipment_id": nil,
+		"mapped_service_item_id":     nil,
 	}
 
 	var resultProduct *models.Product
@@ -1747,15 +1771,16 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 				logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
 			}
 
-			if err := h.DB.Model(&models.Job{}).Where("job_id = ?", job.JobID).
+			if err := h.DB.Model(&models.Job{}).Where("jobid = ?", job.JobID).
 				Updates(map[string]interface{}{
 					"discount":      discountValue,
 					"discount_type": discountType,
 				}).Error; err != nil {
 				logger.LogInfo("warning: failed to persist updated discount for job %d: %v", job.JobID, err)
 			}
-
-			_ = h.JobHandler.jobRepo.CalculateAndUpdateRevenue(job.JobID)
+			if err := syncJobRevenueIfPositions(h.DB, job.JobID); err != nil {
+				logger.LogInfo("warning: failed to sync updated job revenue for job %d: %v", job.JobID, err)
+			}
 
 			h.attachUploadToJob(&upload, job.JobID)
 
@@ -2362,7 +2387,7 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 			logger.LogInfo("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
 		}
 	}
-	return nil
+	return syncJobRevenue(h.DB, job.JobID)
 }
 
 type customerPrefill struct {
@@ -3546,9 +3571,13 @@ func buildAllMappingRows(
 	rows := make([]MappingRow, 0, len(productMappings)+len(packageMappings)+len(customerMappings))
 	for _, m := range productMappings {
 		name, ok := productNames[m.ProductID]
-		if !ok { name = fmt.Sprintf("Product #%d", m.ProductID) }
+		if !ok {
+			name = fmt.Sprintf("Product #%d", m.ProductID)
+		}
 		conf := 0.0
-		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
+		if m.ConfidenceScore.Valid {
+			conf = m.ConfidenceScore.Float64
+		}
 		rows = append(rows, MappingRow{
 			MappingID: m.MappingID, OCRText: m.PDFProductText, TargetName: name,
 			TargetType: "product", TargetID: m.ProductID, MappingType: m.MappingType,
@@ -3557,9 +3586,13 @@ func buildAllMappingRows(
 	}
 	for _, m := range packageMappings {
 		name, ok := packageNames[m.PackageID]
-		if !ok { name = fmt.Sprintf("Package #%d", m.PackageID) }
+		if !ok {
+			name = fmt.Sprintf("Package #%d", m.PackageID)
+		}
 		conf := 0.0
-		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
+		if m.ConfidenceScore.Valid {
+			conf = m.ConfidenceScore.Float64
+		}
 		rows = append(rows, MappingRow{
 			MappingID: m.MappingID, OCRText: m.PDFPackageText, TargetName: name,
 			TargetType: "package", TargetID: m.PackageID, MappingType: m.MappingType,
@@ -3568,9 +3601,13 @@ func buildAllMappingRows(
 	}
 	for _, m := range customerMappings {
 		name, ok := customerNames[m.CustomerID]
-		if !ok { name = fmt.Sprintf("Customer #%d", m.CustomerID) }
+		if !ok {
+			name = fmt.Sprintf("Customer #%d", m.CustomerID)
+		}
 		conf := 0.0
-		if m.ConfidenceScore.Valid { conf = m.ConfidenceScore.Float64 }
+		if m.ConfidenceScore.Valid {
+			conf = m.ConfidenceScore.Float64
+		}
 		rows = append(rows, MappingRow{
 			MappingID: m.MappingID, OCRText: m.PDFCustomerText, TargetName: name,
 			TargetType: "customer", TargetID: m.CustomerID, MappingType: m.MappingType,
@@ -3592,18 +3629,25 @@ func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
 
 	if typeFilter == "" || typeFilter == "product" {
 		productMappings, err = h.Mapper.GetAllMappings()
-		if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product mappings"}); return }
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product mappings"})
+			return
+		}
 	}
 	if typeFilter == "" || typeFilter == "package" {
 		if h.PackageMapper != nil {
 			packageMappings, err = h.PackageMapper.GetAllMappings()
-			if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package mappings"}); return }
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package mappings"})
+				return
+			}
 		}
 	}
 	if typeFilter == "" || typeFilter == "customer" {
 		if h.CustomerMapper != nil {
 			if err := h.DB.Where("is_active = true").Order("usage_count DESC").Find(&customerMappings).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer mappings"}); return
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer mappings"})
+				return
 			}
 		}
 	}
@@ -3611,32 +3655,45 @@ func (h *PDFHandler) GetAllMappingsAPI(c *gin.Context) {
 	productNames := make(map[int]string)
 	if len(productMappings) > 0 {
 		ids := make([]int, 0, len(productMappings))
-		for _, m := range productMappings { ids = append(ids, m.ProductID) }
+		for _, m := range productMappings {
+			ids = append(ids, m.ProductID)
+		}
 		var products []models.Product
 		if err := h.DB.Select("productid, name").Where("productid IN ?", ids).Find(&products).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product names"}); return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load product names"})
+			return
 		}
-		for _, p := range products { productNames[int(p.ProductID)] = p.Name }
+		for _, p := range products {
+			productNames[int(p.ProductID)] = p.Name
+		}
 	}
 
 	packageNames := make(map[int]string)
 	if len(packageMappings) > 0 {
 		ids := make([]int, 0, len(packageMappings))
-		for _, m := range packageMappings { ids = append(ids, m.PackageID) }
+		for _, m := range packageMappings {
+			ids = append(ids, m.PackageID)
+		}
 		var packages []models.ProductPackage
 		if err := h.DB.Select("package_id, name").Where("package_id IN ?", ids).Find(&packages).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package names"}); return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load package names"})
+			return
 		}
-		for _, p := range packages { packageNames[p.PackageID] = p.Name }
+		for _, p := range packages {
+			packageNames[p.PackageID] = p.Name
+		}
 	}
 
 	customerNames := make(map[int]string)
 	if len(customerMappings) > 0 {
 		ids := make([]int, 0, len(customerMappings))
-		for _, m := range customerMappings { ids = append(ids, m.CustomerID) }
+		for _, m := range customerMappings {
+			ids = append(ids, m.CustomerID)
+		}
 		var customers []models.Customer
 		if err := h.DB.Select("customerid, firstname, lastname, companyname").Where("customerid IN ?", ids).Find(&customers).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer names"}); return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load customer names"})
+			return
 		}
 		for _, cu := range customers {
 			customerNames[int(cu.CustomerID)] = cu.GetDisplayName()
@@ -3835,11 +3892,15 @@ func (h *PDFHandler) ShowMappingManagement(c *gin.Context) {
 		}
 	}
 	customerIDSet := make(map[int]struct{})
-	for _, m := range customerMappings { customerIDSet[m.CustomerID] = struct{}{} }
+	for _, m := range customerMappings {
+		customerIDSet[m.CustomerID] = struct{}{}
+	}
 	customerNames := make(map[int]string)
 	if len(customerIDSet) > 0 {
 		cids := make([]int, 0, len(customerIDSet))
-		for id := range customerIDSet { cids = append(cids, id) }
+		for id := range customerIDSet {
+			cids = append(cids, id)
+		}
 		var customers []models.Customer
 		if err := h.DB.Select("customerid, firstname, lastname, companyname").Where("customerid IN ?", cids).Find(&customers).Error; err == nil {
 			for _, cu := range customers {
@@ -3891,22 +3952,34 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 
 	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
 	for _, it := range items {
-		if it.MappedProductID.Valid          { productIDs = append(productIDs, int(it.MappedProductID.Int64)) }
-		if it.MappedPackageID.Valid          { packageIDs = append(packageIDs, int(it.MappedPackageID.Int64)) }
-		if it.MappedRentalEquipmentID.Valid  { rentalIDs  = append(rentalIDs,  int(it.MappedRentalEquipmentID.Int64)) }
-		if it.MappedServiceItemID.Valid      { serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64)) }
+		if it.MappedProductID.Valid {
+			productIDs = append(productIDs, int(it.MappedProductID.Int64))
+		}
+		if it.MappedPackageID.Valid {
+			packageIDs = append(packageIDs, int(it.MappedPackageID.Int64))
+		}
+		if it.MappedRentalEquipmentID.Valid {
+			rentalIDs = append(rentalIDs, int(it.MappedRentalEquipmentID.Int64))
+		}
+		if it.MappedServiceItemID.Valid {
+			serviceIDs = append(serviceIDs, int(it.MappedServiceItemID.Int64))
+		}
 	}
 	productNames := make(map[int]string)
 	if len(productIDs) > 0 {
 		var products []models.Product
 		h.DB.Select("productid, name").Where("productid IN ?", productIDs).Find(&products)
-		for _, p := range products { productNames[int(p.ProductID)] = p.Name }
+		for _, p := range products {
+			productNames[int(p.ProductID)] = p.Name
+		}
 	}
 	packageNames := make(map[int]string)
 	if len(packageIDs) > 0 {
 		var packages []models.ProductPackage
 		h.DB.Select("package_id, name").Where("package_id IN ?", packageIDs).Find(&packages)
-		for _, p := range packages { packageNames[p.PackageID] = p.Name }
+		for _, p := range packages {
+			packageNames[p.PackageID] = p.Name
+		}
 	}
 	rentalNames := make(map[int]string)
 	if len(rentalIDs) > 0 {
@@ -3916,7 +3989,9 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		}
 		var rows []rentalRow
 		h.DB.Raw("SELECT id, name FROM rental_equipment WHERE id IN ?", rentalIDs).Scan(&rows)
-		for _, r := range rows { rentalNames[r.ID] = r.Name }
+		for _, r := range rows {
+			rentalNames[r.ID] = r.Name
+		}
 	}
 	serviceNames := make(map[int]string)
 	if len(serviceIDs) > 0 {
@@ -3926,44 +4001,62 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		}
 		var rows []svcRow
 		h.DB.Raw("SELECT id, name FROM service_items WHERE id IN ?", serviceIDs).Scan(&rows)
-		for _, r := range rows { serviceNames[r.ID] = r.Name }
+		for _, r := range rows {
+			serviceNames[r.ID] = r.Name
+		}
 	}
 
 	result := make([]PreviewItem, 0, len(items))
 	for _, it := range items {
 		qty := 1
-		if it.Quantity.Valid { qty = int(it.Quantity.Int64) }
+		if it.Quantity.Valid {
+			qty = int(it.Quantity.Int64)
+		}
 		up := 0.0
-		if it.UnitPrice.Valid { up = it.UnitPrice.Float64 }
+		if it.UnitPrice.Valid {
+			up = it.UnitPrice.Float64
+		}
 		lt := 0.0
-		if it.LineTotal.Valid { lt = it.LineTotal.Float64 }
+		if it.LineTotal.Valid {
+			lt = it.LineTotal.Float64
+		}
 		pi := PreviewItem{ItemID: it.ItemID, RawText: it.RawProductText, Quantity: qty, UnitPrice: up, LineTotal: lt}
 		switch {
 		case it.MappedProductID.Valid:
 			pi.TargetType = "product"
 			pi.TargetID = int(it.MappedProductID.Int64)
 			pi.Name = productNames[pi.TargetID]
-			if pi.Name == "" { pi.Name = fmt.Sprintf("Produkt #%d", pi.TargetID) }
+			if pi.Name == "" {
+				pi.Name = fmt.Sprintf("Produkt #%d", pi.TargetID)
+			}
 		case it.MappedPackageID.Valid:
 			pi.TargetType = "package"
 			pi.TargetID = int(it.MappedPackageID.Int64)
 			pi.Name = packageNames[pi.TargetID]
-			if pi.Name == "" { pi.Name = fmt.Sprintf("Paket #%d", pi.TargetID) }
+			if pi.Name == "" {
+				pi.Name = fmt.Sprintf("Paket #%d", pi.TargetID)
+			}
 		case it.MappedRentalEquipmentID.Valid:
 			pi.TargetType = "rental"
 			pi.TargetID = int(it.MappedRentalEquipmentID.Int64)
 			pi.Name = rentalNames[pi.TargetID]
-			if pi.Name == "" { pi.Name = fmt.Sprintf("Mietprodukt #%d", pi.TargetID) }
+			if pi.Name == "" {
+				pi.Name = fmt.Sprintf("Mietprodukt #%d", pi.TargetID)
+			}
 		case it.MappedServiceItemID.Valid:
 			pi.TargetType = "service"
 			pi.TargetID = int(it.MappedServiceItemID.Int64)
 			pi.Name = serviceNames[pi.TargetID]
-			if pi.Name == "" { pi.Name = fmt.Sprintf("Dienstleistung #%d", pi.TargetID) }
+			if pi.Name == "" {
+				pi.Name = fmt.Sprintf("Dienstleistung #%d", pi.TargetID)
+			}
 		}
 		result = append(result, pi)
 	}
 	totalAmount := 0.0
-	if extraction.TotalAmount.Valid { totalAmount = extraction.TotalAmount.Float64 }
+	if extraction.TotalAmount.Valid {
+		totalAmount = extraction.TotalAmount.Float64
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"extraction_id": extraction.ExtractionID,
 		"items":         result,
@@ -3991,7 +4084,9 @@ func (h *PDFHandler) CreateMappingAPI(c *gin.Context) {
 	}
 	userID := int64(0)
 	if uid, exists := c.Get("userid"); exists {
-		if id, ok := uid.(int64); ok { userID = id }
+		if id, ok := uid.(int64); ok {
+			userID = id
+		}
 	}
 	if err := h.Mapper.SaveMapping(req.PDFText, req.ProductID, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save mapping"})
@@ -4220,9 +4315,15 @@ func (h *PDFHandler) CreateRentalEquipmentQuick(c *gin.Context) {
 	}
 	var row reRow
 	var desc, notes, category *string
-	if req.Description != "" { desc = &req.Description }
-	if req.Notes != "" { notes = &req.Notes }
-	if req.Category != "" { category = &req.Category }
+	if req.Description != "" {
+		desc = &req.Description
+	}
+	if req.Notes != "" {
+		notes = &req.Notes
+	}
+	if req.Category != "" {
+		category = &req.Category
+	}
 	if err := h.DB.Raw(
 		`INSERT INTO rental_equipment (name, supplier, supplier_id, rental_price, customer_price, category, description, notes, is_active)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, true) RETURNING id`,

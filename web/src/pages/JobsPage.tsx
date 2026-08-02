@@ -441,7 +441,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
           } />
           <InfoRow label="Startdatum" value={formatDate(job.startDate)} />
           <InfoRow label="Enddatum" value={formatDate(job.endDate)} />
-          <InfoRow label="Umsatz" value={`€${(job.final_revenue ?? job.revenue ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`} />
+          <InfoRow label="Umsatz (brutto)" value={`€${(job.final_revenue ?? job.revenue ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`} />
         </div>
 
         <div className="glass-dark rounded-xl border border-white/10 p-5">
@@ -1115,7 +1115,7 @@ export function JobsPage() {
                   <th className="text-left px-6 py-3 font-medium">Kunde</th>
                   <th className="text-left px-6 py-3 font-medium hidden md:table-cell">Zeitraum</th>
                   <th className="text-left px-6 py-3 font-medium hidden sm:table-cell">Status</th>
-                  <th className="text-right px-6 py-3 font-medium hidden lg:table-cell">Umsatz</th>
+                  <th className="text-right px-6 py-3 font-medium hidden lg:table-cell">Umsatz (brutto)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">

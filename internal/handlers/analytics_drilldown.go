@@ -15,7 +15,10 @@ type RevenueDrilldownNode struct {
 	ID            string                 `json:"id"`
 	Type          string                 `json:"type"`
 	Label         string                 `json:"label"`
-	Revenue       float64                `json:"revenue"`
+	Revenue       float64                `json:"revenue"` // Gross revenue kept for API compatibility.
+	NetRevenue    float64                `json:"net_revenue"`
+	GrossRevenue  float64                `json:"gross_revenue"`
+	TaxAmount     float64                `json:"tax_amount"`
 	Cost          float64                `json:"cost"`
 	Margin        float64                `json:"margin"`
 	MarginPercent float64                `json:"margin_percent"`
@@ -25,27 +28,46 @@ type RevenueDrilldownNode struct {
 	Children      []RevenueDrilldownNode `json:"children"`
 }
 
+type RevenueDrilldownMonth struct {
+	Month        string  `json:"month"`
+	NetRevenue   float64 `json:"net_revenue"`
+	GrossRevenue float64 `json:"gross_revenue"`
+	JobCount     int     `json:"job_count"`
+}
+
 type RevenueDrilldownResponse struct {
-	Period              string                 `json:"period"`
-	StartDate           string                 `json:"start_date,omitempty"`
-	EndDate             string                 `json:"end_date,omitempty"`
-	TotalRevenue        float64                `json:"total_revenue"`
-	AttributedRevenue   float64                `json:"attributed_revenue"`
-	UnattributedRevenue float64                `json:"unattributed_revenue"`
-	RentalRevenue       float64                `json:"rental_revenue"`
-	RentalCost          float64                `json:"rental_cost"`
-	RentalMargin        float64                `json:"rental_margin"`
-	RentalMarginPercent float64                `json:"rental_margin_percent"`
-	JobCount            int                    `json:"job_count"`
-	Categories          []RevenueDrilldownNode `json:"categories"`
+	Period                 string                  `json:"period"`
+	StartDate              string                  `json:"start_date,omitempty"`
+	EndDate                string                  `json:"end_date,omitempty"`
+	TotalRevenue           float64                 `json:"total_revenue"`
+	TotalNetRevenue        float64                 `json:"total_net_revenue"`
+	TotalGrossRevenue      float64                 `json:"total_gross_revenue"`
+	TotalTaxAmount         float64                 `json:"total_tax_amount"`
+	AttributedRevenue      float64                 `json:"attributed_revenue"`
+	AttributedNetRevenue   float64                 `json:"attributed_net_revenue"`
+	AttributedGrossRevenue float64                 `json:"attributed_gross_revenue"`
+	UnattributedRevenue    float64                 `json:"unattributed_revenue"`
+	RentalRevenue          float64                 `json:"rental_revenue"`
+	RentalNetRevenue       float64                 `json:"rental_net_revenue"`
+	RentalGrossRevenue     float64                 `json:"rental_gross_revenue"`
+	RentalCost             float64                 `json:"rental_cost"`
+	RentalMargin           float64                 `json:"rental_margin"`
+	RentalMarginPercent    float64                 `json:"rental_margin_percent"`
+	JobCount               int                     `json:"job_count"`
+	Categories             []RevenueDrilldownNode  `json:"categories"`
+	MonthlyRevenue         []RevenueDrilldownMonth `json:"monthly_revenue"`
 }
 
 type revenueDrilldownJob struct {
-	JobID          uint       `gorm:"column:job_id"`
-	Revenue        float64    `gorm:"column:revenue"`
-	StartDate      *time.Time `gorm:"column:start_date"`
-	EndDate        *time.Time `gorm:"column:end_date"`
-	MultiplyByDays bool       `gorm:"column:multiply_by_days"`
+	JobID            uint       `gorm:"column:job_id"`
+	Revenue          float64    `gorm:"column:revenue"`
+	Discount         float64    `gorm:"column:discount"`
+	DiscountType     string     `gorm:"column:discount_type"`
+	StartDate        *time.Time `gorm:"column:start_date"`
+	EndDate          *time.Time `gorm:"column:end_date"`
+	CreatedAt        *time.Time `gorm:"column:created_at"`
+	MultiplyByDays   bool       `gorm:"column:multiply_by_days"`
+	PricesIncludeTax bool       `gorm:"column:prices_include_tax"`
 }
 
 type revenueDrilldownPosition struct {
@@ -62,6 +84,7 @@ type revenueDrilldownPosition struct {
 	FollowDayFactor   float64 `gorm:"column:follow_day_factor"`
 	DiscountPercent   float64 `gorm:"column:discount_percent"`
 	DiscountAmount    float64 `gorm:"column:discount_amount"`
+	TaxRate           float64 `gorm:"column:tax_rate"`
 	SupplierUnitCost  float64 `gorm:"column:supplier_unit_cost"`
 }
 
@@ -92,8 +115,10 @@ func newRevenueAggregationNode(id, nodeType, label string) *revenueAggregationNo
 	}
 }
 
-func (n *revenueAggregationNode) add(revenue, cost, quantity float64, hasCost bool, jobID uint) {
-	n.data.Revenue += revenue
+func (n *revenueAggregationNode) add(amounts revenueAmounts, cost, quantity float64, hasCost bool, jobID uint) {
+	n.data.NetRevenue += amounts.Net
+	n.data.GrossRevenue += amounts.Gross
+	n.data.Revenue += amounts.Gross
 	n.data.Cost += cost
 	n.data.Quantity += quantity
 	n.data.HasCost = n.data.HasCost || hasCost
@@ -113,12 +138,15 @@ func (n *revenueAggregationNode) child(id, nodeType, label string) *revenueAggre
 
 func (n *revenueAggregationNode) finalize() RevenueDrilldownNode {
 	n.data.Revenue = roundAnalyticsMoney(n.data.Revenue)
+	n.data.NetRevenue = roundAnalyticsMoney(n.data.NetRevenue)
+	n.data.GrossRevenue = roundAnalyticsMoney(n.data.GrossRevenue)
+	n.data.TaxAmount = roundAnalyticsMoney(n.data.GrossRevenue - n.data.NetRevenue)
 	n.data.Cost = roundAnalyticsMoney(n.data.Cost)
 	n.data.Bookings = len(n.jobs)
 	if n.data.HasCost {
-		n.data.Margin = roundAnalyticsMoney(n.data.Revenue - n.data.Cost)
-		if n.data.Revenue != 0 {
-			n.data.MarginPercent = math.Round((n.data.Margin/n.data.Revenue)*1000) / 10
+		n.data.Margin = roundAnalyticsMoney(n.data.GrossRevenue - n.data.Cost)
+		if n.data.GrossRevenue != 0 {
+			n.data.MarginPercent = math.Round((n.data.Margin/n.data.GrossRevenue)*1000) / 10
 		}
 	}
 
@@ -140,14 +168,7 @@ func roundAnalyticsMoney(value float64) float64 {
 }
 
 func analyticsEventDays(job revenueDrilldownJob) int {
-	if job.StartDate == nil || job.EndDate == nil {
-		return 1
-	}
-	days := int(job.EndDate.Sub(*job.StartDate).Hours() / 24)
-	if days < 1 {
-		return 1
-	}
-	return days
+	return positionEventDays(job.StartDate, job.EndDate)
 }
 
 func analyticsLineRevenue(job revenueDrilldownJob, position revenueDrilldownPosition) float64 {
@@ -158,6 +179,10 @@ func analyticsLineRevenue(job revenueDrilldownJob, position revenueDrilldownPosi
 	lineTotal := position.Quantity * position.UnitPrice * dayFactor
 	discount := position.DiscountAmount + lineTotal*position.DiscountPercent/100
 	return math.Max(0, lineTotal-discount)
+}
+
+func analyticsLineAmounts(job revenueDrilldownJob, position revenueDrilldownPosition) revenueAmounts {
+	return splitInvoiceRevenue(analyticsLineRevenue(job, position), position.TaxRate, job.PricesIncludeTax)
 }
 
 func analyticsRentalCost(job revenueDrilldownJob, position revenueDrilldownPosition) float64 {
@@ -255,10 +280,10 @@ func buildRevenueDrilldown(
 		}
 	}
 
-	totalRevenue := 0.0
-	attributedRevenue := 0.0
+	totalAmounts := revenueAmounts{}
+	attributedAmounts := revenueAmounts{}
+	monthlyByKey := make(map[string]*RevenueDrilldownMonth)
 	for _, job := range jobs {
-		totalRevenue += job.Revenue
 		jobPositions := positionsByJob[job.JobID]
 		rawTotal := 0.0
 		rawByPosition := make(map[uint]float64, len(jobPositions))
@@ -267,67 +292,102 @@ func buildRevenueDrilldown(
 			rawByPosition[position.PositionID] = raw
 			rawTotal += raw
 		}
-		if rawTotal <= 0 {
-			categories[4].add(job.Revenue, 0, 0, false, job.JobID)
-			continue
+		discountFactor := jobDiscountFactor(rawTotal, job.Discount, job.DiscountType)
+		jobAmounts := revenueAmounts{}
+		if rawTotal > 0 {
+			for _, position := range jobPositions {
+				category, ok := categoryByType[position.PositionType]
+				if !ok {
+					category = categories[4]
+				}
+				positionAmounts := splitInvoiceRevenue(
+					rawByPosition[position.PositionID],
+					position.TaxRate,
+					job.PricesIncludeTax,
+				).scale(discountFactor)
+				attributedAmounts.Net += positionAmounts.Net
+				attributedAmounts.Gross += positionAmounts.Gross
+				jobAmounts.Net += positionAmounts.Net
+				jobAmounts.Gross += positionAmounts.Gross
+				cost := rentalCostByPosition[position.PositionID]
+				hasCost := position.PositionType == "rental"
+				category.add(positionAmounts, cost, position.Quantity, hasCost, job.JobID)
+
+				var itemID, itemType, itemLabel string
+				switch position.PositionType {
+				case "product":
+					itemLabel = drilldownItemLabel(position, "Unbekanntes Produkt")
+					itemID = drilldownItemKey("product", position.ProductID, itemLabel)
+					itemType = "product"
+				case "rental":
+					itemLabel = drilldownItemLabel(position, "Unbekanntes Mietprodukt")
+					itemID = drilldownItemKey("rental", position.RentalEquipmentID, itemLabel)
+					itemType = "rental_product"
+				case "service":
+					itemLabel = drilldownItemLabel(position, "Unbekannte Dienstleistung")
+					itemID = drilldownItemKey("service", position.ServiceItemID, itemLabel)
+					itemType = "service"
+				case "package":
+					itemLabel = drilldownItemLabel(position, "Unbekanntes Paket")
+					itemID = drilldownItemKey("package", position.ProductID, itemLabel)
+					itemType = "package"
+				default:
+					continue
+				}
+
+				item := category.child(itemID, itemType, itemLabel)
+				item.add(positionAmounts, cost, position.Quantity, hasCost, job.JobID)
+				if position.PositionType != "product" {
+					continue
+				}
+
+				positionDevices := devicesByPosition[position.PositionID]
+				allocationUnits := math.Max(position.Quantity, float64(len(positionDevices)))
+				allocationUnits = math.Max(allocationUnits, 1)
+				deviceAmounts := positionAmounts.scale(1 / allocationUnits)
+				for _, device := range positionDevices {
+					label := device.DeviceID
+					if device.SerialNumber != "" && device.SerialNumber != device.DeviceID {
+						label += " · S/N " + device.SerialNumber
+					}
+					deviceNode := item.child("device:"+device.DeviceID, "device", label)
+					deviceNode.add(deviceAmounts, 0, 1, false, job.JobID)
+				}
+				unassignedUnits := allocationUnits - float64(len(positionDevices))
+				if unassignedUnits > 0 {
+					unassigned := item.child(itemID+":unassigned", "device", "Noch keinem Gerät zugeordnet")
+					unassigned.add(deviceAmounts.scale(unassignedUnits), 0, unassignedUnits, false, job.JobID)
+				}
+			}
 		}
 
-		for _, position := range jobPositions {
-			category, ok := categoryByType[position.PositionType]
-			if !ok {
-				category = categories[4]
-			}
-			allocatedRevenue := job.Revenue * rawByPosition[position.PositionID] / rawTotal
-			attributedRevenue += allocatedRevenue
-			cost := rentalCostByPosition[position.PositionID]
-			hasCost := position.PositionType == "rental"
-			category.add(allocatedRevenue, cost, position.Quantity, hasCost, job.JobID)
+		unattributed := math.Max(job.Revenue-jobAmounts.Gross, 0)
+		if rawTotal <= 0 {
+			unattributed = math.Max(job.Revenue, 0)
+		}
+		if unattributed > 0 {
+			unattributedAmounts := revenueAmounts{Net: unattributed, Gross: unattributed}
+			jobAmounts.Net += unattributed
+			jobAmounts.Gross += unattributed
+			categories[4].add(unattributedAmounts, 0, 0, false, job.JobID)
+		}
 
-			var itemID, itemType, itemLabel string
-			switch position.PositionType {
-			case "product":
-				itemLabel = drilldownItemLabel(position, "Unbekanntes Produkt")
-				itemID = drilldownItemKey("product", position.ProductID, itemLabel)
-				itemType = "product"
-			case "rental":
-				itemLabel = drilldownItemLabel(position, "Unbekanntes Mietprodukt")
-				itemID = drilldownItemKey("rental", position.RentalEquipmentID, itemLabel)
-				itemType = "rental_product"
-			case "service":
-				itemLabel = drilldownItemLabel(position, "Unbekannte Dienstleistung")
-				itemID = drilldownItemKey("service", position.ServiceItemID, itemLabel)
-				itemType = "service"
-			case "package":
-				itemLabel = drilldownItemLabel(position, "Unbekanntes Paket")
-				itemID = drilldownItemKey("package", position.ProductID, itemLabel)
-				itemType = "package"
-			default:
-				continue
+		totalAmounts.Net += jobAmounts.Net
+		totalAmounts.Gross += jobAmounts.Gross
+		monthDate := job.StartDate
+		if monthDate == nil {
+			monthDate = job.CreatedAt
+		}
+		if monthDate != nil {
+			monthKey := monthDate.Format("2006-01")
+			month := monthlyByKey[monthKey]
+			if month == nil {
+				month = &RevenueDrilldownMonth{Month: monthKey}
+				monthlyByKey[monthKey] = month
 			}
-
-			item := category.child(itemID, itemType, itemLabel)
-			item.add(allocatedRevenue, cost, position.Quantity, hasCost, job.JobID)
-			if position.PositionType != "product" {
-				continue
-			}
-
-			positionDevices := devicesByPosition[position.PositionID]
-			allocationUnits := math.Max(position.Quantity, float64(len(positionDevices)))
-			allocationUnits = math.Max(allocationUnits, 1)
-			deviceRevenue := allocatedRevenue / allocationUnits
-			for _, device := range positionDevices {
-				label := device.DeviceID
-				if device.SerialNumber != "" && device.SerialNumber != device.DeviceID {
-					label += " · S/N " + device.SerialNumber
-				}
-				deviceNode := item.child("device:"+device.DeviceID, "device", label)
-				deviceNode.add(deviceRevenue, 0, 1, false, job.JobID)
-			}
-			unassignedUnits := allocationUnits - float64(len(positionDevices))
-			if unassignedUnits > 0 {
-				unassigned := item.child(itemID+":unassigned", "device", "Noch keinem Gerät zugeordnet")
-				unassigned.add(deviceRevenue*unassignedUnits, 0, unassignedUnits, false, job.JobID)
-			}
+			month.NetRevenue += jobAmounts.Net
+			month.GrossRevenue += jobAmounts.Gross
+			month.JobCount++
 		}
 	}
 
@@ -340,18 +400,24 @@ func buildRevenueDrilldown(
 			label = fmt.Sprintf("Mietprodukt #%d", storedCost.EquipmentID)
 		}
 		category := categories[1]
-		category.add(0, storedCost.TotalCost, 0, true, storedCost.JobID)
+		category.add(revenueAmounts{}, storedCost.TotalCost, 0, true, storedCost.JobID)
 		item := category.child(fmt.Sprintf("rental:%d", storedCost.EquipmentID), "rental_product", label)
-		item.add(0, storedCost.TotalCost, 0, true, storedCost.JobID)
+		item.add(revenueAmounts{}, storedCost.TotalCost, 0, true, storedCost.JobID)
 	}
 
 	response := RevenueDrilldownResponse{
-		Period:              period,
-		TotalRevenue:        roundAnalyticsMoney(totalRevenue),
-		AttributedRevenue:   roundAnalyticsMoney(attributedRevenue),
-		UnattributedRevenue: roundAnalyticsMoney(categories[4].data.Revenue),
-		JobCount:            len(jobs),
-		Categories:          make([]RevenueDrilldownNode, 0, len(categories)),
+		Period:                 period,
+		TotalRevenue:           roundAnalyticsMoney(totalAmounts.Gross),
+		TotalNetRevenue:        roundAnalyticsMoney(totalAmounts.Net),
+		TotalGrossRevenue:      roundAnalyticsMoney(totalAmounts.Gross),
+		TotalTaxAmount:         roundAnalyticsMoney(totalAmounts.Gross - totalAmounts.Net),
+		AttributedRevenue:      roundAnalyticsMoney(attributedAmounts.Gross),
+		AttributedNetRevenue:   roundAnalyticsMoney(attributedAmounts.Net),
+		AttributedGrossRevenue: roundAnalyticsMoney(attributedAmounts.Gross),
+		UnattributedRevenue:    roundAnalyticsMoney(categories[4].data.Revenue),
+		JobCount:               len(jobs),
+		Categories:             make([]RevenueDrilldownNode, 0, len(categories)),
+		MonthlyRevenue:         make([]RevenueDrilldownMonth, 0, len(monthlyByKey)),
 	}
 	if startDate != nil {
 		response.StartDate = startDate.Format("2006-01-02")
@@ -364,9 +430,19 @@ func buildRevenueDrilldown(
 	}
 	rental := response.Categories[1]
 	response.RentalRevenue = rental.Revenue
+	response.RentalNetRevenue = rental.NetRevenue
+	response.RentalGrossRevenue = rental.GrossRevenue
 	response.RentalCost = rental.Cost
 	response.RentalMargin = rental.Margin
 	response.RentalMarginPercent = rental.MarginPercent
+	for _, month := range monthlyByKey {
+		month.NetRevenue = roundAnalyticsMoney(month.NetRevenue)
+		month.GrossRevenue = roundAnalyticsMoney(month.GrossRevenue)
+		response.MonthlyRevenue = append(response.MonthlyRevenue, *month)
+	}
+	sort.Slice(response.MonthlyRevenue, func(i, j int) bool {
+		return response.MonthlyRevenue[i].Month < response.MonthlyRevenue[j].Month
+	})
 	return response
 }
 
@@ -408,9 +484,13 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 	if err := h.db.Raw(`
 		SELECT j.jobid AS job_id,
 		       COALESCE(j.final_revenue, j.revenue, 0) AS revenue,
+		       COALESCE(j.discount, 0) AS discount,
+		       COALESCE(j.discount_type, 'amount') AS discount_type,
 		       j.startdate AS start_date,
 		       j.enddate AS end_date,
-		       j.multiply_by_days
+		       j.created_at,
+		       j.multiply_by_days,
+		       j.prices_include_tax
 		FROM jobs j
 		WHERE j.deleted_at IS NULL`+dateFilter+`
 		ORDER BY j.jobid`, args...).Scan(&jobs).Error; err != nil {
@@ -425,7 +505,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		       jp.description,
 		       COALESCE(p.name, s.name, r.name, jp.description, '') AS item_name,
 		       jp.quantity, jp.unit_price, jp.follow_day_factor,
-		       jp.discount_percent, jp.discount_amount,
+		       jp.discount_percent, jp.discount_amount, jp.tax_rate,
 		       COALESCE(r.rental_price, 0) AS supplier_unit_cost
 		FROM job_positions jp
 		JOIN jobs j ON j.jobid = jp.job_id

@@ -14,7 +14,7 @@
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
-- **Analytics Dashboard** — Interaktiver Umsatz-Drilldown von Gesamtumsatz über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
+- **Analytics Dashboard** — Interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
 
 ---
 
