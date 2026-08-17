@@ -3572,6 +3572,17 @@ type MappingRow struct {
 	UsageCount      int     `json:"usage_count"`
 }
 
+// buildMappingRows keeps the product/package mapping helper contract while the
+// current implementation also supports customer mappings.
+func buildMappingRows(
+	productMappings []models.PDFProductMapping,
+	packageMappings []models.PDFPackageMapping,
+	productNames map[int]string,
+	packageNames map[int]string,
+) []MappingRow {
+	return buildAllMappingRows(productMappings, packageMappings, nil, productNames, packageNames, nil)
+}
+
 // buildAllMappingRows combines product, package, and customer mappings into enriched MappingRows.
 func buildAllMappingRows(
 	productMappings []models.PDFProductMapping,
