@@ -29,6 +29,20 @@ export function Layout({ children }: LayoutProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    const locked = isMobile && sidebarOpen;
+    document.documentElement.classList.toggle('modal-open', locked);
+    document.body.classList.toggle('modal-open', locked);
+    return () => {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+    };
+  }, [isMobile, sidebarOpen]);
+
   const close = () => { if (isMobile) setSidebarOpen(false); };
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
@@ -67,10 +81,10 @@ export function Layout({ children }: LayoutProps) {
     exact ? location.pathname === path : location.pathname.startsWith(path);
 
   return (
-    <div className="min-h-screen bg-dark">
+    <div className="mobile-app-shell min-h-screen bg-dark">
       {/* Header */}
       <header
-        className={`fixed top-0 right-0 z-50 glass-dark transition-all duration-300 ${
+        className={`mobile-app-header fixed top-0 right-0 z-50 glass-dark transition-all duration-300 ${
           !isMobile && sidebarOpen ? 'left-64' : !isMobile ? 'left-20' : 'left-0'
         }`}
         style={{ height: '60px', borderBottom: '1px solid var(--border-subtle)' }}
@@ -81,6 +95,7 @@ export function Layout({ children }: LayoutProps) {
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 rounded-lg transition-colors cursor-pointer"
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
+              aria-label={sidebarOpen ? 'Navigation schließen' : 'Navigation öffnen'}
             >
               {!isMobile
                 ? (sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)
@@ -98,11 +113,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Mobile backdrop */}
       {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 z-40" style={{ background: 'var(--bg-overlay)' }} onClick={close} />
+        <button className="mobile-app-backdrop fixed inset-0 z-40" style={{ background: 'var(--bg-overlay)' }} onClick={close} aria-label="Navigation schließen" />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 bottom-0 z-50 glass-dark transition-all duration-300 ease-in-out flex flex-col ${
+      <aside className={`mobile-app-drawer fixed left-0 top-0 bottom-0 z-50 glass-dark transition-all duration-300 ease-in-out flex flex-col ${
         isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'
       } ${isMobile ? 'w-64' : sidebarOpen ? 'w-64' : 'w-20'}`}
         style={{ borderRight: '1px solid var(--border-subtle)' }}>
@@ -124,6 +139,7 @@ export function Layout({ children }: LayoutProps) {
               onClick={close}
               className="p-2 rounded-lg cursor-pointer"
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
+              aria-label="Navigation schließen"
             >
               <X className="w-5 h-5" />
             </button>
@@ -227,11 +243,28 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <main
-        className={`transition-all duration-300 ${isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-20'}`}
+        className={`mobile-app-main transition-all duration-300 ${isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-20'}`}
         style={{ paddingTop: '60px' }}
       >
-        <div className="p-4 sm:p-6">{children}</div>
+        <div className="mobile-app-content p-4 sm:p-6">{children}</div>
       </main>
+
+      <nav className="mobile-app-tabbar" aria-label="Hauptnavigation">
+        {[
+          { path: '/', icon: Home, label: 'Start', exact: true },
+          { path: '/jobs', icon: Briefcase, label: 'Jobs' },
+          { path: '/analytics', icon: BarChart2, label: 'Analyse' },
+        ].map(({ path, icon: Icon, label, exact }) => (
+          <Link key={path} to={path} className={`mobile-app-tab ${isActive(path, exact) ? 'is-active' : ''}`}>
+            <Icon aria-hidden="true" />
+            <span>{label}</span>
+          </Link>
+        ))}
+        <button type="button" className={`mobile-app-tab ${sidebarOpen ? 'is-active' : ''}`} onClick={() => setSidebarOpen(true)}>
+          <Menu aria-hidden="true" />
+          <span>Mehr</span>
+        </button>
+      </nav>
     </div>
   );
 }

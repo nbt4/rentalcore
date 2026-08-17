@@ -785,6 +785,7 @@ func main() {
 
 	// PWA public routes (no authentication required)
 	r.GET("/manifest.json", func(c *gin.Context) {
+		c.Header("Content-Type", "application/manifest+json")
 		c.File("web/static/manifest.json")
 	})
 
