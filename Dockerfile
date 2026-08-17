@@ -60,9 +60,8 @@ COPY --from=frontend-builder /app/web/dist web/dist
 COPY --from=builder /app/web/static web/static
 COPY --from=builder /app/web/templates web/templates
 COPY --chown=appuser:appgroup migrations/ migrations/
-COPY --chown=appuser:appgroup keys/ keys/
 
-RUN mkdir -p uploads logs archives && \
+RUN mkdir -p uploads logs archives keys && \
     chown -R appuser:appgroup /app
 
 USER appuser
