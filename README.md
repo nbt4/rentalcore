@@ -15,6 +15,7 @@
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
 - **Analytics Dashboard** — Interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
+- **Installierbare Web-App (PWA)** — Responsive Nutzung im Standalone-Modus mit RentalCore-App-Icon; auf iPhone/iPad über Safari → Teilen → „Zum Home-Bildschirm“ installieren
 
 ---
 
