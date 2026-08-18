@@ -48,6 +48,7 @@ func (r *ProductRepository) List(params *models.FilterParams) ([]models.Product,
 	var products []models.Product
 
 	query := r.db.Model(&models.Product{}).
+		Where("lifecycle_status = ?", "active").
 		Preload("Category").
 		Preload("Subcategory").
 		Preload("Subbiercategory").
@@ -89,10 +90,9 @@ func (r *ProductRepository) GetAllCategories() ([]models.Category, error) {
 	return categories, err
 }
 
-
 func (r *ProductRepository) GetDevicesBySubbiercategory(subbiercategoryID string) ([]models.DeviceWithJobInfo, error) {
 	var devices []models.Device
-	
+
 	err := r.db.Model(&models.Device{}).
 		Preload("Product").
 		Preload("Product.Category").
@@ -102,11 +102,11 @@ func (r *ProductRepository) GetDevicesBySubbiercategory(subbiercategoryID string
 		Where("products.subbiercategoryID = ?", subbiercategoryID).
 		Order("devices.serialnumber ASC").
 		Find(&devices).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert to DeviceWithJobInfo format
 	var result []models.DeviceWithJobInfo
 	for _, device := range devices {
@@ -120,20 +120,20 @@ func (r *ProductRepository) GetDevicesBySubbiercategory(subbiercategoryID string
 			jobID = &jobIDUint
 			isAssigned = true
 		}
-		
+
 		result = append(result, models.DeviceWithJobInfo{
 			Device:     device,
 			JobID:      jobID,
 			IsAssigned: isAssigned,
 		})
 	}
-	
+
 	return result, nil
 }
 
 func (r *ProductRepository) GetDevicesBySubcategory(subcategoryID string) ([]models.DeviceWithJobInfo, error) {
 	var devices []models.Device
-	
+
 	err := r.db.Model(&models.Device{}).
 		Preload("Product").
 		Preload("Product.Category").
@@ -143,11 +143,11 @@ func (r *ProductRepository) GetDevicesBySubcategory(subcategoryID string) ([]mod
 		Where("products.subcategoryID = ? AND (products.subbiercategoryID IS NULL OR products.subbiercategoryID = '' OR products.subbiercategoryID = '0')", subcategoryID).
 		Order("devices.serialnumber ASC").
 		Find(&devices).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert to DeviceWithJobInfo format
 	var result []models.DeviceWithJobInfo
 	for _, device := range devices {
@@ -161,21 +161,21 @@ func (r *ProductRepository) GetDevicesBySubcategory(subcategoryID string) ([]mod
 			jobID = &jobIDUint
 			isAssigned = true
 		}
-		
+
 		result = append(result, models.DeviceWithJobInfo{
 			Device:     device,
 			JobID:      jobID,
 			IsAssigned: isAssigned,
 		})
 	}
-	
+
 	return result, nil
 }
 
 func (r *ProductRepository) GetDevicesByCategory(categoryID uint) ([]models.DeviceWithJobInfo, error) {
 	logger.LogInfo("🔍 GetDevicesByCategory: Searching for devices in category %d", categoryID)
 	var devices []models.Device
-	
+
 	err := r.db.Model(&models.Device{}).
 		Preload("Product").
 		Preload("Product.Category").
@@ -185,14 +185,14 @@ func (r *ProductRepository) GetDevicesByCategory(categoryID uint) ([]models.Devi
 		Where("products.categoryID = ?", categoryID).
 		Order("devices.serialnumber ASC").
 		Find(&devices).Error
-	
+
 	if err != nil {
 		logger.LogInfo("❌ GetDevicesByCategory: Database error for category %d: %v", categoryID, err)
 		return nil, err
 	}
-	
+
 	logger.LogInfo("🔍 GetDevicesByCategory: Found %d devices for category %d", len(devices), categoryID)
-	
+
 	// Convert to DeviceWithJobInfo format
 	var result []models.DeviceWithJobInfo
 	for _, device := range devices {
@@ -206,14 +206,14 @@ func (r *ProductRepository) GetDevicesByCategory(categoryID uint) ([]models.Devi
 			jobID = &jobIDUint
 			isAssigned = true
 		}
-		
+
 		result = append(result, models.DeviceWithJobInfo{
 			Device:     device,
 			JobID:      jobID,
 			IsAssigned: isAssigned,
 		})
 	}
-	
+
 	return result, nil
 }
 
@@ -236,7 +236,6 @@ func (r *ProductRepository) GetAllSubcategories(subcategories *[]models.Subcateg
 func (r *ProductRepository) GetAllSubbiercategories(subbiercategories *[]models.Subbiercategory) error {
 	return r.db.Order("name ASC").Find(subbiercategories).Error
 }
-
 
 // GetAllBrands gets all brands
 func (r *ProductRepository) GetAllBrands(brands *[]models.Brand) error {

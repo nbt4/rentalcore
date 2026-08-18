@@ -49,7 +49,7 @@ func (m *ProductMapper) FindBestMatch(productText string) (*models.ProductMappin
 	}
 
 	var products []models.Product
-	if err := m.DB.Find(&products).Error; err != nil {
+	if err := m.DB.Where("lifecycle_status = ?", "active").Find(&products).Error; err != nil {
 		return nil, err
 	}
 
@@ -331,7 +331,7 @@ func (m *ProductMapper) FindSimilarProducts(productText string, limit int) ([]mo
 	}
 
 	var products []models.Product
-	if err := m.DB.Limit(500).Find(&products).Error; err != nil {
+	if err := m.DB.Where("lifecycle_status = ?", "active").Limit(500).Find(&products).Error; err != nil {
 		return nil, err
 	}
 

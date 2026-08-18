@@ -1285,7 +1285,7 @@ func (h *PDFHandler) SearchProducts(c *gin.Context) {
 	var products []models.Product
 	searchPattern := "%" + query + "%"
 
-	if err := h.DB.Where("name LIKE ? OR description LIKE ?", searchPattern, searchPattern).
+	if err := h.DB.Where("lifecycle_status = ? AND (name LIKE ? OR description LIKE ?)", "active", searchPattern, searchPattern).
 		Limit(20).
 		Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
@@ -4234,7 +4234,8 @@ func (h *PDFHandler) DeleteCustomerMappingAPI(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// CreateProductQuick creates a product and optionally N device stubs.
+// CreateProductQuick creates a catalog placeholder from OCR. Physical devices
+// are deliberately created in WarehouseCore after the product is classified.
 // POST /api/v1/pdf/product-quick-create
 // Body: { "name": "...", "description": "...", "category_id": 1, "item_cost_per_day": 25.00, "device_count": 3 }
 func (h *PDFHandler) CreateProductQuick(c *gin.Context) {
@@ -4249,6 +4250,30 @@ func (h *PDFHandler) CreateProductQuick(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Product name is required"})
+		return
+	}
+	if req.ItemCostPerDay < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Daily price cannot be negative"})
+		return
+	}
+	if req.DeviceCount > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Create and classify physical devices in WarehouseCore after creating the product",
+		})
+		return
+	}
+	var duplicateCount int64
+	if err := h.DB.Raw(`SELECT COUNT(*) FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))`, req.Name).Scan(&duplicateCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate product"})
+		return
+	}
+	if duplicateCount > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "A product with this name already exists"})
+		return
+	}
 
 	// Use raw SQL to avoid GORM column-name quoting issues with the products table
 	type productRow struct {
@@ -4260,25 +4285,19 @@ func (h *PDFHandler) CreateProductQuick(c *gin.Context) {
 		desc = &req.Description
 	}
 	if err := h.DB.Raw(
-		"INSERT INTO products (name, categoryid, description, itemcostperday) VALUES (?, ?, ?, ?) RETURNING productid",
+		`INSERT INTO products (
+			name, categoryid, description, itemcostperday, product_type, tracking_mode, lifecycle_status, updated_at
+		) VALUES (?, ?, ?, ?, 'equipment', 'none', 'active', CURRENT_TIMESTAMP) RETURNING productid`,
 		req.Name, req.CategoryID, desc, req.ItemCostPerDay,
 	).Scan(&row).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 		return
 	}
 
-	devicesCreated := 0
-	if req.DeviceCount > 0 && req.DeviceCount <= 500 {
-		for i := 1; i <= req.DeviceCount; i++ {
-			deviceID := fmt.Sprintf("P%d-%04d", row.ProductID, i)
-			h.DB.Exec("INSERT INTO devices (deviceid, productid, status) VALUES (?, ?, 'free')", deviceID, row.ProductID)
-			devicesCreated++
-		}
-	}
 	c.JSON(http.StatusCreated, gin.H{
 		"product_id":      row.ProductID,
 		"name":            req.Name,
-		"devices_created": devicesCreated,
+		"devices_created": 0,
 	})
 }
 

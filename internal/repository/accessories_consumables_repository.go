@@ -92,7 +92,7 @@ func (r *AccessoriesConsumablesRepository) UpdateProductAccessory(pa *models.Pro
 // Get list of all accessory products (is_accessory = true)
 func (r *AccessoriesConsumablesRepository) GetAccessoryProducts() ([]models.Product, error) {
 	var products []models.Product
-	err := r.db.Where("is_accessory = ?", true).
+	err := r.db.Where("is_accessory = ? AND lifecycle_status = ?", true, "active").
 		Preload("CountType").
 		Order("name ASC").
 		Find(&products).Error
@@ -125,7 +125,7 @@ func (r *AccessoriesConsumablesRepository) UpdateProductConsumable(pc *models.Pr
 // Get list of all consumable products (is_consumable = true)
 func (r *AccessoriesConsumablesRepository) GetConsumableProducts() ([]models.Product, error) {
 	var products []models.Product
-	err := r.db.Where("is_consumable = ?", true).
+	err := r.db.Where("is_consumable = ? AND lifecycle_status = ?", true, "active").
 		Preload("CountType").
 		Order("name ASC").
 		Find(&products).Error
@@ -337,7 +337,6 @@ func (r *AccessoriesConsumablesRepository) ScanConsumableIn(jobConsumableID uint
 		return nil
 	})
 }
-
 
 // ============================================================================
 // Barcode Operations

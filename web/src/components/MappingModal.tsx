@@ -97,7 +97,6 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
   const [prodName, setProdName] = useState(prefill);
   const [prodDesc, setProdDesc] = useState('');
   const [prodPrice, setProdPrice] = useState('');
-  const [prodDevices, setProdDevices] = useState('');
 
   // Paket fields
   const [pkgName, setPkgName] = useState(prefill);
@@ -143,7 +142,6 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
             name: prodName.trim(),
             description: prodDesc.trim() || undefined,
             item_cost_per_day: parseFloat(prodPrice) || 0,
-            device_count: parseInt(prodDevices, 10) || 0,
           }),
         });
         const d = await res.json();
@@ -254,16 +252,13 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
                 <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Beschreibung</label>
                 <textarea value={prodDesc} onChange={e => setProdDesc(e.target.value)} rows={2} placeholder="Optionale Beschreibung…" className={inputCls} style={{ resize: 'none' }} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Preis/Tag (€)</label>
-                  <input type="number" min="0" step="0.01" value={prodPrice} onChange={e => setProdPrice(e.target.value)} placeholder="0.00" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Geräte anlegen</label>
-                  <input type="number" min="0" max="500" value={prodDevices} onChange={e => setProdDevices(e.target.value)} placeholder="0" className={inputCls} />
-                </div>
-              </div>
+			  <div>
+				  <label className={labelCls} style={{ color: 'var(--rc-text-secondary)' }}>Preis/Tag (€)</label>
+				  <input type="number" min="0" step="0.01" value={prodPrice} onChange={e => setProdPrice(e.target.value)} placeholder="0.00" className={inputCls} />
+			  </div>
+			  <p className="text-xs" style={{ color: 'var(--rc-text-secondary)' }}>
+				Das Produkt wird als Katalogentwurf angelegt. Kategorie, Verfolgung und physische Geräte werden anschließend in WarehouseCore gepflegt.
+			  </p>
             </>
           )}
 
