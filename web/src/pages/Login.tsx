@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn } from 'lucide-react';
+import { useBranding } from '../hooks/useBranding';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -11,7 +12,8 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const companyName = (window as unknown as { __APP_CONFIG__?: { companyName?: string } }).__APP_CONFIG__?.companyName || 'Tsunami Events';
+  const branding = useBranding();
+  const companyName = branding.companyName;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,11 +34,11 @@ export function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8 flex flex-col items-center gap-2">
           <img
-            src="/static/images/logos/rentalcore_white_side.svg"
-            alt="RentalCore"
-            className="h-24"
+            src={branding.assets.stackedOnDark}
+            alt={branding.productName}
+            className="h-32 max-w-72 object-contain"
           />
-          <p className="text-gray-400">{companyName}</p>
+          {(branding.brandName || companyName !== branding.productName) && <p className="text-gray-400 text-sm">by {branding.brandName || companyName}</p>}
         </div>
 
         <div className="glass-dark p-8 rounded-xl border border-white/10">
@@ -93,7 +95,7 @@ export function Login() {
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">RentalCore © 2025 {companyName}</p>
+          <p className="text-xs text-gray-500">{branding.productName} © {new Date().getFullYear()} {companyName}</p>
         </div>
       </div>
     </div>

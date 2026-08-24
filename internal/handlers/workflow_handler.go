@@ -8,10 +8,13 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	_ "image/jpeg"
 	"image/png"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-barcode-webapp/internal/models"
@@ -20,6 +23,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jung-kurt/gofpdf"
+	commonbranding "github.com/nbt4/cores-common/pkg/branding"
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
@@ -69,7 +73,7 @@ func getDefaultStatusID() *uint {
 func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 	logger.LogInfo("🎯 WORKFLOW HANDLER: ListEquipmentPackages called")
 	user, _ := GetCurrentUser(c)
-	
+
 	params := &models.FilterParams{}
 	if err := c.ShouldBindQuery(params); err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{"error": err.Error(), "user": user})
@@ -87,7 +91,7 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 
 	// Use the same enrichment logic as equipment package handler
 	for i := range packages {
-		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices BEFORE enrichment", 
+		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices BEFORE enrichment",
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices))
 		// Calculate total value and price
 		totalValue := 0.0
@@ -100,7 +104,7 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 				} else if device.Device.Product.ItemCostPerDay != nil {
 					devicePrice = *device.Device.Product.ItemCostPerDay
 				}
-				
+
 				totalValue += devicePrice * float64(device.Quantity)
 				calculatedPrice += devicePrice * float64(device.Quantity)
 			}
@@ -116,7 +120,7 @@ func (h *WorkflowHandler) ListEquipmentPackages(c *gin.Context) {
 		packages[i].TotalValue = totalValue
 		packages[i].CalculatedPrice = calculatedPrice
 		packages[i].DeviceCount = len(packages[i].PackageDevices)
-		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices AFTER enrichment, DeviceCount=%d", 
+		logger.LogInfo("🎯 WORKFLOW: Package %d ('%s') has %d PackageDevices AFTER enrichment, DeviceCount=%d",
 			packages[i].PackageID, packages[i].Name, len(packages[i].PackageDevices), packages[i].DeviceCount)
 	}
 
@@ -150,12 +154,18 @@ func (h *WorkflowHandler) NewEquipmentPackageForm(c *gin.Context) {
 		logger.LogInfo("NewEquipmentPackageForm: Error fetching available devices: %v", err)
 		availableDevices = []models.Device{} // Use empty slice if error
 	}
-	
+
 	logger.LogInfo("NewEquipmentPackageForm: Found %d available devices", len(availableDevices))
 	if len(availableDevices) > 0 {
-		logger.LogInfo("NewEquipmentPackageForm: Sample device: ID=%s, Product=%v", 
-			availableDevices[0].DeviceID, 
-			func() string { if availableDevices[0].Product != nil { return availableDevices[0].Product.Name } else { return "nil" } }())
+		logger.LogInfo("NewEquipmentPackageForm: Sample device: ID=%s, Product=%v",
+			availableDevices[0].DeviceID,
+			func() string {
+				if availableDevices[0].Product != nil {
+					return availableDevices[0].Product.Name
+				} else {
+					return "nil"
+				}
+			}())
 	}
 
 	c.HTML(http.StatusOK, "equipment_package_form.html", gin.H{
@@ -188,28 +198,28 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 	var pkg models.EquipmentPackage
 	pkg.Name = c.PostForm("name")
 	pkg.Description = c.PostForm("description")
-	
+
 	// Parse optional fields
 	if packagePrice := c.PostForm("packagePrice"); packagePrice != "" {
 		if price, err := strconv.ParseFloat(packagePrice, 64); err == nil {
 			pkg.PackagePrice = &price
 		}
 	}
-	
+
 	if discountPercent := c.PostForm("discountPercent"); discountPercent != "" {
 		if discount, err := strconv.ParseFloat(discountPercent, 64); err == nil {
 			pkg.DiscountPercent = discount
 		}
 	}
-	
+
 	if minRentalDays := c.PostForm("minRentalDays"); minRentalDays != "" {
 		if days, err := strconv.Atoi(minRentalDays); err == nil {
 			pkg.MinRentalDays = days
 		}
 	}
-	
+
 	pkg.IsActive = c.PostForm("isActive") == "on"
-	
+
 	// Handle package items
 	packageItemsStr := c.PostForm("packageItems")
 	if packageItemsStr == "" {
@@ -219,38 +229,38 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 
 	// Parse device selections
 	var deviceMappings []models.PackageDevice
-	
+
 	// Parse devices array from form
 	i := 0
 	for {
 		deviceIDKey := "devices[" + strconv.Itoa(i) + "][deviceID]"
 		deviceID := c.PostForm(deviceIDKey)
-		
+
 		if deviceID == "" {
 			break // No more devices
 		}
-		
+
 		// Parse device data
 		quantityKey := "devices[" + strconv.Itoa(i) + "][quantity]"
 		customPriceKey := "devices[" + strconv.Itoa(i) + "][customPrice]"
 		isRequiredKey := "devices[" + strconv.Itoa(i) + "][isRequired]"
 		notesKey := "devices[" + strconv.Itoa(i) + "][notes]"
-		
+
 		quantity, _ := strconv.ParseUint(c.PostForm(quantityKey), 10, 32)
 		if quantity == 0 {
 			quantity = 1
 		}
-		
+
 		var customPrice *float64
 		if customPriceStr := c.PostForm(customPriceKey); customPriceStr != "" {
 			if price, err := strconv.ParseFloat(customPriceStr, 64); err == nil {
 				customPrice = &price
 			}
 		}
-		
+
 		isRequired := c.PostForm(isRequiredKey) == "true"
 		notes := c.PostForm(notesKey)
-		
+
 		deviceMapping := models.PackageDevice{
 			DeviceID:    deviceID,
 			Quantity:    uint(quantity),
@@ -258,7 +268,7 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 			IsRequired:  isRequired,
 			Notes:       notes,
 		}
-		
+
 		deviceMappings = append(deviceMappings, deviceMapping)
 		i++
 	}
@@ -279,7 +289,7 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 
 	// Set creator
 	pkg.CreatedBy = &currentUser.UserID
-	
+
 	// Save to database with device associations
 	if err := h.packageRepo.CreateWithDevices(&pkg, deviceMappings); err != nil {
 		logger.LogInfo("CreateEquipmentPackage: Database error: %v", err)
@@ -294,10 +304,10 @@ func (h *WorkflowHandler) CreateEquipmentPackage(c *gin.Context) {
 		})
 		return
 	}
-	
-	logger.LogInfo("CreateEquipmentPackage: Successfully created package '%s' (ID: %d) with %d devices by user %s", 
+
+	logger.LogInfo("CreateEquipmentPackage: Successfully created package '%s' (ID: %d) with %d devices by user %s",
 		pkg.Name, pkg.PackageID, len(deviceMappings), currentUser.Username)
-	
+
 	// Redirect to packages list on success
 	c.Redirect(http.StatusSeeOther, "/workflow/packages")
 }
@@ -588,7 +598,7 @@ func (h *WorkflowHandler) DebugPackageForm(c *gin.Context) {
 // BulkOperationsForm displays the bulk operations interface
 func (h *WorkflowHandler) BulkOperationsForm(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
 	// TODO: Implement bulk operations interface
 	c.HTML(http.StatusOK, "bulk_operations.html", gin.H{
 		"title": "Bulk Operations",
@@ -618,10 +628,10 @@ func (h *WorkflowHandler) BulkAssignToJob(c *gin.Context) {
 func (h *WorkflowHandler) BulkGenerateQRCodes(c *gin.Context) {
 	// Parse request
 	var request struct {
-		DeviceIDs    []string `json:"deviceIds" form:"deviceIds"`
-		Format       string   `json:"format" form:"format"`       // "pdf" or "zip"
-		LabelFormat  string   `json:"labelFormat" form:"labelFormat"` // "simple" or "detailed"
-		PrintReady   bool     `json:"printReady" form:"printReady"`
+		DeviceIDs   []string `json:"deviceIds" form:"deviceIds"`
+		Format      string   `json:"format" form:"format"`           // "pdf" or "zip"
+		LabelFormat string   `json:"labelFormat" form:"labelFormat"` // "simple" or "detailed"
+		PrintReady  bool     `json:"printReady" form:"printReady"`
 	}
 
 	if err := c.ShouldBind(&request); err != nil {
@@ -703,47 +713,45 @@ func (h *WorkflowHandler) generateDeviceLabelsPDF(devices []models.Device, label
 	// Create PDF document - A4 Portrait for multiple labels
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(10, 10, 10)
-	
-	// Load logo if exists
-	logoPath := "logo.png"
-	logoExists := false
-	if _, err := os.Stat(logoPath); err == nil {
-		logoExists = true
-	}
-	
+
+	// Asset rule: physical labels carry the company identity, not the product
+	// logo. The legacy logo.png remains the fallback for existing installations.
+	logoPath := h.companyPrintLogoPath()
+	logoExists := logoPath != ""
+
 	// Label dimensions - 3x7 grid on A4 (21 labels per page)
 	labelWidth := 60.0
 	labelHeight := 35.0
 	labelsPerRow := 3
 	labelsPerCol := 7
 	labelsPerPage := labelsPerRow * labelsPerCol
-	
+
 	// Process devices in batches per page
 	for pageStart := 0; pageStart < len(devices); pageStart += labelsPerPage {
 		pdf.AddPage()
-		
+
 		// Draw labels for this page
 		for i := 0; i < labelsPerPage && pageStart+i < len(devices); i++ {
 			device := devices[pageStart+i]
-			
+
 			// Calculate position for this label
 			row := i / labelsPerRow
 			col := i % labelsPerRow
-			
+
 			offsetX := 10.0 + float64(col)*labelWidth
 			offsetY := 10.0 + float64(row)*labelHeight
-			
+
 			h.drawSingleLabel(pdf, device, offsetX, offsetY, labelWidth, labelHeight, logoExists, logoPath)
 		}
 	}
-	
+
 	// Output PDF to bytes
 	var buf bytes.Buffer
 	err := pdf.Output(&buf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PDF: %v", err)
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -754,43 +762,43 @@ func (h *WorkflowHandler) drawSingleLabel(pdf *gofpdf.Fpdf, device models.Device
 	if device.Product != nil {
 		productName = device.Product.Name
 	}
-	
+
 	// Draw border around label (optional)
 	pdf.SetDrawColor(200, 200, 200)
 	pdf.Rect(offsetX, offsetY, width, height, "D")
-	
+
 	// 1. Logo at right side, vertically centered (if exists)
 	if logoExists {
 		logoX := offsetX + width - 20
 		logoY := offsetY + (height-8)/2
 		pdf.Image(logoPath, logoX, logoY, 15, 8, false, "", 0, "")
 	}
-	
+
 	// Remove the title - start barcode higher up
-	
+
 	// 3. Main barcode in center area (moved up since no title)
 	barcodeX := offsetX + 2
 	barcodeY := offsetY + 4
 	barcodeWidth := width - 25 // Leave space for logo
 	barcodeHeight := 8.0
-	
+
 	// Generate realistic Code128 barcode pattern
 	pdf.SetDrawColor(0, 0, 0)
 	pdf.SetFillColor(0, 0, 0)
-	
+
 	// Use device ID for barcode data
 	deviceData := device.DeviceID
-	totalBars := len(deviceData) * 8 + 20
+	totalBars := len(deviceData)*8 + 20
 	barWidth := barcodeWidth / float64(totalBars)
-	
+
 	x := barcodeX
-	
+
 	// Start pattern
 	for i := 0; i < 3; i++ {
 		pdf.Rect(x, barcodeY, barWidth, barcodeHeight, "F")
 		x += barWidth * 2
 	}
-	
+
 	// Data encoding
 	for i, char := range deviceData {
 		charVal := int(char) + i
@@ -802,23 +810,23 @@ func (h *WorkflowHandler) drawSingleLabel(pdf *gofpdf.Fpdf, device models.Device
 		}
 		x += barWidth
 	}
-	
+
 	// End pattern
 	for i := 0; i < 3; i++ {
 		pdf.Rect(x, barcodeY, barWidth, barcodeHeight, "F")
 		x += barWidth * 2
 	}
-	
+
 	// 4. Human readable text under barcode
-	pdf.SetXY(barcodeX, barcodeY + barcodeHeight + 1)
+	pdf.SetXY(barcodeX, barcodeY+barcodeHeight+1)
 	pdf.SetFont("Arial", "", 5)
 	pdf.CellFormat(barcodeWidth, 2, device.DeviceID, "", 0, "C", false, 0, "")
-	
+
 	// 5. Device information at bottom
 	pdf.SetXY(offsetX+2, offsetY+height-10)
 	pdf.SetFont("Arial", "B", 7)
 	pdf.Cell(0, 3, device.DeviceID)
-	
+
 	pdf.SetXY(offsetX+2, offsetY+height-7)
 	pdf.SetFont("Arial", "", 6)
 	// Truncate product name if too long
@@ -834,15 +842,15 @@ func (h *WorkflowHandler) generateDeviceLabelsZIP(devices []models.Device, label
 	var buf bytes.Buffer
 	zipWriter := zip.NewWriter(&buf)
 	defer zipWriter.Close()
-	
+
 	// Load logo image if exists
 	var logoImg image.Image
-	logoPath := "logo.png"
+	logoPath := h.companyPrintLogoPath()
 	if logoFile, err := os.Open(logoPath); err == nil {
 		logoImg, _, _ = image.Decode(logoFile)
 		logoFile.Close()
 	}
-	
+
 	// Create complete label PNG for each device
 	for _, device := range devices {
 		// Create PNG image for this device
@@ -851,29 +859,57 @@ func (h *WorkflowHandler) generateDeviceLabelsZIP(devices []models.Device, label
 			logger.LogInfo("Error generating PNG for device %s: %v", device.DeviceID, err)
 			continue
 		}
-		
+
 		// Create PNG filename
 		filename := fmt.Sprintf("label_%s.png", device.DeviceID)
-		
+
 		zipFile, err := zipWriter.Create(filename)
 		if err != nil {
 			logger.LogInfo("Error creating zip file for device %s: %v", device.DeviceID, err)
 			continue
 		}
-		
+
 		_, err = zipFile.Write(pngBytes)
 		if err != nil {
 			logger.LogInfo("Error writing to zip file for device %s: %v", device.DeviceID, err)
 			continue
 		}
 	}
-	
+
 	err := zipWriter.Close()
 	if err != nil {
 		return nil, fmt.Errorf("failed to close ZIP writer: %v", err)
 	}
-	
+
 	return buf.Bytes(), nil
+}
+
+// companyPrintLogoPath resolves browser-facing branding URLs to the shared
+// branding volume. Raster formats are required by both gofpdf and image.Decode.
+func (h *WorkflowHandler) companyPrintLogoPath() string {
+	config := commonbranding.NewService(h.db, "rental").GetConfig()
+	for _, assetURL := range []string{
+		config.CompanyAssets.Print,
+		config.CompanyAssets.HorizontalOnLight,
+	} {
+		path := strings.SplitN(assetURL, "?", 2)[0]
+		if !strings.HasPrefix(path, "/logos/") {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+			continue
+		}
+		localPath := filepath.Join("/var/lib/branding/logos", filepath.Base(path))
+		if info, err := os.Stat(localPath); err == nil && !info.IsDir() {
+			return localPath
+		}
+	}
+
+	if info, err := os.Stat("logo.png"); err == nil && !info.IsDir() {
+		return "logo.png"
+	}
+	return ""
 }
 
 // createLabelPNG creates a complete label as PNG image
@@ -881,17 +917,17 @@ func (h *WorkflowHandler) createLabelPNG(device models.Device, logoImg image.Ima
 	// Label dimensions in pixels (300 DPI equivalent for 100x60mm)
 	width := 1200
 	height := 700
-	
+
 	// Create a new RGBA image
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	
+
 	// Fill with white background
 	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{255, 255, 255, 255}}, image.Point{}, draw.Src)
-	
+
 	// Draw border
 	borderColor := color.RGBA{200, 200, 200, 255}
 	h.drawRect(img, 10, 10, width-20, height-20, borderColor)
-	
+
 	// Generate barcode image
 	barcodeBytes, err := h.barcodeService.GenerateDeviceBarcode(device.DeviceID)
 	if err == nil {
@@ -901,13 +937,13 @@ func (h *WorkflowHandler) createLabelPNG(device models.Device, logoImg image.Ima
 			xdraw.BiLinear.Scale(img, barcodeRect, barcodeImg, barcodeImg.Bounds(), draw.Over, nil)
 		}
 	}
-	
+
 	// Draw logo if available
 	if logoImg != nil {
 		logoRect := image.Rect(900, 200, 1100, 300)
 		xdraw.BiLinear.Scale(img, logoRect, logoImg, logoImg.Bounds(), draw.Over, nil)
 	}
-	
+
 	// Get product name
 	productName := "Unknown Product"
 	if device.Product != nil {
@@ -916,26 +952,26 @@ func (h *WorkflowHandler) createLabelPNG(device models.Device, logoImg image.Ima
 			productName = productName[:27] + "..."
 		}
 	}
-	
+
 	// Draw text
 	textColor := color.RGBA{0, 0, 0, 255}
-	
+
 	// Device ID (large, bold)
 	h.drawText(img, device.DeviceID, 50, 450, 48, textColor)
-	
+
 	// Product name (smaller)
 	h.drawText(img, productName, 50, 520, 32, textColor)
-	
+
 	// Device ID under barcode (small)
 	h.drawText(img, device.DeviceID, 350, 380, 24, textColor)
-	
+
 	// Convert to PNG bytes
 	var buf bytes.Buffer
 	err = png.Encode(&buf, img)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode PNG: %v", err)
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -957,17 +993,16 @@ func (h *WorkflowHandler) drawText(img *image.RGBA, text string, x, y, size int,
 		X: fixed.Int26_6(x * 64),
 		Y: fixed.Int26_6(y * 64),
 	}
-	
+
 	d := &font.Drawer{
 		Dst:  img,
 		Src:  &image.Uniform{c},
 		Face: basicfont.Face7x13, // Simple built-in font
 		Dot:  point,
 	}
-	
+
 	d.DrawString(text)
 }
-
 
 // ================================================================
 // WORKFLOW STATISTICS - PLACEHOLDER METHOD
@@ -977,9 +1012,9 @@ func (h *WorkflowHandler) drawText(img *image.RGBA, text string, x, y, size int,
 func (h *WorkflowHandler) GetWorkflowStats(c *gin.Context) {
 	// TODO: Implement comprehensive workflow statistics
 	stats := map[string]interface{}{
-		"totalTemplates":     0, // TODO: Get from repository
-		"totalPackages":      0, // TODO: Implement packages
-		"templatesThisMonth": 0, // TODO: Calculate from database
+		"totalTemplates":     0,   // TODO: Get from repository
+		"totalPackages":      0,   // TODO: Implement packages
+		"templatesThisMonth": 0,   // TODO: Calculate from database
 		"mostUsedTemplate":   nil, // TODO: Get from repository
 	}
 

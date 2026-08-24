@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	commonbranding "github.com/nbt4/cores-common/pkg/branding"
 	commonhealth "github.com/nbt4/cores-common/pkg/health"
 	"go-barcode-webapp/internal/cache"
 	"go-barcode-webapp/internal/compliance"
@@ -476,6 +478,7 @@ func main() {
 	invoiceHandler := handlers.NewInvoiceHandlerNew(invoiceRepo, customerRepo, jobRepo, deviceRepo, equipmentPackageRepo, productRepo, &cfg.PDF)
 	templateHandler := handlers.NewInvoiceTemplateHandler(invoiceRepo)
 	companyProvider := services.NewCompanyProvider(db.DB)
+	brandingService := services.NewBrandingService(db.DB, "rental")
 	companyHandler := handlers.NewCompanyHandler(db.DB, companyProvider)
 	monitoringHandler := handlers.NewMonitoringHandler(db.DB, monitoring.GlobalErrorTracker, perfMonitor, cacheManager)
 	jobAttachmentHandler := handlers.NewJobAttachmentHandler(jobAttachmentRepo, jobRepo, jobHistoryService)
@@ -751,6 +754,31 @@ func main() {
 		"companyName": func() string {
 			return companyProvider.CompanyName()
 		},
+		"brandingLogo": func(position string) string {
+			branding := brandingService.GetConfig()
+			switch position {
+			case "mark":
+				if branding.Assets.MarkOnDark != "" {
+					return branding.Assets.MarkOnDark
+				}
+				return "/static/images/logos/rentalcore_white_icon.svg"
+			case "favicon":
+				if branding.FaviconPath != "" {
+					return branding.FaviconPath
+				}
+				return "/static/images/logos/rentalcore_black_icon.svg"
+			case "stacked":
+				if branding.Assets.StackedOnDark != "" {
+					return branding.Assets.StackedOnDark
+				}
+				return "/static/images/logos/rentalcore_white_full.svg"
+			default:
+				if branding.Assets.HorizontalOnDark != "" {
+					return branding.Assets.HorizontalOnDark
+				}
+				return "/static/images/logos/rentalcore_white_side.svg"
+			}
+		},
 	}
 	r.SetFuncMap(funcMap)
 	// Load HTML templates only if they exist (legacy support)
@@ -761,7 +789,25 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.70")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.85")))
+	r.GET("/api/v1/branding", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache")
+		c.JSON(http.StatusOK, brandingService.GetConfig())
+	})
+	r.GET("/logos/:filename", func(c *gin.Context) {
+		filename := filepath.Base(c.Param("filename"))
+		if filename == "." || filename == "" || filename != c.Param("filename") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		path := filepath.Join("/var/lib/branding/logos", filename)
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			c.Header("X-Content-Type-Options", "nosniff")
+			c.File(path)
+			return
+		}
+		c.Status(http.StatusNotFound)
+	})
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))
@@ -786,13 +832,24 @@ func main() {
 	// PWA public routes (no authentication required)
 	r.GET("/manifest.json", func(c *gin.Context) {
 		c.Header("Content-Type", "application/manifest+json")
-		c.File("web/static/manifest.json")
+		c.Header("Cache-Control", "no-cache")
+		c.JSON(http.StatusOK, commonbranding.Manifest(brandingService.GetConfig(), commonbranding.ManifestOptions{
+			Name: "RentalCore", StartURL: "/", Scope: "/",
+			FallbackIcon192:  "/static/images/app-icons/icon-192.png",
+			FallbackIcon512:  "/static/images/app-icons/icon-512.png",
+			FallbackMaskable: "/static/images/app-icons/icon-maskable-512.png",
+		}))
 	})
 
 	// Favicon route
 	r.GET("/favicon.ico", func(c *gin.Context) {
-		c.Header("Cache-Control", "public, max-age=86400") // Cache for 24 hours
-		c.File("web/static/images/logos/rentalcore_black_side.png")
+		cfg := brandingService.GetConfig()
+		c.Header("Cache-Control", "no-cache")
+		if cfg.FaviconPath != "" {
+			c.Redirect(http.StatusTemporaryRedirect, cfg.FaviconPath)
+			return
+		}
+		c.File("web/static/images/logos/rentalcore_black_icon.png")
 	})
 
 	// Initialize default roles

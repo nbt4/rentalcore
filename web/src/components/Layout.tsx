@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useBranding } from '../hooks/useBranding';
 
 interface LayoutProps { children: ReactNode }
 
@@ -16,7 +17,8 @@ export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const companyName = (window as unknown as { __APP_CONFIG__?: { companyName?: string } }).__APP_CONFIG__?.companyName || 'Tsunami Events';
+  const branding = useBranding();
+  const companyName = branding.companyName;
 
   useEffect(() => {
     const check = () => {
@@ -101,11 +103,7 @@ export function Layout({ children }: LayoutProps) {
                 ? (sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)
                 : <Menu className="w-5 h-5" />}
             </button>
-            <img
-              src="/static/images/logos/rentalcore_white_side.svg"
-              alt="RentalCore"
-              className="h-12"
-            />
+            {isMobile && <img src={branding.assets.horizontalOnDark} alt={branding.productName} className="h-9 max-w-40 object-contain" />}
           </div>
           <div className="text-sm hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{companyName}</div>
         </div>
@@ -129,10 +127,10 @@ export function Layout({ children }: LayoutProps) {
         >
           <img
             src={sidebarOpen || isMobile
-              ? '/static/images/logos/rentalcore_white_side.svg'
-              : '/static/images/logos/rentalcore_white_icon.svg'}
-            alt="RentalCore"
-            className={sidebarOpen || isMobile ? 'h-12' : 'h-14 mx-auto'}
+              ? branding.assets.horizontalOnDark
+              : branding.assets.markOnDark}
+            alt={branding.productName}
+            className={sidebarOpen || isMobile ? 'h-12 max-w-full object-contain' : 'h-10 w-10 mx-auto object-contain'}
           />
           {isMobile && (
             <button

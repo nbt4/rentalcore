@@ -61,8 +61,8 @@ COPY --from=builder /app/web/static web/static
 COPY --from=builder /app/web/templates web/templates
 COPY --chown=appuser:appgroup migrations/ migrations/
 
-RUN mkdir -p uploads logs archives keys && \
-    chown -R appuser:appgroup /app
+RUN mkdir -p uploads logs archives keys /var/lib/branding/logos && \
+	chown -R appuser:appgroup /app /var/lib/branding
 
 USER appuser
 

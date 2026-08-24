@@ -9,7 +9,7 @@ require (
 	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/makiuchi-d/gozxing v0.1.1
-	github.com/nbt4/cores-common v0.0.0-20260615221321-b29c7ed5ed26
+	github.com/nbt4/cores-common v1.1.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.35.1
