@@ -3420,8 +3420,20 @@ body:has(.rc-sidebar.collapsed) .rc-header {
 }
 
 .rc-sidebar-logo {
+    width: 11rem;
     height: 3rem;
+    object-fit: contain;
     display: block;
+}
+
+.rc-sidebar-logo-full {
+    transform: scale(1.3);
+}
+
+.rc-sidebar-logo-mark {
+    display: none;
+    width: 2.5rem;
+    height: 2.5rem;
 }
 
 @media (min-width: 640px) {
@@ -3537,11 +3549,22 @@ body:has(.rc-sidebar.collapsed) .rc-header {
 
 /* Sidebar Header (Mobile only) */
 .rc-sidebar-header {
+    min-height: 5rem;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
+    justify-content: center;
+    padding: .5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 769px) {
+    .rc-sidebar.collapsed .rc-sidebar-logo-full {
+        display: none;
+    }
+
+    .rc-sidebar.collapsed .rc-sidebar-logo-mark {
+        display: block;
+    }
 }
 
 .rc-sidebar-brand {

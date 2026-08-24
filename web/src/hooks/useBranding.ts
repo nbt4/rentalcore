@@ -36,6 +36,7 @@ function applyDocumentBranding(value: BrandingConfig) {
     let link = document.querySelector<HTMLLinkElement>(selector);
     if (!link) { link = document.createElement('link'); link.rel = rel; document.head.appendChild(link); }
     link.href = href;
+    if (rel === 'icon') link.type = href.toLowerCase().includes('.png') ? 'image/png' : 'image/svg+xml';
   };
   setLink("link[rel~='icon']", 'icon', value.assets.favicon);
   setLink("link[rel='apple-touch-icon']", 'apple-touch-icon', value.assets.appIcon);

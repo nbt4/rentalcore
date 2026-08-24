@@ -174,7 +174,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }

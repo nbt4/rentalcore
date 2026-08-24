@@ -52,9 +52,6 @@
                     <i class="bi bi-list"></i>
                 </button>
 
-                <h1 class="rc-header-brand">
-                    <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-header-logo" />
-                </h1>
             </div>
             <div class="rc-header-right desktop-only">
                 <span class="rc-header-company">{{companyName}}</span>
@@ -67,23 +64,18 @@
 
     <!-- Sidebar -->
     <aside class="rc-sidebar" id="rcSidebar">
-        <!-- Sidebar Header (Mobile only) -->
-        <div class="rc-sidebar-header mobile-only">
+        <!-- Sidebar brand -->
+        <div class="rc-sidebar-header">
             <h2 class="rc-sidebar-brand">
-                <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-sidebar-logo" />
+                <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-sidebar-logo rc-sidebar-logo-full" />
+                <img src="/static/images/logos/rentalcore_white_icon.svg" alt="" class="rc-sidebar-logo rc-sidebar-logo-mark" />
             </h2>
-            <button class="rc-sidebar-close" id="mobileSidebarClose" aria-label="Close menu">
+            <button class="rc-sidebar-close mobile-only" id="mobileSidebarClose" aria-label="Close menu">
                 <i class="bi bi-x"></i>
             </button>
         </div>
 
         <nav class="rc-sidebar-nav">
-            <!-- Cross-navigation to WarehouseCore -->
-            <a href="http://localhost:8082" class="rc-nav-item rc-nav-crosslink" title="Switch to WarehouseCore">
-                <i class="bi bi-box-seam"></i>
-                <span class="rc-nav-label" data-i18n="nav.warehousecore">WarehouseCore</span>
-            </a>
-
             <!-- Main navigation items -->
             <a href="/" class="rc-nav-item {{if eq .currentPage "home"}}active{{end}}">
                 <i class="bi bi-house-door"></i>

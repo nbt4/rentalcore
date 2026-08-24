@@ -395,6 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.rcDesign = new RentalCoreDesign();
 });
 
+// Let two-finger/trackpad scrolling continue over focused numeric fields
+// without accidentally changing their value.
+document.addEventListener('wheel', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.type === 'number' && document.activeElement === target) {
+        target.blur();
+    }
+}, { capture: true, passive: true });
+
 // Utility functions for external use
 window.RentalCore = {
     showNotification: function(message, type = 'info') {

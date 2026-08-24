@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Briefcase, BarChart2, FileText,
-  Menu, X, LogOut, User, ChevronLeft, ChevronRight, Warehouse, LayoutDashboard,
+  Menu, X, LogOut, User, ChevronLeft, ChevronRight, LayoutDashboard,
   Users, Star, MapPin,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -49,18 +49,6 @@ export function Layout({ children }: LayoutProps) {
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
-  const getWarehouseCoreURL = () => {
-    const wDomain = (window as unknown as { __APP_CONFIG__?: { warehouseCoreDomain?: string } }).__APP_CONFIG__?.warehouseCoreDomain;
-    const proto = window.location.protocol;
-    if (wDomain && wDomain !== '') return `${proto}//${wDomain}`;
-    const { hostname, port } = window.location;
-    if (hostname.startsWith('rent.')) return `${proto}//${hostname.replace(/^rent\./, 'warehouse.')}`;
-    if (port === '8081') return `${proto}//${hostname}:8082`;
-    return `${proto}//${hostname}:8082`;
-  };
-
-  const warehouseURL = getWarehouseCoreURL();
-
   const getCoresDashboardURL = () => {
     const { hostname, port, protocol } = window.location;
     if (port === '8081') return `${protocol}//${hostname}:8080`;
@@ -103,7 +91,6 @@ export function Layout({ children }: LayoutProps) {
                 ? (sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />)
                 : <Menu className="w-5 h-5" />}
             </button>
-            {isMobile && <img src={branding.assets.horizontalOnDark} alt={branding.productName} className="h-9 max-w-40 object-contain" />}
           </div>
           <div className="text-sm hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{companyName}</div>
         </div>
@@ -122,7 +109,7 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Sidebar header (mobile + desktop) */}
         <div
-          className="flex items-center justify-between px-4 py-4"
+          className="h-20 flex items-center justify-center px-2 overflow-hidden"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
           <img
@@ -130,12 +117,12 @@ export function Layout({ children }: LayoutProps) {
               ? branding.assets.horizontalOnDark
               : branding.assets.markOnDark}
             alt={branding.productName}
-            className={sidebarOpen || isMobile ? 'h-12 max-w-full object-contain' : 'h-10 w-10 mx-auto object-contain'}
+            className={sidebarOpen || isMobile ? 'h-12 w-44 flex-shrink-0 object-contain scale-[1.3]' : 'h-10 w-10 flex-shrink-0 object-contain'}
           />
           {isMobile && (
             <button
               onClick={close}
-              className="p-2 rounded-lg cursor-pointer"
+              className="absolute right-2 p-2 rounded-lg cursor-pointer"
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}
               aria-label="Navigation schließen"
             >
@@ -156,28 +143,6 @@ export function Layout({ children }: LayoutProps) {
             <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
             {(sidebarOpen || isMobile) && <span>← Cores</span>}
           </a>
-
-          {/* Cross-nav to WarehouseCore */}
-          <a
-            href={warehouseURL}
-            className={`flex items-center rounded-lg transition-all ${
-              sidebarOpen || isMobile ? 'gap-3 px-3 py-2.5' : 'justify-center p-3'
-            }`}
-            style={{
-              background: 'rgba(var(--accent-red-rgb), 0.08)',
-              color: 'var(--accent-red)',
-              border: '1px solid rgba(var(--accent-red-rgb), 0.15)',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-            }}
-            title="Zu WarehouseCore wechseln"
-          >
-            <Warehouse className="w-4 h-4 flex-shrink-0" />
-            {(sidebarOpen || isMobile) && <span>WarehouseCore</span>}
-          </a>
-
-          <div style={{ height: '4px' }} />
 
           {navItems.map(({ path, icon: Icon, label, exact }) => (
             <Link

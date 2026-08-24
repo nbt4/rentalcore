@@ -12,9 +12,6 @@
                 <i class="bi bi-list"></i>
             </button>
 
-            <h1 class="rc-header-brand">
-                <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-header-logo" />
-            </h1>
         </div>
     </div>
 </header>
@@ -24,51 +21,18 @@
 
 <!-- Sidebar -->
 <aside class="rc-sidebar" id="rcSidebar">
-    <!-- Sidebar Header (Mobile only) -->
-    <div class="rc-sidebar-header mobile-only">
+    <!-- Sidebar brand -->
+    <div class="rc-sidebar-header">
         <h2 class="rc-sidebar-brand">
-            <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-sidebar-logo" />
+            <img src="{{brandingLogo "horizontal"}}" alt="RentalCore" class="rc-sidebar-logo rc-sidebar-logo-full" />
+            <img src="/static/images/logos/rentalcore_white_icon.svg" alt="" class="rc-sidebar-logo rc-sidebar-logo-mark" />
         </h2>
-        <button class="rc-sidebar-close" id="mobileSidebarClose" aria-label="Close menu">
+        <button class="rc-sidebar-close mobile-only" id="mobileSidebarClose" aria-label="Close menu">
             <i class="bi bi-x"></i>
         </button>
     </div>
 
     <nav class="rc-sidebar-nav">
-        <!-- Cross-navigation to WarehouseCore -->
-        <a href="" id="storage-nav-link" class="rc-nav-item rc-nav-crosslink" title="Switch to WarehouseCore">
-            <i class="bi bi-box-seam"></i>
-            <span class="rc-nav-label">WarehouseCore</span>
-        </a>
-        <script>
-        (function() {
-            var link = document.getElementById('storage-nav-link');
-            var storageDomain = '{{.WarehouseCoreDomain}}';
-            var protocol = window.location.protocol;
-
-            var targetUrl;
-            if (storageDomain && storageDomain !== '') {
-                targetUrl = protocol + '//' + storageDomain;
-            } else {
-                var hostname = window.location.hostname;
-                var port = window.location.port;
-
-                if (hostname.startsWith('rent.') || hostname.startsWith('rental.')) {
-                    var warehouseHost = hostname.replace(/^rent(al)?\./, 'warehouse.');
-                    targetUrl = protocol + '//' + warehouseHost;
-                } else if (port === '8081') {
-                    targetUrl = protocol + '//' + hostname + ':8082';
-                } else if (port === '') {
-                    targetUrl = protocol + '//' + hostname;
-                } else {
-                    targetUrl = protocol + '//' + hostname + ':8082';
-                }
-            }
-
-            link.href = targetUrl;
-        })();
-        </script>
-
         <!-- Main navigation items -->
         <a href="/" class="rc-nav-item {{if eq .currentPage "home"}}active{{end}}" title="Dashboard">
             <i class="bi bi-house-door"></i>
