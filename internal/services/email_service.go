@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/smtp"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func NewEmailServiceFromCompany(company *models.CompanySettings) *EmailService {
 		FromName:     getStringValue(company.SMTPFromName),
 		UseTLS:       getBoolValue(company.SMTPUseTLS, true),
 	}
-	
+
 	return &EmailService{
 		config: emailConfig,
 	}
@@ -43,13 +44,14 @@ func NewEmailServiceFromCompany(company *models.CompanySettings) *EmailService {
 
 // EmailData represents data for email templates
 type EmailData struct {
-	Invoice      *models.Invoice
-	Company      *models.CompanySettings
-	Customer     *models.Customer
-	Settings     *models.InvoiceSettings
-	InvoiceURL   string
-	PaymentURL   string
-	SupportEmail string
+	Invoice        *models.Invoice
+	Company        *models.CompanySettings
+	Customer       *models.Customer
+	Settings       *models.InvoiceSettings
+	InvoiceURL     string
+	PaymentURL     string
+	SupportEmail   string
+	CompanyLogoURL string
 }
 
 // SendInvoiceEmail sends an invoice via email
@@ -88,7 +90,7 @@ func (s *EmailService) SendInvoiceEmail(emailData *EmailData, pdfAttachment []by
 // SendTestEmail sends a test email
 func (s *EmailService) SendTestEmail(toEmail string, testData *EmailData) error {
 	subject := "Test Email from RentalCore Invoice System"
-	
+
 	htmlBody := `
 <!DOCTYPE html>
 <html>
@@ -148,10 +150,10 @@ RentalCore - The core of your rental business
 func (s *EmailService) generateEmailSubject(data *EmailData) (string, error) {
 	// Default template
 	subjectTemplate := "Invoice {{.Invoice.InvoiceNumber}} from {{.Company.CompanyName}}"
-	
+
 	// Try to use custom template if available
 	// This would typically come from invoice settings
-	
+
 	tmpl, err := template.New("subject").Parse(subjectTemplate)
 	if err != nil {
 		return "", err
@@ -167,6 +169,9 @@ func (s *EmailService) generateEmailSubject(data *EmailData) (string, error) {
 
 // generateEmailHTML creates the HTML email body
 func (s *EmailService) generateEmailHTML(data *EmailData) (string, error) {
+	if data.Company != nil {
+		data.CompanyLogoURL = publicEmailAssetURL(data.Company.LogoPath)
+	}
 	htmlTemplate := `
 <!DOCTYPE html>
 <html>
@@ -195,6 +200,7 @@ func (s *EmailService) generateEmailHTML(data *EmailData) (string, error) {
         {{end}}
         
         <div class="header">
+            {{if .CompanyLogoURL}}<img src="{{.CompanyLogoURL}}" alt="{{.Company.CompanyName}}" style="display:block;max-width:240px;max-height:80px;margin:0 auto 12px;">{{end}}
             <h1>{{.Company.CompanyName}}</h1>
             <p>Invoice {{.Invoice.InvoiceNumber}}</p>
         </div>
@@ -303,6 +309,21 @@ func (s *EmailService) generateEmailHTML(data *EmailData) (string, error) {
 	return buf.String(), nil
 }
 
+func publicEmailAssetURL(assetPath *string) string {
+	if assetPath == nil || strings.TrimSpace(*assetPath) == "" {
+		return ""
+	}
+	path := strings.TrimSpace(*assetPath)
+	if strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "http://") {
+		return path
+	}
+	baseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("APP_BASE_URL")), "/")
+	if baseURL == "" {
+		return ""
+	}
+	return baseURL + "/" + strings.TrimLeft(path, "/")
+}
+
 // generateEmailText creates the plain text email body
 func (s *EmailService) generateEmailText(data *EmailData) (string, error) {
 	textTemplate := `
@@ -374,7 +395,7 @@ func (s *EmailService) sendEmail(to []string, subject, textBody, htmlBody string
 
 	// Create SMTP connection
 	addr := fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort)
-	
+
 	// Setup authentication
 	var auth smtp.Auth
 	if s.config.SMTPUsername != "" && s.config.SMTPPassword != "" {
@@ -439,7 +460,7 @@ func (s *EmailService) sendEmail(to []string, subject, textBody, htmlBody string
 // sendEmailPlain sends email without TLS (fallback)
 func (s *EmailService) sendEmailPlain(to []string, subject, textBody, htmlBody string, attachment []byte, attachmentName string) error {
 	message := s.createMIMEMessage(to, subject, textBody, htmlBody, attachment, attachmentName)
-	
+
 	var auth smtp.Auth
 	if s.config.SMTPUsername != "" && s.config.SMTPPassword != "" {
 		auth = smtp.PlainAuth("", s.config.SMTPUsername, s.config.SMTPPassword, s.config.SMTPHost)
@@ -452,51 +473,51 @@ func (s *EmailService) sendEmailPlain(to []string, subject, textBody, htmlBody s
 // createMIMEMessage creates a MIME message with optional attachment
 func (s *EmailService) createMIMEMessage(to []string, subject, textBody, htmlBody string, attachment []byte, attachmentName string) string {
 	boundary := "boundary-" + strconv.FormatInt(time.Now().UnixNano(), 16)
-	
+
 	var message strings.Builder
-	
+
 	// Headers
 	message.WriteString(fmt.Sprintf("From: %s <%s>\r\n", s.config.FromName, s.config.FromEmail))
 	message.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(to, ", ")))
 	message.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	message.WriteString("MIME-Version: 1.0\r\n")
-	
+
 	if attachment != nil {
 		message.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=%s\r\n", boundary))
 	} else {
 		message.WriteString("Content-Type: multipart/alternative; boundary=" + boundary + "\r\n")
 	}
 	message.WriteString("\r\n")
-	
+
 	// Text part
 	message.WriteString(fmt.Sprintf("--%s\r\n", boundary))
 	message.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
 	message.WriteString("Content-Transfer-Encoding: 7bit\r\n\r\n")
 	message.WriteString(textBody)
 	message.WriteString("\r\n\r\n")
-	
+
 	// HTML part
 	message.WriteString(fmt.Sprintf("--%s\r\n", boundary))
 	message.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	message.WriteString("Content-Transfer-Encoding: 7bit\r\n\r\n")
 	message.WriteString(htmlBody)
 	message.WriteString("\r\n\r\n")
-	
+
 	// Attachment
 	if attachment != nil && attachmentName != "" {
 		message.WriteString(fmt.Sprintf("--%s\r\n", boundary))
 		message.WriteString(fmt.Sprintf("Content-Type: application/pdf; name=\"%s\"\r\n", attachmentName))
 		message.WriteString("Content-Transfer-Encoding: base64\r\n")
 		message.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n\r\n", attachmentName))
-		
+
 		// Encode attachment as base64
 		encoded := s.encodeBase64(attachment)
 		message.WriteString(encoded)
 		message.WriteString("\r\n")
 	}
-	
+
 	message.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
-	
+
 	return message.String()
 }
 
@@ -505,7 +526,7 @@ func (s *EmailService) encodeBase64(data []byte) string {
 	// Simple base64 encoding with line breaks every 76 characters
 	encoded := ""
 	const base64Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-	
+
 	for i := 0; i < len(data); i += 3 {
 		var b1, b2, b3 byte
 		b1 = data[i]
@@ -515,7 +536,7 @@ func (s *EmailService) encodeBase64(data []byte) string {
 		if i+2 < len(data) {
 			b3 = data[i+2]
 		}
-		
+
 		encoded += string(base64Table[b1>>2])
 		encoded += string(base64Table[((b1&0x03)<<4)|(b2>>4)])
 		if i+1 < len(data) {
@@ -528,12 +549,12 @@ func (s *EmailService) encodeBase64(data []byte) string {
 		} else {
 			encoded += "="
 		}
-		
+
 		if len(encoded)%76 == 0 {
 			encoded += "\r\n"
 		}
 	}
-	
+
 	return encoded
 }
 
@@ -558,4 +579,3 @@ func getBoolValue(ptr *bool, defaultValue bool) bool {
 	}
 	return *ptr
 }
-
