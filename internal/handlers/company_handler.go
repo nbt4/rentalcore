@@ -300,8 +300,9 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form with 2MB max memory
-	if err := c.Request.ParseMultipartForm(2 << 20); err != nil {
+	// This is an in-memory threshold, not an upload-size limit. Larger files
+	// are transparently buffered to a temporary file by net/http.
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form data"})
 		return
 	}
@@ -317,12 +318,6 @@ func (h *CompanyHandler) UploadCompanyLogo(c *gin.Context) {
 	contentType := header.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "image/") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image"})
-		return
-	}
-
-	// Validate file size (max 2MB)
-	if header.Size > 2<<20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File size must be less than 2MB"})
 		return
 	}
 
