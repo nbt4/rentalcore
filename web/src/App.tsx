@@ -11,10 +11,11 @@ import { DocumentsPage } from './pages/DocumentsPage';
 import { SkillsPage } from './pages/SkillsPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { VenuesPage } from './pages/VenuesPage';
+import { appBasePath } from './lib/app-paths';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={appBasePath || undefined}>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />

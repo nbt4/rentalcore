@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, CheckCircle, AlertCircle, Search, ChevronRight, ArrowLeft, Package, Box, Building2, UserRound, Pencil, Wrench } from 'lucide-react';
+import { appPath } from '../lib/app-paths';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -122,7 +123,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
 
   const searchSuppliers = async (q: string) => {
     if (q.trim().length < 2) { setSupplierResults([]); return; }
-    const res = await fetch(`/api/pdf/customers/search?q=${encodeURIComponent(q)}&role=supplier`, { credentials: 'include' });
+    const res = await fetch(appPath(`/api/pdf/customers/search?q=${encodeURIComponent(q)}&role=supplier`), { credentials: 'include' });
     if (!res.ok) return;
     const d = await res.json();
     setSupplierResults((d.customers || []).map((c: Record<string, unknown>) => ({
@@ -136,7 +137,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
     try {
       if (tab === 'product') {
         if (!prodName.trim()) { setErr('Name ist erforderlich.'); return; }
-        const res = await fetch('/api/pdf/product-quick-create', {
+        const res = await fetch(appPath('/api/pdf/product-quick-create'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             name: prodName.trim(),
@@ -151,7 +152,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
 
       } else if (tab === 'package') {
         if (!pkgName.trim()) { setErr('Name ist erforderlich.'); return; }
-        const res = await fetch('/api/pdf/package-quick-create', {
+        const res = await fetch(appPath('/api/pdf/package-quick-create'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ name: pkgName.trim(), description: pkgDesc.trim() || undefined, code: pkgCode.trim() || undefined }),
         });
@@ -162,7 +163,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
       } else if (tab === 'rental') {
         if (!rentName.trim()) { setErr('Name ist erforderlich.'); return; }
         if (!selectedSupplier) { setErr('Lieferant ist erforderlich.'); return; }
-        const res = await fetch('/api/pdf/rental-equipment-quick-create', {
+        const res = await fetch(appPath('/api/pdf/rental-equipment-quick-create'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             name: rentName.trim(),
@@ -180,7 +181,7 @@ function FullCreateModal({ prefill, defaultTab = 'product', onCreated, onClose }
         onCreated({ id: d.rental_equipment_id, name: d.name, type: 'rental', sub: 'Mietprodukt' });
       } else if (tab === 'service') {
         if (!svcName.trim()) { setErr('Name ist erforderlich.'); return; }
-        const res = await fetch('/api/pdf/service-items', {
+        const res = await fetch(appPath('/api/pdf/service-items'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             name: svcName.trim(),
@@ -430,7 +431,7 @@ function CustomerPicker({ extractionId, currentName, currentId, onChanged }: Cus
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/pdf/customers/search?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+        const res = await fetch(appPath(`/api/pdf/customers/search?q=${encodeURIComponent(q)}`), { credentials: 'include' });
         const d = res.ok ? await res.json() : {};
         setResults((d.customers || []).slice(0, 8));
       } finally { setLoading(false); }
@@ -439,7 +440,7 @@ function CustomerPicker({ extractionId, currentName, currentId, onChanged }: Cus
 
   const select = async (customer: CustomerResult) => {
     setOpen(false);
-    await fetch(`/api/pdf/customer-map/${extractionId}`, {
+    await fetch(appPath(`/api/pdf/customer-map/${extractionId}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -525,10 +526,10 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
     timer.current = setTimeout(async () => {
       try {
         const [pRes, pkgRes, reRes, sRes] = await Promise.all([
-          fetch(`/api/pdf/products/search?q=${encodeURIComponent(q)}&limit=5`, { credentials: 'include' }),
-          fetch(`/api/pdf/packages/search?q=${encodeURIComponent(q)}&limit=3`, { credentials: 'include' }),
-          fetch(`/api/pdf/rental-equipment/search?q=${encodeURIComponent(q)}`, { credentials: 'include' }),
-          fetch(`/api/pdf/service-items/search?q=${encodeURIComponent(q)}`, { credentials: 'include' }),
+          fetch(appPath(`/api/pdf/products/search?q=${encodeURIComponent(q)}&limit=5`), { credentials: 'include' }),
+          fetch(appPath(`/api/pdf/packages/search?q=${encodeURIComponent(q)}&limit=3`), { credentials: 'include' }),
+          fetch(appPath(`/api/pdf/rental-equipment/search?q=${encodeURIComponent(q)}`), { credentials: 'include' }),
+          fetch(appPath(`/api/pdf/service-items/search?q=${encodeURIComponent(q)}`), { credentials: 'include' }),
         ]);
         const pd = pRes.ok ? await pRes.json() : {};
         const pkd = pkgRes.ok ? await pkgRes.json() : {};
@@ -645,7 +646,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
           await new Promise((r) => setTimeout(r, 500));
           if (cancelled) return;
 
-          const res = await fetch(`/api/pdf/extraction/${uploadId}`, {
+          const res = await fetch(appPath(`/api/pdf/extraction/${uploadId}`), {
             credentials: 'include',
             signal: controller.signal,
           });
@@ -670,8 +671,8 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
           end_date: extraction.end_date || undefined,
           document_date: extraction.document_date || undefined,
         });
-        await fetch(`/api/pdf/auto-map/${extraction.extraction_id}`, { method: 'POST', credentials: 'include' });
-        const res2 = await fetch(`/api/pdf/extraction/${uploadId}`, { credentials: 'include' });
+        await fetch(appPath(`/api/pdf/auto-map/${extraction.extraction_id}`), { method: 'POST', credentials: 'include' });
+        const res2 = await fetch(appPath(`/api/pdf/extraction/${uploadId}`), { credentials: 'include' });
         if (!res2.ok) throw new Error('Fehler beim Laden der Items');
         const final = await res2.json();
         if (cancelled) return;
@@ -708,7 +709,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         : result.type === 'service'
         ? { service_item_id: result.id, status: 'user_confirmed' }
         : { product_id: result.id, status: 'user_confirmed' };
-      const res = await fetch(`/api/pdf/items/${item.item_id}/mapping`, {
+      const res = await fetch(appPath(`/api/pdf/items/${item.item_id}/mapping`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -736,7 +737,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
   const handleProceedToPreview = async () => {
     if (!extractionId) return;
     try {
-      const res = await fetch(`/api/pdf/extractions/${extractionId}/preview`, { credentials: 'include' });
+      const res = await fetch(appPath(`/api/pdf/extractions/${extractionId}/preview`), { credentials: 'include' });
       if (!res.ok) throw new Error('Vorschau konnte nicht geladen werden');
       const data = await res.json();
       setPreviewItems(data.items || []);
@@ -751,7 +752,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
   const handleConfirm = async () => {
     if (!extractionId) return;
     try {
-      const res = await fetch(`/api/pdf/extractions/${extractionId}/finalize`, {
+      const res = await fetch(appPath(`/api/pdf/extractions/${extractionId}/finalize`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

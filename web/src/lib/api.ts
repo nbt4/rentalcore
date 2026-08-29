@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { appPath } from './app-paths';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = appPath('/api/v1');
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

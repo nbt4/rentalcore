@@ -11,6 +11,7 @@ import MappingModal from '../components/MappingModal';
 import type { MappedItem, ExtractionMeta } from '../components/MappingModal';
 import JobPositionsPanel from '../components/JobPositionsPanel';
 import { toast } from '../lib/toast';
+import { appPath } from '../lib/app-paths';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
@@ -555,7 +556,7 @@ function PdfImportBanner({ onUploadReady }: {
     const fd = new FormData();
     fd.append('pdf', file);
     try {
-      const up = await fetch('/api/pdf/upload', { method: 'POST', body: fd, credentials: 'include' });
+      const up = await fetch(appPath('/api/pdf/upload'), { method: 'POST', body: fd, credentials: 'include' });
       const upData = await up.json();
       if (!up.ok || !upData.upload_id) throw new Error(upData.error || 'Upload fehlgeschlagen');
       setOpen(false);

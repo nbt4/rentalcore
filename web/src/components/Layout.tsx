@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../hooks/useBranding';
 import { suiteGreetingName } from '../lib/cores-design';
+import { appBasePath } from '../lib/app-paths';
 
 interface LayoutProps { children: ReactNode }
 
@@ -51,6 +52,7 @@ export function Layout({ children }: LayoutProps) {
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
   const getCoresDashboardURL = () => {
+    if (appBasePath) return `${window.location.origin}/`;
     const { hostname, port, protocol } = window.location;
     if (port === '8081') return `${protocol}//${hostname}:8080`;
     if (hostname.startsWith('rent.')) return `${protocol}//${hostname.replace(/^rent\./, 'cores.')}`;

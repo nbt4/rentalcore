@@ -184,6 +184,13 @@ body {
   min-height: 100dvh;
 }
 
+html.app-standalone,
+html.app-standalone body {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior: none;
+}
+
 button,
 a,
 input,

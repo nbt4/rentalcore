@@ -22,7 +22,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
 - **Analytics Dashboard** — Interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
-- **Installierbare Mobile-App (PWA)** — Standalone-Modus mit RentalCore-App-Icon, Safe-Area-Unterstützung, großen Touch-Zielen, App-Tabbar und Drawer-Navigation; auf iPhone/iPad über Safari → Teilen → „Zum Home-Bildschirm“ installieren
+- **Installierbare Mobile-App (PWA)** — Standalone-Modus mit RentalCore-App-Icon, Safe-Area-Unterstützung, großen Touch-Zielen, App-Tabbar und Drawer-Navigation; eigenständig installierbar und zusätzlich unter `/rental/` nahtlos innerhalb der installierten Cores-PWA nutzbar
 - **Zentrales Branding** — Semantische RentalCore-Logos in Sidebar, Login, Favicon und PWA; Rechnungen, HTML-E-Mails und Geräteetiketten verwenden getrennt davon die zentrale Unternehmensmarke
 - **Einheitliche Navigation** — Ein-/ausklappbare Sidebar mit normierter Logo-/Symbolfläche, logofreier App-Header und zentralem Cores-Link ohne direkten WarehouseCore-Umschalter
 

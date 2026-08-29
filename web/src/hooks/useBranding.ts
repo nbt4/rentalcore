@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { appAssetPath, appPath } from '../lib/app-paths';
 
 export interface BrandingAssets {
   markOnDark: string; markOnLight: string;
@@ -26,6 +27,17 @@ const defaults: BrandingConfig = {
   loginLogo: '/static/images/logos/rentalcore_white_full.svg', faviconPath: '/static/images/logos/rentalcore_black_icon.svg',
 };
 
+function mountedAssets(assets: BrandingAssets): BrandingAssets {
+  return Object.fromEntries(
+    Object.entries(assets).map(([key, value]) => [key, appAssetPath(value)]),
+  ) as unknown as BrandingAssets;
+}
+
+defaults.assets = mountedAssets(defaults.assets);
+defaults.sidebarLogo = appAssetPath(defaults.sidebarLogo);
+defaults.loginLogo = appAssetPath(defaults.loginLogo);
+defaults.faviconPath = appAssetPath(defaults.faviconPath);
+
 let cached = defaults;
 let started = false;
 const listeners = new Set<(value: BrandingConfig) => void>();
@@ -44,13 +56,16 @@ function applyDocumentBranding(value: BrandingConfig) {
 
 async function refresh() {
   try {
-    const response = await fetch('/api/v1/branding', { cache: 'no-store' });
+    const response = await fetch(appPath('/api/v1/branding'), { cache: 'no-store' });
     if (!response.ok) return;
     const raw = await response.json();
-    const assets = { ...defaults.assets, ...(raw.assets || {}) };
+    const assets = mountedAssets({ ...defaults.assets, ...(raw.assets || {}) });
     cached = {
       productName: raw.productName || defaults.productName, companyName: raw.companyName || defaults.companyName,
-      brandName: raw.brandName || '', assets, companyAssets: raw.companyAssets || {},
+      brandName: raw.brandName || '', assets,
+      companyAssets: Object.fromEntries(
+        Object.entries(raw.companyAssets || {}).map(([key, value]) => [key, typeof value === 'string' ? appAssetPath(value) : value]),
+      ),
       sidebarLogo: assets.horizontalOnDark, loginLogo: assets.stackedOnDark || assets.horizontalOnDark,
       faviconPath: assets.favicon,
     };

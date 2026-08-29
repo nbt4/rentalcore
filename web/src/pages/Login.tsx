@@ -17,11 +17,13 @@ export function Login() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     setError('');
     setLoading(true);
     try {
       await login(username, password);
-      navigate('/');
+      navigate('/', { replace: true });
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0 }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login fehlgeschlagen');
     } finally {

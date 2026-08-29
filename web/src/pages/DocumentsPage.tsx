@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileText, Download, Trash2, RefreshCw, Upload, Eye, X, Check } from 'lucide-react';
 import { api } from '../lib/api';
 import { toast } from '../lib/toast';
+import { appPath } from '../lib/app-paths';
 
 interface Document {
   documentID: number;
@@ -56,7 +57,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
       fd.append('entityID', '0');
       fd.append('documentType', docType);
       fd.append('description', description);
-      await fetch('/documents/upload', {
+      await fetch(appPath('/documents/upload'), {
         method: 'POST',
         credentials: 'include',
         body: fd,
@@ -185,7 +186,7 @@ export function DocumentsPage() {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0 ml-4">
                   <a
-                    href={`/documents/${doc.documentID}/download`}
+                    href={appPath(`/documents/${doc.documentID}/download`)}
                     target="_blank"
                     rel="noreferrer"
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
@@ -194,7 +195,7 @@ export function DocumentsPage() {
                     <Eye className="w-4 h-4" />
                   </a>
                   <a
-                    href={`/documents/${doc.documentID}/download`}
+                    href={appPath(`/documents/${doc.documentID}/download`)}
                     download
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
                     title="Herunterladen"

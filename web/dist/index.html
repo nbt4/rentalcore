@@ -2,11 +2,28 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/assets/rentalcore_black_icon-Ct4vm28u.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/rental/static/images/logos/rentalcore_black_icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      (() => {
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+        const mobile = window.matchMedia('(max-width: 767px) and (pointer: coarse)').matches
+        if (!standalone || !mobile) return
+        const viewport = document.querySelector('meta[name="viewport"]')
+        viewport?.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
+      })()
+    </script>
+    <meta name="theme-color" content="#0b0b0b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RentalCore" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="/rental/manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/rental/static/images/app-icons/icon-180.png" />
     <title>RentalCore - Auftragsmanagement</title>
-    <script type="module" crossorigin src="/assets/index-C8xm3cmP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-VLVLaLeD.css">
+    <script type="module" crossorigin src="/rental/assets/index-Cz_gR6PA.js"></script>
+    <link rel="stylesheet" crossorigin href="/rental/assets/index-BA0Qo4za.css">
   </head>
   <body>
     <div id="root"></div>

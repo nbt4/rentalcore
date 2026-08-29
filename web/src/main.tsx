@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './cores-theme.css'
 import App from './App'
+import { appBasePath, appPath } from './lib/app-paths'
 
 document.addEventListener('wheel', (event) => {
   const target = event.target
@@ -17,7 +18,10 @@ document.documentElement.classList.toggle('app-standalone', isStandalone)
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js?v=3', { scope: '/', updateViaCache: 'none' }).catch((error: unknown) => {
+    void navigator.serviceWorker.register(appPath('/sw.js?v=4'), {
+      scope: `${appBasePath || ''}/`,
+      updateViaCache: 'none',
+    }).catch((error: unknown) => {
       console.error('RentalCore service worker registration failed:', error)
     })
   })
