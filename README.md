@@ -1,5 +1,11 @@
 # RentalCore
 
+## Einheitliches Cores Designsystem
+
+RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbindlichen Designvertrag aus [`nbt4/cores`](https://github.com/nbt4/cores/blob/main/docs/DESIGN_SYSTEM.md). Palette, Inter-Typografie, Größenleiter, 256/80-px-Sidebar, Tabellen, Eingaben, Selects, Dropdowns, Scrollbars und Dashboard-Hierarchie sind mit allen anderen Cores identisch.
+
+`web/src/cores-theme.css`, `web/src/lib/cores-design.ts` und `web/static/css/cores-theme.css` sind generiert und dürfen nicht direkt geändert werden. Änderungen erfolgen in `cores/theme/` und werden mit den Umbrella-Skripten synchronisiert und geprüft.
+
 **Kernservice für Vermietungsmanagement im Cores-Ökosystem — Auftragsverwaltung, Kundendaten, Gerätezuweisung, Barcode-Generierung und automatisierte OCR-Belegverarbeitung.**
 
 ---

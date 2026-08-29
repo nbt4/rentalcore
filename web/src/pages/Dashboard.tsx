@@ -18,6 +18,7 @@ import { api } from '../lib/api';
 import type { Customer, Job } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../lib/toast';
+import { suiteDateLabel, suiteGreeting } from '../lib/cores-design';
 
 const DAY_IN_MS = 86_400_000;
 const FINISHED_STATUSES = [
@@ -151,6 +152,9 @@ export function Dashboard() {
         return bCreated - aCreated;
       })
       .slice(0, 6);
+    const workQueue = [...overdue, ...happeningNow, ...recentJobs]
+      .filter((job, index, allJobs) => allJobs.findIndex((candidate) => candidate.jobID === job.jobID) === index)
+      .slice(0, 6);
     const schedule = [...activeJobs]
       .filter((job) => job.startDate || job.endDate)
       .sort((a, b) => {
@@ -165,15 +169,10 @@ export function Dashboard() {
       })
       .slice(0, 5);
 
-    return { today, activeJobs, happeningNow, overdue, upcoming, monthValue, recentJobs, schedule };
+    return { today, activeJobs, happeningNow, overdue, upcoming, monthValue, workQueue, schedule };
   }, [jobs]);
 
-  const firstName = user?.FirstName?.trim() || user?.Username || '';
-  const hour = new Date().getHours();
-  const greeting = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
-  const todayLabel = new Intl.DateTimeFormat('de-DE', {
-    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
-  }).format(new Date());
+  const todayLabel = suiteDateLabel();
 
   const statCards = [
     {
@@ -198,31 +197,26 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6 pb-4">
-      <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.025] to-red-950/20 p-5 sm:p-7">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-accent-red/10 blur-3xl" />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-2 text-sm capitalize text-gray-400">{todayLabel}</p>
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {greeting}{firstName ? `, ${firstName}` : ''}.
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-gray-400">
+    <div className="suite-dashboard">
+      <header className="suite-dashboard-header">
+        <div className="suite-dashboard-heading">
+            <p className="suite-dashboard-eyebrow">{todayLabel}</p>
+            <h1 className="suite-dashboard-title">{suiteGreeting(user)}</h1>
+            <p className="suite-dashboard-subtitle">
               {dashboard.happeningNow.length > 0
                 ? `${dashboard.happeningNow.length} ${dashboard.happeningNow.length === 1 ? 'Job läuft' : 'Jobs laufen'} heute. Behalte Termine und neue Aufträge direkt im Blick.`
                 : 'Heute läuft kein terminierter Job. Nutze die Übersicht für die nächsten Aufträge.'}
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/jobs/new" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent-red px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-950/30 transition hover:bg-accent-red/80">
+        </div>
+          <div className="suite-dashboard-actions">
+            <Link to="/jobs/new" className="suite-button suite-button--primary">
               <Plus className="h-4 w-4" /> Neuer Job
             </Link>
-            <Link to="/jobs" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-gray-200 transition hover:border-white/20 hover:bg-white/10">
+            <Link to="/jobs" className="suite-button">
               <Search className="h-4 w-4" /> Jobs durchsuchen
             </Link>
           </div>
-        </div>
-      </section>
+      </header>
 
       {loadFailed && !loading && (
         <div className="flex flex-col gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100 sm:flex-row sm:items-center sm:justify-between" role="alert">
@@ -233,7 +227,7 @@ export function Dashboard() {
         </div>
       )}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="suite-kpi-grid">
         {statCards.map(({ label, value, detail, icon: Icon, iconClasses, link }) => (
           <Link key={label} to={link} className="group min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06] sm:p-5">
             {loading ? (
@@ -258,8 +252,8 @@ export function Dashboard() {
         <section className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5">
             <div>
-              <h2 className="font-semibold text-white">Zuletzt angelegt</h2>
-              <p className="mt-0.5 text-xs text-gray-500">Die neuesten Aufträge</p>
+              <h2 className="font-semibold text-white">Jetzt bearbeiten</h2>
+              <p className="mt-0.5 text-xs text-gray-500">Überfällige, laufende und zuletzt angelegte Aufträge</p>
             </div>
             <Link to="/jobs" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-gray-300 hover:bg-white/5 hover:text-white">
               Alle Jobs <ArrowRight className="h-4 w-4" />
@@ -267,7 +261,7 @@ export function Dashboard() {
           </div>
           {loading ? (
             <div className="divide-y divide-white/5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="animate-pulse px-5 py-4"><div className="h-4 w-1/3 rounded bg-white/10" /><div className="mt-2 h-3 w-2/3 rounded bg-white/5" /></div>)}</div>
-          ) : dashboard.recentJobs.length === 0 ? (
+          ) : dashboard.workQueue.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-14 text-center">
               <span className="mb-3 rounded-xl bg-white/5 p-3 text-gray-500"><Briefcase className="h-6 w-6" /></span>
               <p className="font-medium text-gray-300">Noch keine Jobs vorhanden</p>
@@ -276,7 +270,7 @@ export function Dashboard() {
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {dashboard.recentJobs.map((job) => (
+              {dashboard.workQueue.map((job) => (
                 <Link key={job.jobID} to={`/jobs/${job.jobID}`} className="group flex min-w-0 items-center gap-3 px-4 py-3.5 transition hover:bg-white/[0.045] sm:px-5">
                   <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 text-gray-400 sm:flex"><Briefcase className="h-4 w-4" /></span>
                   <div className="min-w-0 flex-1">
@@ -331,7 +325,7 @@ export function Dashboard() {
           </section>
 
           <section className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-            <h2 className="px-1 pb-3 text-sm font-semibold text-white">Direktzugriff</h2>
+            <h2 className="px-1 pb-3 text-sm font-semibold text-white">Schnellstart</h2>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { to: '/analytics', label: 'Analyse', icon: BarChart3 },

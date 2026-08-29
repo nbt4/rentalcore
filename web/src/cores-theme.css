@@ -1,0 +1,1088 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/*
+ * =============================================================================
+ * Tsunami Events Design System — Unified CSS Theme
+ * =============================================================================
+ * This file defines ALL design tokens for the Tsunami Events project cluster:
+ *   - Cores Dashboard (Suite-Einstieg und Administration)
+ *   - RentalCore   (Auftragsmanagement)
+ *   - WarehouseCore (Lagermanagement)
+ *   - PlannerCore (Aufgaben und Planung)
+ *   - ProcurementCore (Einkauf und Beschaffung)
+ *
+ * RULE: Every CSS value in the project MUST reference a variable from this
+ *       file. No hardcoded colors, spacing, radii, shadows, or typography
+ *       values are permitted outside this file.
+ *
+ * USAGE:
+ *   @import url('/path/to/theme/tsunami-theme.css');
+ *
+ * LIGHT MODE:  Add  data-theme="light"  to <html>
+ * DARK  MODE:  Default — no attribute needed (prefers-color-scheme: dark)
+ *
+ * ALPHA VARIANTS:
+ *   Every color that may need transparency has a corresponding -rgb variable.
+ *   Use with rgba():  rgba(var(--color-accent-red-rgb), 0.12)
+ *   (Note: --border-* and --scrollbar-* are special — they ARE rgba values
+ *    directly because their opacity is integral to the token. The -rgb variant
+ *    stores the raw channel values for re-use with custom opacities.)
+ * =============================================================================
+ */
+
+:root {
+  --cores-theme-version: "1.0.0";
+
+  /* ========================================================================
+     1.  BRAND / ACCENT COLORS
+     ======================================================================== */
+
+  /* Primary accent — Red */
+  --color-accent-red: #D0021B;
+  --color-accent-red-hover: #A00115;
+  --color-accent-red-light: #f87171;
+  --color-accent-red-rgb: 208, 2, 27;
+  --color-accent-red-hover-rgb: 160, 1, 21;
+
+  /* Secondary accent — Orange (RentalCore brand) */
+  --color-accent-orange: #c0552c;
+  --color-accent-orange-hover: #9d4522;
+  --color-accent-orange-rgb: 192, 85, 44;
+  --color-accent-orange-hover-rgb: 157, 69, 34;
+
+  /* Legacy aliases */
+  --accent-red: var(--color-accent-red);
+  --accent-red-hover: var(--color-accent-red-hover);
+  --accent-red-light: var(--color-accent-red-light);
+
+  /* Brand gradients */
+  --gradient-surface: linear-gradient(135deg, #111111 0%, #1F1F1F 100%);
+  --gradient-card: linear-gradient(135deg, #161616 0%, #111111 100%);
+  --gradient-button: linear-gradient(135deg, #2A2A2A 0%, #1F1F1F 100%);
+  --gradient-header: linear-gradient(180deg, #0B0B0B 0%, #111111 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --gradient-brand-text: linear-gradient(to right, var(--color-accent-red), #dc2626);
+
+  /* ========================================================================
+     2.  SURFACE / DARK COLORS  (0 darkest — 4 lightest dark)
+     ======================================================================== */
+
+  --surface-0: #0B0B0B;
+  --surface-1: #111111;
+  --surface-2: #161616;
+  --surface-3: #1F1F1F;
+  --surface-4: #2A2A2A;
+
+  --surface-0-rgb: 11, 11, 11;
+  --surface-1-rgb: 17, 17, 17;
+  --surface-2-rgb: 22, 22, 22;
+  --surface-3-rgb: 31, 31, 31;
+  --surface-4-rgb: 42, 42, 42;
+
+  /* Suite-wide compatibility aliases. Service CSS may consume these names,
+     but their values remain owned by this canonical token file. */
+  --bg-primary: var(--surface-0);
+  --bg-card: var(--surface-1);
+  --bg-subtle: rgba(var(--surface-4-rgb), 0.35);
+  --bg-hover: rgba(var(--light-0-rgb), 0.06);
+  --bg-overlay: rgba(var(--surface-0-rgb), 0.78);
+
+  /* Application shell — identical in every Core */
+  --sidebar-width-expanded: 16rem;   /* 256px */
+  --sidebar-width-collapsed: 5rem;   /*  80px */
+  --sidebar-logo-width: 11rem;       /* 176px */
+  --sidebar-logo-height: 3rem;       /*  48px */
+  --sidebar-mark-size: 2.5rem;       /*  40px */
+  --app-header-height: 3.5rem;       /*  56px, mobile only */
+  --app-tabbar-height: 4rem;         /*  64px + safe area */
+  --content-max-width: 90rem;        /* 1440px */
+  --content-gutter-mobile: 1rem;
+  --content-gutter-desktop: 1.5rem;
+
+  /* ========================================================================
+     3.  LIGHT COLORS  (0 whitest — 5 grayish)
+     ======================================================================== */
+
+  --light-0: #FFFFFF;
+  --light-1: #F5F5F5;
+  --light-2: #EAEAEA;
+  --light-3: #CCCCCC;
+  --light-4: #AAAAAA;
+  --light-5: #A0A0A0;
+
+  --light-0-rgb: 255, 255, 255;
+  --light-1-rgb: 245, 245, 245;
+  --light-2-rgb: 234, 234, 234;
+  --light-3-rgb: 204, 204, 204;
+  --light-4-rgb: 170, 170, 170;
+  --light-5-rgb: 160, 160, 160;
+
+  /* ========================================================================
+     4.  GRAYSCALE  (50 lightest — 950 darkest)
+     ======================================================================== */
+
+  --gray-50: #F5F5F5;
+  --gray-100: #EAEAEA;
+  --gray-200: #CCCCCC;
+  --gray-300: #AAAAAA;
+  --gray-400: #888888;
+  --gray-500: #666666;
+  --gray-600: #4A4A4A;
+  --gray-700: #2A2A2A;
+  --gray-800: #1F1F1F;
+  --gray-900: #111111;
+  --gray-950: #0B0B0B;
+
+  --gray-50-rgb: 245, 245, 245;
+  --gray-100-rgb: 234, 234, 234;
+  --gray-200-rgb: 204, 204, 204;
+  --gray-300-rgb: 170, 170, 170;
+  --gray-400-rgb: 136, 136, 136;
+  --gray-500-rgb: 102, 102, 102;
+  --gray-600-rgb: 74, 74, 74;
+  --gray-700-rgb: 42, 42, 42;
+  --gray-800-rgb: 31, 31, 31;
+  --gray-900-rgb: 17, 17, 17;
+  --gray-950-rgb: 11, 11, 11;
+
+  /* Legacy aliases */
+  --primary-900: var(--gray-900);
+  --primary-800: var(--gray-800);
+  --primary-700: var(--gray-700);
+  --primary-600: var(--gray-600);
+  --primary-500: var(--gray-500);
+  --primary-400: var(--gray-400);
+  --primary-300: var(--gray-300);
+  --primary-200: var(--gray-200);
+  --primary-100: var(--gray-100);
+
+  /* ========================================================================
+     5.  SEMANTIC COLORS
+     ======================================================================== */
+
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-error: var(--color-accent-red);
+  --color-info: #60a5fa;
+
+  --color-success-rgb: 34, 197, 94;
+  --color-warning-rgb: 234, 179, 8;
+  --color-error-rgb: 208, 2, 27;
+  --color-info-rgb: 96, 165, 250;
+
+  --color-success-hover: #16a34a;
+  --color-warning-hover: #ca8a04;
+  --color-error-hover: #a00115;
+  --color-info-hover: #3b82f6;
+
+  --color-success-hover-rgb: 22, 163, 74;
+  --color-warning-hover-rgb: 202, 138, 4;
+  --color-error-hover-rgb: 160, 1, 21;
+  --color-info-hover-rgb: 59, 130, 246;
+
+  --color-danger: var(--color-error);
+  --color-danger-rgb: var(--color-error-rgb);
+  --color-danger-hover: var(--color-error-hover);
+
+  --color-success-bg: rgba(34, 197, 94, 0.12);
+  --color-warning-bg: rgba(234, 179, 8, 0.12);
+  --color-error-bg: rgba(208, 2, 27, 0.12);
+  --color-info-bg: rgba(96, 165, 250, 0.12);
+
+  --color-success-border: rgba(34, 197, 94, 0.2);
+  --color-warning-border: rgba(234, 179, 8, 0.2);
+  --color-error-border: rgba(208, 2, 27, 0.2);
+  --color-info-border: rgba(96, 165, 250, 0.2);
+
+  /* Legacy aliases */
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --error: var(--color-error);
+  --info: var(--color-info);
+
+  /* ========================================================================
+     6.  TEXT COLORS
+     ======================================================================== */
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #AAAAAA;
+  --text-muted: #888888;
+  --text-inverse: #111111;
+  --text-label: #CCCCCC;
+  --text-placeholder: rgba(255, 255, 255, 0.35);
+
+  --text-primary-rgb: 255, 255, 255;
+  --text-secondary-rgb: 170, 170, 170;
+  --text-muted-rgb: 136, 136, 136;
+  --text-inverse-rgb: 17, 17, 17;
+  --text-label-rgb: 204, 204, 204;
+
+  --text-tertiary: var(--text-muted);
+
+  /* RentalCore theme aliases */
+  --rc-text-primary: var(--text-primary);
+  --rc-text-secondary: var(--text-secondary);
+  --rc-primary: var(--color-accent-orange);
+  --rc-primary-50: #f7ebe2;
+  --rc-primary-100: #f0d4c3;
+  --rc-primary-200: #e1b293;
+  --rc-primary-500: var(--color-accent-orange);
+  --rc-primary-600: var(--color-accent-orange-hover);
+  --rc-primary-700: #7a351b;
+  --rc-success: var(--color-success);
+  --rc-success-200: #86efac;
+  --rc-warning-200: #fde68a;
+  --rc-info-200: #d9d4c6;
+  --rc-danger-200: #f3b0a6;
+  --rc-accent-200: #f4c7aa;
+  --rc-surface-50: #151312;
+  --rc-surface-100: #1b1917;
+  --rc-surface-200: #221f1c;
+  --rc-bg-card: rgba(16, 14, 12, 0.95);
+  --rc-card-bg: rgba(24, 20, 17, 0.9);
+  --rc-border: rgba(255, 255, 255, 0.08);
+  --rc-shadow-sm: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --rc-shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.6);
+  --rc-shadow-2xl: 0 48px 120px rgba(0, 0, 0, 0.65);
+  --rc-radius: var(--radius-md);
+  --rc-radius-sm: var(--radius-sm);
+  --rc-radius-lg: var(--radius-lg);
+  --rc-radius-full: 9999px;
+
+  /* ========================================================================
+     7.  BORDER COLORS
+     ======================================================================== */
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-input: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.20);
+  --border-focus: var(--color-accent-red);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-divider: rgba(255, 255, 255, 0.06);
+  --border-color: var(--border-default);
+
+  /* RGB channels (base color, opacity applied at use-site with rgba()) */
+  --border-default-rgb: 255, 255, 255;
+  --border-strong-rgb: 255, 255, 255;
+  --border-input-rgb: 255, 255, 255;
+  --border-hover-rgb: 255, 255, 255;
+  --border-subtle-rgb: 255, 255, 255;
+  --border-divider-rgb: 255, 255, 255;
+
+  /* ========================================================================
+     8.  SPACING SCALE  (1–12, each 0.25rem step)
+     ======================================================================== */
+
+  --space-1: 0.25rem;    /*  4px  */
+  --space-2: 0.5rem;     /*  8px  */
+  --space-3: 0.75rem;    /* 12px  */
+  --space-4: 1rem;       /* 16px  */
+  --space-5: 1.25rem;    /* 20px  */
+  --space-6: 1.5rem;     /* 24px  */
+  --space-7: 1.75rem;    /* 28px  */
+  --space-8: 2rem;       /* 32px  */
+  --space-9: 2.25rem;    /* 36px  */
+  --space-10: 2.5rem;    /* 40px  */
+  --space-11: 2.75rem;   /* 44px  */
+  --space-12: 3rem;      /* 48px  */
+
+  /* Named spacing aliases (backward-compatible) */
+  --space-xs: var(--space-2);    /*  8px  */
+  --space-sm: var(--space-3);    /* 12px  */
+  --space-md: var(--space-4);    /* 16px  */
+  --space-lg: var(--space-6);    /* 24px  */
+  --space-xl: var(--space-8);    /* 32px  */
+  --space-2xl: var(--space-10);  /* 40px  */
+  --space-3xl: var(--space-12);  /* 48px  */
+
+  /* ========================================================================
+     9.  BORDER RADIUS
+     ======================================================================== */
+
+  --radius-sm: 0.375rem;   /*  6px  */
+  --radius-md: 0.625rem;   /* 10px  */
+  --radius-lg: 0.75rem;    /* 12px  */
+  --radius-xl: 1rem;       /* 16px  */
+  --radius-2xl: 1.5rem;    /* 24px  */
+  --radius-full: 9999px;
+  --radius-none: 0;
+
+  /* ========================================================================
+     10.  SHADOWS
+     ======================================================================== */
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.15);
+  --shadow-glow-red: 0 0 20px rgba(208, 2, 27, 0.3);
+  --shadow-glow-soft: 0 0 15px rgba(255, 255, 255, 0.08);
+  --shadow-elevated-card: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --shadow-dropdown: 0 12px 30px rgba(0, 0, 0, 0.4);
+  --sidebar-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  /* ========================================================================
+     11.  TYPOGRAPHY
+     ======================================================================== */
+
+  /* Font families */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', Consolas, monospace;
+
+  /* Fluid type scale */
+  --text-xs: 0.75rem;       /* 12px — label / meta */
+  --text-sm: 0.875rem;      /* 14px — compact body */
+  --text-base: 1rem;        /* 16px — body baseline */
+  --text-lg: 1.125rem;      /* 18px — subtitle */
+  --text-xl: 1.25rem;       /* 20px — section title */
+  --text-2xl: 1.5rem;       /* 24px — page title, mobile */
+  --text-3xl: 1.875rem;     /* 30px — page title, desktop */
+  --text-4xl: 2.25rem;      /* 36px — display */
+  --text-5xl: 3rem;         /* 48px — marketing only */
+
+  /* Font weights */
+  --weight-thin: 100;
+  --weight-light: 300;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+  --weight-black: 900;
+
+  /* Line heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Letter spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ========================================================================
+     12.  TRANSITIONS
+     ======================================================================== */
+
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-spring: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-ease-out: 200ms ease-out;
+  --transition-ease-in: 150ms ease-in;
+  --transition-linear: 200ms linear;
+
+  /* ========================================================================
+     13.  Z-INDEX SCALE
+     ======================================================================== */
+
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-navbar: 300;
+  --z-sidebar: 400;
+  --z-backdrop: 500;
+  --z-modal-overlay: 800;
+  --z-modal: 900;
+  --z-toast: 1000;
+  --z-tooltip: 1100;
+  --z-spinner: 1200;
+
+  /* ========================================================================
+     14.  SCROLLBAR COLORS
+     ======================================================================== */
+
+  --scrollbar-width: 8px;
+  --scrollbar-height: 8px;
+  --scrollbar-track: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb: rgba(136, 136, 136, 0.5);
+  --scrollbar-thumb-hover: rgba(136, 136, 136, 0.7);
+  --scrollbar-thumb-active: rgba(136, 136, 136, 0.9);
+  --scrollbar-thumb-radius: 4px;
+  --scrollbar-track-radius: 4px;
+  --scrollbar-slim-width: 6px;
+  --scrollbar-slim-height: 6px;
+
+  /* Slim/native variant for minimal chrome */
+  --scrollbar-thumb-slim: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-slim-hover: rgba(255, 255, 255, 0.25);
+  --scrollbar-track-slim: transparent;
+
+  /* RGB channels for custom scrollbar uses */
+  --scrollbar-thumb-rgb: 136, 136, 136;
+  --scrollbar-track-rgb: 0, 0, 0;
+
+  /* ========================================================================
+     15.  CONTAINER & BREAKPOINTS
+     ======================================================================== */
+
+  --breakpoint-xs: 20rem;     /*  320px  */
+  --breakpoint-sm: 30rem;     /*  480px  */
+  --breakpoint-md: 40rem;     /*  640px  */
+  --breakpoint-lg: 48rem;     /*  768px  */
+  --breakpoint-xl: 64rem;     /* 1024px  */
+  --breakpoint-2xl: 80rem;    /* 1280px  */
+  --breakpoint-3xl: 96rem;    /* 1536px  */
+
+  --container-xs: 100%;
+  --container-sm: 40rem;      /*  640px  */
+  --container-md: 48rem;      /*  768px  */
+  --container-lg: 64rem;      /* 1024px  */
+  --container-xl: 80rem;      /* 1280px  */
+  --container-2xl: 90rem;     /* 1440px  */
+  --container-fluid: none;
+
+  /* ========================================================================
+     16.  OPACITY SCALE
+     ======================================================================== */
+
+  --opacity-0: 0;
+  --opacity-subtle: 0.08;
+  --opacity-light: 0.1;
+  --opacity-medium: 0.35;
+  --opacity-strong: 0.6;
+  --opacity-glass: 0.85;
+  --opacity-overlay: 0.75;
+  --opacity-disabled: 0.5;
+  --opacity-1: 1;
+
+  /* ========================================================================
+     17.  OVERLAY / BACKDROP
+     ======================================================================== */
+
+  --backdrop-blur: blur(16px);
+  --backdrop-blur-soft: blur(8px);
+  --backdrop-blur-sm: blur(4px);
+  --overlay-dark: rgba(0, 0, 0, 0.75);
+  --overlay-darker: rgba(0, 0, 0, 0.85);
+}
+
+/* =============================================================================
+   LIGHT THEME OVERRIDES
+   ============================================================================= */
+
+[data-theme="light"] {
+  /* ── Surface ── */
+  --surface-0: #FFFFFF;
+  --surface-1: #F5F5F5;
+  --surface-2: #EAEAEA;
+  --surface-3: #CCCCCC;
+  --surface-4: #AAAAAA;
+
+  --surface-0-rgb: 255, 255, 255;
+  --surface-1-rgb: 245, 245, 245;
+  --surface-2-rgb: 234, 234, 234;
+  --surface-3-rgb: 204, 204, 204;
+  --surface-4-rgb: 170, 170, 170;
+
+  /* ── Light ── */
+  --light-0: #FFFFFF;
+  --light-1: #F5F5F5;
+  --light-2: #EAEAEA;
+  --light-3: #CCCCCC;
+  --light-4: #AAAAAA;
+  --light-5: #888888;
+
+  /* ── Text ── */
+  --text-primary: #111111;
+  --text-secondary: #4A4A4A;
+  --text-muted: #888888;
+  --text-inverse: #FFFFFF;
+  --text-label: #666666;
+  --text-placeholder: rgba(0, 0, 0, 0.35);
+
+  --text-primary-rgb: 17, 17, 17;
+  --text-secondary-rgb: 74, 74, 74;
+  --text-muted-rgb: 136, 136, 136;
+  --text-inverse-rgb: 255, 255, 255;
+  --text-label-rgb: 102, 102, 102;
+
+  /* ── Borders ── */
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-input: rgba(0, 0, 0, 0.12);
+  --border-hover: rgba(0, 0, 0, 0.20);
+  --border-focus: var(--color-accent-red);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-divider: rgba(0, 0, 0, 0.06);
+
+  --border-default-rgb: 0, 0, 0;
+  --border-strong-rgb: 0, 0, 0;
+  --border-input-rgb: 0, 0, 0;
+  --border-hover-rgb: 0, 0, 0;
+  --border-subtle-rgb: 0, 0, 0;
+  --border-divider-rgb: 0, 0, 0;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.20);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 20px rgba(0, 0, 0, 0.08);
+  --shadow-glow-red: 0 0 20px rgba(208, 2, 27, 0.15);
+  --shadow-glow-soft: 0 0 15px rgba(0, 0, 0, 0.04);
+  --shadow-elevated-card: 0 24px 60px rgba(0, 0, 0, 0.15);
+  --shadow-dropdown: 0 12px 30px rgba(0, 0, 0, 0.15);
+  --sidebar-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* ── Gradients ── */
+  --gradient-surface: linear-gradient(135deg, #F5F5F5 0%, #EAEAEA 100%);
+  --gradient-card: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 100%);
+  --gradient-button: linear-gradient(135deg, #EAEAEA 0%, #CCCCCC 100%);
+  --gradient-header: linear-gradient(180deg, #FFFFFF 0%, #F5F5F5 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.01) 100%);
+
+  /* ── Scrollbar ── */
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --scrollbar-thumb-active: rgba(0, 0, 0, 0.35);
+  --scrollbar-thumb-slim: rgba(0, 0, 0, 0.12);
+  --scrollbar-thumb-slim-hover: rgba(0, 0, 0, 0.20);
+  --scrollbar-track-slim: transparent;
+  --scrollbar-thumb-rgb: 0, 0, 0;
+  --scrollbar-track-rgb: 0, 0, 0;
+
+  /* ── Overlay ── */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-darker: rgba(0, 0, 0, 0.6);
+}
+
+/* =============================================================================
+   BASE STYLES  (structural reset; every color/spacing value uses variables)
+   ============================================================================= */
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--surface-0);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* =============================================================================
+   GLOBAL SCROLLBAR STYLING
+   ============================================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-height);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--scrollbar-track-radius);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--scrollbar-thumb-radius);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+  background-clip: padding-box;
+}
+
+/* ── Slim scrollbar for secondary chrome ── */
+.scrollbar-slim::-webkit-scrollbar {
+  width: var(--scrollbar-slim-width);
+  height: var(--scrollbar-slim-height);
+}
+
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-slim);
+}
+
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-slim);
+  border-radius: var(--scrollbar-thumb-radius);
+  border: none;
+}
+
+.scrollbar-slim::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-slim-hover);
+}
+
+/* =============================================================================
+   SELECT / OPTION OVERRIDES  (dark-theme default)
+   ============================================================================= */
+
+select {
+  min-height: 2.5rem;
+  padding: var(--space-2) 2.5rem var(--space-2) var(--space-3);
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  appearance: none;
+}
+
+select:focus {
+  border-color: var(--border-focus);
+  background-color: var(--surface-3);
+  outline: none;
+}
+
+select option {
+  background-color: var(--surface-2);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: var(--surface-3);
+}
+
+select option:disabled {
+  color: var(--text-muted);
+  background-color: var(--surface-1);
+}
+
+/* =============================================================================
+   SHARED UI CONTRACT
+   These primitives deliberately use low-specificity selectors so component
+   variants can extend them without replacing the suite-wide fundamentals.
+   ============================================================================= */
+
+:where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea) {
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select):hover {
+  border-color: var(--border-hover);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select):focus {
+  border-color: var(--border-focus);
+  background-color: var(--surface-3);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-red-rgb), 0.15);
+  outline: none;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--text-placeholder);
+}
+
+:where(input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled);
+}
+
+:where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(th) {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  line-height: var(--leading-tight);
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+:where(td) {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+:where(tbody tr) {
+  transition: background-color var(--transition-fast);
+}
+
+:where(tbody tr:hover) {
+  background: var(--surface-2);
+}
+
+.suite-table-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+
+.suite-shell-sidebar {
+  width: var(--sidebar-width-expanded);
+  background: var(--surface-1);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.suite-shell-sidebar[data-collapsed="true"] {
+  width: var(--sidebar-width-collapsed);
+}
+
+.suite-page,
+.suite-dashboard {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+}
+
+.suite-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+}
+
+.suite-dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.suite-dashboard-heading {
+  min-width: 0;
+}
+
+.suite-dashboard-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--color-accent-red);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-widest);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+}
+
+.suite-dashboard-eyebrow-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 0.5rem;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.suite-dashboard-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.suite-dashboard-subtitle {
+  max-width: 44rem;
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.suite-dashboard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.suite-dashboard-timestamp {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.suite-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.suite-button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.suite-button--primary {
+  border-color: var(--color-accent-red);
+  background: var(--color-accent-red);
+  color: var(--light-0);
+}
+
+.suite-button--primary:hover {
+  border-color: var(--color-accent-red-hover);
+  background: var(--color-accent-red-hover);
+  color: var(--light-0);
+}
+
+.suite-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.suite-kpi-card,
+.suite-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+
+.suite-kpi-card {
+  min-width: 0;
+  padding: var(--space-5);
+}
+
+.suite-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.suite-kpi-value {
+  margin-top: var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-none);
+}
+
+.suite-kpi-detail {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 63.99rem) {
+  .suite-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .suite-dashboard {
+    gap: var(--space-5);
+  }
+
+  .suite-dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .suite-dashboard-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .suite-dashboard-title {
+    font-size: var(--text-2xl);
+  }
+
+  .suite-dashboard-timestamp {
+    display: none;
+  }
+}
+
+@media (max-width: 29.99rem) {
+  .suite-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =============================================================================
+   KEYFRAMES  (shared animations)
+   ============================================================================= */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* =============================================================================
+   ACCESSIBILITY
+   ============================================================================= */
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  :root {
+    --surface-1: #000000;
+    --surface-2: #1a1a1a;
+    --text-primary: #ffffff;
+    --border-default: rgba(255, 255, 255, 0.3);
+    --border-strong: rgba(255, 255, 255, 0.5);
+  }
+
+  [data-theme="light"] {
+    --text-primary: #000000;
+    --border-default: rgba(0, 0, 0, 0.3);
+    --border-strong: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Color scheme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Focus-visible for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Remove default focus outlines (rely on focus-visible) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Touch targets (coarse pointers) */
+@media (pointer: coarse) {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
