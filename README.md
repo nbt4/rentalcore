@@ -7,6 +7,7 @@
 ## Features
 
 - **Auftragsmanagement (Jobs)** — Vollständiger CRUD-Workflow für Mietaufträge mit Status-Tracking, Gerätezuweisungen und Terminverwaltung
+- **Operatives Dashboard** — Personalisierte Tagesübersicht mit aktiven, laufenden, anstehenden und überfälligen Jobs, monatlichem Auftragswert, Terminradar und direkten Arbeitswegen
 - **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
