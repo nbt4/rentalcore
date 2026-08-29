@@ -789,7 +789,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.93")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.94")))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())
@@ -811,13 +811,13 @@ func main() {
 
 	// Serve React SPA build assets
 	r.StaticFS("/assets", http.Dir("web/dist/assets"))
-	// The same build is mounted below /rental/ by Cores Dashboard. Keep the
+	// The same build is mounted below /rentalcore/ by Cores Dashboard. Keep the
 	// asset alias on the dedicated RentalCore domain so one artifact serves both.
-	r.StaticFS("/rental/assets", http.Dir("web/dist/assets"))
+	r.StaticFS("/rentalcore/assets", http.Dir("web/dist/assets"))
 
 	// Add caching for static files
 	r.StaticFS("/static", http.Dir("web/static"))
-	r.StaticFS("/rental/static", http.Dir("web/static"))
+	r.StaticFS("/rentalcore/static", http.Dir("web/static"))
 	r.StaticFS("/uploads", http.Dir("uploads"))
 	r.Use(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/static/") {
@@ -838,7 +838,7 @@ func main() {
 		c.Header("Content-Type", "application/manifest+json")
 		c.Header("Cache-Control", "no-cache")
 		mountPath := strings.TrimSuffix(c.GetHeader("X-Forwarded-Prefix"), "/")
-		if mountPath != "/rental" {
+		if mountPath != "/rentalcore" {
 			mountPath = ""
 		}
 		mountedPath := func(value string) string { return mountPath + value }
@@ -850,7 +850,7 @@ func main() {
 		}))
 	}
 	r.GET("/manifest.json", manifestHandler)
-	r.GET("/rental/manifest.json", manifestHandler)
+	r.GET("/rentalcore/manifest.json", manifestHandler)
 
 	// Favicon route
 	r.GET("/favicon.ico", func(c *gin.Context) {

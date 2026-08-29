@@ -1,4 +1,4 @@
-const RENTAL_MOUNT_PATH = '/rental';
+const RENTAL_MOUNT_PATH = '/rentalcore';
 
 export const appBasePath = window.location.pathname === RENTAL_MOUNT_PATH
   || window.location.pathname.startsWith(`${RENTAL_MOUNT_PATH}/`)

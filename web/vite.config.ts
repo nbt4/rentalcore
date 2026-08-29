@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   // Production assets live below the suite mount even when RentalCore is also
   // reachable on its dedicated domain. The Go server exposes this alias there.
-  base: '/rental/',
+  base: '/rentalcore/',
   plugins: [react()],
   server: {
     port: 3001,
