@@ -743,6 +743,8 @@ select option:disabled {
   height: 1rem;
   color: var(--text-muted);
   pointer-events: none;
+  /* Avoid stacking Tailwind's individual translate property with this transform. */
+  translate: none;
   transform: translateY(-50%);
 }
 
