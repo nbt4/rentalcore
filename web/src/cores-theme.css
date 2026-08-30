@@ -724,6 +724,36 @@ select option:disabled {
   opacity: var(--opacity-disabled);
 }
 
+/* Search fields reserve one fixed icon column so placeholder and user input
+   never render underneath an absolutely positioned magnifier. */
+.suite-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.suite-search-field > svg,
+.suite-search-field > .suite-search-icon {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  top: 50%;
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.suite-search-field > input,
+.suite-search-field > .suite-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  padding-inline-start: 2.5rem;
+}
+
 :where(table) {
   width: 100%;
   border-collapse: collapse;

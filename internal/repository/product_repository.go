@@ -48,15 +48,15 @@ func (r *ProductRepository) List(params *models.FilterParams) ([]models.Product,
 	var products []models.Product
 
 	query := r.db.Model(&models.Product{}).
-		Where("lifecycle_status = ?", "active").
+		Where("products.lifecycle_status = ?", "active").
 		Preload("Category").
 		Preload("Subcategory").
 		Preload("Subbiercategory").
-		Preload("Brand")
+		Preload("Brand").
+		Preload("Manufacturer")
 
 	if params.SearchTerm != "" {
-		searchPattern := "%" + params.SearchTerm + "%"
-		query = query.Where("name LIKE ? OR description LIKE ?", searchPattern, searchPattern)
+		query = ApplyProductSearch(query, params.SearchTerm)
 	}
 
 	if params.Category != "" {

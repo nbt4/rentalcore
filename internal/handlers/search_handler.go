@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-barcode-webapp/internal/models"
+	"go-barcode-webapp/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -52,19 +53,19 @@ func (h *SearchHandler) GlobalSearch(c *gin.Context) {
 	h.logSearch(currentUser.UserID, query, searchType, page, pageSize)
 
 	results := make(map[string]interface{})
-	
+
 	if searchType == "global" || searchType == "jobs" {
 		results["jobs"] = h.searchJobs(query, page, pageSize)
 	}
-	
+
 	if searchType == "global" || searchType == "devices" {
 		results["devices"] = h.searchDevices(query, page, pageSize)
 	}
-	
+
 	if searchType == "global" || searchType == "customers" {
 		results["customers"] = h.searchCustomers(query, page, pageSize)
 	}
-	
+
 	if searchType == "global" || searchType == "cases" {
 		results["cases"] = h.searchCases(query, page, pageSize)
 	}
@@ -122,20 +123,15 @@ func (h *SearchHandler) searchDevices(query string, page, pageSize int) map[stri
 	var total int64
 
 	offset := (page - 1) * pageSize
-	searchTerm := "%" + strings.ToLower(query) + "%"
-
 	// Count total
-	h.db.Model(&models.Device{}).
-		Joins("LEFT JOIN products ON devices.productID = products.productID").
-		Where("LOWER(devices.deviceID) LIKE ? OR LOWER(devices.serialnumber) LIKE ? OR LOWER(products.name) LIKE ?", 
-			searchTerm, searchTerm, searchTerm).
-		Count(&total)
+	countQuery := h.db.Model(&models.Device{}).
+		Joins("LEFT JOIN products ON devices.productID = products.productID")
+	repository.ApplyDeviceSearch(countQuery, query).Count(&total)
 
 	// Get results with pagination
-	h.db.Preload("Product").
-		Joins("LEFT JOIN products ON devices.productID = products.productID").
-		Where("LOWER(devices.deviceID) LIKE ? OR LOWER(devices.serialnumber) LIKE ? OR LOWER(products.name) LIKE ?", 
-			searchTerm, searchTerm, searchTerm).
+	resultQuery := h.db.Preload("Product").
+		Joins("LEFT JOIN products ON devices.productID = products.productID")
+	repository.ApplyDeviceSearch(resultQuery, query).
 		Offset(offset).Limit(pageSize).
 		Find(&devices)
 
@@ -156,12 +152,12 @@ func (h *SearchHandler) searchCustomers(query string, page, pageSize int) map[st
 
 	// Count total
 	h.db.Model(&models.Customer{}).
-		Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ? OR customerID = ?", 
+		Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ? OR customerID = ?",
 			searchTerm, searchTerm, searchTerm, searchTerm, query).
 		Count(&total)
 
 	// Get results with pagination
-	h.db.Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ? OR customerID = ?", 
+	h.db.Where("LOWER(companyname) LIKE ? OR LOWER(firstname) LIKE ? OR LOWER(lastname) LIKE ? OR LOWER(email) LIKE ? OR customerID = ?",
 		searchTerm, searchTerm, searchTerm, searchTerm, query).
 		Offset(offset).Limit(pageSize).
 		Find(&customers)
@@ -183,12 +179,12 @@ func (h *SearchHandler) searchCases(query string, page, pageSize int) map[string
 
 	// Count total
 	h.db.Model(&models.Case{}).
-		Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR caseID = ?", 
+		Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR caseID = ?",
 			searchTerm, searchTerm, query).
 		Count(&total)
 
 	// Get results with pagination
-	h.db.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR caseID = ?", 
+	h.db.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR caseID = ?",
 		searchTerm, searchTerm, query).
 		Offset(offset).Limit(pageSize).
 		Find(&cases)
@@ -248,9 +244,9 @@ func (h *SearchHandler) AdvancedSearch(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"results": results,
-		"total":   total,
-		"page":    request.Page,
+		"results":  results,
+		"total":    total,
+		"page":     request.Page,
 		"pageSize": request.PageSize,
 	})
 }
@@ -272,23 +268,23 @@ func (h *SearchHandler) advancedSearchJobs(query string, filters map[string]inte
 	if customerID, ok := filters["customerid"]; ok && customerID != "" {
 		db = db.Where("customerID = ?", customerID)
 	}
-	
+
 	if statusID, ok := filters["statusid"]; ok && statusID != "" {
 		db = db.Where("statusID = ?", statusID)
 	}
-	
+
 	if startDate, ok := filters["startdate"]; ok && startDate != "" {
 		db = db.Where("startDate >= ?", startDate)
 	}
-	
+
 	if endDate, ok := filters["enddate"]; ok && endDate != "" {
 		db = db.Where("endDate <= ?", endDate)
 	}
-	
+
 	if minRevenue, ok := filters["minRevenue"]; ok && minRevenue != "" {
 		db = db.Where("final_revenue >= ?", minRevenue)
 	}
-	
+
 	if maxRevenue, ok := filters["maxRevenue"]; ok && maxRevenue != "" {
 		db = db.Where("final_revenue <= ?", maxRevenue)
 	}
@@ -323,28 +319,28 @@ func (h *SearchHandler) advancedSearchDevices(query string, filters map[string]i
 	var total int64
 
 	db := h.db.Model(&models.Device{}).Preload("Product")
+	productJoined := false
 
 	// Apply text search
 	if query != "" {
-		searchTerm := "%" + strings.ToLower(query) + "%"
-		db = db.Joins("LEFT JOIN products ON devices.productID = products.productID").
-			Where("LOWER(devices.deviceID) LIKE ? OR LOWER(devices.serialnumber) LIKE ? OR LOWER(products.name) LIKE ?", 
-				searchTerm, searchTerm, searchTerm)
+		db = db.Joins("LEFT JOIN products ON devices.productID = products.productID")
+		productJoined = true
+		db = repository.ApplyDeviceSearch(db, query)
 	}
 
 	// Apply filters
 	if status, ok := filters["status"]; ok && status != "" {
 		db = db.Where("status = ?", status)
 	}
-	
+
 	if productID, ok := filters["productid"]; ok && productID != "" {
 		db = db.Where("devices.productID = ?", productID)
 	}
-	
+
 	if purchaseDateFrom, ok := filters["purchaseDateFrom"]; ok && purchaseDateFrom != "" {
 		db = db.Where("purchaseDate >= ?", purchaseDateFrom)
 	}
-	
+
 	if purchaseDateTo, ok := filters["purchaseDateTo"]; ok && purchaseDateTo != "" {
 		db = db.Where("purchaseDate <= ?", purchaseDateTo)
 	}
@@ -357,7 +353,10 @@ func (h *SearchHandler) advancedSearchDevices(query string, filters map[string]i
 	case "device_id":
 		db = db.Order("deviceID ASC")
 	case "product_name":
-		db = db.Joins("LEFT JOIN products ON devices.productID = products.productID").Order("products.name ASC")
+		if !productJoined {
+			db = db.Joins("LEFT JOIN products ON devices.productID = products.productID")
+		}
+		db = db.Order("products.name ASC")
 	case "purchase_date_desc":
 		db = db.Order("purchaseDate DESC")
 	case "purchase_date_asc":
@@ -401,11 +400,11 @@ func (h *SearchHandler) advancedSearchCustomers(query string, filters map[string
 	if customerType, ok := filters["customertype"]; ok && customerType != "" {
 		db = db.Where("customertype = ?", customerType)
 	}
-	
+
 	if city, ok := filters["city"]; ok && city != "" {
 		db = db.Where("city = ?", city)
 	}
-	
+
 	if country, ok := filters["country"]; ok && country != "" {
 		db = db.Where("country = ?", country)
 	}
@@ -441,11 +440,11 @@ func (h *SearchHandler) SavedSearches(c *gin.Context) {
 
 	var savedSearches []models.SavedSearch
 	query := h.db.Where("userID = ?", currentUser.UserID)
-	
+
 	if searchType != "" {
 		query = query.Where("search_type = ?", searchType)
 	}
-	
+
 	query.Order("usage_count DESC, updated_at DESC").Find(&savedSearches)
 
 	c.JSON(http.StatusOK, gin.H{"savedSearches": savedSearches})

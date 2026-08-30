@@ -125,10 +125,9 @@ func (r *DeviceRepository) List(params *models.FilterParams) ([]models.DeviceWit
 
 	// Always preload Product with Category for proper display
 	if params.SearchTerm != "" {
-		searchPattern := "%" + params.SearchTerm + "%"
 		query = query.Preload("Product").Preload("Product.Category").
-			Joins("LEFT JOIN products ON products.productid = devices.productid").
-			Where("devices.deviceid LIKE ? OR devices.serialnumber LIKE ? OR products.name LIKE ?", searchPattern, searchPattern, searchPattern)
+			Joins("LEFT JOIN products ON products.productid = devices.productid")
+		query = ApplyDeviceSearch(query, params.SearchTerm)
 	} else {
 		// For normal list view, preload Product with Category
 		query = query.Preload("Product").Preload("Product.Category")
@@ -176,8 +175,7 @@ func (r *DeviceRepository) ListWithCategories(params *models.FilterParams) ([]mo
 	query = query.Joins("JOIN products ON products.productid = devices.productid")
 
 	if params.SearchTerm != "" {
-		searchPattern := "%" + params.SearchTerm + "%"
-		query = query.Where("devices.deviceid LIKE ? OR devices.serialnumber LIKE ? OR products.name LIKE ?", searchPattern, searchPattern, searchPattern)
+		query = ApplyDeviceSearch(query, params.SearchTerm)
 	}
 
 	// Category filter

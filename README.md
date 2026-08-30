@@ -16,6 +16,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Operatives Dashboard** — Personalisierte Tagesübersicht mit aktiven, laufenden, anstehenden und überfälligen Jobs, monatlichem Auftragswert, Terminradar und direkten Arbeitswegen
 - **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
+- **Kontextuelle Produktsuche** — Produkt-, Geräte-, Paket-, Mietprodukt-, Dienstleistungs- und PDF-Zuordnungssuchen berücksichtigen Marke, Hersteller, Kategorien, Identifikatoren und technische Stammdaten; kombinierte Begriffe dürfen über mehrere Felder verteilt sein
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
 - **OCR-Belegverarbeitung** — Python-3.12-Pipeline in einer geprüften venv zur Extraktion von Positionsdaten; neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung

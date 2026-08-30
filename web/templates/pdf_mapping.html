@@ -1330,11 +1330,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div style="color: var(--rc-text-secondary);">No customer selected</div>
                             {{end}}
                         </div>
-                        <div class="search-box" style="margin-top: 12px;">
-                            <input type="text" class="search-input" placeholder="Search customers..."
+                        <div class="search-box suite-search-field" style="margin-top: 12px;">
+                            <input type="text" class="search-input suite-search-input" placeholder="Search customers..."
                                    id="customerSearchInput"
                                    oninput="searchCustomers(this.value)">
-                            <i class="bi bi-search search-icon"></i>
+                            <i class="bi bi-search search-icon suite-search-icon"></i>
                         </div>
                         <div id="customerSearchResults" class="customer-search-results"></div>
                         {{if .hasCustomerPrefill}}
@@ -1542,11 +1542,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-weight: 600; margin-bottom: 10px; color: var(--rc-text-secondary); font-size: 13px;">
                         <i class="bi bi-search"></i> MANUAL SEARCH
                     </div>
-                    <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Search products..."
+                    <div class="search-box suite-search-field">
+                        <input type="text" class="search-input suite-search-input" placeholder="Search products..."
                                oninput="searchProducts(this, {{.item.ItemID}})"
                                data-item-id="{{.item.ItemID}}">
-                        <i class="bi bi-search search-icon"></i>
+                        <i class="bi bi-search search-icon suite-search-icon"></i>
                     </div>
                     <div id="searchResults_{{.item.ItemID}}" class="suggestions-list manual-results" style="margin-top: 10px;"></div>
                 </div>

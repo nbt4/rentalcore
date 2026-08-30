@@ -60,11 +60,8 @@ func (h *ProductHandler) ListProductsWeb(c *gin.Context) {
 	// Get total product count first (without pagination) for proper pagination calculation
 	var totalProducts int64
 	countQuery := h.productRepo.GetDB().Model(&models.Product{})
-	countQuery = countQuery.Where("lifecycle_status = ?", "active")
-	if params.SearchTerm != "" {
-		searchPattern := "%" + params.SearchTerm + "%"
-		countQuery = countQuery.Where("name LIKE ? OR description LIKE ?", searchPattern, searchPattern)
-	}
+	countQuery = countQuery.Where("products.lifecycle_status = ?", "active")
+	countQuery = repository.ApplyProductSearch(countQuery, params.SearchTerm)
 	if params.Category != "" {
 		countQuery = countQuery.Where("category = ?", params.Category)
 	}

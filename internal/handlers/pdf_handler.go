@@ -1283,9 +1283,9 @@ func (h *PDFHandler) SearchProducts(c *gin.Context) {
 	}
 
 	var products []models.Product
-	searchPattern := "%" + query + "%"
-
-	if err := h.DB.Where("lifecycle_status = ? AND (name LIKE ? OR description LIKE ?)", "active", searchPattern, searchPattern).
+	productQuery := repository.ApplyProductSearch(h.DB.Model(&models.Product{}), query)
+	if err := productQuery.Where("products.lifecycle_status = ?", "active").
+		Preload("Brand").Preload("Manufacturer").
 		Limit(20).
 		Find(&products).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
@@ -1303,13 +1303,23 @@ func (h *PDFHandler) SearchPackages(c *gin.Context) {
 		return
 	}
 
-	searchPattern := "%" + query + "%"
-
 	var packages []models.ProductPackage
-	if err := h.DB.
-		Where("name LIKE ? OR package_code LIKE ? OR description LIKE ?", searchPattern, searchPattern, searchPattern).
-		Limit(20).
-		Find(&packages).Error; err != nil {
+	packageQuery := h.DB.Model(&models.ProductPackage{})
+	for _, term := range repository.ProductSearchTerms(query) {
+		packageQuery = packageQuery.Where(
+			`(CONCAT_WS(' ',product_packages.name,product_packages.description,product_packages.code,
+			 product_packages.package_code,product_packages.category,product_packages.alias_json::text) ILIKE ?
+			 OR EXISTS (SELECT 1 FROM product_package_items search_item
+			  JOIN products search_product ON search_product.productid=search_item.product_id
+			  LEFT JOIN brands search_brand ON search_brand.brandid=search_product.brandid
+			  LEFT JOIN manufacturer search_manufacturer ON search_manufacturer.manufacturerid=search_product.manufacturerid
+			  WHERE search_item.package_id=product_packages.id
+			   AND CONCAT_WS(' ',search_product.name,search_product.description,search_product.generic_barcode,
+			    search_brand.name,search_manufacturer.name) ILIKE ?))`,
+			"%"+term+"%", "%"+term+"%",
+		)
+	}
+	if err := packageQuery.Limit(20).Find(&packages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
@@ -1337,15 +1347,17 @@ func (h *PDFHandler) SearchRentalEquipment(c *gin.Context) {
 		Supplier string `json:"supplier"`
 	}
 
-	pattern := "%" + query + "%"
 	var results []rentalResult
-	if err := h.DB.Raw(
-		`SELECT id, name, COALESCE(supplier, '') AS supplier
-		 FROM rental_equipment
-		 WHERE is_active = true AND (name ILIKE ? OR supplier ILIKE ?)
-		 ORDER BY name LIMIT 5`,
-		pattern, pattern,
-	).Scan(&results).Error; err != nil {
+	rentalQuery := h.DB.Table("rental_equipment").
+		Select("id, name, COALESCE(supplier, '') AS supplier").
+		Where("is_active = true")
+	for _, term := range repository.ProductSearchTerms(query) {
+		rentalQuery = rentalQuery.Where(
+			"CONCAT_WS(' ',name,supplier,category,description,notes,rental_price::text,customer_price::text) ILIKE ?",
+			"%"+term+"%",
+		)
+	}
+	if err := rentalQuery.Order("name").Limit(5).Scan(&results).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
@@ -4444,15 +4456,17 @@ func (h *PDFHandler) SearchServiceItems(c *gin.Context) {
 		Category string `json:"category"`
 	}
 
-	pattern := "%" + query + "%"
 	var results []serviceResult
-	if err := h.DB.Raw(
-		`SELECT id, name, COALESCE(category, '') AS category
-		 FROM service_items
-		 WHERE is_active = true AND (name ILIKE ? OR category ILIKE ? OR description ILIKE ?)
-		 ORDER BY name LIMIT 5`,
-		pattern, pattern, pattern,
-	).Scan(&results).Error; err != nil {
+	serviceQuery := h.DB.Table("service_items").
+		Select("id, name, COALESCE(category, '') AS category").
+		Where("is_active = true")
+	for _, term := range repository.ProductSearchTerms(query) {
+		serviceQuery = serviceQuery.Where(
+			"CONCAT_WS(' ',name,category,description,unit,default_price::text) ILIKE ?",
+			"%"+term+"%",
+		)
+	}
+	if err := serviceQuery.Order("name").Limit(5).Scan(&results).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}

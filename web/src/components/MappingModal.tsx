@@ -469,7 +469,7 @@ function CustomerPicker({ extractionId, currentName, currentId, onChanged }: Cus
         <div className="absolute top-full left-0 mt-1 z-50 rounded-lg overflow-hidden w-72"
           style={{ background: 'var(--rc-bg-card)', border: '1px solid var(--rc-border)', boxShadow: 'var(--shadow-lg)' }}>
           <div className="p-2">
-            <div className="relative">
+            <div className="suite-search-field">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--rc-text-secondary)' }} />
               <input
                 ref={inputRef}
@@ -477,7 +477,6 @@ function CustomerPicker({ extractionId, currentName, currentId, onChanged }: Cus
                 onChange={e => { setQuery(e.target.value); search(e.target.value); }}
                 placeholder="Kunde suchen…"
                 className="rc-input rc-input-sm w-full"
-                style={{ paddingLeft: '2rem' }}
               />
             </div>
           </div>
@@ -568,7 +567,7 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
 
   return (
     <div className="relative">
-      <div className="relative">
+      <div className="suite-search-field">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--rc-text-secondary)' }} />
         <input
           ref={inputRef}
@@ -576,7 +575,6 @@ function InlineSearch({ initialQuery, onSelect, onCreateNew }: InlineSearchProps
           onChange={(e) => { setQuery(e.target.value); search(e.target.value); }}
           placeholder="Produkt, Paket, Mietprodukt oder Dienstleistung suchen…"
           className="rc-input rc-input-sm w-full"
-          style={{ paddingLeft: '2rem' }}
         />
       </div>
       {(results.length > 0 || loading || noResults) && (

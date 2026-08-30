@@ -789,7 +789,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.94")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.95")))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())
