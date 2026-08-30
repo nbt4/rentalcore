@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
 	"go-barcode-webapp/internal/services"
@@ -934,7 +935,7 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		}
 	}
 	// Accept both legacy "statusid" and API "status_id"
-	job.StatusID = 1 // default: Planung
+	job.StatusID = jobstatus.PlanningID
 	for _, key := range []string{"status_id", "statusid"} {
 		if statusID, ok := requestData[key]; ok {
 			if sid, ok := statusID.(float64); ok && sid > 0 {

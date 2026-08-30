@@ -15,10 +15,9 @@ import { appPath } from '../lib/app-paths';
 
 function statusColor(status: string) {
   const s = status.toLowerCase();
-  if (s.includes('aktiv') || s.includes('active') || s.includes('confirmed')) return 'bg-green-500/10 text-green-400 border-green-500/20';
+	if (s.includes('bestätigt') || s.includes('bestaetigt') || s.includes('confirmed')) return 'bg-green-500/10 text-green-400 border-green-500/20';
   if (s.includes('abgeschlossen') || s.includes('completed')) return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-  if (s.includes('abgebrochen') || s.includes('cancelled') || s.includes('canceled')) return 'bg-red-500/10 text-red-400 border-red-500/20';
-  if (s.includes('archiv')) return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+	if (s.includes('storniert') || s.includes('cancelled') || s.includes('canceled')) return 'bg-red-500/10 text-red-400 border-red-500/20';
   return 'bg-accent-red/10 text-accent-red border-accent-red/20';
 }
 

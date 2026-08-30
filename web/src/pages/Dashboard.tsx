@@ -19,12 +19,9 @@ import type { Customer, Job } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../lib/toast';
 import { suiteDateLabel, suiteGreeting } from '../lib/cores-design';
+import { isFinishedJob } from '../lib/job-status';
 
 const DAY_IN_MS = 86_400_000;
-const FINISHED_STATUSES = [
-  'completed', 'finished', 'cancelled', 'canceled', 'archived', 'paid', 'on hold',
-  'abgeschlossen', 'beendet', 'storniert', 'abgebrochen', 'archiviert', 'bezahlt', 'pausiert',
-];
 
 function startOfDay(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -37,8 +34,7 @@ function parseDate(value?: string | null) {
 }
 
 function isFinished(job: Job) {
-  const status = (job.status?.status || '').trim().toLowerCase();
-  return FINISHED_STATUSES.some((finished) => status === finished || status.includes(finished));
+	return isFinishedJob(job.status_id);
 }
 
 function customerName(job: Job) {
@@ -65,13 +61,13 @@ function formatDate(value?: string | null, options?: Intl.DateTimeFormatOptions)
 
 function statusClasses(status?: string) {
   const value = (status || '').toLowerCase();
-  if (value.includes('aktiv') || value.includes('active') || value.includes('confirm')) {
+  if (value.includes('bestätigt') || value.includes('bestaetigt') || value.includes('confirm')) {
     return 'border-green-500/20 bg-green-500/10 text-green-300';
   }
   if (value.includes('abgeschlossen') || value.includes('completed') || value.includes('paid')) {
     return 'border-blue-500/20 bg-blue-500/10 text-blue-300';
   }
-  if (value.includes('cancel') || value.includes('storn') || value.includes('abgebrochen')) {
+  if (value.includes('cancel') || value.includes('storn')) {
     return 'border-red-500/20 bg-red-500/10 text-red-300';
   }
   return 'border-white/10 bg-white/5 text-gray-300';
@@ -176,7 +172,7 @@ export function Dashboard() {
 
   const statCards = [
     {
-      label: 'Aktive Jobs', value: dashboard.activeJobs.length, detail: `${jobs.length} insgesamt`,
+		label: 'Offene Jobs', value: dashboard.activeJobs.length, detail: `${jobs.length} insgesamt`,
       icon: Briefcase, iconClasses: 'bg-red-500/10 text-red-300', link: '/jobs',
     },
     {

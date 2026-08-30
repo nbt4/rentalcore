@@ -12,7 +12,7 @@ func NewStatusRepository(db *Database) *StatusRepository {
 
 func (r *StatusRepository) List() ([]models.Status, error) {
 	var statuses []models.Status
-	err := r.db.Find(&statuses).Error
+	err := r.db.Order("sort_order ASC, statusid ASC").Find(&statuses).Error
 	return statuses, err
 }
 

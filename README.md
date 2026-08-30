@@ -12,7 +12,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 
 ## Features
 
-- **Auftragsmanagement (Jobs)** — Vollständiger CRUD-Workflow für Mietaufträge mit Status-Tracking, Gerätezuweisungen und Terminverwaltung
+- **Auftragsmanagement (Jobs)** — Vollständiger CRUD-Workflow mit dem verbindlichen Lebenszyklus `Planung → Bestätigt → Abgeschlossen` sowie `Storniert` als Abbruchstatus
 - **Operatives Dashboard** — Personalisierte Tagesübersicht mit aktiven, laufenden, anstehenden und überfälligen Jobs, monatlichem Auftragswert, Terminradar und direkten Arbeitswegen
 - **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
@@ -26,6 +26,16 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Installierbare Mobile-App (PWA)** — Standalone-Modus mit RentalCore-App-Icon, Safe-Area-Unterstützung, großen Touch-Zielen, App-Tabbar und Drawer-Navigation; eigenständig installierbar und zusätzlich unter `/rentalcore/` nahtlos innerhalb der installierten Cores-PWA nutzbar
 - **Zentrales Branding** — Semantische RentalCore-Logos in Sidebar, Login, Favicon und PWA; Rechnungen, HTML-E-Mails und Geräteetiketten verwenden getrennt davon die zentrale Unternehmensmarke
 - **Einheitliche Navigation** — Ein-/ausklappbare Sidebar mit normierter Logo-/Symbolfläche, logofreier App-Header und zentralem Cores-Link ohne direkten WarehouseCore-Umschalter
+
+---
+
+## Job-Lebenszyklus
+
+RentalCore speichert genau vier Job-Stati: `Planung`, `Bestätigt`, `Abgeschlossen` und `Storniert`. Nur bestätigte Jobs sind im WarehouseCore zur Vorbereitung und Ausgabe freigegeben. `Aktiv` wird aus dem bestätigten Status und dem Veranstaltungszeitraum abgeleitet; Packfortschritt, Geräterücklauf und Rechnungszustand bleiben eigenständige Dimensionen. Insbesondere ist `Abgerechnet` kein Jobstatus: Ein beendeter Job bleibt `Abgeschlossen`, während Rechnungen separat beispielsweise `draft`, `sent` oder `paid` durchlaufen.
+
+Beim Wechsel auf `Abgeschlossen` oder `Storniert` werden bereits ausgegebene Geräte auf `return_pending` gesetzt. Erst die physische Rücknahme mit Lagerplatzbestätigung setzt sie wieder auf `in_storage`; der Job bleibt dabei `Abgeschlossen` beziehungsweise `Storniert`.
+
+Die Startmigration konsolidiert historische deutsche und englische Werte automatisch. `Vorbereitung`, `Aktiv`, `open`, `in progress` und `Pausiert` werden zu `Bestätigt`; `Abgerechnet`, `Completed` und `paid` zu `Abgeschlossen`; Stornovarianten zu `Storniert`.
 
 ---
 

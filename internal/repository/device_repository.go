@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"go-barcode-webapp/internal/models"
-
+	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/logger"
+	"go-barcode-webapp/internal/models"
 )
 
 type ProductDeviceAvailability struct {
@@ -230,10 +230,8 @@ func (r *DeviceRepository) GetAvailableDevices() ([]models.Device, error) {
 		SELECT DISTINCT jd.deviceid 
 		FROM job_devices jd
 		JOIN jobs j ON jd.jobid = j.jobid 
-		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN (
-			SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-		)
-	)`, currentDate, currentDate).Find(&devices).Error
+		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN ?
+	)`, currentDate, currentDate, jobstatus.OpenIDs).Find(&devices).Error
 
 	return devices, err
 }
@@ -440,10 +438,8 @@ func (r *DeviceRepository) GetAvailableDevicesForDate(targetDate time.Time) ([]m
 		SELECT DISTINCT jd.deviceid 
 		FROM job_devices jd
 		JOIN jobs j ON jd.jobid = j.jobid 
-		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN (
-			SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-		)
-	)`, targetDate, targetDate).Find(&devices).Error
+		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN ?
+	)`, targetDate, targetDate, jobstatus.OpenIDs).Find(&devices).Error
 
 	return devices, err
 }
@@ -459,10 +455,8 @@ func (r *DeviceRepository) CountAvailableDevicesForDate(targetDate time.Time) (i
 		SELECT DISTINCT jd.deviceid 
 		FROM job_devices jd
 		JOIN jobs j ON jd.jobid = j.jobid 
-		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN (
-			SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-		)
-	)`, targetDate, targetDate).Count(&count).Error
+		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN ?
+	)`, targetDate, targetDate, jobstatus.OpenIDs).Count(&count).Error
 
 	return count, err
 }
@@ -482,10 +476,8 @@ func (r *DeviceRepository) CountAssignedDevicesForDate(targetDate time.Time) (in
 		SELECT DISTINCT jd.deviceid 
 		FROM job_devices jd
 		JOIN jobs j ON jd.jobid = j.jobid 
-		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN (
-			SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-		)
-	)`, targetDate, targetDate).Count(&count).Error
+		WHERE j.startdate <= ? AND j.enddate >= ? AND j.statusid IN ?
+	)`, targetDate, targetDate, jobstatus.OpenIDs).Count(&count).Error
 
 	return count, err
 }
@@ -508,7 +500,7 @@ func (r *DeviceRepository) CountDevicesAssignedToJobs(targetDate time.Time) (int
 	// This ensures devices are unavailable ON the end date and become available the day AFTER
 	err := r.db.Table("job_devices jd").
 		Joins("JOIN jobs j ON jd.jobid = j.jobid").
-		Where("j.startdate <= ? AND j.enddate >= ? AND j.statusid IN (SELECT statusID FROM status WHERE status IN ('open', 'in_progress'))", targetDate, targetDate).
+		Where("j.startdate <= ? AND j.enddate >= ? AND j.statusid IN ?", targetDate, targetDate, jobstatus.OpenIDs).
 		Count(&count).Error
 
 	deviceDebugLog("DeviceRepository.CountDevicesAssignedToJobs: %d devices on %s",
@@ -556,10 +548,8 @@ func (r *DeviceRepository) GetAvailableDevicesForJob(jobID uint, startDate, endD
 		WHERE j.jobid != ? 
 			AND j.startdate <= ? 
 			AND j.enddate >= ? 
-			AND j.statusid IN (
-				SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-			)
-	)`, jobID, endDate, startDate).Find(&devices).Error
+			AND j.statusid IN ?
+	)`, jobID, endDate, startDate, jobstatus.OpenIDs).Find(&devices).Error
 
 	return devices, err
 }
@@ -609,7 +599,8 @@ func (r *DeviceRepository) GetProductAvailabilityForJob(productID uint, jobID *u
 		conflictQuery := r.db.Table("job_devices jd").
 			Select("jd.deviceid").
 			Joins("JOIN jobs j ON jd.jobid = j.jobid").
-			Where("NOT (COALESCE(j.enddate, j.startdate) < ? OR j.startdate > ?)", end, start)
+			Where("NOT (COALESCE(j.enddate, j.startdate) < ? OR j.startdate > ?)", end, start).
+			Where("j.statusid IN ?", jobstatus.OpenIDs)
 
 		if jobIDVal != 0 {
 			conflictQuery = conflictQuery.Where("j.jobid != ?", jobIDVal)
@@ -668,9 +659,7 @@ func (r *DeviceRepository) IsDeviceCurrentlyAssigned(deviceID string) (bool, *ui
 		Where(`job_devices.deviceid = ? 
 			AND jobs.startdate <= ? 
 			AND jobs.enddate >= ? 
-			AND jobs.statusid IN (
-				SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-			)`, deviceID, currentDate, currentDate).
+			AND jobs.statusid IN ?`, deviceID, currentDate, currentDate, jobstatus.OpenIDs).
 		First(&assignment).Error
 
 	if err != nil {

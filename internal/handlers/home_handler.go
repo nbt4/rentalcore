@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
 
@@ -53,10 +54,9 @@ func (h *HomeHandler) Dashboard(c *gin.Context) {
 
 	// Use the DB connection to count records
 	h.db.Model(&models.Job{}).Count(&totalJobs)
-	// Count active jobs by joining with status table to get actual status names
-	h.db.Table("jobs j").
-		Joins("LEFT JOIN status s ON j.statusID = s.statusID").
-		Where("s.status NOT IN ('Completed', 'Cancelled', 'completed', 'cancelled', 'paid', 'On Hold')").
+	// Planning and confirmed jobs are the only open lifecycle states.
+	h.db.Model(&models.Job{}).
+		Where("deleted_at IS NULL AND statusid IN ?", jobstatus.OpenIDs).
 		Count(&activeJobs)
 	h.db.Model(&models.Device{}).Count(&totalDevices)
 	h.db.Model(&models.Customer{}).Count(&totalCustomers)

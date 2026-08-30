@@ -2,12 +2,12 @@ package repository
 
 import (
 	"fmt"
+	"go-barcode-webapp/internal/jobstatus"
+	"go-barcode-webapp/internal/logger"
 	"go-barcode-webapp/internal/models"
 	"strings"
 
 	"gorm.io/gorm"
-
-	"go-barcode-webapp/internal/logger"
 )
 
 type JobRepository struct {
@@ -461,9 +461,7 @@ func (r *JobRepository) AssignDevice(jobID uint, deviceID string, price float64)
 				AND jobs.jobid != ? 
 				AND jobs.startdate <= ? 
 				AND jobs.enddate >= ? 
-				AND jobs.statusid IN (
-					SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-				)`, deviceID, jobID, job.EndDate, job.StartDate).
+				AND jobs.statusid IN ?`, deviceID, jobID, job.EndDate, job.StartDate, jobstatus.OpenIDs).
 			First(&conflictingJob).Error
 
 		if err == nil {
@@ -603,9 +601,7 @@ func (r *JobRepository) assignDeviceWithoutRevenue(jobID uint, deviceID string, 
 				AND jobs.jobid != ? 
 				AND jobs.startdate <= ? 
 				AND jobs.enddate >= ? 
-				AND jobs.statusid IN (
-					SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-				)`, deviceID, jobID, job.EndDate, job.StartDate).
+				AND jobs.statusid IN ?`, deviceID, jobID, job.EndDate, job.StartDate, jobstatus.OpenIDs).
 			First(&conflictingJob).Error
 
 		if err == nil {
@@ -997,10 +993,8 @@ func (r *JobRepository) findAvailableDevicesForProduct(tx *gorm.DB, productID ui
 			JOIN jobs j ON jd.jobid = j.jobid
 			WHERE j.startdate <= ?
 			  AND j.enddate >= ?
-			  AND j.statusid IN (
-			    SELECT statusID FROM status WHERE status IN ('open', 'in_progress')
-			  )
-		)`, job.EndDate, job.StartDate)
+			  AND j.statusid IN ?
+		)`, job.EndDate, job.StartDate, jobstatus.OpenIDs)
 	}
 
 	query = query.Order("serialnumber ASC").Limit(quantity)

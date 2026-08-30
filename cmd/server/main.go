@@ -301,6 +301,9 @@ func main() {
 
 	// Ensure M365 sync columns exist on production databases
 	if sqlDB, err := db.DB.DB(); err == nil {
+		if err := schema.EnsureJobStatusLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize job status lifecycle: %v", err)
+		}
 		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
 			logger.LogInfo("Warning: M365 column migration failed: %v", err)
 		}

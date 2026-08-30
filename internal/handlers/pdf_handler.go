@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
 	"go-barcode-webapp/internal/services/pdf"
@@ -1945,15 +1946,10 @@ func (h *PDFHandler) ensureCustomerForExtraction(extraction *models.PDFExtractio
 
 func (h *PDFHandler) findDefaultJobStatus() (uint, error) {
 	var status models.Status
-	if err := h.DB.Where("status LIKE ?", "%Draft%").First(&status).Error; err == nil {
+	if err := h.DB.First(&status, jobstatus.PlanningID).Error; err == nil {
 		return status.StatusID, nil
 	}
-
-	if err := h.DB.Order("statusid").First(&status).Error; err == nil {
-		return status.StatusID, nil
-	}
-
-	return 0, fmt.Errorf("no job status configured")
+	return 0, fmt.Errorf("canonical planning status is not configured")
 }
 
 func truncateString(value string, max int) string {

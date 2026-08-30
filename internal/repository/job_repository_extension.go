@@ -2,16 +2,15 @@ package repository
 
 import (
 	"fmt"
+	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
 )
 
-// FreeDevicesFromCompletedJobs removes device assignments from jobs with "cancelled" status
-// and sets the device status back to "free". Paid jobs should retain their device assignments for records.
+// FreeDevicesFromCompletedJobs removes device assignments from cancelled jobs
+// and returns their devices to the available inventory.
 func (r *JobRepository) FreeDevicesFromCompletedJobs() error {
-	// Find all jobs with "cancelled" status (NOT "paid" - paid jobs should keep device assignments)
 	var cancelledJobs []models.Job
-	err := r.db.Joins("JOIN status ON jobs.statusid = status.statusid").
-		Where("status.status = ?", "cancelled").
+	err := r.db.Where("statusid = ?", jobstatus.CancelledID).
 		Find(&cancelledJobs).Error
 	if err != nil {
 		return fmt.Errorf("failed to find cancelled jobs: %v", err)
