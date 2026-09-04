@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
+import { CentralLoginRedirect } from './components/CentralLoginRedirect';
 import { ChangePassword } from './pages/ChangePassword';
 import { Dashboard } from './pages/Dashboard';
 import { JobsPage } from './pages/JobsPage';
@@ -18,7 +18,7 @@ function App() {
     <BrowserRouter basename={appBasePath || undefined}>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<CentralLoginRedirect />} />
           <Route path="/profile" element={<Navigate to="/" replace />} />
           <Route path="/profile/settings" element={<Navigate to="/" replace />} />
           <Route path="/change-password" element={

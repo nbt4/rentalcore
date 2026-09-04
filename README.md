@@ -100,6 +100,11 @@ rentalcore:
 
 ## API-Endpunkte
 
+Die React-Oberfläche besitzt keinen eigenen interaktiven Login mehr. Bei einer
+fehlenden Sitzung öffnet sie den zentralen Cores-Login und übergibt die aktuelle
+RentalCore-Ansicht als Rücksprungziel; damit steht dort auch Microsoft Entra zur
+Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
+
 | Methode  | Pfad                                        | Beschreibung                                  |
 |----------|---------------------------------------------|-----------------------------------------------|
 | `POST`   | `/api/v1/auth/login`                        | Benutzer-Login                                |

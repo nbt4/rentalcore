@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { CentralLoginRedirect } from './CentralLoginRedirect';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export function ProtectedRoute({ children, bypassForcePasswordChange = false }: 
     );
   }
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <CentralLoginRedirect />;
   if (forcePasswordChange && !bypassForcePasswordChange) return <Navigate to="/change-password" replace />;
 
   return <>{children}</>;

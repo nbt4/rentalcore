@@ -167,6 +167,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	cookieDomain := getCookieDomain(c)
 	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
 	c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
+	c.SetCookie("cores_token", "", -1, "/", cookieDomain, cookieDomain != "", true)
 
 	// Redirect to login
 	c.Redirect(http.StatusSeeOther, "/login")
@@ -1379,6 +1380,7 @@ func (h *AuthHandler) LogoutAPI(c *gin.Context) {
 	cookieDomain := getCookieDomain(c)
 	c.SetSameSite(http.SameSiteLaxMode) // FIXED: set SameSite=Lax for cookies
 	c.SetCookie("session_id", "", -1, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
+	c.SetCookie("cores_token", "", -1, "/", cookieDomain, cookieDomain != "", true)
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
