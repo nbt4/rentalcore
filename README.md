@@ -173,3 +173,8 @@ Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard 
 ---
 
 [Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
+# Release 5.3.99
+
+Der Microsoft-Sync-Kontext wird beim Verlassen des Servers abgebrochen. Damit
+bleibt kein verworfener Cancel-Kontext zurück; die suiteweite statische Go-Prüfung
+prüft diesen Lebenszyklus zusätzlich zu den vorhandenen Tests.
