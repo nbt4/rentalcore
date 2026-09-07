@@ -1,13 +1,13 @@
 package config
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 
 	"time"
-	
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -27,35 +27,33 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-// PostgreSQL Configuration
-Host     string `json:"host"`
-Port     int    `json:"port"`
-Name     string `json:"name"`
-User     string `json:"user"`
-Password string `json:"password"`
-SSLMode  string `json:"sslmode"`
+	// PostgreSQL Configuration
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Name     string `json:"name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	SSLMode  string `json:"sslmode"`
 
-// Connection Pool
-MaxOpenConns    int           `json:"max_open_conns"`
-MaxIdleConns    int           `json:"max_idle_conns"`
-ConnMaxLifetime time.Duration `json:"conn_max_lifetime"`
-ConnMaxIdleTime time.Duration `json:"conn_max_idle_time"`
+	// Connection Pool
+	MaxOpenConns    int           `json:"max_open_conns"`
+	MaxIdleConns    int           `json:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `json:"conn_max_lifetime"`
+	ConnMaxIdleTime time.Duration `json:"conn_max_idle_time"`
 
-// Query settings
-SlowQueryThreshold time.Duration   `json:"slow_query_threshold"`
-EnableQueryLogging bool            `json:"enable_query_logging"`
-LogLevel           logger.LogLevel `json:"-"`
-PrepareStmt        bool            `json:"prepare_stmt"`
-DisableForeignKeyConstraintWhenMigrating bool `json:"disable_fk_when_migrating"`
+	// Query settings
+	SlowQueryThreshold                       time.Duration   `json:"slow_query_threshold"`
+	EnableQueryLogging                       bool            `json:"enable_query_logging"`
+	LogLevel                                 logger.LogLevel `json:"-"`
+	PrepareStmt                              bool            `json:"prepare_stmt"`
+	DisableForeignKeyConstraintWhenMigrating bool            `json:"disable_fk_when_migrating"`
 }
+
 // DSN returns the PostgreSQL connection string
 func (c *DatabaseConfig) DSN() string {
-        return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-                c.Host, c.Port, c.User, c.Password, c.Name, c.SSLMode)
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, c.Name, c.SSLMode)
 }
-
-
-
 
 type ServerConfig struct {
 	Port int    `json:"port"`
@@ -63,15 +61,15 @@ type ServerConfig struct {
 }
 
 type UIConfig struct {
-	ThemeDark      string            `json:"theme_dark"`
-	ThemeLight     string            `json:"theme_light"`
-	CurrentTheme   string            `json:"current_theme"`
-	Colors         map[string]string `json:"colors"`
-	AutoSave       bool              `json:"auto_save"`
-	AutoSaveInterval int             `json:"auto_save_interval"`
-	CacheTimeout   int               `json:"cache_timeout"`
-	WindowWidth    int               `json:"window_width"`
-	WindowHeight   int               `json:"window_height"`
+	ThemeDark        string            `json:"theme_dark"`
+	ThemeLight       string            `json:"theme_light"`
+	CurrentTheme     string            `json:"current_theme"`
+	Colors           map[string]string `json:"colors"`
+	AutoSave         bool              `json:"auto_save"`
+	AutoSaveInterval int               `json:"auto_save_interval"`
+	CacheTimeout     int               `json:"cache_timeout"`
+	WindowWidth      int               `json:"window_width"`
+	WindowHeight     int               `json:"window_height"`
 }
 
 type EmailConfig struct {
@@ -134,10 +132,10 @@ type FeaturesConfig struct {
 func LoadConfig(path string) (*Config, error) {
 	// Start with default config
 	config := getDefaultConfig()
-	
+
 	// Override with environment variables if they exist
 	loadFromEnvironment(config)
-	
+
 	// Try to load from file if it exists
 	file, err := os.Open(path)
 	if err == nil {
@@ -176,22 +174,22 @@ func (c *Config) Save(path string) error {
 func getDefaultConfig() *Config {
 	return &Config{
 		Database: DatabaseConfig{
-Host:               "localhost",
-Port:               5432,
-Name:               "rentalcore",
-User:               "rentalcore",
-Password:           "", // FIXED: removed hardcoded password, must be set via DB_PASSWORD env
-SSLMode:            "disable",
-MaxOpenConns:       25,
-MaxIdleConns:       10,
-ConnMaxLifetime:    time.Hour,
-ConnMaxIdleTime:    30 * time.Minute,
-SlowQueryThreshold: 500 * time.Millisecond,
-EnableQueryLogging: false,
-LogLevel:           logger.Warn,
-PrepareStmt:        true,
-DisableForeignKeyConstraintWhenMigrating: true,
-},
+			Host:                                     "localhost",
+			Port:                                     5432,
+			Name:                                     "rentalcore",
+			User:                                     "rentalcore",
+			Password:                                 "", // FIXED: removed hardcoded password, must be set via DB_PASSWORD env
+			SSLMode:                                  "disable",
+			MaxOpenConns:                             25,
+			MaxIdleConns:                             10,
+			ConnMaxLifetime:                          time.Hour,
+			ConnMaxIdleTime:                          30 * time.Minute,
+			SlowQueryThreshold:                       500 * time.Millisecond,
+			EnableQueryLogging:                       false,
+			LogLevel:                                 logger.Warn,
+			PrepareStmt:                              true,
+			DisableForeignKeyConstraintWhenMigrating: true,
+		},
 		Server: ServerConfig{
 			Port: 8080,
 			Host: "0.0.0.0",
@@ -206,15 +204,15 @@ DisableForeignKeyConstraintWhenMigrating: true,
 			WindowWidth:      1400,
 			WindowHeight:     800,
 			Colors: map[string]string{
-				"primary":     "#007bff",
-				"background":  "#ffffff",
-				"text":        "#000000",
-				"selection":   "#e9ecef",
-				"success":     "#28a745",
-				"error":       "#dc3545",
-				"warning":     "#ffc107",
-				"dark_bg":     "#2b2b2b",
-				"dark_text":   "#ffffff",
+				"primary":    "#007bff",
+				"background": "#ffffff",
+				"text":       "#000000",
+				"selection":  "#e9ecef",
+				"success":    "#28a745",
+				"error":      "#dc3545",
+				"warning":    "#ffc107",
+				"dark_bg":    "#2b2b2b",
+				"dark_text":  "#ffffff",
 			},
 		},
 		Email: EmailConfig{
@@ -436,26 +434,39 @@ func (c *M365Config) LoadFromEnv() {
 }
 
 func (c *M365Config) IsConfigured() bool {
-	return c.TenantID != "" && c.ClientID != "" && c.ClientSecret != "" && c.MailboxID != ""
+	return c.ContactsConfigured() || c.CalendarConfigured()
 }
+
+func (c *M365Config) HasCredentials() bool {
+	return c.TenantID != "" && c.ClientID != "" && c.ClientSecret != ""
+}
+
+func (c *M365Config) ContactsConfigured() bool {
+	return c.HasCredentials() && c.MailboxID != ""
+}
+
+func (c *M365Config) CalendarConfigured() bool {
+	return c.HasCredentials() && c.CalendarMailbox != ""
+}
+
 // GetDatabaseStats returns database connection statistics
 func GetDatabaseStats(db *gorm.DB) (map[string]interface{}, error) {
-sqlDB, err := db.DB()
-if err != nil {
-return nil, err
-}
-stats := sqlDB.Stats()
-return map[string]interface{}{
-"database_type":        "PostgreSQL",
-"max_open_connections": stats.MaxOpenConnections,
-"open_connections":     stats.OpenConnections,
-"in_use":               stats.InUse,
-"idle":                 stats.Idle,
-}, nil
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	stats := sqlDB.Stats()
+	return map[string]interface{}{
+		"database_type":        "PostgreSQL",
+		"max_open_connections": stats.MaxOpenConnections,
+		"open_connections":     stats.OpenConnections,
+		"in_use":               stats.InUse,
+		"idle":                 stats.Idle,
+	}, nil
 }
 
 // ApplyPerformanceIndexes applies database indexes for performance
 func ApplyPerformanceIndexes(db *gorm.DB) error {
-// PostgreSQL indexes are handled by migrations
-return nil
+	// PostgreSQL indexes are handled by migrations
+	return nil
 }

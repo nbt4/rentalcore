@@ -3,6 +3,7 @@ package m365
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"go-barcode-webapp/internal/models"
@@ -16,8 +17,8 @@ type CalendarSyncService struct {
 	jobRepo *repository.JobRepository
 	posRepo *repository.PositionRepository
 	empRepo *repository.JobEmployeeRepository
-	db      *repository.Database
 	baseURL string
+	mu      sync.Mutex
 }
 
 func NewCalendarSyncService(
@@ -25,7 +26,6 @@ func NewCalendarSyncService(
 	jobRepo *repository.JobRepository,
 	posRepo *repository.PositionRepository,
 	empRepo *repository.JobEmployeeRepository,
-	db *repository.Database,
 	baseURL string,
 ) *CalendarSyncService {
 	return &CalendarSyncService{
@@ -33,20 +33,67 @@ func NewCalendarSyncService(
 		jobRepo: jobRepo,
 		posRepo: posRepo,
 		empRepo: empRepo,
-		db:      db,
 		baseURL: baseURL,
 	}
 }
 
-// SyncAllEmployeeEvents aktualisiert die Kalendereinträge aller zugewiesenen Mitarbeiter.
-// Wird als goroutine aufgerufen — Job-Daten müssen vollständig sein.
+// SyncAllEmployeeEvents ist der rückwärtskompatible Einstiegspunkt für den
+// gemeinsamen Job-Termin in der Kalender-Mailbox.
 func (s *CalendarSyncService) SyncAllEmployeeEvents(jobID uint) {
+	s.SyncJobEvent(jobID)
+}
+
+// DeleteAllEmployeeEvents ist der rückwärtskompatible Einstiegspunkt.
+func (s *CalendarSyncService) DeleteAllEmployeeEvents(jobID uint) {
+	s.DeleteJobEvent(jobID)
+}
+
+// SyncEmployeeEvent aktualisiert den einen Job-Termin und dessen Teilnehmerliste.
+func (s *CalendarSyncService) SyncEmployeeEvent(jobID, employeeID uint) {
+	s.SyncJobEvent(jobID)
+}
+
+// DeleteEmployeeEvent entfernt nur noch einen eventuell vorhandenen Alttermin.
+// Die Teilnehmerliste des gemeinsamen Termins wird nach dem DB-Remove über
+// SyncJobEvent aktualisiert.
+func (s *CalendarSyncService) DeleteEmployeeEvent(jobID, employeeID uint) {
+	je, err := s.empRepo.GetOne(jobID, employeeID)
+	if err != nil {
+		return
+	}
+	s.deleteLegacyEmployeeEvent(*je)
+}
+
+func (s *CalendarSyncService) deleteLegacyEmployeeEvent(je models.JobEmployee) {
+	if je.M365EventID == nil || *je.M365EventID == "" || je.Employee.Email == nil {
+		return
+	}
+	if err := s.client.DeleteUserEvent(*je.Employee.Email, *je.M365EventID); err != nil {
+		if !isCalendarNotFound(err) {
+			logger.LogInfo("[CalendarSync] delete legacy event for employee %d: %v", je.EmployeeID, err)
+			return
+		}
+	}
+	if err := s.empRepo.ClearM365EventID(je.JobID, je.EmployeeID); err != nil {
+		logger.LogInfo("[CalendarSync] clear legacy event id for employee %d: %v", je.EmployeeID, err)
+	}
+}
+
+func (s *CalendarSyncService) cleanupLegacyEmployeeEvents(employees []models.JobEmployee) {
+	for _, employee := range employees {
+		s.deleteLegacyEmployeeEvent(employee)
+	}
+}
+
+// SyncJobEvent erstellt genau einen Termin in der Kalender-/Raum-Mailbox und
+// hält dessen Teilnehmerliste mit den zugewiesenen Bearbeitern synchron.
+func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	job, err := s.jobRepo.GetByID(jobID)
 	if err != nil {
 		logger.LogInfo("[CalendarSync] job %d not found: %v", jobID, err)
-		return
-	}
-	if job.StartDate == nil {
 		return
 	}
 	employees, err := s.empRepo.ListForJob(jobID)
@@ -54,93 +101,83 @@ func (s *CalendarSyncService) SyncAllEmployeeEvents(jobID uint) {
 		logger.LogInfo("[CalendarSync] list employees for job %d: %v", jobID, err)
 		return
 	}
-	for _, je := range employees {
-		s.syncOne(job, je)
-	}
-}
 
-// DeleteAllEmployeeEvents löscht alle Kalendereinträge für einen Job (beim Job-Löschen).
-func (s *CalendarSyncService) DeleteAllEmployeeEvents(jobID uint) {
-	employees, err := s.empRepo.ListForJob(jobID)
-	if err != nil {
+	if job.StartDate == nil {
+		s.deleteCentralEvent(job)
+		s.cleanupLegacyEmployeeEvents(employees)
 		return
 	}
-	for _, je := range employees {
-		s.deleteOne(je)
-	}
-}
 
-// SyncEmployeeEvent erstellt oder aktualisiert den Kalendereintrag für einen einzelnen Mitarbeiter.
-func (s *CalendarSyncService) SyncEmployeeEvent(jobID, employeeID uint) {
-	job, err := s.jobRepo.GetByID(jobID)
-	if err != nil || job.StartDate == nil {
-		return
-	}
-	je, err := s.empRepo.GetOne(jobID, employeeID)
+	event, err := s.buildEvent(job, employees)
 	if err != nil {
-		logger.LogInfo("[CalendarSync] get job_employee %d/%d: %v", jobID, employeeID, err)
+		logger.LogInfo("[CalendarSync] build event for job %d: %v", jobID, err)
 		return
 	}
-	s.syncOne(job, *je)
-}
 
-// DeleteEmployeeEvent löscht den Kalendereintrag eines Mitarbeiters für einen Job.
-func (s *CalendarSyncService) DeleteEmployeeEvent(jobID, employeeID uint) {
-	je, err := s.empRepo.GetOne(jobID, employeeID)
-	if err != nil {
-		return
-	}
-	s.deleteOne(*je)
-}
-
-func (s *CalendarSyncService) syncOne(job *models.Job, je models.JobEmployee) {
-	if je.Employee.Email == nil || *je.Employee.Email == "" {
-		return
-	}
-	email := *je.Employee.Email
-	event, err := s.buildEvent(job)
-	if err != nil {
-		logger.LogInfo("[CalendarSync] build event for job %d: %v", job.JobID, err)
-		return
-	}
-	if je.M365EventID != nil && *je.M365EventID != "" {
-		if err := s.client.UpdateUserEvent(email, *je.M365EventID, *event); err != nil {
-			logger.LogInfo("[CalendarSync] update event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
+	if job.M365EventID != nil && *job.M365EventID != "" {
+		err = s.client.UpdateEvent(*job.M365EventID, *event)
+		if err == nil {
+			s.cleanupLegacyEmployeeEvents(employees)
+			if updated, getErr := s.client.GetEvent(*job.M365EventID); getErr != nil {
+				logger.LogInfo("[CalendarSync] load shared event for attendee acceptance on job %d: %v", jobID, getErr)
+			} else {
+				s.scheduleAttendeeAcceptance(event.Attendees, updated.ICalUID)
+			}
+			return
 		}
-		return
+		if !isCalendarNotFound(err) {
+			logger.LogInfo("[CalendarSync] update shared event for job %d: %v", jobID, err)
+			return
+		}
+		if clearErr := s.jobRepo.ClearM365EventID(jobID); clearErr != nil {
+			logger.LogInfo("[CalendarSync] clear missing event id for job %d: %v", jobID, clearErr)
+			return
+		}
 	}
-	eventID, err := s.client.CreateUserEvent(email, *event)
+
+	event.TransactionID = jobTransactionID(job)
+	created, err := s.client.CreateEvent(*event)
 	if err != nil {
-		logger.LogInfo("[CalendarSync] create event for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
+		logger.LogInfo("[CalendarSync] create shared event for job %d: %v", jobID, err)
 		return
 	}
-	if err := s.empRepo.SaveM365EventID(je.JobID, je.EmployeeID, eventID); err != nil {
-		logger.LogInfo("[CalendarSync] save event id for employee %d job %d: %v", je.EmployeeID, job.JobID, err)
-	}
-}
-
-func (s *CalendarSyncService) deleteOne(je models.JobEmployee) {
-	if je.M365EventID == nil || *je.M365EventID == "" || je.Employee.Email == nil {
+	if err := s.jobRepo.SaveM365EventID(jobID, created.ID); err != nil {
+		logger.LogInfo("[CalendarSync] save shared event id for job %d: %v", jobID, err)
 		return
 	}
-	if err := s.client.DeleteUserEvent(*je.Employee.Email, *je.M365EventID); err != nil {
-		logger.LogInfo("[CalendarSync] delete event for employee %d: %v", je.EmployeeID, err)
-		return
-	}
-	s.empRepo.ClearM365EventID(je.JobID, je.EmployeeID)
+	s.cleanupLegacyEmployeeEvents(employees)
+	s.scheduleAttendeeAcceptance(event.Attendees, created.ICalUID)
 }
 
-// SyncJobEvent — rückwärtskompatibel, delegiert an SyncAllEmployeeEvents.
-func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
-	s.SyncAllEmployeeEvents(jobID)
-}
-
-// DeleteJobEvent — rückwärtskompatibel, delegiert an DeleteAllEmployeeEvents.
 func (s *CalendarSyncService) DeleteJobEvent(jobID uint) {
-	s.DeleteAllEmployeeEvents(jobID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	job, err := s.jobRepo.GetByID(jobID)
+	if err != nil {
+		return
+	}
+	employees, err := s.empRepo.ListForJob(jobID)
+	if err == nil {
+		s.cleanupLegacyEmployeeEvents(employees)
+	}
+	s.deleteCentralEvent(job)
 }
 
-func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error) {
+func (s *CalendarSyncService) deleteCentralEvent(job *models.Job) {
+	if job.M365EventID == nil || *job.M365EventID == "" {
+		return
+	}
+	if err := s.client.DeleteEvent(*job.M365EventID); err != nil && !isCalendarNotFound(err) {
+		logger.LogInfo("[CalendarSync] delete shared event for job %d: %v", job.JobID, err)
+		return
+	}
+	if err := s.jobRepo.ClearM365EventID(job.JobID); err != nil {
+		logger.LogInfo("[CalendarSync] clear shared event id for job %d: %v", job.JobID, err)
+	}
+}
+
+func (s *CalendarSyncService) buildEvent(job *models.Job, employees []models.JobEmployee) (*CalendarEvent, error) {
 	positions, err := s.posRepo.GetByJobID(job.JobID)
 	if err != nil {
 		return nil, fmt.Errorf("load positions: %w", err)
@@ -158,20 +195,88 @@ func (s *CalendarSyncService) buildEvent(job *models.Job) (*CalendarEvent, error
 	start := job.StartDate.Format("2006-01-02") + "T00:00:00"
 	var end string
 	if job.EndDate != nil {
-		end = job.EndDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
+		end = job.EndDate.Add(24*time.Hour).Format("2006-01-02") + "T00:00:00"
 	} else {
-		end = job.StartDate.Add(24 * time.Hour).Format("2006-01-02") + "T00:00:00"
+		end = job.StartDate.Add(24*time.Hour).Format("2006-01-02") + "T00:00:00"
 	}
 
 	location := buildLocation(job)
 
 	return &CalendarEvent{
-		Subject:  subject,
-		Body:     EventBody{ContentType: "HTML", Content: body},
-		Start:    EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
-		End:      EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
-		Location: location,
+		Subject:               subject,
+		Body:                  EventBody{ContentType: "HTML", Content: body},
+		Start:                 EventDateTime{DateTime: start, TimeZone: "Europe/Berlin"},
+		End:                   EventDateTime{DateTime: end, TimeZone: "Europe/Berlin"},
+		Location:              location,
+		Attendees:             buildAttendees(employees, s.client.mailbox),
+		IsAllDay:              true,
+		ShowAs:                "busy",
+		ResponseRequested:     false,
+		AllowNewTimeProposals: false,
 	}, nil
+}
+
+func buildAttendees(employees []models.JobEmployee, calendarMailbox string) []Attendee {
+	attendees := make([]Attendee, 0, len(employees))
+	seen := make(map[string]struct{}, len(employees))
+	excluded := strings.ToLower(strings.TrimSpace(calendarMailbox))
+	for _, assignment := range employees {
+		if assignment.Employee.Email == nil {
+			continue
+		}
+		email := strings.TrimSpace(*assignment.Employee.Email)
+		normalized := strings.ToLower(email)
+		if email == "" || normalized == excluded {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		attendees = append(attendees, Attendee{
+			EmailAddress: EmailAddr{Address: email},
+			Type:         "required",
+		})
+	}
+	return attendees
+}
+
+func jobTransactionID(job *models.Job) string {
+	if job.CreatedAt != nil {
+		return fmt.Sprintf("rentalcore-job-%d-%d", job.JobID, job.CreatedAt.UnixNano())
+	}
+	return fmt.Sprintf("rentalcore-job-%d", job.JobID)
+}
+
+func (s *CalendarSyncService) scheduleAttendeeAcceptance(attendees []Attendee, iCalUID string) {
+	if iCalUID == "" {
+		return
+	}
+	for _, attendee := range attendees {
+		email := attendee.EmailAddress.Address
+		go s.acceptAttendee(email, iCalUID)
+	}
+}
+
+func (s *CalendarSyncService) acceptAttendee(email, iCalUID string) {
+	delays := []time.Duration{0, 500 * time.Millisecond, time.Second, 2 * time.Second, 4 * time.Second}
+	var lastErr error
+	for _, delay := range delays {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		eventID, err := s.client.FindUserEventByICalUID(email, iCalUID)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if err := s.client.AcceptUserEvent(email, eventID); err != nil {
+			lastErr = err
+			continue
+		}
+		return
+	}
+	logger.LogInfo("[CalendarSync] auto-accept shared event for %s: %v", email, lastErr)
 }
 
 func buildLocation(job *models.Job) *EventLocation {

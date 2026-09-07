@@ -241,6 +241,14 @@ func (r *JobRepository) UpdateFields(jobID uint, fields map[string]interface{}) 
 	return r.db.Model(&models.Job{}).Where("jobid = ?", jobID).Updates(fields).Error
 }
 
+func (r *JobRepository) SaveM365EventID(jobID uint, eventID string) error {
+	return r.UpdateFields(jobID, map[string]interface{}{"m365_event_id": eventID})
+}
+
+func (r *JobRepository) ClearM365EventID(jobID uint) error {
+	return r.UpdateFields(jobID, map[string]interface{}{"m365_event_id": nil})
+}
+
 // RemoveAllDevicesFromJob removes all devices assigned to a specific job
 func (r *JobRepository) RemoveAllDevicesFromJob(jobID uint) error {
 	return r.db.Where("jobID = ?", jobID).Delete(&models.JobDevice{}).Error

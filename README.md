@@ -165,16 +165,28 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 | `M365_CLIENT_SECRET`           | Entra ID Client-Secret                            | –                      |
 | `M365_SHARED_MAILBOX_ID`       | Shared Mailbox-ID                                 | –                      |
 | `M365_SYNC_INTERVAL`           | Sync-Intervall (z. B. `5m`)                       | `5m`                   |
+| `M365_CALENDAR_MAILBOX`        | Raum-Mailbox für den zentralen Jobkalender        | `events@tsunami-events.de` |
 | `WAREHOUSECORE_DOMAIN`         | WarehouseCore-Domain für Cross-Navigation         | –                      |
 | `CORES_JWT_SECRET`             | JWT-Secret (Cores-weit identisch)                 | –                      |
 
 Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard unter **Microsoft 365 & Entra** Werte gespeichert sind, lädt RentalCore Tenant-ID, Client-ID, Secret, Mailboxen, Intervall und App-URL beim Start aus der gemeinsamen Tabelle `m365_settings`. Damit wird für Entra-Benutzer, Login, Kontakte und Kalender nur eine registrierte Tenant-App benötigt.
 
+Für den Jobkalender muss `M365_CALENDAR_MAILBOX` eine Exchange-Online-Raumressource sein. RentalCore legt dort genau einen Termin je Job an und synchronisiert alle zugewiesenen Bearbeiter als erforderliche Teilnehmer desselben Meetings. Antworten und neue Zeitvorschläge sind deaktiviert; RentalCore bestätigt die Teilnehmerinstanz über Microsoft Graph ohne Antwortmail. So erscheint kein zusätzlich von RentalCore erzeugter Einzeltermin im Bearbeiterkalender. Eine bestehende Mailbox kann in Exchange Online PowerShell vorbereitet werden:
+
+```powershell
+Set-Mailbox events@example.com -Type Room
+Set-CalendarProcessing events@example.com -AutomateProcessing AutoAccept -AllowConflicts $true -AllBookInPolicy $true -DeleteSubject $false -DeleteComments $false -AddOrganizerToSubject $false
+```
+
+Die App-Registrierung benötigt dafür die Microsoft-Graph-Anwendungsberechtigung `Calendars.ReadWrite` mit Administratorzustimmung. Kontakt- und Kalender-Sync können unabhängig voneinander verwendet werden; für reinen Kalendersync ist `M365_SHARED_MAILBOX_ID` nicht erforderlich.
+
 ---
 
 [Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
-# Release 5.3.99
+# Release 5.3.100
 
-Der Microsoft-Sync-Kontext wird beim Verlassen des Servers abgebrochen. Damit
-bleibt kein verworfener Cancel-Kontext zurück; die suiteweite statische Go-Prüfung
-prüft diesen Lebenszyklus zusätzlich zu den vorhandenen Tests.
+Der Microsoft-Kalendersync verwendet eine Exchange-Raumressource als zentralen
+Jobkalender. Jeder Job besitzt genau einen Raumtermin; Bearbeiter werden als
+Teilnehmer desselben Meetings automatisch und ohne Antwortmail bestätigt.
+Bestehende eigenständige Bearbeitertermine werden beim nächsten Job-Sync bereinigt.
+Kontakt- und Kalendersync lassen sich unabhängig voneinander konfigurieren.

@@ -393,36 +393,42 @@ func main() {
 	var m365SyncService handlers.SyncServiceInterface
 	var calendarSync handlers.CalendarSyncServiceInterface
 	if cfg.M365.IsConfigured() {
-		interval, err := time.ParseDuration(cfg.M365.SyncInterval)
-		if err != nil {
-			interval = 5 * time.Minute
-		}
 		graphClient := m365sync.NewGraphClient(
 			cfg.M365.TenantID,
 			cfg.M365.ClientID,
 			cfg.M365.ClientSecret,
 			cfg.M365.MailboxID,
 		)
-		exchangeClient := m365sync.NewExchangeAdminClient(
-			cfg.M365.TenantID,
-			cfg.M365.ClientID,
-			cfg.M365.ClientSecret,
-		)
-		sqlDB, _ := db.DB.DB()
-		svc := m365sync.NewSyncService(graphClient, exchangeClient, customerRepo, sqlDB, interval)
-		m365SyncService = svc
-		syncCtx, cancelSync := context.WithCancel(context.Background())
-		defer cancelSync()
-		svc.Start(syncCtx)
-		logger.LogInfo("M365 sync: service initialized")
+		if cfg.M365.ContactsConfigured() {
+			interval, err := time.ParseDuration(cfg.M365.SyncInterval)
+			if err != nil {
+				interval = 5 * time.Minute
+			}
+			exchangeClient := m365sync.NewExchangeAdminClient(
+				cfg.M365.TenantID,
+				cfg.M365.ClientID,
+				cfg.M365.ClientSecret,
+			)
+			sqlDB, _ := db.DB.DB()
+			svc := m365sync.NewSyncService(graphClient, exchangeClient, customerRepo, sqlDB, interval)
+			m365SyncService = svc
+			syncCtx, cancelSync := context.WithCancel(context.Background())
+			defer cancelSync()
+			svc.Start(syncCtx)
+			logger.LogInfo("M365 contact sync: service initialized")
+		} else {
+			logger.LogInfo("M365 contact sync: not configured (M365_SHARED_MAILBOX_ID is empty)")
+		}
 
-		calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
-		calendarSync = m365sync.NewCalendarSyncService(
-			calendarClient, jobRepo, positionRepo, jobEmployeeRepo, db, cfg.M365.AppBaseURL,
-		)
-		logger.LogInfo("M365 calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
+		if cfg.M365.CalendarConfigured() {
+			calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
+			calendarSync = m365sync.NewCalendarSyncService(
+				calendarClient, jobRepo, positionRepo, jobEmployeeRepo, cfg.M365.AppBaseURL,
+			)
+			logger.LogInfo("M365 room calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
+		}
 	} else {
-		logger.LogInfo("M365 sync: not configured (M365_TENANT_ID etc. not set)")
+		logger.LogInfo("M365 sync: not configured (credentials or mailbox settings are missing)")
 	}
 	statusRepo := repository.NewStatusRepository(db)
 	productRepo := repository.NewProductRepository(db)
@@ -793,7 +799,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.99")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.100")))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())

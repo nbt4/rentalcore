@@ -2169,11 +2169,15 @@ func (h *JobHandler) RemoveEmployee(c *gin.Context) {
 		return
 	}
 	if h.calendarSync != nil {
+		// Entfernt bei Upgrades noch vorhandene eigenständige Mitarbeitertermine.
 		h.calendarSync.DeleteEmployeeEvent(uint(jobID), uint(employeeID))
 	}
 	if err := h.jobEmployeeRepo.Remove(uint(jobID), uint(employeeID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	if h.calendarSync != nil {
+		go h.calendarSync.SyncJobEvent(uint(jobID))
 	}
 	c.Status(http.StatusNoContent)
 }
