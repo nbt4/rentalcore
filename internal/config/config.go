@@ -426,7 +426,7 @@ func (c *M365Config) LoadFromEnv() {
 	if v := os.Getenv("M365_CALENDAR_MAILBOX"); v != "" {
 		c.CalendarMailbox = v
 	} else {
-		c.CalendarMailbox = "events@tsunami-events.de"
+		c.CalendarMailbox = "events-calender@tsunami-events.de"
 	}
 	if v := os.Getenv("APP_BASE_URL"); v != "" {
 		c.AppBaseURL = v

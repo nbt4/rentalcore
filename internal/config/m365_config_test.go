@@ -29,3 +29,14 @@ func TestM365ServicesCanBeConfiguredIndependently(t *testing.T) {
 		})
 	}
 }
+
+func TestM365CalendarUsesRoomMailboxByDefault(t *testing.T) {
+	t.Setenv("M365_CALENDAR_MAILBOX", "")
+
+	var config M365Config
+	config.LoadFromEnv()
+
+	if config.CalendarMailbox != "events-calender@tsunami-events.de" {
+		t.Fatalf("CalendarMailbox = %q, want events-calender@tsunami-events.de", config.CalendarMailbox)
+	}
+}

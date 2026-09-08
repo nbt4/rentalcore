@@ -27,7 +27,7 @@ func (h *M365SettingsHandler) GetM365Settings(c *gin.Context) {
 			"clientSecret":    "",
 			"mailboxId":       os.Getenv("M365_SHARED_MAILBOX_ID"),
 			"syncInterval":    firstNonEmpty(os.Getenv("M365_SYNC_INTERVAL"), "5m"),
-			"calendarMailbox": firstNonEmpty(os.Getenv("M365_CALENDAR_MAILBOX"), "events@tsunami-events.de"),
+			"calendarMailbox": firstNonEmpty(os.Getenv("M365_CALENDAR_MAILBOX"), "events-calender@tsunami-events.de"),
 			"source":          "env",
 		})
 		return

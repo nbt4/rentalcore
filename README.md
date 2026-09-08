@@ -167,7 +167,7 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 | `M365_CLIENT_SECRET`           | Entra ID Client-Secret                            | –                      |
 | `M365_SHARED_MAILBOX_ID`       | Shared Mailbox-ID                                 | –                      |
 | `M365_SYNC_INTERVAL`           | Sync-Intervall (z. B. `5m`)                       | `5m`                   |
-| `M365_CALENDAR_MAILBOX`        | Raum-Mailbox für den zentralen Jobkalender        | `events@tsunami-events.de` |
+| `M365_CALENDAR_MAILBOX`        | Raum-Mailbox für den zentralen Jobkalender        | `events-calender@tsunami-events.de` |
 | `WAREHOUSECORE_DOMAIN`         | WarehouseCore-Domain für Cross-Navigation         | –                      |
 | `CORES_JWT_SECRET`             | JWT-Secret (Cores-weit identisch)                 | –                      |
 
