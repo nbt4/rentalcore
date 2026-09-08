@@ -14,11 +14,11 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 
 - **Auftragsmanagement (Jobs)** — Vollständiger CRUD-Workflow mit dem verbindlichen Lebenszyklus `Planung → Bestätigt → Abgeschlossen` sowie `Storniert` als Abbruchstatus
 - **Operatives Dashboard** — Personalisierte Tagesübersicht mit aktiven, laufenden, anstehenden und überfälligen Jobs, monatlichem Auftragswert, Terminradar und direkten Arbeitswegen
-- **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen
+- **Kundenverwaltung** — CRM mit Kontaktdaten, Historie und verknüpften Aufträgen; bei deutschen fünfstelligen PLZ wird der Ort automatisch vorgeschlagen und bleibt manuell änderbar
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
 - **Kontextuelle Produktsuche** — Produkt-, Geräte-, Paket-, Mietprodukt-, Dienstleistungs- und PDF-Zuordnungssuchen berücksichtigen Marke, Hersteller, Kategorien, Identifikatoren und technische Stammdaten; kombinierte Begriffe dürfen über mehrere Felder verteilt sein
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
-- **OCR-Belegverarbeitung** — Python-3.12-Pipeline in einer geprüften venv zur Extraktion von Dokument-/Jobtiteln, mehrzeiligen Positionsbeschreibungen, Mengen und Preisen; erkannte Jobtitel sind vor dem Finalisieren editierbar, neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
+- **OCR-Belegverarbeitung** — Python-3.12-Pipeline zur Extraktion von Dokument-/Jobtiteln, mehrzeiligen Positionsbeschreibungen, Mengen, Preisen und Positionsrabatten; erkannte Jobtitel sind vor dem Finalisieren editierbar, neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
@@ -120,6 +120,7 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 | `POST`   | `/jobs/:id/devices`                         | Gerät zuweisen (🔒)                            |
 | `DELETE` | `/jobs/:id/devices/:deviceId`               | Gerät entfernen (🔒)                           |
 | `GET`    | `/customers`                                | Kundenliste (🔒)                               |
+| `GET`    | `/api/v1/customers/postal-code/:postalCode` | Orte zu deutscher PLZ auflösen (🔒)            |
 | `POST`   | `/customers`                                | Neuen Kunden anlegen (🔒)                      |
 | `PUT`    | `/customers/:id`                            | Kunden aktualisieren (🔒)                      |
 | `DELETE` | `/customers/:id`                            | Kunden löschen (🔒)                            |
@@ -150,6 +151,7 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 | `ENCRYPTION_KEY`               | 256-Bit-Verschlüsselungs-Key                      | –                      |
 | `SESSION_TIMEOUT`              | Session-Timeout in Sekunden                       | `3600`                 |
 | `GIN_MODE`                     | Gin-Modus (`release` oder `debug`)                | `release`              |
+| `POSTAL_LOOKUP_BASE_URL`       | Basis-URL der serverseitigen deutschen PLZ-Suche  | `https://openplzapi.org/de` |
 | `NEXTCLOUD_WEBDAV_URL`         | Nextcloud WebDAV-URL für Filepool                 | –                      |
 | `NEXTCLOUD_WEBDAV_USER`        | Nextcloud WebDAV-Benutzer                         | –                      |
 | `NEXTCLOUD_WEBDAV_PASSWORD`    | Nextcloud WebDAV-Passwort                         | –                      |
@@ -171,6 +173,8 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 
 Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard unter **Microsoft 365 & Entra** Werte gespeichert sind, lädt RentalCore Tenant-ID, Client-ID, Secret, Mailboxen, Intervall und App-URL beim Start aus der gemeinsamen Tabelle `m365_settings`. Damit wird für Entra-Benutzer, Login, Kontakte und Kalender nur eine registrierte Tenant-App benötigt.
 
+Die Ortssuche läuft serverseitig über OpenPLZ und speichert Ergebnisse für 24 Stunden im Arbeitsspeicher. An den Dienst wird ausschließlich die eingegebene fünfstellige PLZ übertragen. Ist die Suche nicht erreichbar oder liefert sie keinen Treffer, bleibt das Ortsfeld frei editierbar.
+
 Für den Jobkalender muss `M365_CALENDAR_MAILBOX` eine Exchange-Online-Raumressource sein. RentalCore legt dort genau einen Termin je Job an und synchronisiert alle zugewiesenen Bearbeiter als erforderliche Teilnehmer desselben Meetings. Antworten und neue Zeitvorschläge sind deaktiviert; RentalCore bestätigt die Teilnehmerinstanz über Microsoft Graph ohne Antwortmail. So erscheint kein zusätzlich von RentalCore erzeugter Einzeltermin im Bearbeiterkalender. Eine bestehende Mailbox kann in Exchange Online PowerShell vorbereitet werden:
 
 ```powershell
@@ -183,6 +187,15 @@ Die App-Registrierung benötigt dafür die Microsoft-Graph-Anwendungsberechtigun
 ---
 
 [Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
+# Release 5.3.103
+
+Das Kundenformular ergänzt zu einer deutschen fünfstelligen PLZ automatisch den Ort;
+bei mehreren Treffern kann der passende Ort ausgewählt und jederzeit manuell geändert
+werden. Die OCR-Übernahme berechnet und speichert Positionsrabatte aus Einzel- und
+Zeilengesamtpreis. Nach dem Finalisieren einer OCR-Erkennung wird der Job unmittelbar
+mit dem zentralen M365-Raumkalender synchronisiert. Die Startreparatur ergänzt bereits
+verpasste zukünftige Jobtermine weiterhin automatisch.
+
 # Release 5.3.102
 
 Die OCR-Pipeline übernimmt Dokumentüberschriften wie `Angebot Luther Theater AG0081`

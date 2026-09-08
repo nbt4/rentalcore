@@ -75,6 +75,30 @@ func decodeExtractionMetadata(value sql.NullString) map[string]string {
 	return result
 }
 
+func extractionItemDiscountPercent(item models.PDFExtractionItem) float64 {
+	if !item.Quantity.Valid || item.Quantity.Int64 <= 0 ||
+		!item.UnitPrice.Valid || item.UnitPrice.Float64 <= 0 ||
+		!item.LineTotal.Valid || item.LineTotal.Float64 < 0 {
+		return 0
+	}
+
+	gross := float64(item.Quantity.Int64) * item.UnitPrice.Float64
+	discount := (1 - item.LineTotal.Float64/gross) * 100
+	if discount <= 0 {
+		return 0
+	}
+	if discount > 100 {
+		discount = 100
+	}
+	return math.Round(discount*100) / 100
+}
+
+func (h *PDFHandler) syncJobCalendar(jobID uint) {
+	if h.JobHandler != nil && h.JobHandler.calendarSync != nil {
+		go h.JobHandler.calendarSync.SyncJobEvent(jobID)
+	}
+}
+
 func applySuggestionToNewItem(item *models.PDFExtractionItem, suggestion *models.ProductMappingSuggestion) {
 	if item == nil || suggestion == nil {
 		return
@@ -537,7 +561,8 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	// Resolve product/package names for mapped items
 	type ItemWithName struct {
 		models.PDFExtractionItem
-		MappedName string `json:"mapped_name,omitempty"`
+		MappedName      string  `json:"mapped_name,omitempty"`
+		DiscountPercent float64 `json:"discount_percent"`
 	}
 	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
 	for _, it := range items {
@@ -596,7 +621,10 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	}
 	enrichedItems := make([]ItemWithName, 0, len(items))
 	for _, it := range items {
-		iwn := ItemWithName{PDFExtractionItem: it}
+		iwn := ItemWithName{
+			PDFExtractionItem: it,
+			DiscountPercent:   extractionItemDiscountPercent(it),
+		}
 		if it.MappedProductID.Valid {
 			iwn.MappedName = productNames[int(it.MappedProductID.Int64)]
 		} else if it.MappedPackageID.Valid {
@@ -1840,6 +1868,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 			}
 
 			h.attachUploadToJob(&upload, job.JobID)
+			h.syncJobCalendar(job.JobID)
 
 			response := gin.H{
 				"success":  true,
@@ -1954,6 +1983,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		Update("job_id", job.JobID)
 
 	h.attachUploadToJob(&upload, job.JobID)
+	h.syncJobCalendar(job.JobID)
 
 	response := gin.H{
 		"success":  true,
@@ -2433,7 +2463,7 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 			Unit:              "Stück",
 			UnitPrice:         unitPrice,
 			FollowDayFactor:   followDayFactor,
-			DiscountPercent:   0,
+			DiscountPercent:   extractionItemDiscountPercent(item),
 			TaxRate:           19.0,
 			SortOrder:         i,
 		}
@@ -4006,14 +4036,15 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 	}
 
 	type PreviewItem struct {
-		ItemID     uint64  `json:"item_id"`
-		Name       string  `json:"name"`
-		RawText    string  `json:"raw_text"`
-		Quantity   int     `json:"quantity"`
-		UnitPrice  float64 `json:"unit_price"`
-		LineTotal  float64 `json:"line_total"`
-		TargetType string  `json:"target_type"`
-		TargetID   int     `json:"target_id"`
+		ItemID          uint64  `json:"item_id"`
+		Name            string  `json:"name"`
+		RawText         string  `json:"raw_text"`
+		Quantity        int     `json:"quantity"`
+		UnitPrice       float64 `json:"unit_price"`
+		DiscountPercent float64 `json:"discount_percent"`
+		LineTotal       float64 `json:"line_total"`
+		TargetType      string  `json:"target_type"`
+		TargetID        int     `json:"target_id"`
 	}
 
 	productIDs, packageIDs, rentalIDs, serviceIDs := []int{}, []int{}, []int{}, []int{}
@@ -4086,7 +4117,14 @@ func (h *PDFHandler) GetExtractionPreview(c *gin.Context) {
 		if it.LineTotal.Valid {
 			lt = it.LineTotal.Float64
 		}
-		pi := PreviewItem{ItemID: it.ItemID, RawText: it.RawProductText, Quantity: qty, UnitPrice: up, LineTotal: lt}
+		pi := PreviewItem{
+			ItemID:          it.ItemID,
+			RawText:         it.RawProductText,
+			Quantity:        qty,
+			UnitPrice:       up,
+			DiscountPercent: extractionItemDiscountPercent(it),
+			LineTotal:       lt,
+		}
 		switch {
 		case it.MappedProductID.Valid:
 			pi.TargetType = "product"

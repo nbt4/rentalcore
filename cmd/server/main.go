@@ -801,7 +801,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.102")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.103")))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())
@@ -1660,6 +1660,7 @@ func setupRoutes(r *gin.Engine,
 			apiCustomers := api.Group("/customers")
 			{
 				apiCustomers.GET("", customerHandler.ListCustomersAPI)
+				apiCustomers.GET("/postal-code/:postalCode", customerHandler.LookupPostalCode)
 				apiCustomers.POST("", customerHandler.CreateCustomerAPI)
 				apiCustomers.GET("/:id", customerHandler.GetCustomerAPI)
 				apiCustomers.PUT("/:id", customerHandler.UpdateCustomerAPI)

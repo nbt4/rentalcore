@@ -12,6 +12,7 @@ interface ExtractionItem {
   raw_product_text: string;
   quantity: NullInt64 | number | null;
   unit_price: NullFloat64 | number | null;
+  discount_percent: NullFloat64 | number | null;
   line_total: NullFloat64 | number | null;
   mapped_product_id: NullInt64 | number | null;
   mapped_package_id: NullInt64 | number | null;
@@ -28,8 +29,9 @@ interface PreviewItem {
   raw_text: string;
   quantity: number;
   unit_price: number;
+  discount_percent: number;
   line_total: number;
-  target_type: 'product' | 'package';
+  target_type: 'product' | 'package' | 'rental' | 'service';
   target_id: number;
 }
 
@@ -903,6 +905,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--rc-text-secondary)' }}>
                             {getNullInt(item.quantity)}× · {getNullFloat(item.unit_price).toFixed(2)} €
+                            {getNullFloat(item.discount_percent) > 0 && ` · ${getNullFloat(item.discount_percent).toFixed(2)} % Rabatt`}
                           </p>
                         </div>
 
@@ -979,6 +982,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
                     <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--rc-text-secondary)' }}>
                       <span>{pi.quantity}×</span>
                       <span>{pi.unit_price.toFixed(2)} €</span>
+                      {pi.discount_percent > 0 && <span>{pi.discount_percent.toFixed(2)} % Rabatt</span>}
                       <span className="font-medium" style={{ color: 'var(--rc-text-primary)' }}>{pi.line_total.toFixed(2)} €</span>
                     </div>
                   </div>
