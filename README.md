@@ -18,7 +18,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Gerätezuweisung** — Zuweisung und Entfernung von Devices zu/von Aufträgen. Verfügbarkeitsprüfung in Echtzeit
 - **Kontextuelle Produktsuche** — Produkt-, Geräte-, Paket-, Mietprodukt-, Dienstleistungs- und PDF-Zuordnungssuchen berücksichtigen Marke, Hersteller, Kategorien, Identifikatoren und technische Stammdaten; kombinierte Begriffe dürfen über mehrere Felder verteilt sein
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
-- **OCR-Belegverarbeitung** — Python-3.12-Pipeline in einer geprüften venv zur Extraktion von Positionsdaten; neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
+- **OCR-Belegverarbeitung** — Python-3.12-Pipeline in einer geprüften venv zur Extraktion von Dokument-/Jobtiteln, mehrzeiligen Positionsbeschreibungen, Mengen und Preisen; erkannte Jobtitel sind vor dem Finalisieren editierbar, neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
@@ -183,6 +183,15 @@ Die App-Registrierung benötigt dafür die Microsoft-Graph-Anwendungsberechtigun
 ---
 
 [Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
+# Release 5.3.102
+
+Die OCR-Pipeline übernimmt Dokumentüberschriften wie `Angebot Luther Theater AG0081`
+als editierbaren Jobtitel und erkennt Dokumenttyp sowie Dokumentnummer. Mehrzeilige
+Positionsbeschreibungen bleiben auch dann eine Position, wenn eine Detailzeile mit
+einer Zahl beginnt; durch PDF-Zeilenumbrüche getrennte Wörter werden wieder verbunden.
+Seitenfuß-, Steuer- und Summenwerte fließen nicht mehr als vermeintliche Preise in
+Positionen ein, und deutsche Tausenderbeträge werden korrekt gelesen.
+
 # Release 5.3.101
 
 Der Microsoft-Kalendersync verwendet eine Exchange-Raumressource als zentralen

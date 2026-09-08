@@ -70,6 +70,7 @@ const (
 // ParsedDocument represents fully parsed document data
 type ParsedDocument struct {
 	DocumentType    ParsedDocumentType
+	Title           string
 	CustomerName    string
 	CustomerID      *int
 	DocumentNumber  string

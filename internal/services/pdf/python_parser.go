@@ -56,8 +56,10 @@ type PythonParserInput struct {
 // PythonParserOutput represents the output structure from the Python parser
 type PythonParserOutput struct {
 	Document struct {
-		Number         string  `json:"number,omitempty"`
-		Date           string  `json:"date,omitempty"`
+		Type            string  `json:"type,omitempty"`
+		Title           string  `json:"title,omitempty"`
+		Number          string  `json:"number,omitempty"`
+		Date            string  `json:"date,omitempty"`
 		CustomerName    string  `json:"customer_name,omitempty"`
 		Subtotal        float64 `json:"subtotal,omitempty"`         // Subtotal before discount
 		DiscountAmount  float64 `json:"discount_amount,omitempty"`  // Total discount
@@ -124,7 +126,8 @@ func (p *PythonParser) ParseDocument(rawText string) (*ParsedDocument, error) {
 
 	// Convert to ParsedDocument
 	doc := &ParsedDocument{
-		DocumentType:    DocTypeInvoice, // Default type
+		DocumentType:    parsedDocumentType(output.Document.Type),
+		Title:           output.Document.Title,
 		CustomerName:    output.Document.CustomerName,
 		DocumentNumber:  output.Document.Number,
 		ParsedTotal:     output.Document.Subtotal,
@@ -164,12 +167,28 @@ func (p *PythonParser) ParseDocument(rawText string) (*ParsedDocument, error) {
 
 	// Store metadata
 	doc.Metadata["parser_version"] = "python_v1"
+	doc.Metadata["title"] = output.Document.Title
 	doc.Metadata["warnings"] = output.Warnings
 	doc.Metadata["item_count"] = len(output.Items)
 
 	logger.LogInfo("[PythonParser] Parsed successfully: items=%d, confidence=%.2f", len(doc.Items), doc.ConfidenceScore)
 
 	return doc, nil
+}
+
+func parsedDocumentType(value string) ParsedDocumentType {
+	switch value {
+	case string(DocTypeOffer):
+		return DocTypeOffer
+	case string(DocTypeOrder):
+		return DocTypeOrder
+	case string(DocTypeDelivery):
+		return DocTypeDelivery
+	case string(DocTypeInvoice):
+		return DocTypeInvoice
+	default:
+		return DocTypeUnknown
+	}
 }
 
 // calculateConfidence calculates overall confidence score

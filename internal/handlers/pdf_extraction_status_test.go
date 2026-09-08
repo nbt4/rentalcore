@@ -1,11 +1,28 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"testing"
 
 	"go-barcode-webapp/internal/models"
 )
+
+func TestDecodeExtractionMetadataKeepsStringFields(t *testing.T) {
+	metadata := sql.NullString{
+		Valid:  true,
+		String: `{"title":"Luther Theater","item_count":25,"warnings":[]}`,
+	}
+
+	decoded := decodeExtractionMetadata(metadata)
+
+	if decoded["title"] != "Luther Theater" {
+		t.Fatalf("title = %q, want %q", decoded["title"], "Luther Theater")
+	}
+	if _, exists := decoded["item_count"]; exists {
+		t.Fatal("numeric metadata should not be coerced into string metadata")
+	}
+}
 
 func TestExtractionProcessingResponse(t *testing.T) {
 	tests := []struct {

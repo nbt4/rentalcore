@@ -25,6 +25,11 @@ UNIT_KEYWORDS = [
     "stunden",
     "hour",
     "hours",
+    "meter",
+    "lfm",
+    "km",
+    "kg",
+    "pauschal",
 ]
 
 # Hard stop: marks the absolute end of the items section
@@ -47,15 +52,34 @@ PAGE_SKIP_WORDS = (
     "bic",
     "seite ",
     "tsunami events",
+    "umsatzsteuer",
+    "mehrwertsteuer",
+    "mwst",
 )
 
 HEADER_KEYWORDS = ("bezeichnung", "menge", "einheit")
 
-NUMBER_RE = re.compile(r"[-+]?\d+(?:[.,]\d+)?")
+NUMBER_RE = re.compile(
+    r"[-+]?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?"
+)
 QUANTITY_UNIT_SPLIT_RE = re.compile(
     r"(\d+)\s*(?:x|mal)?\s*(" + "|".join(UNIT_KEYWORDS) + r")",
     re.IGNORECASE,
 )
+
+DOCUMENT_HEADER_RE = re.compile(
+    r"^(angebot|rechnung|auftragsbest(?:ä|ae)tigung|auftragsbestätigung|"
+    r"lieferschein)\s*(.*?)\s+((?:AG|RE|AB|LS)\s*[-/]?\s*\d+)\s*$",
+    re.IGNORECASE,
+)
+
+DOCUMENT_TYPES = {
+    "angebot": "offer",
+    "rechnung": "invoice",
+    "auftragsbestätigung": "order",
+    "auftragsbestaetigung": "order",
+    "lieferschein": "delivery",
+}
 
 
 @dataclass
@@ -116,6 +140,8 @@ class OCRParser:
         segments: List[dict] = []
         current: Optional[dict] = None
 
+        skip_next_numeric = False
+
         for line in lines[start_idx:]:
             lower = line.lower()
 
@@ -129,10 +155,31 @@ class OCRParser:
             # Soft skip: footer/page-break lines — skip without touching current item
             # so prices that appear after a page footer are still assigned correctly
             if any(skip in lower for skip in PAGE_SKIP_WORDS):
+                if any(
+                    marker in lower
+                    for marker in (
+                        "zwischensumme",
+                        "steuernummer",
+                        "umsatzsteuer",
+                        "mehrwertsteuer",
+                        "mwst",
+                    )
+                ):
+                    skip_next_numeric = True
                 continue
 
-            if self._looks_like_header(line) or lower.startswith("übertrag"):
+            if self._looks_like_header(line):
                 continue
+
+            if lower.startswith("übertrag"):
+                skip_next_numeric = True
+                continue
+
+            if skip_next_numeric:
+                if self._is_numeric_value(line):
+                    skip_next_numeric = False
+                    continue
+                skip_next_numeric = False
 
             # Check if line is ONLY a position number (1-9999)
             only_num_match = re.match(r"^([1-9]\d{0,3})$", line)
@@ -194,6 +241,18 @@ class OCRParser:
             if pos_long_match and not self._is_numeric_value(line):
                 line_number = int(pos_long_match.group(1))
                 remainder = pos_long_match.group(2).strip()
+
+                # A detail line may legitimately start with a number (for
+                # example "2 Ohr Headset ..."). While the current position is
+                # incomplete, only a higher position number may start a new
+                # row. Keep lower/equal numbers as part of the description.
+                if (
+                    current
+                    and self._is_item_incomplete(current)
+                    and line_number <= current["line_number"]
+                ):
+                    current["description_parts"].append(line)
+                    continue
 
                 # If we have a current item, save it first
                 if current:
@@ -280,6 +339,10 @@ class OCRParser:
 
         # Single decimal number (e.g., "130,00" or just "1")
         if re.match(r"^\d+(?:,\d{2})?$", stripped):
+            # Tax IDs and other footer identifiers must never become prices.
+            integer_part = stripped.split(",", 1)[0]
+            if "," not in stripped and len(integer_part) > 4:
+                return False
             return True
 
         # Multiple decimal numbers on one line (original compact format)
@@ -326,8 +389,11 @@ class OCRParser:
             a_price, a_disc, a_total = numbers[0], numbers[1], numbers[2]
 
             # Validate pattern A: total ≈ qty * price * (1 - disc/100)
-            expected_a = quantity * a_price * (1.0 - a_disc / 100.0) if a_disc < 100 else 0
-            a_plausible = abs(expected_a - a_total) < max(a_total * 0.05, 1.0) if a_total > 0 else False
+            expected_a = quantity * a_price * (1.0 - a_disc / 100.0) if a_disc <= 100 else 0
+            a_plausible = (
+                0 <= a_disc <= 100
+                and abs(expected_a - a_total) < max(abs(a_total) * 0.05, 1.0)
+            )
 
             # Validate simple: total ≈ qty * price (no discount)
             expected_simple = quantity * a_price
@@ -365,7 +431,7 @@ class OCRParser:
                 if abs(unit_price * quantity - line_total) > abs(line_total - line_total):
                     unit_price = line_total / max(quantity, 1)
 
-        description = " ".join(row.get("description_parts", [])).strip()
+        description = self._join_description_parts(row.get("description_parts", []))
         if not description:
             description = numeric_blob.strip()
 
@@ -378,6 +444,47 @@ class OCRParser:
             discount_percent=float(discount_percent),
             line_total=float(line_total),
         )
+
+    def _join_description_parts(self, parts: List[str]) -> str:
+        """Join wrapped PDF text and repair extractor-inserted hyphen breaks."""
+        joined: List[str] = []
+        join_next = False
+        for raw_part in parts:
+            part = raw_part.strip()
+            if not part:
+                continue
+            if part == "-":
+                join_next = bool(joined)
+                continue
+            if join_next and joined:
+                joined[-1] += part
+                join_next = False
+            else:
+                joined.append(part)
+
+        description = " ".join(joined)
+        return re.sub(r"\s+", " ", description).strip()
+
+    def parse_document_header(self, lines: List[str]) -> dict:
+        """Extract document type, title and number from the leading heading."""
+        table_start = self._find_table_start(lines)
+        search_end = len(lines) if table_start == -1 else table_start
+        for line in lines[: min(search_end, 60)]:
+            match = DOCUMENT_HEADER_RE.match(line.strip())
+            if not match:
+                continue
+
+            label = match.group(1).lower()
+            title = re.sub(r"\s+", " ", match.group(2)).strip(" -–—")
+            number = re.sub(r"\s+", "", match.group(3)).upper()
+            result = {
+                "type": DOCUMENT_TYPES.get(label, "unknown"),
+                "number": number,
+            }
+            if title:
+                result["title"] = title
+            return result
+        return {}
 
     def _extract_numbers(self, line: str) -> List[float]:
         numbers = []
@@ -593,6 +700,7 @@ def cli(input_path: Optional[str], output_path: Optional[str], pretty: bool) -> 
     lines = parser.preprocess()
     totals = parser.parse_totals(lines)
     customer_name = parser.parse_customer_name(lines)
+    document_header = parser.parse_document_header(lines)
 
     # If no subtotal found, calculate from items
     if not totals.subtotal and items:
@@ -608,6 +716,7 @@ def cli(input_path: Optional[str], output_path: Optional[str], pretty: bool) -> 
 
     # Build document section
     document_data = totals.to_dict()
+    document_data.update(document_header)
     if customer_name:
         document_data["customer_name"] = customer_name
 

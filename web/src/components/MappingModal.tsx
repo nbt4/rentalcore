@@ -41,6 +41,7 @@ interface SearchResult {
 }
 
 export interface ExtractionMeta {
+  title?: string;
   customer_id?: number;
   customer_name?: string;
   start_date?: string;
@@ -663,6 +664,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         if (cancelled) return;
         setExtractionId(extraction.extraction_id);
         setMeta({
+          title: extraction.title || undefined,
           customer_id: extraction.customer_id ?? undefined,
           customer_name: extraction.customer_name || undefined,
           start_date: extraction.start_date || undefined,
@@ -755,6 +757,7 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          title: meta.title?.trim() || undefined,
           start_date: meta.start_date ? meta.start_date.substring(0, 10) : undefined,
           end_date: meta.end_date ? meta.end_date.substring(0, 10) : undefined,
         }),
@@ -823,6 +826,17 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
             <>
               {/* Meta row: customer picker + dates — always visible */}
               <div className="rc-card mb-4 px-3 py-2 flex flex-wrap gap-4 items-center text-xs" style={{ background: 'var(--rc-bg-secondary)' }}>
+                <label className="flex items-center gap-1.5" style={{ color: 'var(--rc-text-secondary)', flex: '1 1 100%' }}>
+                  Jobtitel:
+                  <input
+                    type="text"
+                    value={meta.title || ''}
+                    onChange={e => setMeta(m => ({ ...m, title: e.target.value }))}
+                    className="rc-input rc-input-sm"
+                    placeholder="Aus Dokumentüberschrift erkannt"
+                    style={{ flex: 1, minWidth: '220px', padding: '2px 6px' }}
+                  />
+                </label>
                 {extractionId && (
                   <CustomerPicker
                     extractionId={extractionId}
@@ -934,8 +948,13 @@ export default function MappingModal({ uploadId, onComplete, onClose }: MappingM
 
           {phase === 'preview' && (
             <div className="space-y-3">
-              {(meta.customer_name || meta.start_date) && (
+              {(meta.title || meta.customer_name || meta.start_date) && (
                 <div className="rc-card px-3 py-2 flex flex-wrap gap-4 text-xs mb-2" style={{ background: 'var(--rc-bg-secondary)' }}>
+                  {meta.title && (
+                    <span style={{ color: 'var(--rc-text-secondary)' }}>
+                      Jobtitel: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.title}</span>
+                    </span>
+                  )}
                   {meta.customer_name && (
                     <span style={{ color: 'var(--rc-text-secondary)' }}>
                       Kunde: <span style={{ color: 'var(--rc-text-primary)', fontWeight: 500 }}>{meta.customer_name}</span>

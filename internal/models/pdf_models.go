@@ -45,11 +45,11 @@ type PDFExtraction struct {
 	CustomerID       sql.NullInt64   `gorm:"column:customer_id" json:"customer_id"`
 	DocumentDate     sql.NullTime    `gorm:"column:document_date;type:date" json:"document_date"`
 	DocumentNumber   sql.NullString  `gorm:"column:document_number" json:"document_number"`
-	ParsedTotal      sql.NullFloat64 `gorm:"column:parsed_total" json:"parsed_total"`           // Subtotal before discount
-	DiscountAmount   sql.NullFloat64 `gorm:"column:discount_amount" json:"discount_amount"`       // Total discount
-	DiscountPercent  sql.NullFloat64 `gorm:"column:discount_percent" json:"discount_percent"`     // Discount percentage
-	TotalAmount      sql.NullFloat64 `gorm:"column:total_amount" json:"total_amount"`             // Final amount after discount
-	Metadata         sql.NullString  `gorm:"column:metadata;type:json" json:"metadata"` // JSON field
+	ParsedTotal      sql.NullFloat64 `gorm:"column:parsed_total" json:"parsed_total"`         // Subtotal before discount
+	DiscountAmount   sql.NullFloat64 `gorm:"column:discount_amount" json:"discount_amount"`   // Total discount
+	DiscountPercent  sql.NullFloat64 `gorm:"column:discount_percent" json:"discount_percent"` // Discount percentage
+	TotalAmount      sql.NullFloat64 `gorm:"column:total_amount" json:"total_amount"`         // Final amount after discount
+	Metadata         sql.NullString  `gorm:"column:metadata;type:json" json:"metadata"`       // JSON field
 }
 
 // TableName specifies the table name for PDFExtraction
@@ -59,22 +59,22 @@ func (PDFExtraction) TableName() string {
 
 // PDFExtractionItem represents individual line items extracted from PDFs
 type PDFExtractionItem struct {
-	ItemID            uint64          `gorm:"primaryKey;column:item_id;autoIncrement" json:"item_id"`
-	ExtractionID      uint64          `gorm:"column:extraction_id;not null;index:idx_pdf_items_extraction" json:"extraction_id"`
-	LineNumber        sql.NullInt64   `gorm:"column:line_number" json:"line_number"`
-	RawProductText    string          `gorm:"column:raw_product_text;not null" json:"raw_product_text"`
-	Quantity          sql.NullInt64   `gorm:"column:quantity" json:"quantity"`
-	UnitPrice         sql.NullFloat64 `gorm:"column:unit_price" json:"unit_price"`
-	LineTotal         sql.NullFloat64 `gorm:"column:line_total" json:"line_total"`
-	MappedProductID          sql.NullInt64   `gorm:"column:mapped_product_id;index:idx_pdf_items_product" json:"mapped_product_id"`
-	MappedPackageID          sql.NullInt64   `gorm:"column:mapped_package_id;index:idx_pdf_items_package" json:"mapped_package_id"`
-	MappedRentalEquipmentID  sql.NullInt64   `gorm:"column:mapped_rental_equipment_id" json:"mapped_rental_equipment_id"`
-	MappedServiceItemID      sql.NullInt64   `gorm:"column:mapped_service_item_id" json:"mapped_service_item_id"`
-	MappingConfidence sql.NullFloat64 `gorm:"column:mapping_confidence" json:"mapping_confidence"`
-	MappingStatus     string          `gorm:"column:mapping_status;type:enum('pending','auto_mapped','user_confirmed','user_rejected','needs_creation');default:'pending';index:idx_pdf_items_status" json:"mapping_status"`
-	UserNotes         sql.NullString  `gorm:"column:user_notes;type:text" json:"user_notes"`
-	CreatedAt         time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt         time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	ItemID                  uint64          `gorm:"primaryKey;column:item_id;autoIncrement" json:"item_id"`
+	ExtractionID            uint64          `gorm:"column:extraction_id;not null;index:idx_pdf_items_extraction" json:"extraction_id"`
+	LineNumber              sql.NullInt64   `gorm:"column:line_number" json:"line_number"`
+	RawProductText          string          `gorm:"column:raw_product_text;not null" json:"raw_product_text"`
+	Quantity                sql.NullInt64   `gorm:"column:quantity" json:"quantity"`
+	UnitPrice               sql.NullFloat64 `gorm:"column:unit_price" json:"unit_price"`
+	LineTotal               sql.NullFloat64 `gorm:"column:line_total" json:"line_total"`
+	MappedProductID         sql.NullInt64   `gorm:"column:mapped_product_id;index:idx_pdf_items_product" json:"mapped_product_id"`
+	MappedPackageID         sql.NullInt64   `gorm:"column:mapped_package_id;index:idx_pdf_items_package" json:"mapped_package_id"`
+	MappedRentalEquipmentID sql.NullInt64   `gorm:"column:mapped_rental_equipment_id" json:"mapped_rental_equipment_id"`
+	MappedServiceItemID     sql.NullInt64   `gorm:"column:mapped_service_item_id" json:"mapped_service_item_id"`
+	MappingConfidence       sql.NullFloat64 `gorm:"column:mapping_confidence" json:"mapping_confidence"`
+	MappingStatus           string          `gorm:"column:mapping_status;type:enum('pending','auto_mapped','user_confirmed','user_rejected','needs_creation');default:'pending';index:idx_pdf_items_status" json:"mapping_status"`
+	UserNotes               sql.NullString  `gorm:"column:user_notes;type:text" json:"user_notes"`
+	CreatedAt               time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt               time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // TableName specifies the table name for PDFExtractionItem
@@ -126,18 +126,18 @@ func (PDFPackageMapping) TableName() string {
 
 // PDFRentalMapping represents saved mappings between PDF text and rental equipment
 type PDFRentalMapping struct {
-	MappingID        uint64          `gorm:"primaryKey;column:mapping_id;autoIncrement" json:"mapping_id"`
-	PDFRentalText    string          `gorm:"column:pdf_rental_text;not null;uniqueIndex:unique_pdf_rental_text" json:"pdf_rental_text"`
-	NormalizedText   sql.NullString  `gorm:"column:normalized_text;index:idx_pdf_rental_mappings_normalized" json:"normalized_text"`
-	RentalEquipmentID int            `gorm:"column:rental_equipment_id;not null" json:"rental_equipment_id"`
-	MappingType      string          `gorm:"column:mapping_type;default:'manual'" json:"mapping_type"`
-	ConfidenceScore  sql.NullFloat64 `gorm:"column:confidence_score" json:"confidence_score"`
-	UsageCount       int             `gorm:"column:usage_count;default:0" json:"usage_count"`
-	LastUsedAt       sql.NullTime    `gorm:"column:last_used_at" json:"last_used_at"`
-	CreatedBy        sql.NullInt64   `gorm:"column:created_by" json:"created_by"`
-	CreatedAt        time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt        time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
-	IsActive         bool            `gorm:"column:is_active;default:true" json:"is_active"`
+	MappingID         uint64          `gorm:"primaryKey;column:mapping_id;autoIncrement" json:"mapping_id"`
+	PDFRentalText     string          `gorm:"column:pdf_rental_text;not null;uniqueIndex:unique_pdf_rental_text" json:"pdf_rental_text"`
+	NormalizedText    sql.NullString  `gorm:"column:normalized_text;index:idx_pdf_rental_mappings_normalized" json:"normalized_text"`
+	RentalEquipmentID int             `gorm:"column:rental_equipment_id;not null" json:"rental_equipment_id"`
+	MappingType       string          `gorm:"column:mapping_type;default:'manual'" json:"mapping_type"`
+	ConfidenceScore   sql.NullFloat64 `gorm:"column:confidence_score" json:"confidence_score"`
+	UsageCount        int             `gorm:"column:usage_count;default:0" json:"usage_count"`
+	LastUsedAt        sql.NullTime    `gorm:"column:last_used_at" json:"last_used_at"`
+	CreatedBy         sql.NullInt64   `gorm:"column:created_by" json:"created_by"`
+	CreatedAt         time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt         time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	IsActive          bool            `gorm:"column:is_active;default:true" json:"is_active"`
 }
 
 func (PDFRentalMapping) TableName() string {
@@ -146,18 +146,18 @@ func (PDFRentalMapping) TableName() string {
 
 // PDFServiceMapping represents saved mappings between PDF text and service items
 type PDFServiceMapping struct {
-	MappingID      uint64          `gorm:"primaryKey;column:mapping_id;autoIncrement" json:"mapping_id"`
-	PDFServiceText string          `gorm:"column:pdf_service_text;not null;uniqueIndex:unique_pdf_service_text" json:"pdf_service_text"`
-	NormalizedText sql.NullString  `gorm:"column:normalized_text;index:idx_pdf_service_mappings_normalized" json:"normalized_text"`
-	ServiceItemID  int             `gorm:"column:service_item_id;not null" json:"service_item_id"`
-	MappingType    string          `gorm:"column:mapping_type;default:'manual'" json:"mapping_type"`
+	MappingID       uint64          `gorm:"primaryKey;column:mapping_id;autoIncrement" json:"mapping_id"`
+	PDFServiceText  string          `gorm:"column:pdf_service_text;not null;uniqueIndex:unique_pdf_service_text" json:"pdf_service_text"`
+	NormalizedText  sql.NullString  `gorm:"column:normalized_text;index:idx_pdf_service_mappings_normalized" json:"normalized_text"`
+	ServiceItemID   int             `gorm:"column:service_item_id;not null" json:"service_item_id"`
+	MappingType     string          `gorm:"column:mapping_type;default:'manual'" json:"mapping_type"`
 	ConfidenceScore sql.NullFloat64 `gorm:"column:confidence_score" json:"confidence_score"`
-	UsageCount     int             `gorm:"column:usage_count;default:0" json:"usage_count"`
-	LastUsedAt     sql.NullTime    `gorm:"column:last_used_at" json:"last_used_at"`
-	CreatedBy      sql.NullInt64   `gorm:"column:created_by" json:"created_by"`
-	IsActive       bool            `gorm:"column:is_active;default:true" json:"is_active"`
-	CreatedAt      time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt      time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+	UsageCount      int             `gorm:"column:usage_count;default:0" json:"usage_count"`
+	LastUsedAt      sql.NullTime    `gorm:"column:last_used_at" json:"last_used_at"`
+	CreatedBy       sql.NullInt64   `gorm:"column:created_by" json:"created_by"`
+	IsActive        bool            `gorm:"column:is_active;default:true" json:"is_active"`
+	CreatedAt       time.Time       `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt       time.Time       `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 func (PDFServiceMapping) TableName() string {
@@ -189,6 +189,7 @@ func (PDFCustomerMapping) TableName() string {
 type PDFExtractionResponse struct {
 	UploadID        uint64                     `json:"upload_id"`
 	ExtractionID    uint64                     `json:"extraction_id"`
+	Title           string                     `json:"title,omitempty"`
 	CustomerName    string                     `json:"customer_name,omitempty"`
 	CustomerID      *int                       `json:"customer_id,omitempty"`
 	DocumentNumber  string                     `json:"document_number,omitempty"`

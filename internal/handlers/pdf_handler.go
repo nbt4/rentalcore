@@ -57,6 +57,24 @@ type duplicateJobMatch struct {
 	JobsURL     string `json:"jobs_url"`
 }
 
+func decodeExtractionMetadata(value sql.NullString) map[string]string {
+	result := make(map[string]string)
+	if !value.Valid || strings.TrimSpace(value.String) == "" {
+		return result
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(value.String), &raw); err != nil {
+		return result
+	}
+	for key, candidate := range raw {
+		if text, ok := candidate.(string); ok {
+			result[key] = text
+		}
+	}
+	return result
+}
+
 func applySuggestionToNewItem(item *models.PDFExtractionItem, suggestion *models.ProductMappingSuggestion) {
 	if item == nil || suggestion == nil {
 		return
@@ -595,6 +613,7 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 	type ExtractionResponseWithNames struct {
 		UploadID        uint64         `json:"upload_id"`
 		ExtractionID    uint64         `json:"extraction_id"`
+		Title           string         `json:"title,omitempty"`
 		CustomerName    string         `json:"customer_name,omitempty"`
 		CustomerID      *int           `json:"customer_id,omitempty"`
 		DocumentNumber  string         `json:"document_number,omitempty"`
@@ -627,8 +646,8 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 		response.DocumentDate = extraction.DocumentDate.Time.Format("2006-01-02")
 	}
 	if extraction.Metadata.Valid {
-		var meta map[string]string
-		if err := json.Unmarshal([]byte(extraction.Metadata.String), &meta); err == nil {
+		meta := decodeExtractionMetadata(extraction.Metadata)
+		if len(meta) > 0 {
 			formatMetaDate := func(s string) string {
 				for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z07:00", "2006-01-02"} {
 					if t, err := time.Parse(layout, s); err == nil {
@@ -643,6 +662,7 @@ func (h *PDFHandler) GetExtractionResult(c *gin.Context) {
 			if end, ok := meta["end_date"]; ok {
 				response.EndDate = formatMetaDate(end)
 			}
+			response.Title = strings.TrimSpace(meta["title"])
 		}
 	}
 	if extraction.TotalAmount.Valid {
@@ -889,8 +909,11 @@ func (h *PDFHandler) ShowReviewScreen(c *gin.Context) {
 		data["documentDate"] = extraction.DocumentDate.Time.Format("2006-01-02")
 	}
 	if extraction.Metadata.Valid {
-		var meta map[string]string
-		if err := json.Unmarshal([]byte(extraction.Metadata.String), &meta); err == nil {
+		meta := decodeExtractionMetadata(extraction.Metadata)
+		if len(meta) > 0 {
+			if title := strings.TrimSpace(meta["title"]); title != "" {
+				data["jobTitle"] = title
+			}
 			if startStr, ok := meta["start_date"]; ok {
 				if t, err := time.Parse(time.RFC3339, startStr); err == nil {
 					data["startdate"] = t
@@ -988,10 +1011,7 @@ func (h *PDFHandler) ShowMappingScreen(c *gin.Context) {
 		itemsWithSuggestions = append(itemsWithSuggestions, itemData)
 	}
 
-	var meta map[string]string
-	if extraction.Metadata.Valid {
-		_ = json.Unmarshal([]byte(extraction.Metadata.String), &meta)
-	}
+	meta := decodeExtractionMetadata(extraction.Metadata)
 
 	parseMetaDate := func(key string) *time.Time {
 		if meta == nil {
@@ -1025,8 +1045,8 @@ func (h *PDFHandler) ShowMappingScreen(c *gin.Context) {
 
 	// Override with metadata if explicitly set
 	if extraction.Metadata.Valid {
-		var meta map[string]string
-		if err := json.Unmarshal([]byte(extraction.Metadata.String), &meta); err == nil {
+		meta := decodeExtractionMetadata(extraction.Metadata)
+		if len(meta) > 0 {
 			if dt := strings.TrimSpace(meta["discount_type"]); dt != "" {
 				discountType = dt
 			}
@@ -1718,6 +1738,7 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 	}
 
 	var req struct {
+		Title         string   `json:"title"`
 		StartDate     string   `json:"start_date"`
 		EndDate       string   `json:"end_date"`
 		CustomerID    *int     `json:"customer_id"`
@@ -1742,12 +1763,13 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		logger.LogInfo("warning: failed to persist mappings for extraction %d: %v", extraction.ExtractionID, err)
 	}
 
-	var meta map[string]string
-	if extraction.Metadata.Valid {
-		_ = json.Unmarshal([]byte(extraction.Metadata.String), &meta)
-	}
+	meta := decodeExtractionMetadata(extraction.Metadata)
 	if meta == nil {
 		meta = map[string]string{}
+	}
+
+	if title := strings.TrimSpace(req.Title); title != "" {
+		meta["title"] = title
 	}
 
 	discountType := strings.TrimSpace(meta["discount_type"])
@@ -1778,6 +1800,11 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 	}
 
 	meta["discount_type"] = discountType
+	if metaBytes, err := json.Marshal(meta); err == nil {
+		h.DB.Model(&models.PDFExtraction{}).Where("extraction_id = ?", extraction.ExtractionID).
+			Update("metadata", string(metaBytes))
+		extraction.Metadata = sql.NullString{String: string(metaBytes), Valid: true}
+	}
 
 	discountValue := 0.0
 	if extraction.DiscountAmount.Valid {
@@ -1797,11 +1824,15 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 				logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
 			}
 
+			jobUpdates := map[string]interface{}{
+				"discount":      discountValue,
+				"discount_type": discountType,
+			}
+			if title := strings.TrimSpace(meta["title"]); title != "" {
+				jobUpdates["description"] = truncateString(title, 48)
+			}
 			if err := h.DB.Model(&models.Job{}).Where("jobid = ?", job.JobID).
-				Updates(map[string]interface{}{
-					"discount":      discountValue,
-					"discount_type": discountType,
-				}).Error; err != nil {
+				Updates(jobUpdates).Error; err != nil {
 				logger.LogInfo("warning: failed to persist updated discount for job %d: %v", job.JobID, err)
 			}
 			if err := syncJobRevenueIfPositions(h.DB, job.JobID); err != nil {
@@ -1881,7 +1912,10 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 		revenue = extraction.TotalAmount.Float64
 	}
 
-	desc := fmt.Sprintf("Generated from %s (Extraction %d)", upload.OriginalFilename, extraction.ExtractionID)
+	desc := strings.TrimSpace(meta["title"])
+	if desc == "" {
+		desc = fmt.Sprintf("Generated from %s (Extraction %d)", upload.OriginalFilename, extraction.ExtractionID)
+	}
 	truncatedDesc := truncateString(desc, 48)
 
 	job := models.Job{
