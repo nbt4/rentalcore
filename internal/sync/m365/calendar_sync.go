@@ -43,6 +43,23 @@ func (s *CalendarSyncService) SyncAllEmployeeEvents(jobID uint) {
 	s.SyncJobEvent(jobID)
 }
 
+// MigrateUpcomingJobEvents reconciles only incomplete or legacy calendar
+// records. Successfully migrated jobs are not touched on later restarts.
+func (s *CalendarSyncService) MigrateUpcomingJobEvents() {
+	jobIDs, err := s.jobRepo.ListJobsNeedingCalendarMigration()
+	if err != nil {
+		logger.LogInfo("[CalendarSync] list jobs needing migration: %v", err)
+		return
+	}
+	if len(jobIDs) == 0 {
+		return
+	}
+	logger.LogInfo("[CalendarSync] migrating %d upcoming job events", len(jobIDs))
+	for _, jobID := range jobIDs {
+		s.SyncJobEvent(jobID)
+	}
+}
+
 // DeleteAllEmployeeEvents ist der rückwärtskompatible Einstiegspunkt.
 func (s *CalendarSyncService) DeleteAllEmployeeEvents(jobID uint) {
 	s.DeleteJobEvent(jobID)

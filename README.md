@@ -183,10 +183,13 @@ Die App-Registrierung benötigt dafür die Microsoft-Graph-Anwendungsberechtigun
 ---
 
 [Quellcode](https://github.com/nbt4/rentalcore) | [Monorepo](https://github.com/nbt4/cores) | `nobentie/rentalcore:latest`
-# Release 5.3.100
+# Release 5.3.101
 
 Der Microsoft-Kalendersync verwendet eine Exchange-Raumressource als zentralen
 Jobkalender. Jeder Job besitzt genau einen Raumtermin; Bearbeiter werden als
 Teilnehmer desselben Meetings automatisch und ohne Antwortmail bestätigt.
 Bestehende eigenständige Bearbeitertermine werden beim nächsten Job-Sync bereinigt.
 Kontakt- und Kalendersync lassen sich unabhängig voneinander konfigurieren.
+Beim Start gleicht RentalCore ausschließlich zukünftige Jobs mit fehlendem Raumtermin
+oder vorhandenen Alttermin-IDs ab; erfolgreich migrierte Jobs werden bei späteren
+Neustarts nicht erneut aktualisiert.

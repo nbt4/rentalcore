@@ -249,6 +249,21 @@ func (r *JobRepository) ClearM365EventID(jobID uint) error {
 	return r.UpdateFields(jobID, map[string]interface{}{"m365_event_id": nil})
 }
 
+func (r *JobRepository) ListJobsNeedingCalendarMigration() ([]uint, error) {
+	var jobIDs []uint
+	err := r.db.Model(&models.Job{}).
+		Where("startdate IS NOT NULL").
+		Where("COALESCE(enddate, startdate) >= CURRENT_DATE").
+		Where(`COALESCE(m365_event_id, '') = '' OR EXISTS (
+			SELECT 1 FROM job_employees
+			WHERE job_employees.job_id = jobs.jobid
+			AND COALESCE(job_employees.m365_event_id, '') <> ''
+		)`).
+		Order("jobid ASC").
+		Pluck("jobid", &jobIDs).Error
+	return jobIDs, err
+}
+
 // RemoveAllDevicesFromJob removes all devices assigned to a specific job
 func (r *JobRepository) RemoveAllDevicesFromJob(jobID uint) error {
 	return r.db.Where("jobID = ?", jobID).Delete(&models.JobDevice{}).Error

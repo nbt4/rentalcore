@@ -422,9 +422,11 @@ func main() {
 
 		if cfg.M365.CalendarConfigured() {
 			calendarClient := m365sync.NewCalendarClient(graphClient, cfg.M365.CalendarMailbox)
-			calendarSync = m365sync.NewCalendarSyncService(
+			calendarService := m365sync.NewCalendarSyncService(
 				calendarClient, jobRepo, positionRepo, jobEmployeeRepo, cfg.M365.AppBaseURL,
 			)
+			calendarSync = calendarService
+			go calendarService.MigrateUpcomingJobEvents()
 			logger.LogInfo("M365 room calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
 		}
 	} else {
@@ -799,7 +801,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.100")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.101")))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())
