@@ -152,6 +152,11 @@ export const customersApi = {
     api.put<{ message: string }>(`/customers/${id}`, data),
   delete: (id: number) =>
     api.delete<{ message: string }>(`/customers/${id}`),
+  lookupPostalCode: (postalCode: string, signal?: AbortSignal) =>
+    api.get<{ postal_code: string; cities: string[] }>(
+      `/customers/postal-code/${encodeURIComponent(postalCode)}`,
+      { signal },
+    ),
 };
 
 export const statusApi = {

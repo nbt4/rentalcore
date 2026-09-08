@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Search, RefreshCw, Users, ArrowLeft, X, Check, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { customersApi } from '../lib/api';
@@ -89,6 +89,9 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [postalCities, setPostalCities] = useState<string[]>([]);
+  const [postalStatus, setPostalStatus] = useState<'idle' | 'loading' | 'found' | 'not-found' | 'error'>('idle');
+  const cityManuallyEdited = useRef(false);
 
   const f = (field: keyof Customer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -96,8 +99,48 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
   useEffect(() => {
     if (!customerId) return;
     setLoading(true);
-    customersApi.getById(customerId).then((r) => setForm(r.data)).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    customersApi.getById(customerId).then((r) => {
+      cityManuallyEdited.current = true;
+      setForm(r.data);
+    }).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
   }, [customerId]);
+
+  useEffect(() => {
+    const postalCode = (form.ZIP || '').trim();
+    if (!/^\d{5}$/.test(postalCode)) {
+      setPostalCities([]);
+      setPostalStatus('idle');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setPostalStatus('loading');
+      try {
+        const response = await customersApi.lookupPostalCode(postalCode, controller.signal);
+        const cities = response.data.cities || [];
+        setPostalCities(cities);
+        if (cities.length === 0) {
+          setPostalStatus('not-found');
+          return;
+        }
+        setPostalStatus('found');
+        if (!cityManuallyEdited.current) {
+          setForm((previous) => ({ ...previous, city: cities[0] }));
+        }
+      } catch (lookupError) {
+        if (!controller.signal.aborted) {
+          setPostalCities([]);
+          setPostalStatus('error');
+        }
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [form.ZIP]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +184,7 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Unternehmen</label>
             <input type="text" value={form.companyname || ''} onChange={f('companyname')} placeholder="Firmenname" className="w-full px-3 py-2.5 rounded-lg" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Vorname</label>
               <input type="text" value={form.firstname || ''} onChange={f('firstname')} className="w-full px-3 py-2.5 rounded-lg" />
@@ -159,8 +202,8 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
             <label className="block text-sm font-medium text-gray-300 mb-1.5">Telefon</label>
             <input type="text" value={form.phonenumber || ''} onChange={f('phonenumber')} className="w-full px-3 py-2.5 rounded-lg" />
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Straße</label>
               <input type="text" value={form.street || ''} onChange={f('street')} className="w-full px-3 py-2.5 rounded-lg" />
             </div>
@@ -169,14 +212,45 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
               <input type="text" value={form.housenumber || ''} onChange={f('housenumber')} className="w-full px-3 py-2.5 rounded-lg" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">PLZ</label>
-              <input type="text" value={form.ZIP || ''} onChange={f('ZIP')} className="w-full px-3 py-2.5 rounded-lg" />
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="postal-code"
+                maxLength={5}
+                value={form.ZIP || ''}
+                onChange={(e) => {
+                  cityManuallyEdited.current = false;
+                  setForm((previous) => ({ ...previous, ZIP: e.target.value }));
+                }}
+                className="w-full px-3 py-2.5 rounded-lg"
+              />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Stadt</label>
-              <input type="text" value={form.city || ''} onChange={f('city')} className="w-full px-3 py-2.5 rounded-lg" />
+              <input
+                type="text"
+                autoComplete="address-level2"
+                list="customer-postal-cities"
+                value={form.city || ''}
+                onChange={(e) => {
+                  cityManuallyEdited.current = true;
+                  setForm((previous) => ({ ...previous, city: e.target.value }));
+                }}
+                className="w-full px-3 py-2.5 rounded-lg"
+              />
+              <datalist id="customer-postal-cities">
+                {postalCities.map((city) => <option key={city} value={city} />)}
+              </datalist>
+              <div className="mt-1 min-h-4 text-xs" aria-live="polite" style={{ color: 'var(--rc-text-muted)' }}>
+                {postalStatus === 'loading' && 'Ort wird gesucht …'}
+                {postalStatus === 'found' && postalCities.length === 1 && 'Ort automatisch ergänzt.'}
+                {postalStatus === 'found' && postalCities.length > 1 && `${postalCities.length} Orte gefunden – bitte auswählen.`}
+                {postalStatus === 'not-found' && 'Kein Ort gefunden – bitte manuell eingeben.'}
+                {postalStatus === 'error' && 'Automatische Suche nicht verfügbar – manuelle Eingabe bleibt möglich.'}
+              </div>
             </div>
           </div>
           <div>
