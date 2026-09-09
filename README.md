@@ -1,5 +1,12 @@
 # RentalCore
 
+## Suite-Navigation (5.3.104)
+
+Am Ende der Fachnavigation steht jetzt dieselbe Core-Auswahl wie in allen
+anderen Cores. Der eigenständige Dashboard-Link bleibt direkt darunter
+erreichbar; beide Ziele funktionieren auf separaten Domains und im gemeinsamen
+Pfadmodus.
+
 ## Einheitliches Cores Designsystem
 
 RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbindlichen Designvertrag aus [`nbt4/cores`](https://github.com/nbt4/cores/blob/main/docs/DESIGN_SYSTEM.md). Palette, Inter-Typografie, Größenleiter, 256/80-px-Sidebar, Tabellen, Eingaben, Selects, Dropdowns, Scrollbars und Dashboard-Hierarchie sind mit allen anderen Cores identisch.
@@ -25,7 +32,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Analytics Dashboard** — Interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
 - **Installierbare Mobile-App (PWA)** — Standalone-Modus mit RentalCore-App-Icon, Safe-Area-Unterstützung, großen Touch-Zielen, App-Tabbar und Drawer-Navigation; eigenständig installierbar und zusätzlich unter `/rentalcore/` nahtlos innerhalb der installierten Cores-PWA nutzbar
 - **Zentrales Branding** — Semantische RentalCore-Logos in Sidebar, Login, Favicon und PWA; Rechnungen, HTML-E-Mails und Geräteetiketten verwenden getrennt davon die zentrale Unternehmensmarke
-- **Einheitliche Navigation** — Ein-/ausklappbare Sidebar mit normierter Logo-/Symbolfläche, logofreier App-Header und zentralem Cores-Link ohne direkten WarehouseCore-Umschalter
+- **Einheitliche Navigation** — Ein-/ausklappbare Sidebar mit suite-weitem Core-Auswahlfeld und eigenständigem Dashboard-Link an derselben Position in allen Cores
 
 ---
 
