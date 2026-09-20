@@ -1,5 +1,10 @@
 # RentalCore
 
+## Release 5.3.106 – Korrekte Versionsmeldung
+
+Der Health-Endpunkt meldet die aktuelle Release-Version, damit Dashboard und
+Betriebsüberwachung den ausgerollten Stand eindeutig anzeigen.
+
 ## Deutsch und Englisch (5.3.105)
 
 Die Sidebar bietet die gemeinsame Cores-Sprachwahl. Navigation, Job- und
