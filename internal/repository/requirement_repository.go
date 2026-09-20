@@ -12,6 +12,7 @@ var (
 	ErrRequirementJobNotFound     = errors.New("requirement job not found")
 	ErrRequirementProductNotFound = errors.New("requirement product not found")
 	ErrRequirementAlreadyExists   = errors.New("job product requirement already exists")
+	ErrRequirementNotFound        = errors.New("job product requirement not found")
 )
 
 type RequirementRepository struct {
@@ -68,6 +69,31 @@ func (r *RequirementRepository) CreateRequirement(req *models.JobProductRequirem
 		}
 		return nil
 	})
+}
+
+// UpdateQuantity changes exactly one requirement belonging to the supplied job.
+// It intentionally cannot change the linked job or product.
+func (r *RequirementRepository) UpdateQuantity(jobID, requirementID uint, quantity int) (*models.JobProductRequirement, int, error) {
+	var requirement models.JobProductRequirement
+	oldQuantity := 0
+	err := r.db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("id = ? AND job_id = ?", requirementID, jobID).First(&requirement).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrRequirementNotFound
+			}
+			return err
+		}
+		oldQuantity = requirement.Quantity
+		if err := tx.Model(&requirement).Update("quantity", quantity).Error; err != nil {
+			return err
+		}
+		requirement.Quantity = quantity
+		return tx.Preload("Product").First(&requirement, requirement.ID).Error
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return &requirement, oldQuantity, nil
 }
 
 // GetByJobID returns all requirements for a job, with product preloaded.

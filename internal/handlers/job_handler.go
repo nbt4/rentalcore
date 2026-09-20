@@ -149,6 +149,17 @@ type JobRequirementCreateRequest struct {
 	Quantity  int  `json:"quantity" binding:"required"`
 }
 
+type JobRequirementUpdateRequest struct {
+	Quantity int `json:"quantity" binding:"required"`
+}
+
+func (r JobRequirementUpdateRequest) validate() error {
+	if r.Quantity <= 0 {
+		return errors.New("quantity must be greater than zero")
+	}
+	return nil
+}
+
 func (r JobRequirementCreateRequest) validate() error {
 	if r.ProductID == 0 {
 		return errors.New("product_id must be greater than zero")
@@ -1418,6 +1429,59 @@ func (h *JobHandler) CreateJobRequirementAPI(c *gin.Context) {
 
 	requirement.Product = &models.Product{ProductID: request.ProductID, Name: productName}
 	c.JSON(http.StatusCreated, gin.H{"requirement": requirement})
+}
+
+// UpdateJobRequirementAPI changes only the quantity of one requirement. The
+// job and product links remain immutable so delegated integrations cannot
+// silently move a requirement to a different record.
+func (h *JobHandler) UpdateJobRequirementAPI(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || jobID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		return
+	}
+	requirementID, err := strconv.ParseUint(c.Param("requirementId"), 10, 32)
+	if err != nil || requirementID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid requirement ID"})
+		return
+	}
+
+	var request JobRequirementUpdateRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid requirement payload"})
+		return
+	}
+	if err := request.validate(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	requirement, oldQuantity, err := h.requirementRepo.UpdateQuantity(uint(jobID), uint(requirementID), request.Quantity)
+	if err != nil {
+		if errors.Is(err, repository.ErrRequirementNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "requirement not found for job"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update product requirement"})
+		return
+	}
+
+	if h.jobHistoryService != nil {
+		user, _ := GetCurrentUser(c)
+		var userID *uint
+		if user != nil {
+			userID = &user.UserID
+		}
+		productName := ""
+		if requirement.Product != nil {
+			productName = requirement.Product.Name
+		}
+		if err := h.jobHistoryService.LogRequirementUpdated(uint(jobID), requirement.ProductID, oldQuantity, request.Quantity, productName, userID, c.ClientIP(), c.Request.UserAgent()); err != nil {
+			logger.LogWarn("Warning: Failed to log job requirement update: %v", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"requirement": requirement})
 }
 
 // GetAvailableDevicesForRequirementAPI returns devices of a given product

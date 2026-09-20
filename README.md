@@ -1,5 +1,13 @@
 # RentalCore
 
+## Geführte Änderungen an Produktbedarfen (5.3.107)
+
+`PUT /api/v1/jobs/:id/requirements/:requirementId` ändert ausschließlich die
+positive Menge einer vorhandenen Produktbedarfszeile. Job- und Produktbezug
+bleiben unveränderlich. Alte und neue Menge werden mit Benutzerkontext in der
+Job-Historie protokolliert, sodass die Änderung geprüft und manuell
+zurückgenommen werden kann.
+
 ## Release 5.3.106 – Korrekte Versionsmeldung
 
 Der Health-Endpunkt meldet die aktuelle Release-Version, damit Dashboard und

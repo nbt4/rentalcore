@@ -156,6 +156,37 @@ func (s *JobHistoryService) LogRequirementAdded(jobID, productID uint, quantity 
 	return s.db.Create(&history).Error
 }
 
+// LogRequirementUpdated records both quantities so the change can be reviewed
+// and manually reversed without reconstructing earlier job state.
+func (s *JobHistoryService) LogRequirementUpdated(jobID, productID uint, oldQuantity, newQuantity int, productName string, userID *uint, ipAddress, userAgent string) error {
+	description := fmt.Sprintf("Product requirement updated: %d → %d × %s", oldQuantity, newQuantity, productName)
+	if productName == "" {
+		description = fmt.Sprintf("Product requirement updated: product %d, %d → %d", productID, oldQuantity, newQuantity)
+	}
+	history := models.JobHistory{
+		JobID:      jobID,
+		ChangeType: "requirement_updated",
+		ChangedAt:  time.Now(),
+		FieldName:  sql.NullString{String: "product_requirements", Valid: true},
+		OldValue:   sql.NullString{String: fmt.Sprintf("product_id=%d,quantity=%d", productID, oldQuantity), Valid: true},
+		NewValue:   sql.NullString{String: fmt.Sprintf("product_id=%d,quantity=%d", productID, newQuantity), Valid: true},
+		Description: sql.NullString{
+			String: description,
+			Valid:  true,
+		},
+	}
+	if userID != nil {
+		history.UserID = sql.NullInt64{Int64: int64(*userID), Valid: true}
+	}
+	if ipAddress != "" {
+		history.IPAddress = sql.NullString{String: ipAddress, Valid: true}
+	}
+	if userAgent != "" {
+		history.UserAgent = sql.NullString{String: userAgent, Valid: true}
+	}
+	return s.db.Create(&history).Error
+}
+
 func (s *JobHistoryService) logDeviceChange(jobID, deviceID uint, changeType, description string, userID *uint, ipAddress, userAgent string) error {
 	history := models.JobHistory{
 		JobID:      jobID,

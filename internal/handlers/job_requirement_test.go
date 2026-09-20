@@ -22,3 +22,23 @@ func TestJobRequirementCreateRequestValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestJobRequirementUpdateRequestValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		request JobRequirementUpdateRequest
+		wantErr bool
+	}{
+		{name: "valid", request: JobRequirementUpdateRequest{Quantity: 3}},
+		{name: "zero quantity", request: JobRequirementUpdateRequest{}, wantErr: true},
+		{name: "negative quantity", request: JobRequirementUpdateRequest{Quantity: -1}, wantErr: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.request.validate(); (err != nil) != test.wantErr {
+				t.Fatalf("validate() error = %v, wantErr %v", err, test.wantErr)
+			}
+		})
+	}
+}
