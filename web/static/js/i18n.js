@@ -7,14 +7,16 @@
     // Initialize i18next
     let i18nextInstance;
 
-    // Get stored language or default to German
+    // Get the suite-wide language or fall back to the browser preference.
     const getStoredLanguage = () => {
-        return localStorage.getItem('rentalcore_language') || 'de';
+        const stored = localStorage.getItem('cores_language');
+        if (stored === 'de' || stored === 'en') return stored;
+        return navigator.language.toLowerCase().startsWith('en') ? 'en' : 'de';
     };
 
     // Save language preference
     const saveLanguage = (lang) => {
-        localStorage.setItem('rentalcore_language', lang);
+        localStorage.setItem('cores_language', lang);
     };
 
     // Load translations from JSON files
@@ -107,6 +109,8 @@
 
         // Dispatch custom event for other scripts to react to language change
         document.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }));
+        window.dispatchEvent(new CustomEvent('cores:languagechange', { detail: { language: lang } }));
+        window.location.reload();
     };
 
     // Update language switcher UI

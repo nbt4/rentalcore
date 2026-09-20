@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -141,6 +142,21 @@ type JobHandler struct {
 type JobProductSelection struct {
 	ProductID uint `json:"product_id"`
 	Quantity  int  `json:"quantity"`
+}
+
+type JobRequirementCreateRequest struct {
+	ProductID uint `json:"product_id" binding:"required"`
+	Quantity  int  `json:"quantity" binding:"required"`
+}
+
+func (r JobRequirementCreateRequest) validate() error {
+	if r.ProductID == 0 {
+		return errors.New("product_id must be greater than zero")
+	}
+	if r.Quantity <= 0 {
+		return errors.New("quantity must be greater than zero")
+	}
+	return nil
 }
 
 type RentalEquipmentSelection struct {
@@ -1348,6 +1364,60 @@ func (h *JobHandler) GetJobRequirementsAPI(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"requirements": rows})
+}
+
+// CreateJobRequirementAPI adds one product requirement to a job. Existing
+// requirements are never overwritten by this additive integration endpoint.
+func (h *JobHandler) CreateJobRequirementAPI(c *gin.Context) {
+	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || jobID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
+		return
+	}
+
+	var request JobRequirementCreateRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid requirement payload"})
+		return
+	}
+	if err := request.validate(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	requirement := &models.JobProductRequirement{
+		JobID:     uint(jobID),
+		ProductID: request.ProductID,
+		Quantity:  request.Quantity,
+	}
+	if err := h.requirementRepo.CreateRequirement(requirement); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRequirementJobNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+		case errors.Is(err, repository.ErrRequirementProductNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "active product not found"})
+		case errors.Is(err, repository.ErrRequirementAlreadyExists):
+			c.JSON(http.StatusConflict, gin.H{"error": "product requirement already exists for this job"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create product requirement"})
+		}
+		return
+	}
+
+	productName, _ := h.jobRepo.GetProductName(request.ProductID)
+	if h.jobHistoryService != nil {
+		user, _ := GetCurrentUser(c)
+		var userID *uint
+		if user != nil {
+			userID = &user.UserID
+		}
+		if err := h.jobHistoryService.LogRequirementAdded(uint(jobID), request.ProductID, request.Quantity, productName, userID, c.ClientIP(), c.Request.UserAgent()); err != nil {
+			logger.LogWarn("Warning: Failed to log job requirement: %v", err)
+		}
+	}
+
+	requirement.Product = &models.Product{ProductID: request.ProductID, Name: productName}
+	c.JSON(http.StatusCreated, gin.H{"requirement": requirement})
 }
 
 // GetAvailableDevicesForRequirementAPI returns devices of a given product

@@ -1,5 +1,18 @@
 # RentalCore
 
+## Deutsch und Englisch (5.3.105)
+
+Die Sidebar bietet die gemeinsame Cores-Sprachwahl. Navigation, Job- und
+Kundenbegriffe, zentrale Aktionen, zugängliche Beschriftungen, Datumsformat und
+Begrüßung folgen der suiteweit gespeicherten Auswahl.
+
+## Additive Produktbedarfe für Integrationen (5.3.105)
+
+`POST /api/v1/jobs/:id/requirements` legt genau einen neuen Produktbedarf für
+einen bestehenden Job an. Job, aktives Produkt und positive Menge werden
+serverseitig geprüft; eine vorhandene Job-Produkt-Verknüpfung liefert `409` und
+wird niemals überschrieben. Der Vorgang erscheint außerdem in der Job-Historie.
+
 ## Suite-Navigation (5.3.104)
 
 Am Ende der Fachnavigation steht jetzt dieselbe Core-Auswahl wie in allen

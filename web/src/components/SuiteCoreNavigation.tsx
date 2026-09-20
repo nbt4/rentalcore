@@ -4,6 +4,7 @@ import {
   loadSuiteNavigation,
   suiteCoreLabels,
   suiteNavigationFallback,
+  suiteLocalizedURL,
   type SuiteCoreKey,
   type SuiteNavigationConfig,
 } from '../lib/cores-design';
@@ -22,7 +23,7 @@ export function SuiteCoreNavigation({ current, dashboardURL, compact = false }: 
   }, [dashboardURL]);
   const changeCore = (next: string) => {
     if (!next || next === current) return;
-    window.location.assign(new URL(destinations[next as SuiteCoreKey], window.location.origin).toString());
+    window.location.assign(suiteLocalizedURL(destinations[next as SuiteCoreKey]));
   };
   return <div className="suite-core-navigation" data-compact={compact}>
     <label className="suite-core-switcher">
@@ -36,7 +37,7 @@ export function SuiteCoreNavigation({ current, dashboardURL, compact = false }: 
         <ChevronDown className="suite-core-switcher-chevron" aria-hidden="true" />
       </span>
     </label>
-    <a className="suite-core-dashboard-link" href={dashboardURL} aria-current={current ? undefined : 'page'} title={compact ? 'Cores Dashboard' : undefined}>
+    <a className="suite-core-dashboard-link" href={dashboardURL} onClick={(event) => { event.preventDefault(); window.location.assign(suiteLocalizedURL(dashboardURL)); }} aria-current={current ? undefined : 'page'} title={compact ? 'Cores Dashboard' : undefined}>
       <LayoutDashboard size={17} aria-hidden="true" /><span>Cores Dashboard</span>
     </a>
   </div>;

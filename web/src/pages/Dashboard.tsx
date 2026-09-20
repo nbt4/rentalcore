@@ -18,7 +18,7 @@ import { api } from '../lib/api';
 import type { Customer, Job } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '../lib/toast';
-import { suiteDateLabel, suiteGreeting } from '../lib/cores-design';
+import { suiteDateLabel, suiteGreeting, suiteLocale } from '../lib/cores-design';
 import { isFinishedJob } from '../lib/job-status';
 
 const DAY_IN_MS = 86_400_000;
@@ -46,7 +46,7 @@ function customerName(job: Job) {
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('de-DE', {
+  return new Intl.NumberFormat(suiteLocale(), {
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
@@ -56,7 +56,7 @@ function formatMoney(value: number) {
 function formatDate(value?: string | null, options?: Intl.DateTimeFormatOptions) {
   const date = parseDate(value);
   if (!date) return 'Termin offen';
-  return new Intl.DateTimeFormat('de-DE', options || { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat(suiteLocale(), options || { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 }
 
 function statusClasses(status?: string) {

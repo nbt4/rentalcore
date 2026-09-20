@@ -126,6 +126,36 @@ func (s *JobHistoryService) LogDeviceRemoved(jobID uint, deviceID uint, userID *
 	return s.logDeviceChange(jobID, deviceID, "device_removed", "Device removed from job", userID, ipAddress, userAgent)
 }
 
+// LogRequirementAdded records additive material planning changes made through
+// the UI or a delegated suite integration.
+func (s *JobHistoryService) LogRequirementAdded(jobID, productID uint, quantity int, productName string, userID *uint, ipAddress, userAgent string) error {
+	description := fmt.Sprintf("Product requirement added: %d × %s", quantity, productName)
+	if productName == "" {
+		description = fmt.Sprintf("Product requirement added: %d × product %d", quantity, productID)
+	}
+	history := models.JobHistory{
+		JobID:      jobID,
+		ChangeType: "requirement_added",
+		ChangedAt:  time.Now(),
+		FieldName:  sql.NullString{String: "product_requirements", Valid: true},
+		NewValue:   sql.NullString{String: fmt.Sprintf("product_id=%d,quantity=%d", productID, quantity), Valid: true},
+		Description: sql.NullString{
+			String: description,
+			Valid:  true,
+		},
+	}
+	if userID != nil {
+		history.UserID = sql.NullInt64{Int64: int64(*userID), Valid: true}
+	}
+	if ipAddress != "" {
+		history.IPAddress = sql.NullString{String: ipAddress, Valid: true}
+	}
+	if userAgent != "" {
+		history.UserAgent = sql.NullString{String: userAgent, Valid: true}
+	}
+	return s.db.Create(&history).Error
+}
+
 func (s *JobHistoryService) logDeviceChange(jobID, deviceID uint, changeType, description string, userID *uint, ipAddress, userAgent string) error {
 	history := models.JobHistory{
 		JobID:      jobID,

@@ -1,5 +1,51 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+.suite-language-control {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.suite-language-label {
+  font-weight: var(--weight-medium);
+}
+
+.suite-language-select {
+  min-height: 40px;
+  width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.suite-language-select:hover {
+  border-color: var(--border-strong);
+}
+
+.suite-language-select:focus-visible {
+  outline: 2px solid var(--accent-red);
+  outline-offset: 2px;
+}
+
+.suite-language-control.is-compact .suite-language-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.suite-language-control.is-compact .suite-language-select {
+  width: 52px;
+  padding: 0 var(--space-1);
+}
 /*
  * =============================================================================
  * Tsunami Events Design System — Unified CSS Theme

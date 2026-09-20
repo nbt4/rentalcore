@@ -1514,6 +1514,7 @@ func setupRoutes(r *gin.Engine,
 				apiJobs.PUT("/:id/devices/:deviceId", jobHandler.UpdateDevicePriceAPI)
 				apiJobs.DELETE("/:id/devices/:deviceId", jobHandler.RemoveDeviceAPI)
 				apiJobs.GET("/:id/requirements", jobHandler.GetJobRequirementsAPI)
+				apiJobs.POST("/:id/requirements", jobHandler.CreateJobRequirementAPI)
 				apiJobs.GET("/:id/products/:product_id/available-devices", jobHandler.GetAvailableDevicesForRequirementAPI)
 				apiJobs.POST("/:id/editing", jobHandler.StartJobEditingSession)
 				apiJobs.DELETE("/:id/editing", jobHandler.StopJobEditingSession)

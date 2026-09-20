@@ -1,5 +1,179 @@
 export type SuiteIdentity = object | null | undefined;
 
+export type SuiteLanguage = 'de' | 'en';
+export type SuiteTranslationTree = { [key: string]: string | SuiteTranslationTree };
+
+const suiteLanguageStorageKey = 'cores_language';
+const suiteLanguageEvent = 'cores:languagechange';
+const supportedSuiteLanguages: SuiteLanguage[] = ['de', 'en'];
+let suiteTranslations: Record<SuiteLanguage, Record<string, string>> = { de: {}, en: {} };
+let suiteI18nObserver: MutationObserver | undefined;
+const suiteTextState = new WeakMap<Text, { source: string; output: string }>();
+const suiteAttributeState = new WeakMap<Element, Map<string, { source: string; output: string }>>();
+const translatedAttributes = ['aria-label', 'placeholder', 'title'] as const;
+
+function browserSuiteLanguage(): SuiteLanguage {
+  if (typeof window === 'undefined') return 'de';
+  const currentURL = new URL(window.location.href);
+  const requested = currentURL.searchParams.get('lang');
+  if (requested && supportedSuiteLanguages.includes(requested as SuiteLanguage)) {
+    window.localStorage.setItem(suiteLanguageStorageKey, requested);
+    currentURL.searchParams.delete('lang');
+    window.history.replaceState(window.history.state, '', `${currentURL.pathname}${currentURL.search}${currentURL.hash}`);
+    return requested as SuiteLanguage;
+  }
+  const stored = window.localStorage.getItem(suiteLanguageStorageKey);
+  if (stored && supportedSuiteLanguages.includes(stored as SuiteLanguage)) return stored as SuiteLanguage;
+  return window.navigator.language.toLowerCase().startsWith('en') ? 'en' : 'de';
+}
+
+export function suiteLanguage(): SuiteLanguage {
+  return browserSuiteLanguage();
+}
+
+export function suiteLocale(language = suiteLanguage()) {
+  return language === 'en' ? 'en-GB' : 'de-DE';
+}
+
+export function suiteLocalizedURL(target: string) {
+  const url = new URL(target, window.location.origin);
+  url.searchParams.set('lang', suiteLanguage());
+  return url.toString();
+}
+
+function flattenSuiteTranslations(tree: SuiteTranslationTree, result: Record<string, string> = {}) {
+  Object.values(tree).forEach((value) => {
+    if (typeof value === 'string') result[value] = value;
+    else flattenSuiteTranslations(value, result);
+  });
+  return result;
+}
+
+export function pairSuiteTranslations(german: SuiteTranslationTree, english: SuiteTranslationTree) {
+  const de = flattenSuiteTranslations(german);
+  const enValues = flattenSuiteTranslations(english);
+  const germanEntries: Array<[string, string]> = [];
+  const englishEntries: Array<[string, string]> = [];
+
+  function visit(deTree: SuiteTranslationTree, enTree: SuiteTranslationTree) {
+    Object.entries(deTree).forEach(([key, deValue]) => {
+      const enValue = enTree[key];
+      if (typeof deValue === 'string' && typeof enValue === 'string') {
+        germanEntries.push([deValue, deValue]);
+        englishEntries.push([deValue, enValue]);
+      } else if (typeof deValue === 'object' && typeof enValue === 'object') {
+        visit(deValue, enValue);
+      }
+    });
+  }
+
+  visit(german, english);
+  return {
+    de: { ...de, ...Object.fromEntries(germanEntries) },
+    en: { ...enValues, ...Object.fromEntries(englishEntries) },
+  };
+}
+
+function translateValue(value: string, language = suiteLanguage()) {
+  const whitespace = value.match(/^(\s*)(.*?)(\s*)$/s);
+  if (!whitespace) return value;
+  const translated = suiteTranslations[language][whitespace[2]];
+  return translated ? `${whitespace[1]}${translated}${whitespace[3]}` : value;
+}
+
+export function suiteTranslate(value: string, language = suiteLanguage()) {
+  return translateValue(value, language);
+}
+
+function translateTextNode(node: Text) {
+  const value = node.nodeValue ?? '';
+  const previous = suiteTextState.get(node);
+  const source = previous && value === previous.output ? previous.source : value;
+  const output = translateValue(source);
+  suiteTextState.set(node, { source, output });
+  if (value !== output) node.nodeValue = output;
+}
+
+function translateElementAttributes(element: Element) {
+  const states = suiteAttributeState.get(element) ?? new Map();
+  translatedAttributes.forEach((attribute) => {
+    const value = element.getAttribute(attribute);
+    if (value === null) return;
+    const previous = states.get(attribute);
+    const source = previous && value === previous.output ? previous.source : value;
+    const output = translateValue(source);
+    states.set(attribute, { source, output });
+    if (value !== output) element.setAttribute(attribute, output);
+  });
+  suiteAttributeState.set(element, states);
+}
+
+function translateSubtree(root: Node) {
+  if (root instanceof Text) {
+    translateTextNode(root);
+    return;
+  }
+  if (!(root instanceof Element) || root.matches('script, style, code, pre, [data-suite-i18n-ignore]')) return;
+  translateElementAttributes(root);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node instanceof Element && node.matches('script, style, code, pre, [data-suite-i18n-ignore]')) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  let node = walker.nextNode();
+  while (node) {
+    if (node instanceof Text) translateTextNode(node);
+    else if (node instanceof Element) translateElementAttributes(node);
+    node = walker.nextNode();
+  }
+}
+
+function applySuiteLanguage() {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = suiteLanguage();
+  if (document.body) translateSubtree(document.body);
+}
+
+export function setSuiteLanguage(language: SuiteLanguage) {
+  if (!supportedSuiteLanguages.includes(language)) return;
+  window.localStorage.setItem(suiteLanguageStorageKey, language);
+  applySuiteLanguage();
+  window.dispatchEvent(new CustomEvent(suiteLanguageEvent, { detail: { language } }));
+}
+
+export function onSuiteLanguageChange(listener: (language: SuiteLanguage) => void) {
+  const handler = (event: Event) => listener((event as CustomEvent<{ language: SuiteLanguage }>).detail.language);
+  window.addEventListener(suiteLanguageEvent, handler);
+  return () => window.removeEventListener(suiteLanguageEvent, handler);
+}
+
+export function initSuiteI18n(translations: Partial<Record<SuiteLanguage, Record<string, string>>>) {
+  suiteTranslations = {
+    de: { ...suiteTranslations.de, ...translations.de },
+    en: { ...suiteTranslations.en, ...translations.en },
+  };
+  if (typeof document === 'undefined') return;
+  applySuiteLanguage();
+  suiteI18nObserver?.disconnect();
+  suiteI18nObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'characterData') translateSubtree(mutation.target);
+      mutation.addedNodes.forEach(translateSubtree);
+      if (mutation.type === 'attributes') translateElementAttributes(mutation.target as Element);
+    });
+  });
+  suiteI18nObserver.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: [...translatedAttributes],
+  });
+}
+
 function stringValue(identity: SuiteIdentity, keys: string[]) {
   if (!identity) return '';
   const values = identity as Record<string, unknown>;
@@ -22,13 +196,16 @@ export function suiteGreetingName(identity: SuiteIdentity) {
 
 export function suiteGreeting(identity?: SuiteIdentity, now = new Date()) {
   const hour = now.getHours();
-  const salutation = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+  const english = suiteLanguage() === 'en';
+  const salutation = english
+    ? hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+    : hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
   const name = suiteGreetingName(identity);
   return `${salutation}${name ? `, ${name}` : ''}.`;
 }
 
 export function suiteDateLabel(now = new Date()) {
-  return new Intl.DateTimeFormat('de-DE', {
+  return new Intl.DateTimeFormat(suiteLocale(), {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
