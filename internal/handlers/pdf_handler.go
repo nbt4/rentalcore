@@ -27,6 +27,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"go-barcode-webapp/internal/jev"
 	"go-barcode-webapp/internal/logger"
 )
 
@@ -300,13 +301,14 @@ func NewPDFHandler(db *gorm.DB, uploadDir string, jobHandler *JobHandler, attach
 	dbWrapper := &repository.Database{DB: db}
 	jobPackageRepo := repository.NewJobPackageRepository(dbWrapper)
 
+	decisionClient := jev.FromEnv()
 	return &PDFHandler{
 		DB:              db,
 		Extractor:       pdf.NewPDFExtractor(uploadDir),
-		Mapper:          pdf.NewProductMapper(db, aliasCache),
+		Mapper:          pdf.NewProductMapper(db, aliasCache, decisionClient),
 		PackageMapper:   pdf.NewPackageMapper(db),
-		RentalMapper:    pdf.NewRentalMapper(db),
-		ServiceMapper:   pdf.NewServiceMapper(db),
+		RentalMapper:    pdf.NewRentalMapper(db, decisionClient),
+		ServiceMapper:   pdf.NewServiceMapper(db, decisionClient),
 		CustomerMapper:  pdf.NewCustomerMapper(db),
 		JobHandler:      jobHandler,
 		AttachmentRepo:  attachmentRepo,

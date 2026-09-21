@@ -45,6 +45,16 @@ services:
       # ================================
       # Set to 'release' for production, 'debug' for development
       - GIN_MODE=${GIN_MODE:-release}
+
+      # Optional Jev decision layer for OCR catalog matching
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - JEV_ENABLED=${JEV_ENABLED:-true}
+      - JEV_API_URL=${JEV_API_URL:-https://openrouter.ai/api/alpha/decisions}
+      - JEV_MODEL=${JEV_MODEL:-typesafe/jev-1.13}
+      - JEV_TIMEOUT=${JEV_TIMEOUT:-3s}
+      - JEV_MIN_CONFIDENCE=${JEV_MIN_CONFIDENCE:-0.70}
+      - OPENROUTER_SITE_URL=${OPENROUTER_SITE_URL:-}
+      - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-Cores}
       
       # ================================
       # Security Configuration

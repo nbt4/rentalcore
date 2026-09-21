@@ -1,5 +1,15 @@
 # RentalCore
 
+## Jev-gestütztes OCR-Matching (5.3.108)
+
+Nach gespeicherten und exakten Zuordnungen entscheidet Jev über OpenRouter
+zwischen begrenzten Katalogkandidaten für Produkte, Pakete, Mietmaterial und
+Dienstleistungen. Die bestehende OCR-Extraktion, Preise, Mengen, Kundenzuordnung
+und Jobanlage bleiben lokal und deterministisch. Ohne `OPENROUTER_API_KEY`, bei
+Timeout oder unterhalb `JEV_MIN_CONFIDENCE` greift das bisherige Matching. An
+OpenRouter gehen nur eine einzelne Positionsbeschreibung und die zugehörigen
+Kandidatenstammdaten, nie das gesamte Dokument oder Kundendaten.
+
 ## Geführte Änderungen an Produktbedarfen (5.3.107)
 
 `PUT /api/v1/jobs/:id/requirements/:requirementId` ändert ausschließlich die
@@ -52,6 +62,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **Kontextuelle Produktsuche** — Produkt-, Geräte-, Paket-, Mietprodukt-, Dienstleistungs- und PDF-Zuordnungssuchen berücksichtigen Marke, Hersteller, Kategorien, Identifikatoren und technische Stammdaten; kombinierte Begriffe dürfen über mehrere Felder verteilt sein
 - **Barcode- und QR-Generierung** — Automatische Erstellung von QR-Codes und Barcode-Labels (Barcode128) pro Gerät/Seriennummer
 - **OCR-Belegverarbeitung** — Python-3.12-Pipeline zur Extraktion von Dokument-/Jobtiteln, mehrzeiligen Positionsbeschreibungen, Mengen, Preisen und Positionsrabatten; erkannte Jobtitel sind vor dem Finalisieren editierbar, neue Produkt-Katalogentwürfe können sicher und duplikatgeprüft angelegt werden, während Klassifizierung und physische Geräte bewusst in WarehouseCore gepflegt werden
+- **Jev-Entscheidungsabgleich** — Optionales semantisches OCR-Matching gegen Produkte, Pakete, Mietmaterial und Dienstleistungen mit Confidence-Schwelle und lokalem Fallback
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
@@ -203,6 +214,12 @@ Verfügung. Die Auth-Endpunkte bleiben für kompatible API-Clients bestehen.
 | `M365_CALENDAR_MAILBOX`        | Raum-Mailbox für den zentralen Jobkalender        | `events-calender@tsunami-events.de` |
 | `WAREHOUSECORE_DOMAIN`         | WarehouseCore-Domain für Cross-Navigation         | –                      |
 | `CORES_JWT_SECRET`             | JWT-Secret (Cores-weit identisch)                 | –                      |
+| `OPENROUTER_API_KEY`           | Aktiviert optional Jev über OpenRouter            | –                      |
+| `JEV_ENABLED`                  | Jev explizit aktivieren/deaktivieren              | `true`                 |
+| `JEV_API_URL`                  | OpenRouter Decisions-Endpunkt                     | `https://openrouter.ai/api/alpha/decisions` |
+| `JEV_MODEL`                    | Jev-Modell-ID                                     | `typesafe/jev-1.13`    |
+| `JEV_TIMEOUT`                  | Maximale Dauer je Decision-Request                | `3s`                   |
+| `JEV_MIN_CONFIDENCE`           | Mindestkonfidenz für eine Jev-Zuordnung            | `0.70`                 |
 
 Die `M365_*`-Variablen bleiben als Fallback bestehen. Sobald im Cores-Dashboard unter **Microsoft 365 & Entra** Werte gespeichert sind, lädt RentalCore Tenant-ID, Client-ID, Secret, Mailboxen, Intervall und App-URL beim Start aus der gemeinsamen Tabelle `m365_settings`. Damit wird für Entra-Benutzer, Login, Kontakte und Kalender nur eine registrierte Tenant-App benötigt.
 

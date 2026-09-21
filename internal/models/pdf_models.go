@@ -210,7 +210,7 @@ type ProductMappingSuggestion struct {
 	RawProductText   string   `json:"raw_product_text"`
 	SuggestedProduct *Product `json:"suggested_product,omitempty"`
 	Confidence       float64  `json:"confidence"`
-	MappingType      string   `json:"mapping_type"` // 'exact', 'fuzzy', 'previous', 'package'
+	MappingType      string   `json:"mapping_type"` // 'exact', 'fuzzy', 'previous', 'package', 'jev'
 	PackageID        *int     `json:"package_id,omitempty"`
 	PackageCode      string   `json:"package_code,omitempty"`
 	PackageName      string   `json:"package_name,omitempty"`
