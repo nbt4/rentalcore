@@ -7,6 +7,7 @@ const suiteLanguageStorageKey = 'cores_language';
 const suiteLanguageEvent = 'cores:languagechange';
 const supportedSuiteLanguages: SuiteLanguage[] = ['de', 'en'];
 let suiteTranslations: Record<SuiteLanguage, Record<string, string>> = { de: {}, en: {} };
+let suiteTranslationPatterns: Record<SuiteLanguage, Array<{ pattern: RegExp; target: string; placeholders: string[] }>> = { de: [], en: [] };
 let suiteI18nObserver: MutationObserver | undefined;
 const suiteTextState = new WeakMap<Text, { source: string; output: string }>();
 const suiteAttributeState = new WeakMap<Element, Map<string, { source: string; output: string }>>();
@@ -60,7 +61,9 @@ export function pairSuiteTranslations(german: SuiteTranslationTree, english: Sui
       const enValue = enTree[key];
       if (typeof deValue === 'string' && typeof enValue === 'string') {
         germanEntries.push([deValue, deValue]);
+        germanEntries.push([enValue, deValue]);
         englishEntries.push([deValue, enValue]);
+        englishEntries.push([enValue, enValue]);
       } else if (typeof deValue === 'object' && typeof enValue === 'object') {
         visit(deValue, enValue);
       }
@@ -74,10 +77,40 @@ export function pairSuiteTranslations(german: SuiteTranslationTree, english: Sui
   };
 }
 
+function compileTranslationPatterns(translations: Record<string, string>) {
+  return Object.entries(translations).flatMap(([source, target]) => {
+    const placeholders: string[] = [];
+    let cursor = 0;
+    let expression = '';
+    const placeholderPattern = /{{\s*([\w.-]+)\s*}}/g;
+    let match = placeholderPattern.exec(source);
+    while (match) {
+      expression += source.slice(cursor, match.index).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      expression += '(.+?)';
+      placeholders.push(match[1]);
+      cursor = match.index + match[0].length;
+      match = placeholderPattern.exec(source);
+    }
+    if (!placeholders.length) return [];
+    expression += source.slice(cursor).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    return [{ pattern: new RegExp(`^${expression}$`, 's'), target, placeholders }];
+  });
+}
+
+function translatePattern(value: string, language: SuiteLanguage) {
+  for (const entry of suiteTranslationPatterns[language]) {
+    const match = value.match(entry.pattern);
+    if (!match) continue;
+    const replacements = Object.fromEntries(entry.placeholders.map((placeholder, index) => [placeholder, match[index + 1]]));
+    return entry.target.replace(/{{\s*([\w.-]+)\s*}}/g, (_, placeholder: string) => replacements[placeholder] ?? '');
+  }
+  return value;
+}
+
 function translateValue(value: string, language = suiteLanguage()) {
   const whitespace = value.match(/^(\s*)(.*?)(\s*)$/s);
   if (!whitespace) return value;
-  const translated = suiteTranslations[language][whitespace[2]];
+  const translated = suiteTranslations[language][whitespace[2]] ?? translatePattern(whitespace[2], language);
   return translated ? `${whitespace[1]}${translated}${whitespace[3]}` : value;
 }
 
@@ -154,6 +187,10 @@ export function initSuiteI18n(translations: Partial<Record<SuiteLanguage, Record
   suiteTranslations = {
     de: { ...suiteTranslations.de, ...translations.de },
     en: { ...suiteTranslations.en, ...translations.en },
+  };
+  suiteTranslationPatterns = {
+    de: compileTranslationPatterns(suiteTranslations.de),
+    en: compileTranslationPatterns(suiteTranslations.en),
   };
   if (typeof document === 'undefined') return;
   applySuiteLanguage();

@@ -1,5 +1,12 @@
 # RentalCore
 
+## Vollständige Dashboard-Lokalisierung (5.3.109)
+
+Deutsch und Englisch funktionieren nun auch bei gemischten Quelltexten
+bidirektional. Das Rental-Dashboard übersetzt Kennzahlen, Terminradar,
+Schnellaktionen sowie dynamische Anzahlen und Fristen vollständig in die
+gewählte Suite-Sprache.
+
 ## Jev-gestütztes OCR-Matching (5.3.108)
 
 Nach gespeicherten und exakten Zuordnungen entscheidet Jev über OpenRouter
