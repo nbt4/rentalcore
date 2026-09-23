@@ -1,5 +1,11 @@
 # RentalCore
 
+## Gemeinsames Etikettenbogen-Vokabular (5.3.111)
+
+Die suiteweiten Deutsch-/Englisch-Ressourcen enthalten jetzt auch A4-
+Etikettenbögen, Papieroptionen, individuelle Stückzahlen und dynamische
+Druckmeldungen des WarehouseCore-Druckcenters.
+
 ## Gemeinsames Datentransfer-Vokabular (5.3.110)
 
 Die synchronisierten Deutsch-/Englisch-Ressourcen enthalten jetzt auch die
