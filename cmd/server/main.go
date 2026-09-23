@@ -39,6 +39,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const rentalCoreVersion = "5.3.114"
+
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
 
@@ -343,7 +345,7 @@ func main() {
 	loggerConfig := logger.LoggerConfig{
 		Level:        logger.INFO,
 		Service:      "rentalcore",
-		Version:      "2.1.0",
+		Version:      rentalCoreVersion,
 		Environment:  environment,
 		OutputPath:   "", // stdout
 		EnableCaller: true,
@@ -810,7 +812,7 @@ func main() {
 	// Health check endpoint (no auth required)
 	sqlDB, _ := db.DB.DB()
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", "5.3.112")))
+	r.GET("/health", gin.WrapH(commonhealth.Handler(sqlDB, "rentalcore", rentalCoreVersion)))
 	r.GET("/api/v1/branding", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-cache")
 		c.JSON(http.StatusOK, brandingService.GetConfig())

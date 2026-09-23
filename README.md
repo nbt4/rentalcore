@@ -1,6 +1,6 @@
 # RentalCore
 
-## Job-Arbeitsbereich und Joblogik (5.3.113)
+## Job-Arbeitsbereich und Joblogik (5.3.114)
 
 Die Jobübersicht bündelt Suche, Statusfilter und Kennzahlen. Neue Jobs beginnen in
 `Planung` mit Kunde und Titel; Start- und Enddatum müssen gemeinsam angegeben
@@ -34,7 +34,8 @@ Positionen und Gerätebeziehungen bleiben erhalten. Ausgegebene Geräte müssen
 vorher zurückgenommen werden, sonst antwortet die API mit `409`. Das Archivieren
 entfernt den Kalendereintrag auch nach dem Soft Delete. Beim Start bereinigt
 RentalCore außerdem noch vorhandene Termine bereits archivierter Jobs und
-wiederholt damit fehlgeschlagene Löschungen. Dokumente werden über den File Pool gespeichert;
+wiederholt damit fehlgeschlagene Löschungen. Health-Endpunkt und strukturierte Logs
+melden die veröffentlichte RentalCore-Version. Dokumente werden über den File Pool gespeichert;
 ohne Nextcloud bleiben die Dateien im persistenten Volume `/app/uploads`.
 
 ## Gemeinsames Etikettenbogen-Vokabular (5.3.111)
