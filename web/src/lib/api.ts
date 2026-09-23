@@ -46,6 +46,7 @@ export interface JobDevice {
     deviceID: string;
     serialnumber?: string;
     product?: {
+      productID?: number;
       name?: string;
       itemcostperday?: number;
     };
@@ -55,6 +56,7 @@ export interface JobDevice {
 
 export interface Job {
   jobID: number;
+  revision: number;
   job_code: string;
   customer_id: number;
   customer?: Customer;
@@ -202,6 +204,8 @@ export interface JobPosition {
   discount_amount: number;
   tax_rate: number;
   sort_order: number;
+  line_net: number;
+  line_gross: number;
   product?: { productID: number; name: string; itemcostperday?: number } | null;
   service_item?: { id: number; name: string; default_price?: number; unit?: string } | null;
   rental_equipment?: { equipmentID: number; productName: string; rentalPrice?: number } | null;

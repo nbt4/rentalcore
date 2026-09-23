@@ -16,3 +16,22 @@ func TestCanonicalLifecycle(t *testing.T) {
 		t.Fatal("only confirmed jobs may be dispatched")
 	}
 }
+
+func TestValidateTransition(t *testing.T) {
+	for _, tc := range []struct {
+		from, to uint
+		allowed  bool
+	}{
+		{PlanningID, ConfirmedID, true},
+		{PlanningID, CancelledID, true},
+		{PlanningID, CompletedID, false},
+		{ConfirmedID, CompletedID, true},
+		{CompletedID, PlanningID, true},
+		{CancelledID, ConfirmedID, false},
+		{99, PlanningID, false},
+	} {
+		if got := ValidateTransition(tc.from, tc.to); (got == nil) != tc.allowed {
+			t.Fatalf("transition %d -> %d: error %v, allowed %v", tc.from, tc.to, got, tc.allowed)
+		}
+	}
+}

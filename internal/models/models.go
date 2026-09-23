@@ -66,18 +66,20 @@ func (Status) TableName() string {
 }
 
 type Job struct {
-	JobID         uint         `json:"jobID" gorm:"primaryKey;column:jobid"`
-	JobCode       string       `json:"job_code" gorm:"column:job_code"`
-	CustomerID    uint         `json:"customer_id" gorm:"not null;column:customerid"`
-	Customer      Customer     `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
-	StatusID      uint         `json:"status_id" gorm:"not null;column:statusid"`
-	Status        Status       `json:"status,omitempty" gorm:"foreignKey:StatusID"`
-	JobCategoryID *uint        `json:"jobcategoryID" gorm:"column:jobcategoryid"`
-	JobCategory   *JobCategory `json:"job_category,omitempty" gorm:"foreignKey:JobCategoryID"`
-	CreatedBy     *uint        `json:"created_by" gorm:"column:created_by;index"`
-	CreatedAt     *time.Time   `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP;index"`
-	UpdatedBy     *uint        `json:"updated_by" gorm:"column:updated_by;index"`
-	UpdatedAt     *time.Time   `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP;index"`
+	JobID         uint           `json:"jobID" gorm:"primaryKey;column:jobid"`
+	JobCode       string         `json:"job_code" gorm:"column:job_code"`
+	Revision      int            `json:"revision" gorm:"column:revision;not null;default:1"`
+	CustomerID    uint           `json:"customer_id" gorm:"not null;column:customerid"`
+	Customer      Customer       `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	StatusID      uint           `json:"status_id" gorm:"not null;column:statusid"`
+	Status        Status         `json:"status,omitempty" gorm:"foreignKey:StatusID"`
+	JobCategoryID *uint          `json:"jobcategoryID" gorm:"column:jobcategoryid"`
+	JobCategory   *JobCategory   `json:"job_category,omitempty" gorm:"foreignKey:JobCategoryID"`
+	CreatedBy     *uint          `json:"created_by" gorm:"column:created_by;index"`
+	CreatedAt     *time.Time     `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP;index"`
+	UpdatedBy     *uint          `json:"updated_by" gorm:"column:updated_by;index"`
+	UpdatedAt     *time.Time     `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP;index"`
+	DeletedAt     gorm.DeletedAt `json:"-" gorm:"column:deleted_at;index"`
 
 	// Relations
 	Creator          *User        `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`

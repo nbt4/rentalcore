@@ -304,6 +304,12 @@ func main() {
 		if err := schema.EnsureJobStatusLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize job status lifecycle: %v", err)
 		}
+		if err := schema.EnsureJobRequirementSources(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize job requirement sources: %v", err)
+		}
+		if err := schema.EnsureJobWorkflowColumns(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize job workflow columns: %v", err)
+		}
 		if err := m365sync.EnsureCustomerM365Columns(sqlDB); err != nil {
 			logger.LogInfo("Warning: M365 column migration failed: %v", err)
 		}

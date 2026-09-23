@@ -182,6 +182,9 @@ func (h *JobAttachmentHandler) UploadAttachment(c *gin.Context) {
 // This now queries both job_attachments AND documents tables (File Pool as single source of truth)
 func (h *JobAttachmentHandler) GetJobAttachments(c *gin.Context) {
 	jobIDStr := c.Param("jobid")
+	if jobIDStr == "" {
+		jobIDStr = c.Param("id")
+	}
 	jobID, err := strconv.ParseUint(jobIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})

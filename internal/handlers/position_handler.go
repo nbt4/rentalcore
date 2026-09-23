@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -40,30 +41,31 @@ func ensureJobPriceColumns(db *gorm.DB) error {
 	return nil
 }
 
-func (h *PositionHandler) syncRequirements(jobID uint) {
-	var positions []models.JobPosition
-	if err := h.db.Where("job_id = ? AND position_type = 'product'", jobID).Find(&positions).Error; err != nil {
-		logger.LogInfo("syncRequirements: query failed for job %d: %v", jobID, err)
-		return
+func validatePosition(pos *models.JobPosition) error {
+	if math.IsNaN(pos.Quantity) || math.IsInf(pos.Quantity, 0) || pos.Quantity <= 0 {
+		return fmt.Errorf("Menge muss größer als 0 sein")
 	}
-	reqs := make([]models.JobProductRequirement, 0, len(positions))
-	for _, pos := range positions {
-		if pos.ProductID == nil {
-			continue
+	if pos.PositionType == "product" && math.Trunc(pos.Quantity) != pos.Quantity {
+		return fmt.Errorf("Produktmenge muss eine ganze Zahl sein")
+	}
+	for name, value := range map[string]float64{
+		"Preis":           pos.UnitPrice,
+		"Folgetag-Faktor": pos.FollowDayFactor,
+		"Rabatt":          pos.DiscountPercent,
+		"Rabattbetrag":    pos.DiscountAmount,
+		"Steuersatz":      pos.TaxRate,
+	} {
+		if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+			return fmt.Errorf("%s darf nicht negativ sein", name)
 		}
-		qty := int(math.Round(pos.Quantity))
-		if qty < 1 {
-			qty = 1
-		}
-		reqs = append(reqs, models.JobProductRequirement{
-			JobID:     jobID,
-			ProductID: *pos.ProductID,
-			Quantity:  qty,
-		})
 	}
-	if err := h.requirementRepo.SaveRequirements(jobID, reqs); err != nil {
-		logger.LogInfo("syncRequirements: save failed for job %d: %v", jobID, err)
+	if pos.DiscountPercent > 100 {
+		return fmt.Errorf("Rabatt darf 100 Prozent nicht überschreiten")
 	}
+	if pos.PositionType == "product" && (pos.ProductID == nil || *pos.ProductID == 0) {
+		return fmt.Errorf("Produkt ist erforderlich")
+	}
+	return nil
 }
 
 func (h *PositionHandler) GetPositions(c *gin.Context) {
@@ -77,6 +79,18 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	job, err := h.jobRepo.GetByID(uint(jobID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+		return
+	}
+	eventDays := positionEventDays(job.StartDate, job.EndDate)
+	for i := range positions {
+		invoiceAmount := positionInvoiceRevenue(positions[i], job.MultiplyByDays, eventDays)
+		amounts := splitInvoiceRevenue(invoiceAmount, positions[i].TaxRate, job.PricesIncludeTax)
+		positions[i].LineNet = roundAnalyticsMoney(amounts.Net)
+		positions[i].LineGross = roundAnalyticsMoney(amounts.Gross)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"positions": positions})
@@ -110,8 +124,9 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 		return
 	}
 
-	if input.Quantity <= 0 {
-		input.Quantity = 1
+	if _, err := h.jobRepo.GetByID(uint(jobID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
+		return
 	}
 	if input.Unit == "" {
 		input.Unit = "Stück"
@@ -152,10 +167,19 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 		TaxRate:           taxRate,
 		SortOrder:         nextOrder,
 	}
+	if err := validatePosition(&pos); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&pos).Error; err != nil {
 			return err
+		}
+		if input.PositionType == "product" {
+			if err := h.requirementRepo.ReconcilePositionRequirements(tx, uint(jobID)); err != nil {
+				return err
+			}
 		}
 		return syncJobRevenue(tx, uint(jobID))
 	}); err != nil {
@@ -164,10 +188,6 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 	}
 
 	created, _ := h.positionRepo.GetByID(pos.PositionID)
-
-	if input.PositionType == "product" {
-		h.syncRequirements(uint(jobID))
-	}
 
 	c.JSON(http.StatusCreated, gin.H{"position": created})
 }
@@ -198,6 +218,10 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	}
 	if pos.JobID != uint(jobID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "position not found"})
+		return
+	}
+	if _, err := h.jobRepo.GetByID(uint(jobID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "job not found"})
 		return
 	}
 
@@ -231,11 +255,20 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	if input.TaxRate != nil {
 		pos.TaxRate = *input.TaxRate
 	}
+	if err := validatePosition(pos); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	pos.UpdatedAt = time.Now()
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(pos).Error; err != nil {
 			return err
+		}
+		if pos.PositionType == "product" {
+			if err := h.requirementRepo.ReconcilePositionRequirements(tx, pos.JobID); err != nil {
+				return err
+			}
 		}
 		return syncJobRevenue(tx, pos.JobID)
 	}); err != nil {
@@ -244,10 +277,6 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	}
 
 	updated, _ := h.positionRepo.GetByID(pos.PositionID)
-
-	if pos.PositionType == "product" {
-		h.syncRequirements(uint(jobID))
-	}
 
 	c.JSON(http.StatusOK, gin.H{"position": updated})
 }
@@ -277,14 +306,15 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 		if err := tx.Where("position_id = ?", uint(posID)).Delete(&models.JobPosition{}).Error; err != nil {
 			return err
 		}
+		if pos.PositionType == "product" {
+			if err := h.requirementRepo.ReconcilePositionRequirements(tx, pos.JobID); err != nil {
+				return err
+			}
+		}
 		return syncJobRevenue(tx, pos.JobID)
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	if pos.PositionType == "product" {
-		h.syncRequirements(pos.JobID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "position deleted"})

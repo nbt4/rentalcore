@@ -17,6 +17,7 @@ import (
 	"go-barcode-webapp/internal/services/warehousecore"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"go-barcode-webapp/internal/logger"
 )
@@ -517,8 +518,36 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 			job.Discount = discount
 		}
 	}
+	if job.StatusID == 0 {
+		job.StatusID = jobstatus.PlanningID
+	}
+	if err := validateJobWrite(&job, jobstatus.PlanningID); err != nil {
+		h.renderJobFormWithError(c, &job, "New Job", err.Error())
+		return
+	}
+	var selections []JobProductSelection
+	if selectionsStr := c.PostForm("selected_products"); selectionsStr != "" {
+		var err error
+		selections, err = parseProductSelectionsFromString(selectionsStr)
+		if err != nil {
+			h.renderJobFormWithError(c, &job, "New Job", "Invalid product selection payload")
+			return
+		}
+	}
 
-	if err := h.jobRepo.Create(&job); err != nil {
+	if err := h.jobRepo.GetDB().DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&job).Error; err != nil {
+			return err
+		}
+		if len(selections) == 0 {
+			return nil
+		}
+		reqs := make([]models.JobProductRequirement, 0, len(selections))
+		for _, selection := range selections {
+			reqs = append(reqs, models.JobProductRequirement{ProductID: selection.ProductID, Quantity: selection.Quantity})
+		}
+		return h.requirementRepo.SaveRequirementsTx(tx, job.JobID, reqs)
+	}); err != nil {
 		user, _ := GetCurrentUser(c)
 		customers, _ := h.customerRepo.List(&models.FilterParams{})
 		statuses, _ := h.statusRepo.List()
@@ -547,20 +576,6 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		if err := h.jobHistoryService.LogJobCreation(job.JobID, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
 			logger.LogWarn("Warning: Failed to log job creation: %v\n", err)
-		}
-	}
-
-	if selectionsStr := c.PostForm("selected_products"); selectionsStr != "" {
-		selections, err := parseProductSelectionsFromString(selectionsStr)
-		if err != nil {
-			_ = h.jobRepo.Delete(job.JobID)
-			h.renderJobFormWithError(c, &job, "New Job", "Invalid product selection payload")
-			return
-		}
-		if err := h.saveRequirements(job.JobID, selections); err != nil {
-			_ = h.jobRepo.Delete(job.JobID)
-			h.renderJobFormWithError(c, &job, "New Job", err.Error())
-			return
 		}
 	}
 
@@ -730,7 +745,35 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		}
 	}
 
-	if err := h.jobRepo.Update(job); err != nil {
+	if err := validateJobWrite(job, oldJob.StatusID); err != nil {
+		h.renderJobFormWithError(c, job, "Edit Job", err.Error())
+		return
+	}
+	var selections []JobProductSelection
+	hasSelections := false
+	if selectionsStr := c.PostForm("selected_products"); selectionsStr != "" {
+		hasSelections = true
+		selections, err = parseProductSelectionsFromString(selectionsStr)
+		if err != nil {
+			h.renderJobFormWithError(c, job, "Edit Job", "Invalid product selection payload")
+			return
+		}
+	}
+	if err := h.jobRepo.GetDB().DB.Transaction(func(tx *gorm.DB) error {
+		if err := h.jobRepo.UpdateTx(tx, job); err != nil {
+			return err
+		}
+		if hasSelections {
+			reqs := make([]models.JobProductRequirement, 0, len(selections))
+			for _, selection := range selections {
+				reqs = append(reqs, models.JobProductRequirement{ProductID: selection.ProductID, Quantity: selection.Quantity})
+			}
+			if err := h.requirementRepo.SaveRequirementsTx(tx, job.JobID, reqs); err != nil {
+				return err
+			}
+		}
+		return syncJobRevenueIfPositions(tx, job.JobID)
+	}); err != nil {
 		customers, _ := h.customerRepo.List(&models.FilterParams{})
 		statuses, _ := h.statusRepo.List()
 		jobCategories, _ := h.jobCategoryRepo.List()
@@ -745,9 +788,6 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		})
 		return
 	}
-	if err := syncJobRevenueIfPositions(h.jobRepo.GetDB().DB, job.JobID); err != nil {
-		logger.LogWarn("failed to sync job %d revenue from positions: %v", job.JobID, err)
-	}
 
 	// Log job update to history
 	if h.jobHistoryService != nil {
@@ -760,18 +800,6 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		if err := h.jobHistoryService.LogJobUpdate(&oldJob, job, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
 			logger.LogWarn("Warning: Failed to log job update: %v\n", err)
-		}
-	}
-
-	if selectionsStr := c.PostForm("selected_products"); selectionsStr != "" {
-		selections, err := parseProductSelectionsFromString(selectionsStr)
-		if err != nil {
-			h.renderJobFormWithError(c, job, "Edit Job", "Invalid product selection payload")
-			return
-		}
-		if err := h.saveRequirements(job.JobID, selections); err != nil {
-			h.renderJobFormWithError(c, job, "Edit Job", err.Error())
-			return
 		}
 	}
 
@@ -811,16 +839,19 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 		return
 	}
 
+	if err := h.jobRepo.Delete(uint(id)); err != nil {
+		if errors.Is(err, repository.ErrJobHasIssuedDevices) {
+			c.JSON(http.StatusConflict, gin.H{"error": "Ausgegebene Geräte müssen vor dem Archivieren zurückgenommen werden"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	if h.calendarSync != nil {
 		h.calendarSync.DeleteJobEvent(uint(id))
 	}
 
-	if err := h.jobRepo.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Job deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Job archived successfully"})
 }
 
 func (h *JobHandler) GetJobDevices(c *gin.Context) {
@@ -925,8 +956,8 @@ func (h *JobHandler) ListJobsAPI(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"jobs": jobs})
 }
 
-// saveRequirements converts product selections to JobProductRequirement rows
-// and persists them via the requirement repository (replaces all existing).
+// saveRequirements replaces the manually planned portion of the material
+// requirement while retaining quantities derived from job positions.
 func (h *JobHandler) saveRequirements(jobID uint, selections []JobProductSelection) error {
 	reqs := make([]models.JobProductRequirement, 0, len(selections))
 	for _, s := range selections {
@@ -1010,32 +1041,21 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 			job.Revenue = r
 		}
 	}
-	if finalRevenue, ok := requestData["final_revenue"]; ok {
-		if fr, ok := finalRevenue.(float64); ok {
-			job.FinalRevenue = &fr
-		}
-	}
+	// final_revenue is calculated by the server.
 
-	// Handle date fields manually — accept camelCase (frontend) and lowercase (legacy)
-	for _, key := range []string{"startDate", "startdate", "start_date"} {
-		if startDateStr, ok := requestData[key]; ok {
-			if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
-				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-					job.StartDate = &parsed
-					break
-				}
-			}
-		}
+	// Accept the current client and legacy date keys, but never ignore an
+	// invalid date and silently persist a different value.
+	if date, found, err := parseJobDate(requestData, "startDate", "startdate", "start_date"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else if found {
+		job.StartDate = date
 	}
-	for _, key := range []string{"endDate", "enddate", "end_date"} {
-		if endDateStr, ok := requestData[key]; ok {
-			if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
-				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-					job.EndDate = &parsed
-					break
-				}
-			}
-		}
+	if date, found, err := parseJobDate(requestData, "endDate", "enddate", "end_date"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else if found {
+		job.EndDate = date
 	}
 
 	if venueVal, ok := requestData["venue_id"]; ok {
@@ -1051,7 +1071,32 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		job.CreatedBy = &currentUser.UserID
 	}
 
-	if err := h.jobRepo.Create(&job); err != nil {
+	if err := validateJobWrite(&job, jobstatus.PlanningID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	var selections []JobProductSelection
+	if selectionsValue, exists := requestData["selected_products"]; exists {
+		var err error
+		selections, err = parseProductSelectionsFromInterface(selectionsValue)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product selection payload"})
+			return
+		}
+	}
+	if err := h.jobRepo.GetDB().DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&job).Error; err != nil {
+			return err
+		}
+		if len(selections) == 0 {
+			return nil
+		}
+		reqs := make([]models.JobProductRequirement, 0, len(selections))
+		for _, selection := range selections {
+			reqs = append(reqs, models.JobProductRequirement{ProductID: selection.ProductID, Quantity: selection.Quantity})
+		}
+		return h.requirementRepo.SaveRequirementsTx(tx, job.JobID, reqs)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -1068,20 +1113,6 @@ func (h *JobHandler) CreateJobAPI(c *gin.Context) {
 		if err := h.jobHistoryService.LogJobCreation(job.JobID, userID, ipAddress, userAgent); err != nil {
 			// Log error but don't fail the request
 			logger.LogWarn("Warning: Failed to log job creation: %v\n", err)
-		}
-	}
-
-	if selectionsValue, exists := requestData["selected_products"]; exists {
-		selections, err := parseProductSelectionsFromInterface(selectionsValue)
-		if err != nil {
-			_ = h.jobRepo.Delete(job.JobID)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product selection payload"})
-			return
-		}
-		if err := h.saveRequirements(job.JobID, selections); err != nil {
-			_ = h.jobRepo.Delete(job.JobID)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
 		}
 	}
 
@@ -1145,6 +1176,7 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 	// Create a clean job object without associations to prevent GORM from saving them
 	job := models.Job{
 		JobID:         existingJob.JobID,
+		Revision:      existingJob.Revision,
 		CustomerID:    existingJob.CustomerID,
 		StatusID:      existingJob.StatusID,
 		JobCategoryID: existingJob.JobCategoryID,
@@ -1156,6 +1188,14 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		StartDate:     existingJob.StartDate,
 		EndDate:       existingJob.EndDate,
 		VenueID:       existingJob.VenueID,
+	}
+	if revision, provided := requestData["revision"]; provided {
+		value, valid := revision.(float64)
+		if !valid || value < 1 || value != float64(int(value)) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job revision"})
+			return
+		}
+		job.Revision = int(value)
 	}
 	// Accept both legacy "customerid" and API "customer_id"
 	for _, key := range []string{"customer_id", "customerid"} {
@@ -1195,32 +1235,19 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 			job.Revenue = r
 		}
 	}
-	if finalRevenue, ok := requestData["final_revenue"]; ok {
-		if fr, ok := finalRevenue.(float64); ok {
-			job.FinalRevenue = &fr
-		}
-	}
+	// final_revenue is calculated by the server.
 
-	// Handle date fields manually — accept camelCase (frontend) and lowercase (legacy)
-	for _, key := range []string{"startDate", "startdate", "start_date"} {
-		if startDateStr, ok := requestData[key]; ok {
-			if dateStr, ok := startDateStr.(string); ok && dateStr != "" {
-				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-					job.StartDate = &parsed
-					break
-				}
-			}
-		}
+	if date, found, err := parseJobDate(requestData, "startDate", "startdate", "start_date"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else if found {
+		job.StartDate = date
 	}
-	for _, key := range []string{"endDate", "enddate", "end_date"} {
-		if endDateStr, ok := requestData[key]; ok {
-			if dateStr, ok := endDateStr.(string); ok && dateStr != "" {
-				if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
-					job.EndDate = &parsed
-					break
-				}
-			}
-		}
+	if date, found, err := parseJobDate(requestData, "endDate", "enddate", "end_date"); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else if found {
+		job.EndDate = date
 	}
 
 	if venueVal, ok := requestData["venue_id"]; ok {
@@ -1237,11 +1264,39 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		}
 	}
 
-	if err := h.jobRepo.Update(&job); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := validateJobWrite(&job, existingJob.StatusID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := syncJobRevenueIfPositions(h.jobRepo.GetDB().DB, job.JobID); err != nil {
+	var selections []JobProductSelection
+	hasSelections := false
+	if selectionsValue, exists := requestData["selected_products"]; exists {
+		hasSelections = true
+		selections, err = parseProductSelectionsFromInterface(selectionsValue)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product selection payload"})
+			return
+		}
+	}
+	if err := h.jobRepo.GetDB().DB.Transaction(func(tx *gorm.DB) error {
+		if err := h.jobRepo.UpdateTx(tx, &job); err != nil {
+			return err
+		}
+		if hasSelections {
+			reqs := make([]models.JobProductRequirement, 0, len(selections))
+			for _, selection := range selections {
+				reqs = append(reqs, models.JobProductRequirement{ProductID: selection.ProductID, Quantity: selection.Quantity})
+			}
+			if err := h.requirementRepo.SaveRequirementsTx(tx, job.JobID, reqs); err != nil {
+				return err
+			}
+		}
+		return syncJobRevenueIfPositions(tx, job.JobID)
+	}); err != nil {
+		if errors.Is(err, repository.ErrJobRevisionConflict) {
+			c.JSON(http.StatusConflict, gin.H{"error": "Dieser Job wurde zwischenzeitlich geändert. Bitte neu laden."})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -1261,18 +1316,6 @@ func (h *JobHandler) UpdateJobAPI(c *gin.Context) {
 		}
 	}
 
-	if selectionsValue, exists := requestData["selected_products"]; exists {
-		selections, err := parseProductSelectionsFromInterface(selectionsValue)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product selection payload"})
-			return
-		}
-		if err := h.saveRequirements(job.JobID, selections); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	}
-
 	if h.calendarSync != nil {
 		go h.calendarSync.SyncJobEvent(job.JobID)
 	}
@@ -1287,16 +1330,19 @@ func (h *JobHandler) DeleteJobAPI(c *gin.Context) {
 		return
 	}
 
+	if err := h.jobRepo.Delete(uint(id)); err != nil {
+		if errors.Is(err, repository.ErrJobHasIssuedDevices) {
+			c.JSON(http.StatusConflict, gin.H{"error": "Ausgegebene Geräte müssen vor dem Archivieren zurückgenommen werden"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	if h.calendarSync != nil {
 		h.calendarSync.DeleteJobEvent(uint(id))
 	}
 
-	if err := h.jobRepo.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Job deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Job archived successfully"})
 }
 
 func (h *JobHandler) AssignDeviceAPI(c *gin.Context) {
@@ -1460,6 +1506,10 @@ func (h *JobHandler) UpdateJobRequirementAPI(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, repository.ErrRequirementNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "requirement not found for job"})
+			return
+		}
+		if errors.Is(err, repository.ErrRequirementBelowPositions) {
+			c.JSON(http.StatusConflict, gin.H{"error": "quantity cannot be lower than the quantities in job positions"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update product requirement"})

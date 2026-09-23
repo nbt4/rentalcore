@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Package, Wrench, Plus, Trash2, Check, Cpu, Building2 } from 'lucide-react';
 import { positionsApi, api } from '../lib/api';
 import type { JobPosition, JobTotals, RentalCatalogItem } from '../lib/api';
@@ -19,6 +19,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   const [rentalItems, setRentalItems] = useState<RentalCatalogItem[]>([]);
   const [multiplyByDays, setMultiplyByDays] = useState(true);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -58,6 +59,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   const rentalPositions = positions.filter(p => p.position_type === 'rental' || p.position_type === 'package');
 
   const handleAdd = async (type: 'product' | 'service' | 'rental', itemId: number) => {
+    setBusy(true);
+    try {
     if (type === 'product') {
       const prod = products.find(p => p.productID === itemId);
       if (!prod) return;
@@ -96,29 +99,46 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       });
     }
     setAdding(null);
-    loadData();
+    await loadData();
     onChanged?.();
+    } catch (error) { toast.error(error); }
+    finally { setBusy(false); }
   };
 
   const handleUpdate = async (pos: JobPosition, field: string, value: number | string) => {
-    await positionsApi.update(jobId, pos.position_id, { [field]: value });
-    loadData();
-    onChanged?.();
+    setBusy(true);
+    try {
+      await positionsApi.update(jobId, pos.position_id, { [field]: value });
+      await loadData();
+      onChanged?.();
+    } catch (error) { toast.error(error); }
+    finally { setBusy(false); }
   };
 
   const handleToggle = async (field: 'multiply_by_days' | 'prices_include_tax', value: boolean) => {
     if (field === 'multiply_by_days') setMultiplyByDays(value);
     else setPricesIncludeTax(value);
-    await positionsApi.updatePriceSettings(jobId, { [field]: value });
-    loadData();
-    onChanged?.();
+    setBusy(true);
+    try {
+      await positionsApi.updatePriceSettings(jobId, { [field]: value });
+      await loadData();
+      onChanged?.();
+    } catch (error) {
+      if (field === 'multiply_by_days') setMultiplyByDays(!value);
+      else setPricesIncludeTax(!value);
+      toast.error(error);
+    } finally { setBusy(false); }
   };
 
   const handleDelete = async (posId: number) => {
     if (!confirm('Position löschen?')) return;
-    await positionsApi.delete(jobId, posId);
-    loadData();
-    onChanged?.();
+    setBusy(true);
+    try {
+      await positionsApi.delete(jobId, posId);
+      await loadData();
+      onChanged?.();
+    } catch (error) { toast.error(error); }
+    finally { setBusy(false); }
   };
 
   const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -126,13 +146,13 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   if (loading) return <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-accent-red/20 border-t-accent-red rounded-full animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="job-positions space-y-6" aria-busy={busy}>
       {/* Products Section */}
-      <div className="glass-dark rounded-xl border border-white/10 p-5">
+      <div className="jobs-card rounded-xl border border-[var(--border-default)] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-accent-red" />
-            <h3 className="font-semibold text-white">Produkte ({productPositions.length})</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">Produkte ({productPositions.length})</h3>
           </div>
           <button
             onClick={() => setAdding(adding === 'product' ? null : 'product')}
@@ -143,9 +163,9 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
 
         {adding === 'product' && (
-          <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10">
+          <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-default)]">
             <select
-              className="w-full bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]"
               value=""
               onChange={e => { if (e.target.value) handleAdd('product', parseInt(e.target.value)); }}
             >
@@ -158,7 +178,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         )}
 
         {productPositions.length === 0 && !adding && (
-          <p className="text-gray-500 text-sm py-2">Keine Produkte hinzugefügt.</p>
+          <p className="text-[var(--text-muted)] text-sm py-2">Keine Produkte hinzugefügt.</p>
         )}
 
         <div className="space-y-2">
@@ -169,11 +189,11 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       </div>
 
       {/* Services Section */}
-      <div className="glass-dark rounded-xl border border-white/10 p-5">
+      <div className="jobs-card rounded-xl border border-[var(--border-default)] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Wrench className="w-4 h-4 text-accent-red" />
-            <h3 className="font-semibold text-white">Dienstleistungen ({servicePositions.length})</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">Dienstleistungen ({servicePositions.length})</h3>
           </div>
           <button
             onClick={() => setAdding(adding === 'service' ? null : 'service')}
@@ -184,9 +204,9 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
 
         {adding === 'service' && (
-          <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10">
+          <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-default)]">
             <select
-              className="w-full bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]"
               value=""
               onChange={e => { if (e.target.value) handleAdd('service', parseInt(e.target.value)); }}
             >
@@ -199,7 +219,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         )}
 
         {servicePositions.length === 0 && !adding && (
-          <p className="text-gray-500 text-sm py-2">Keine Dienstleistungen hinzugefügt.</p>
+          <p className="text-[var(--text-muted)] text-sm py-2">Keine Dienstleistungen hinzugefügt.</p>
         )}
 
         <div className="space-y-2">
@@ -210,11 +230,11 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       </div>
 
       {/* Mietprodukte Section */}
-      <div className="glass-dark rounded-xl border border-white/10 p-5">
+      <div className="jobs-card rounded-xl border border-[var(--border-default)] p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-accent-red" />
-            <h3 className="font-semibold text-white">Mietprodukte ({rentalPositions.length})</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">Mietprodukte ({rentalPositions.length})</h3>
           </div>
           <button
             onClick={() => setAdding(adding === 'rental' ? null : 'rental')}
@@ -225,9 +245,9 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         </div>
 
         {adding === 'rental' && (
-          <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/10">
+          <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-default)]">
             <select
-              className="w-full bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]"
               value=""
               onChange={e => { if (e.target.value) handleAdd('rental', parseInt(e.target.value)); }}
             >
@@ -242,7 +262,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         )}
 
         {rentalPositions.length === 0 && adding !== 'rental' && (
-          <p className="text-gray-500 text-sm py-2">Keine Mietprodukte hinzugefügt.</p>
+          <p className="text-[var(--text-muted)] text-sm py-2">Keine Mietprodukte hinzugefügt.</p>
         )}
 
         <div className="space-y-2">
@@ -253,26 +273,16 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       </div>
 
       {/* Price Settings Toggles */}
-      <div className="glass-dark rounded-xl border border-white/10 p-4">
+      <div className="jobs-card rounded-xl border border-[var(--border-default)] p-4">
         <div className="flex items-center gap-6 flex-wrap">
-          <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Preiseinstellungen</span>
+          <span className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wide">Preiseinstellungen</span>
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div
-              onClick={() => handleToggle('multiply_by_days', !multiplyByDays)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${multiplyByDays ? 'bg-accent-red' : 'bg-white/10'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${multiplyByDays ? 'translate-x-4' : 'translate-x-0'}`} />
-            </div>
-            <span className="text-sm text-gray-300">Preis × Veranstaltungstage</span>
+            <input type="checkbox" checked={multiplyByDays} disabled={busy} onChange={e => handleToggle('multiply_by_days', e.target.checked)} />
+            <span className="text-sm text-[var(--text-secondary)]">Preis × Veranstaltungstage</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div
-              onClick={() => handleToggle('prices_include_tax', !pricesIncludeTax)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${pricesIncludeTax ? 'bg-accent-red' : 'bg-white/10'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${pricesIncludeTax ? 'translate-x-4' : 'translate-x-0'}`} />
-            </div>
-            <span className="text-sm text-gray-300">
+            <input type="checkbox" checked={pricesIncludeTax} disabled={busy} onChange={e => handleToggle('prices_include_tax', e.target.checked)} />
+            <span className="text-sm text-[var(--text-secondary)]">
               {pricesIncludeTax ? 'Preise inkl. MwSt (Brutto)' : 'Preise exkl. MwSt (Netto)'}
             </span>
           </label>
@@ -281,31 +291,31 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
 
       {/* Totals */}
       {totals && (
-        <div className="glass-dark rounded-xl border border-white/10 p-5">
+        <div className="jobs-card rounded-xl border border-[var(--border-default)] p-5">
           <div className="space-y-2 max-w-xs ml-auto text-sm">
-            <div className="flex justify-between text-gray-400">
+            <div className="flex justify-between text-[var(--text-secondary)]">
               <span>Veranstaltungstage</span>
-              <span className="text-white font-medium">{totals.event_days}</span>
+              <span className="text-[var(--text-primary)] font-medium">{totals.event_days}</span>
             </div>
-            <div className="flex justify-between text-gray-400">
+            <div className="flex justify-between text-[var(--text-secondary)]">
               <span>Zwischensumme</span>
-              <span className="text-white">{fmt(totals.subtotal)} €</span>
+              <span className="text-[var(--text-primary)]">{fmt(totals.subtotal)} €</span>
             </div>
             {totals.global_discount > 0 && (
-              <div className="flex justify-between text-yellow-400">
+              <div className="flex justify-between text-[var(--color-warning)]">
                 <span>Rabatt</span>
                 <span>-{fmt(totals.global_discount)} €</span>
               </div>
             )}
-            <div className="flex justify-between text-gray-300 border-t border-white/10 pt-2">
+            <div className="flex justify-between text-[var(--text-secondary)] border-t border-[var(--border-default)] pt-2">
               <span>Netto</span>
               <span className="font-medium">{fmt(totals.netto)} €</span>
             </div>
-            <div className="flex justify-between text-gray-400">
+            <div className="flex justify-between text-[var(--text-secondary)]">
               <span>MwSt ({totals.tax_rate}%){pricesIncludeTax ? ' (enthalten)' : ''}</span>
               <span>{fmt(totals.tax)} €</span>
             </div>
-            <div className="flex justify-between text-white font-bold text-base border-t border-white/10 pt-2">
+            <div className="flex justify-between text-[var(--text-primary)] font-bold text-base border-t border-[var(--border-default)] pt-2">
               <span>Brutto</span>
               <span>{fmt(totals.brutto)} €</span>
             </div>
@@ -326,13 +336,16 @@ function PositionRow({ pos, onUpdate, onDelete, showFactor }: {
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [editVal, setEditVal] = useState('');
+  const cancelled = useRef(false);
 
   const startEdit = (field: string, value: number | string) => {
+    cancelled.current = false;
     setEditing(field);
     setEditVal(String(value));
   };
 
   const commitEdit = (field: string) => {
+    if (cancelled.current) { setEditing(null); return; }
     const numVal = parseFloat(editVal);
     if (!isNaN(numVal)) {
       onUpdate(pos, field, numVal);
@@ -344,14 +357,14 @@ function PositionRow({ pos, onUpdate, onDelete, showFactor }: {
   const neededCount = Math.floor(pos.quantity);
 
   return (
-    <div className="rounded-lg border border-white/5 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+    <div className="job-position-row">
+      <div className="job-position-fields">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white truncate">{pos.description || pos.product?.name || pos.service_item?.name || '—'}</span>
+            <span className="text-sm font-medium text-[var(--text-primary)] truncate">{pos.description || pos.product?.name || pos.service_item?.name || '—'}</span>
             {pos.position_type === 'product' && (
               <span className={`text-[0.65rem] px-1.5 py-0.5 rounded-full font-medium ${
-                scannedCount >= neededCount ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                scannedCount >= neededCount ? 'bg-green-500/10 text-[var(--color-success)] border border-green-500/20' : 'bg-yellow-500/10 text-[var(--color-warning)] border border-yellow-500/20'
               }`}>
                 {scannedCount}/{neededCount}
               </span>
@@ -360,45 +373,45 @@ function PositionRow({ pos, onUpdate, onDelete, showFactor }: {
         </div>
 
         {/* Quantity */}
-        <EditableCell value={pos.quantity} field="quantity" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-14" suffix="" />
+        <EditableCell value={pos.quantity} field="quantity" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} cancelEdit={() => { cancelled.current = true; setEditing(null); }} width="w-14" suffix="" />
 
         {/* Unit */}
-        <span className="text-xs text-gray-500 w-12 text-center">{pos.unit}</span>
+        <span className="text-xs text-[var(--text-muted)] w-12 text-center">{pos.unit}</span>
 
         {/* Unit Price */}
-        <EditableCell value={pos.unit_price} field="unit_price" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-20" suffix="€" />
+        <EditableCell value={pos.unit_price} field="unit_price" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} cancelEdit={() => { cancelled.current = true; setEditing(null); }} width="w-20" suffix="€" />
 
         {/* Factor */}
         {showFactor && (
-          <EditableCell value={pos.follow_day_factor} field="follow_day_factor" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-12" suffix="×" />
+          <EditableCell value={pos.follow_day_factor} field="follow_day_factor" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} cancelEdit={() => { cancelled.current = true; setEditing(null); }} width="w-12" suffix="×" />
         )}
 
         {/* Discount */}
-        <EditableCell value={pos.discount_percent} field="discount_percent" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-14" suffix="%" />
+        <EditableCell value={pos.discount_percent} field="discount_percent" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} cancelEdit={() => { cancelled.current = true; setEditing(null); }} width="w-14" suffix="%" />
 
         {/* Tax Rate */}
-        <EditableCell value={pos.tax_rate} field="tax_rate" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} width="w-14" suffix="%" />
+        <EditableCell value={pos.tax_rate} field="tax_rate" editing={editing} editVal={editVal} startEdit={startEdit} commitEdit={commitEdit} setEditVal={setEditVal} cancelEdit={() => { cancelled.current = true; setEditing(null); }} width="w-14" suffix="%" />
 
         {/* Line Total */}
-        <span className="w-20 text-xs text-right font-medium text-white">
-          {(pos.quantity * pos.unit_price * (1 - pos.discount_percent / 100)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+        <span className="w-20 text-xs text-right font-medium text-[var(--text-primary)]" title="Positionswert brutto vor Jobrabatt">
+          {(pos.line_gross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
         </span>
 
         {/* Delete */}
-        <button onClick={() => onDelete(pos.position_id)} className="p-1.5 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors">
+        <button onClick={() => onDelete(pos.position_id)} aria-label={`${pos.description} löschen`} className="p-1.5 rounded hover:bg-red-500/20 text-[var(--text-muted)] hover:text-red-400 transition-colors">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Devices under product */}
       {pos.position_type === 'product' && pos.devices && pos.devices.length > 0 && (
-        <div className="border-t border-white/5 px-4 py-2 bg-white/[0.01]">
+        <div className="border-t border-[var(--border-divider)] px-4 py-2 bg-[var(--surface-1)]">
           {pos.devices.map(d => (
-            <div key={d.id} className="flex items-center gap-2 py-1 text-xs text-gray-400">
-              <Cpu className="w-3 h-3 text-green-400" />
-              <span className="font-mono text-green-400">{d.device_id}</span>
-              <Check className="w-3 h-3 text-green-500" />
-              <span className="text-gray-600">{new Date(d.scanned_at).toLocaleDateString('de-DE')}</span>
+            <div key={d.id} className="flex items-center gap-2 py-1 text-xs text-[var(--text-secondary)]">
+              <Cpu className="w-3 h-3 text-[var(--color-success)]" />
+              <span className="font-mono text-[var(--color-success)]">{d.device_id}</span>
+              <Check className="w-3 h-3 text-[var(--color-success)]" />
+              <span className="text-[var(--text-muted)]">{new Date(d.scanned_at).toLocaleDateString('de-DE')}</span>
             </div>
           ))}
         </div>
@@ -409,7 +422,7 @@ function PositionRow({ pos, onUpdate, onDelete, showFactor }: {
 
 /* ── Editable Cell ── */
 
-function EditableCell({ value, field, editing, editVal, startEdit, commitEdit, setEditVal, width, suffix }: {
+function EditableCell({ value, field, editing, editVal, startEdit, commitEdit, setEditVal, cancelEdit, width, suffix }: {
   value: number;
   field: string;
   editing: string | null;
@@ -417,6 +430,7 @@ function EditableCell({ value, field, editing, editVal, startEdit, commitEdit, s
   startEdit: (f: string, v: number) => void;
   commitEdit: (f: string) => void;
   setEditVal: (v: string) => void;
+  cancelEdit: () => void;
   width: string;
   suffix: string;
 }) {
@@ -425,11 +439,12 @@ function EditableCell({ value, field, editing, editVal, startEdit, commitEdit, s
       <input
         type="number"
         step="any"
-        className={`${width} bg-dark-300 border border-accent-red/50 rounded px-1.5 py-0.5 text-xs text-white text-right focus:outline-none`}
+        className={`${width} bg-[var(--surface-2)] border border-accent-red/50 rounded px-1.5 py-0.5 text-xs text-[var(--text-primary)] text-right focus:outline-none`}
         value={editVal}
         onChange={e => setEditVal(e.target.value)}
         onBlur={() => commitEdit(field)}
-        onKeyDown={e => { if (e.key === 'Enter') commitEdit(field); if (e.key === 'Escape') { setEditVal(''); commitEdit(field); } }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') cancelEdit(); }}
+        aria-label={field}
         autoFocus
       />
     );
@@ -437,9 +452,10 @@ function EditableCell({ value, field, editing, editVal, startEdit, commitEdit, s
   return (
     <button
       onClick={() => startEdit(field, value)}
-      className={`${width} text-xs text-gray-300 text-right hover:text-white hover:bg-white/5 rounded px-1.5 py-0.5 transition-colors`}
+      aria-label={`${field}: ${value}`}
+      className={`${width} text-xs text-[var(--text-secondary)] text-right hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded px-1.5 py-0.5 transition-colors`}
     >
-      {value}{suffix && <span className="text-gray-600 ml-0.5">{suffix}</span>}
+      {value}{suffix && <span className="text-[var(--text-muted)] ml-0.5">{suffix}</span>}
     </button>
   );
 }

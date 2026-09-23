@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/logger"
@@ -9,6 +10,9 @@ import (
 
 	"gorm.io/gorm"
 )
+
+var ErrJobHasIssuedDevices = errors.New("issued devices must be returned before archiving the job")
+var ErrJobRevisionConflict = errors.New("job was changed by another user")
 
 type JobRepository struct {
 	db *Database
@@ -166,18 +170,14 @@ func (r *JobRepository) GetByID(id uint) (*models.Job, error) {
 }
 
 func (r *JobRepository) Update(job *models.Job) error {
-	jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Saving job ID %d with description: '%s'\n", job.JobID, func() string {
-		if job.Description == nil {
-			return "<nil>"
-		}
-		return *job.Description
-	}())
+	return r.UpdateTx(r.db.DB, job)
+}
 
+// UpdateTx allows callers to commit a job header with its material plan.
+func (r *JobRepository) UpdateTx(tx *gorm.DB, job *models.Job) error {
 	finalRevenue := computeFinalRevenue(job.Revenue, job.Discount, job.DiscountType)
 	job.FinalRevenue = &finalRevenue
-
-	// Use Updates instead of Save to ensure all fields are updated
-	result := r.db.Model(job).Where("jobID = ?", job.JobID).Updates(map[string]interface{}{
+	result := tx.Model(job).Where("jobid = ? AND revision = ? AND deleted_at IS NULL", job.JobID, job.Revision).Updates(map[string]interface{}{
 		"customerid":    job.CustomerID,
 		"statusid":      job.StatusID,
 		"description":   job.Description,
@@ -189,29 +189,15 @@ func (r *JobRepository) Update(job *models.Job) error {
 		"jobcategoryid": job.JobCategoryID,
 		"final_revenue": finalRevenue,
 		"venue_id":      job.VenueID,
+		"revision":      gorm.Expr("revision + 1"),
 	})
-
 	if result.Error != nil {
-		jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Error: %v\n", result.Error)
 		return result.Error
 	}
-
-	jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Success! Rows affected: %d\n", result.RowsAffected)
-
-	// Verify the update by reading the job back from DB
-	var verifyJob models.Job
-	verifyResult := r.db.Where("jobID = ?", job.JobID).First(&verifyJob)
-	if verifyResult.Error == nil {
-		jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Verification - DB now has description: '%s'\n", func() string {
-			if verifyJob.Description == nil {
-				return "<nil>"
-			}
-			return *verifyJob.Description
-		}())
-	} else {
-		jobRepoDebugLog("🔧 DEBUG JobRepo.Update: Verification failed: %v\n", verifyResult.Error)
+	if result.RowsAffected == 0 {
+		return ErrJobRevisionConflict
 	}
-
+	job.Revision++
 	return nil
 }
 
@@ -270,41 +256,27 @@ func (r *JobRepository) RemoveAllDevicesFromJob(jobID uint) error {
 }
 
 func (r *JobRepository) Delete(id uint) error {
-	tx := r.db.Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	// Collect device IDs before removing them, so we can reset their status
-	var deviceIDs []string
-	if err := tx.Model(&models.JobDevice{}).Where("jobID = ?", id).Pluck("deviceid", &deviceIDs).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to collect device IDs: %v", err)
-	}
-
-	// Reset on_job devices back to in_storage
-	if len(deviceIDs) > 0 {
-		if err := tx.Model(&models.Device{}).
-			Where("deviceID IN ? AND status = ?", deviceIDs, "on_job").
-			Update("status", "in_storage").Error; err != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to reset device statuses: %v", err)
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var job models.Job
+		if err := tx.Where("jobid = ?", id).First(&job).Error; err != nil {
+			return err
 		}
-	}
-
-	// Remove all job_devices rows
-	if err := tx.Where("jobID = ?", id).Delete(&models.JobDevice{}).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to remove devices from job: %v", err)
-	}
-
-	// Delete the job itself
-	if err := tx.Delete(&models.Job{}, id).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
+		var issued int64
+		if err := tx.Model(&models.JobDevice{}).Where("jobid = ? AND pack_status = ?", id, "issued").Count(&issued).Error; err != nil {
+			return err
+		}
+		if issued > 0 {
+			return ErrJobHasIssuedDevices
+		}
+		// WarehouseCore lists open jobs by status. Close open drafts before
+		// archiving, while retaining completed history and all relations.
+		if job.StatusID == jobstatus.PlanningID || job.StatusID == jobstatus.ConfirmedID {
+			if err := tx.Model(&job).Update("statusid", jobstatus.CancelledID).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Delete(&job).Error
+	})
 }
 
 func (r *JobRepository) List(params *models.FilterParams) ([]models.JobWithDetails, error) {
@@ -328,7 +300,7 @@ func (r *JobRepository) List(params *models.FilterParams) ([]models.JobWithDetai
 		LEFT JOIN job_devices jd ON j.jobid = jd.jobid`
 
 	// Build WHERE conditions
-	var conditions []string
+	var conditions = []string{"j.deleted_at IS NULL"}
 
 	if params.StartDate != nil {
 		conditions = append(conditions, "j.startdate >= ?")
@@ -680,6 +652,15 @@ func (r *JobRepository) GetJobStats(jobID uint) (*models.JobWithDetails, error) 
 }
 
 func (r *JobRepository) CalculateAndUpdateRevenue(jobID uint) error {
+	var positionCount int64
+	if err := r.db.Model(&models.JobPosition{}).Where("job_id = ?", jobID).Count(&positionCount).Error; err != nil {
+		return err
+	}
+	if positionCount > 0 {
+		// Prices belong to positions once a job has commercial lines. Physical
+		// device assignments must not replace that calculated revenue.
+		return nil
+	}
 	// Get the job with dates
 	var job models.Job
 	err := r.db.First(&job, jobID).Error
@@ -728,6 +709,13 @@ func (r *JobRepository) CalculateAndUpdateRevenue(jobID uint) error {
 }
 
 func (r *JobRepository) UpdateFinalRevenue(jobID uint) error {
+	var positionCount int64
+	if err := r.db.Model(&models.JobPosition{}).Where("job_id = ?", jobID).Count(&positionCount).Error; err != nil {
+		return err
+	}
+	if positionCount > 0 {
+		return nil
+	}
 	// Get the job with current revenue
 	var job models.Job
 	err := r.db.First(&job, jobID).Error

@@ -1851,7 +1851,8 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 				return
 			}
 			if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
-				logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("PDF-Positionen konnten nicht übernommen werden: %v", posErr)})
+				return
 			}
 
 			jobUpdates := map[string]interface{}{
@@ -1973,16 +1974,20 @@ func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
 
 	warningMsg, assignErr := h.assignProductsToJob(&job, extraction.ExtractionID)
 	if assignErr != nil {
-		h.DB.Delete(&job)
+		h.DB.Unscoped().Delete(&job)
 		c.JSON(http.StatusBadRequest, gin.H{"error": assignErr.Error()})
 		return
 	}
-	if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
-		logger.LogInfo("[WARN] createPositionsFromExtraction failed for job %d: %v", job.JobID, posErr)
+	// Link before position import so a retry resumes this job if the import fails.
+	if err := h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", upload.UploadID).
+		Update("job_id", job.JobID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-
-	h.DB.Model(&models.PDFUpload{}).Where("upload_id = ?", upload.UploadID).
-		Update("job_id", job.JobID)
+	if posErr := h.createPositionsFromExtraction(&job, extraction.ExtractionID); posErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("PDF-Positionen konnten nicht übernommen werden; Job %d wurde angelegt und kann erneut finalisiert werden: %v", job.JobID, posErr)})
+		return
+	}
 
 	h.attachUploadToJob(&upload, job.JobID)
 	h.syncJobCalendar(job.JobID)
@@ -2270,10 +2275,11 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 		totalCounts[pid] += qty
 	}
 
-	// Assign devices for total required counts
-	if len(totalCounts) > 0 {
-		selections := make([]JobProductSelection, 0, len(totalCounts))
-		for pid, qty := range totalCounts {
+	// Standalone product lines contribute through job_positions. Only package
+	// components need an additional manually planned material quantity.
+	if len(packageComponentTotals) > 0 {
+		selections := make([]JobProductSelection, 0, len(packageComponentTotals))
+		for pid, qty := range packageComponentTotals {
 			if qty <= 0 {
 				continue
 			}
@@ -2399,8 +2405,8 @@ func (h *PDFHandler) assignProductsToJob(job *models.Job, extractionID uint64) (
 	return "", nil
 }
 
-// createPositionsFromExtraction creates job_positions from PDF extraction items.
-// Called after assignProductsToJob during finalize. Idempotent: deletes existing positions first.
+// createPositionsFromExtraction refreshes only positions owned by this PDF extraction.
+// Positions created by users, including legacy positions without provenance, remain intact.
 func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID uint64) error {
 	var items []models.PDFExtractionItem
 	if err := h.DB.Where(
@@ -2410,71 +2416,89 @@ func (h *PDFHandler) createPositionsFromExtraction(job *models.Job, extractionID
 		return err
 	}
 
-	// Intentional: OCR re-finalize always rebuilds positions from the extraction.
-	// Manually-added positions for this job are overwritten by design.
-	if err := h.DB.Where("job_id = ?", job.JobID).Delete(&models.JobPosition{}).Error; err != nil {
-		return err
-	}
-
-	for i, item := range items {
-		qty := 1.0
-		if item.Quantity.Valid && item.Quantity.Int64 > 0 {
-			qty = float64(item.Quantity.Int64)
+	return h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("job_id = ? AND pdf_extraction_item_id IN (SELECT item_id FROM pdf_extraction_items WHERE extraction_id = ?)", job.JobID, extractionID).
+			Delete(&models.JobPosition{}).Error; err != nil {
+			return err
 		}
-		unitPrice := 0.0
-		if item.UnitPrice.Valid {
-			unitPrice = item.UnitPrice.Float64
-		}
+		for i, item := range items {
+			qty := 1.0
+			if item.Quantity.Valid && item.Quantity.Int64 > 0 {
+				qty = float64(item.Quantity.Int64)
+			}
+			unitPrice := 0.0
+			if item.UnitPrice.Valid {
+				unitPrice = item.UnitPrice.Float64
+			}
 
-		var posType string
-		var productID *uint
-		var serviceItemID *uint
-		var rentalEquipmentID *uint
-		followDayFactor := 0.5
+			var posType string
+			var productID *uint
+			var serviceItemID *uint
+			var rentalEquipmentID *uint
+			followDayFactor := 0.5
 
-		switch {
-		case item.MappedProductID.Valid:
-			posType = "product"
-			pid := uint(item.MappedProductID.Int64)
-			productID = &pid
-		case item.MappedPackageID.Valid:
-			posType = "package"
-			followDayFactor = 0
-		case item.MappedRentalEquipmentID.Valid:
-			posType = "rental"
-			rid := uint(item.MappedRentalEquipmentID.Int64)
-			rentalEquipmentID = &rid
-			followDayFactor = 0
-		case item.MappedServiceItemID.Valid:
-			posType = "service"
-			sid := uint(item.MappedServiceItemID.Int64)
-			serviceItemID = &sid
-			followDayFactor = 0
-		default:
-			continue
-		}
+			switch {
+			case item.MappedProductID.Valid:
+				posType = "product"
+				pid := uint(item.MappedProductID.Int64)
+				productID = &pid
+			case item.MappedPackageID.Valid:
+				posType = "package"
+				followDayFactor = 0
+			case item.MappedRentalEquipmentID.Valid:
+				posType = "rental"
+				rid := uint(item.MappedRentalEquipmentID.Int64)
+				rentalEquipmentID = &rid
+				followDayFactor = 0
+			case item.MappedServiceItemID.Valid:
+				posType = "service"
+				sid := uint(item.MappedServiceItemID.Int64)
+				serviceItemID = &sid
+				followDayFactor = 0
+			default:
+				continue
+			}
 
-		pos := models.JobPosition{
-			JobID:             job.JobID,
-			PositionType:      posType,
-			ProductID:         productID,
-			ServiceItemID:     serviceItemID,
-			RentalEquipmentID: rentalEquipmentID,
-			Description:       item.RawProductText,
-			Quantity:          qty,
-			Unit:              "Stück",
-			UnitPrice:         unitPrice,
-			FollowDayFactor:   followDayFactor,
-			DiscountPercent:   extractionItemDiscountPercent(item),
-			TaxRate:           19.0,
-			SortOrder:         i,
-		}
+			pos := models.JobPosition{
+				JobID:               job.JobID,
+				PDFExtractionItemID: &item.ItemID,
+				PositionType:        posType,
+				ProductID:           productID,
+				ServiceItemID:       serviceItemID,
+				RentalEquipmentID:   rentalEquipmentID,
+				Description:         item.RawProductText,
+				Quantity:            qty,
+				Unit:                "Stück",
+				UnitPrice:           unitPrice,
+				FollowDayFactor:     followDayFactor,
+				DiscountPercent:     extractionItemDiscountPercent(item),
+				TaxRate:             19.0,
+				SortOrder:           i,
+			}
 
-		if err := h.DB.Create(&pos).Error; err != nil {
-			logger.LogInfo("[WARN] createPositionsFromExtraction: failed to create position for item %d: %v", item.ItemID, err)
+			// Older imports have no provenance. An identical line may already exist;
+			// leave it untouched and avoid adding a duplicate on first re-finalize.
+			var legacyCount int64
+			if err := tx.Model(&models.JobPosition{}).
+				Where("job_id = ? AND pdf_extraction_item_id IS NULL AND position_type = ? AND description = ? AND quantity = ? AND unit_price = ?", job.JobID, posType, pos.Description, pos.Quantity, pos.UnitPrice).
+				Where("product_id IS NOT DISTINCT FROM ? AND service_item_id IS NOT DISTINCT FROM ? AND rental_equipment_id IS NOT DISTINCT FROM ?", productID, serviceItemID, rentalEquipmentID).
+				Count(&legacyCount).Error; err != nil {
+				return err
+			}
+			if legacyCount > 0 {
+				continue
+			}
+			if err := tx.Create(&pos).Error; err != nil {
+				return err
+			}
 		}
-	}
-	return syncJobRevenue(h.DB, job.JobID)
+		if h.JobHandler != nil && h.JobHandler.requirementRepo != nil {
+			if err := h.JobHandler.requirementRepo.ReconcilePositionRequirements(tx, job.JobID); err != nil {
+				return err
+			}
+		}
+		return syncJobRevenue(tx, job.JobID)
+	})
 }
 
 type customerPrefill struct {

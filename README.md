@@ -1,5 +1,37 @@
 # RentalCore
 
+## Job-Arbeitsbereich und Joblogik (5.3.112)
+
+Die Jobübersicht bündelt Suche, Statusfilter und Kennzahlen. Neue Jobs beginnen in
+`Planung` mit Kunde und Titel; Start- und Enddatum müssen gemeinsam angegeben
+werden. Zur Bestätigung ist ein Zeitraum erforderlich. Statuswechsel folgen
+`Planung → Bestätigt → Abgeschlossen`; Stornieren ist aus offenen Zuständen
+möglich. Abgeschlossene oder stornierte Jobs können zur weiteren Bearbeitung
+zunächst wieder in `Planung` gesetzt werden.
+
+Im Jobdetail werden Stammdaten, Positionen, zusätzlich geplantes Material,
+zugewiesene Geräte, Personal, Dokumente und Verlauf verwaltet. Produktpositionen
+erzeugen automatisch Materialbedarf. Im Formular gewählte Produkte zählen als
+zusätzlicher manueller Bedarf und bleiben beim Ändern von Positionen erhalten.
+Positionspreise, Veranstaltungstage, Rabatt und Steuer werden serverseitig
+berechnet; das Zuweisen eines Geräts überschreibt den Umsatz bei Jobs mit
+Positionen nicht. Der API-Update-Body kann `revision` enthalten; bei einer
+veralteten Revision antwortet RentalCore mit `409`, damit Änderungen anderer
+Bearbeiter nicht überschrieben werden. Die Oberfläche sendet diese Revision.
+
+Eine erneute PDF-Finalisierung ersetzt nur Positionen, die dem Import
+zugeordnet sind. Ältere Positionen ohne Herkunftsmarkierung bleiben bestehen;
+identische alte Zeilen werden beim erneuten Import nicht verdoppelt. Die
+Migration ergänzt `jobs.revision`, `job_positions.pdf_extraction_item_id` und
+die getrennten Mengen `manual_quantity`/`position_quantity` beim Start. Der
+Wert `quantity` bleibt deren Summe für WarehouseCore.
+
+`DELETE /api/v1/jobs/:id` archiviert einen Job mit `deleted_at`; Historie,
+Positionen und Gerätebeziehungen bleiben erhalten. Ausgegebene Geräte müssen
+vorher zurückgenommen werden, sonst antwortet die API mit `409`. Das Archivieren
+entfernt den Kalendereintrag. Dokumente werden über den File Pool gespeichert;
+ohne Nextcloud bleiben die Dateien im persistenten Volume `/app/uploads`.
+
 ## Gemeinsames Etikettenbogen-Vokabular (5.3.111)
 
 Die suiteweiten Deutsch-/Englisch-Ressourcen enthalten jetzt auch A4-
