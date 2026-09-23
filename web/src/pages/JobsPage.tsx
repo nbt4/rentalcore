@@ -294,7 +294,7 @@ export function RequirementsPanel({ jobId, devices, onDeviceAssigned }: { jobId:
   const unplannedDevices = devices.filter((device) => !requirements.some((req) => req.product_id === device.device?.product?.productID));
 
   return (
-    <section className="jobs-card jobs-card-body">
+    <section id="job-material" className="jobs-card jobs-card-body scroll-mt-24">
       <div className="flex items-center gap-2 mb-2">
         <Package className="w-4 h-4 text-accent-red" />
         <h3 className="font-semibold text-white">Material und Geräte</h3>

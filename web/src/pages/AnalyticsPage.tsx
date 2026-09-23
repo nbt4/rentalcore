@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BarChart2, TrendingUp, Euro, Briefcase, ChevronRight, Home, ReceiptEuro } from 'lucide-react';
 import { analyticsApi, api } from '../lib/api';
 import type { Job, RevenueDrilldown, RevenueDrilldownNode } from '../lib/api';
@@ -11,11 +12,12 @@ interface RevenueData {
   jobs: number;
 }
 
-function buildMonthlyData(months: RevenueDrilldown['monthly_revenue']): RevenueData[] {
+function buildMonthlyData(months: RevenueDrilldown['monthly_revenue'], scope: 'realized' | 'pipeline'): RevenueData[] {
   const map = new Map<string, RevenueData>();
   const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  for (let i = 0; i < 6; i++) {
+    const offset = scope === 'pipeline' ? i : i - 5;
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     map.set(key, {
       month: d.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' }),
@@ -42,12 +44,11 @@ const formatCurrency = (value: number) => value.toLocaleString('de-DE', {
   maximumFractionDigits: 2,
 });
 
-const periodLabels: Record<string, string> = {
-  all: 'Gesamter Zeitraum',
-  '30days': 'Letzte 30 Tage',
-  '90days': 'Letzte 90 Tage',
-  '1year': 'Letztes Jahr',
-};
+function periodLabels(scope: 'realized' | 'pipeline'): Record<string, string> {
+  return scope === 'pipeline'
+    ? { all: 'Gesamter Zeitraum', '30days': 'Nächste 30 Tage', '90days': 'Nächste 90 Tage', '1year': 'Nächstes Jahr' }
+    : { all: 'Gesamter Zeitraum', '30days': 'Letzte 30 Tage', '90days': 'Letzte 90 Tage', '1year': 'Letztes Jahr' };
+}
 
 function resolveDrilldownPath(categories: RevenueDrilldownNode[], path: string[]) {
   const nodes: RevenueDrilldownNode[] = [];
@@ -67,6 +68,7 @@ export function AnalyticsPage() {
   const [drilldown, setDrilldown] = useState<RevenueDrilldown | null>(null);
   const [drilldownLoading, setDrilldownLoading] = useState(true);
   const [period, setPeriod] = useState('all');
+  const [scope, setScope] = useState<'realized' | 'pipeline'>('realized');
   const [drilldownPath, setDrilldownPath] = useState<string[]>([]);
 
   useEffect(() => {
@@ -77,18 +79,22 @@ export function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     setDrilldownLoading(true);
+    setDrilldown(null);
     setDrilldownPath([]);
-    analyticsApi.getRevenueDrilldown(period)
-      .then((response) => setDrilldown(response.data))
-      .catch((error: any) => toast.error(error))
-      .finally(() => setDrilldownLoading(false));
-  }, [period]);
+    analyticsApi.getRevenueDrilldown(period, scope)
+      .then((response) => { if (active) setDrilldown(response.data); })
+      .catch((error: any) => { if (active) toast.error(error); })
+      .finally(() => { if (active) setDrilldownLoading(false); });
+    return () => { active = false; };
+  }, [period, scope]);
 
-  const monthly = buildMonthlyData(drilldown?.monthly_revenue || []);
-  const totalGrossRevenue = drilldown?.total_gross_revenue ?? jobs.reduce((s, j) => s + (j.final_revenue ?? j.revenue ?? 0), 0);
+  const monthly = buildMonthlyData(drilldown?.monthly_revenue || [], scope);
+  const totalGrossRevenue = drilldown?.total_gross_revenue ?? 0;
   const totalNetRevenue = drilldown?.total_net_revenue ?? totalGrossRevenue;
   const totalTaxAmount = drilldown?.total_tax_amount ?? 0;
+  const jobCount = drilldown?.job_count ?? 0;
   const maxRevenue = Math.max(...monthly.map((m) => m.grossRevenue), 1);
 
   const selectedNodes = useMemo(
@@ -97,7 +103,7 @@ export function AnalyticsPage() {
   );
   const selectedNode = selectedNodes[selectedNodes.length - 1];
   const visibleDrilldownNodes = selectedNode?.children || drilldown?.categories || [];
-  const parentRevenue = selectedNode?.gross_revenue || drilldown?.total_gross_revenue || 0;
+  const parentRevenue = selectedNode?.gross_revenue ?? drilldown?.total_gross_revenue ?? 0;
   const ownProductRevenue = drilldown?.categories.find((node) => node.id === 'own-products')?.gross_revenue || 0;
   const serviceRevenue = drilldown?.categories.find((node) => node.id === 'services')?.gross_revenue || 0;
 
@@ -114,49 +120,62 @@ export function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart2 className="w-6 h-6 text-accent-red" /> Analyse</h1>
-          <p className="text-gray-400 text-sm mt-1">Umsatz bis auf Produkt, Mietartikel, Dienstleistung und Einzelgerät nachvollziehen</p>
+          <p className="text-gray-400 text-sm mt-1">{scope === 'realized' ? 'Realisierter Umsatz aus abgeschlossenen Jobs' : 'Voraussichtlicher Umsatz aus Jobs in Planung und Bestätigung'} · bis zur Position und zum Job nachvollziehbar</p>
         </div>
-        <label className="flex flex-col gap-1 text-xs text-gray-500">
-          Analysezeitraum
-          <select
-            value={period}
-            onChange={(event) => setPeriod(event.target.value)}
-            className="bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white min-w-48"
-          >
-            {Object.entries(periodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-        </label>
+        <div className="flex flex-wrap gap-3">
+          <label className="flex flex-col gap-1 text-xs text-gray-500">
+            Umsatzansicht
+            <select
+              value={scope}
+              onChange={(event) => setScope(event.target.value as 'realized' | 'pipeline')}
+              className="bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white min-w-48"
+            >
+              <option value="realized">Realisierter Umsatz</option>
+              <option value="pipeline">Pipeline · geplant und bestätigt</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-gray-500">
+            Analysezeitraum
+            <select
+              value={period}
+              onChange={(event) => setPeriod(event.target.value)}
+              className="bg-dark-200 border border-white/10 rounded-lg px-3 py-2 text-sm text-white min-w-48"
+            >
+              {Object.entries(periodLabels(scope)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Bruttoumsatz</span>
+            <span className="text-gray-400 text-sm">{scope === 'realized' ? 'Realisierter Bruttoumsatz' : 'Pipeline brutto'}</span>
             <Euro className="w-5 h-5 text-yellow-400" />
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(totalGrossRevenue)}</div>
+          <div className="text-2xl font-bold">{drilldownLoading ? '…' : drilldown ? formatCurrency(totalGrossRevenue) : '—'}</div>
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Nettoumsatz</span>
+            <span className="text-gray-400 text-sm">{scope === 'realized' ? 'Realisierter Nettoumsatz' : 'Pipeline netto'}</span>
             <ReceiptEuro className="w-5 h-5 text-green-400" />
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(totalNetRevenue)}</div>
+          <div className="text-2xl font-bold">{drilldownLoading ? '…' : drilldown ? formatCurrency(totalNetRevenue) : '—'}</div>
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm">MwSt.</span>
             <Euro className="w-5 h-5 text-gray-300" />
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(totalTaxAmount)}</div>
+          <div className="text-2xl font-bold">{drilldownLoading ? '…' : drilldown ? formatCurrency(totalTaxAmount) : '—'}</div>
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Gesamt Jobs</span>
+            <span className="text-gray-400 text-sm">{scope === 'realized' ? 'Abgeschlossene Jobs' : 'Pipeline Jobs'}</span>
             <Briefcase className="w-5 h-5 text-accent-red" />
           </div>
-          <div className="text-2xl font-bold">{drilldown?.job_count ?? jobs.length}</div>
+          <div className="text-2xl font-bold">{drilldownLoading ? '…' : drilldown ? jobCount : '—'}</div>
         </div>
         <div className="glass-dark rounded-xl border border-white/10 p-5">
           <div className="flex items-center justify-between mb-2">
@@ -164,7 +183,7 @@ export function AnalyticsPage() {
             <TrendingUp className="w-5 h-5 text-green-400" />
           </div>
           <div className="text-2xl font-bold">
-            {formatCurrency((drilldown?.job_count ?? jobs.length) > 0 ? totalGrossRevenue / (drilldown?.job_count ?? jobs.length) : 0)}
+            {drilldownLoading ? '…' : drilldown ? formatCurrency(jobCount > 0 ? totalGrossRevenue / jobCount : 0) : '—'}
           </div>
         </div>
       </div>
@@ -174,10 +193,10 @@ export function AnalyticsPage() {
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-2">
             <ReceiptEuro className="w-5 h-5 text-accent-red" />
-            <h2 className="font-semibold text-white">Umsatz-Drilldown</h2>
+            <h2 className="font-semibold text-white">{scope === 'realized' ? 'Realisierter Umsatz' : 'Pipeline'} · Drilldown</h2>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Brutto und Netto werden direkt aus den aktuellen Auftragspositionen, der Brutto-/Netto-Einstellung und dem jeweiligen MwSt.-Satz berechnet. Die Mietmarge verwendet den Bruttoumsatz abzüglich Lieferantenkosten.
+            {scope === 'realized' ? 'Nur abgeschlossene Jobs zählen als realisierter Umsatz.' : 'Planung und bestätigte Jobs erscheinen ausschließlich als Pipeline.'} Brutto und Netto stammen aus den Auftragspositionen; die Mietmarge zieht Lieferantenkosten ab.
           </p>
         </div>
 
@@ -206,7 +225,7 @@ export function AnalyticsPage() {
               <button
                 type="button"
                 onClick={() => setDrilldownPath([])}
-                className={`flex items-center gap-1 whitespace-nowrap ${drilldownPath.length === 0 ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                className={`flex items-center gap-1 whitespace-nowrap rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)] ${drilldownPath.length === 0 ? 'text-white' : 'text-gray-400 hover:text-white'}`}
               >
                 <Home className="w-3.5 h-3.5" /> Gesamtumsatz
               </button>
@@ -216,7 +235,7 @@ export function AnalyticsPage() {
                   <button
                     type="button"
                     onClick={() => setDrilldownPath(drilldownPath.slice(0, index + 1))}
-                    className={index === selectedNodes.length - 1 ? 'text-white' : 'text-gray-400 hover:text-white'}
+                    className={`rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)] ${index === selectedNodes.length - 1 ? 'text-white' : 'text-gray-400 hover:text-white'}`}
                   >
                     {node.label}
                   </button>
@@ -240,19 +259,25 @@ export function AnalyticsPage() {
                 <tbody className="divide-y divide-white/5">
                   {visibleDrilldownNodes.map((node) => {
                     const share = parentRevenue > 0 ? Math.max(0, Math.min(100, node.gross_revenue / parentRevenue * 100)) : 0;
-                    const canOpen = node.children?.length > 0;
+                    const canOpen = (node.children?.length || 0) > 0 || (node.jobs?.length || 0) > 0;
                     return (
                       <tr
                         key={node.id}
-                        onClick={() => canOpen && setDrilldownPath([...drilldownPath, node.id])}
-                        className={canOpen ? 'hover:bg-white/[0.04] cursor-pointer transition-colors' : 'hover:bg-white/[0.02]'}
+                        className="hover:bg-white/[0.04] transition-colors"
                       >
                         <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium text-white truncate">{node.label}</span>
-                            {canOpen && <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
-                            {node.type === 'device' && <span className="text-[0.65rem] text-gray-600 uppercase">Gerät</span>}
-                          </div>
+                          {canOpen ? (
+                            <button
+                              type="button"
+                              onClick={() => setDrilldownPath([...drilldownPath, node.id])}
+                              className="flex items-center gap-2 min-w-0 min-h-11 text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)]"
+                              aria-label={`${node.label} öffnen, ${node.bookings} Aufträge`}
+                            >
+                              <span className="font-medium text-white truncate">{node.label}</span>
+                              <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+                              {node.type === 'device' && <span className="text-[0.65rem] text-gray-600 uppercase">Gerät</span>}
+                            </button>
+                          ) : <span className="font-medium text-white">{node.label}</span>}
                           {node.quantity > 0 && <div className="text-xs text-gray-600 mt-0.5">Menge {node.quantity.toLocaleString('de-DE')}</div>}
                         </td>
                         <td className="px-4 py-3.5 text-right font-medium text-white">{formatCurrency(node.gross_revenue)}</td>
@@ -274,11 +299,36 @@ export function AnalyticsPage() {
                     );
                   })}
                   {visibleDrilldownNodes.length === 0 && (
-                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-500">Für diesen Zeitraum liegen keine Umsatzdaten vor.</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-500">{selectedNode?.jobs?.length ? 'Die zugehörigen Aufträge stehen unten.' : 'Für diesen Zeitraum liegen keine Umsatzdaten vor.'}</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+
+            {selectedNode?.jobs && selectedNode.jobs.length > 0 && (
+              <div className="border-t border-white/10">
+                <div className="px-5 py-3">
+                  <h3 className="font-semibold text-white">Aufträge zu {selectedNode.label}</h3>
+                  <p className="text-xs text-gray-500">{selectedNode.bookings} Jobs · Jobnummer, Titel und zugehörige Position</p>
+                </div>
+                <div className="suite-table-wrap mx-5 mb-5">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead><tr><th className="text-left px-4 py-3">Job</th><th className="text-left px-4 py-3">Titel</th><th className="text-left px-4 py-3">Position</th><th className="text-right px-4 py-3">Brutto</th><th className="text-right px-4 py-3">Netto</th></tr></thead>
+                    <tbody>
+                      {selectedNode.jobs.map((booking) => (
+                        <tr key={`${booking.job_id}:${booking.position_id}`}>
+                          <td className="px-4 py-3"><Link className="font-medium text-[var(--color-accent-red)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)]" to={`/jobs/${booking.job_id}`}>{booking.job_code || `Job ${booking.job_id}`}</Link></td>
+                          <td className="px-4 py-3">{booking.job_title || 'Ohne Titel'}</td>
+                          <td className="px-4 py-3">{booking.position_label}</td>
+                          <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.gross_revenue)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.net_revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {drilldown.unattributed_revenue !== 0 && (
               <div className="px-5 py-3 border-t border-white/10 text-xs text-yellow-400/80 bg-yellow-500/[0.03]">
@@ -294,7 +344,7 @@ export function AnalyticsPage() {
       {/* Revenue chart */}
       <div className="glass-dark rounded-xl border border-white/10 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h2 className="font-semibold text-white">Monatlicher Umsatz (letzte 6 Monate)</h2>
+          <h2 className="font-semibold text-white">{scope === 'realized' ? 'Monatlicher Umsatz (letzte 6 Monate)' : 'Monatliche Pipeline (nächste 6 Monate)'}</h2>
           <div className="flex items-center gap-4 text-xs text-gray-400">
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent-red" /> Brutto</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500/70" /> Netto</span>

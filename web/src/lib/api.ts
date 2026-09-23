@@ -95,11 +95,21 @@ export interface RevenueDrilldownNode {
   has_cost: boolean;
   quantity: number;
   bookings: number;
+  jobs?: Array<{
+    job_id: number;
+    job_code: string;
+    job_title: string;
+    position_id: number;
+    position_label: string;
+    gross_revenue: number;
+    net_revenue: number;
+  }>;
   children: RevenueDrilldownNode[];
 }
 
 export interface RevenueDrilldown {
   period: string;
+  scope: 'realized' | 'pipeline';
   start_date?: string;
   end_date?: string;
   total_revenue: number;
@@ -168,8 +178,8 @@ export const statusApi = {
 export const analyticsApi = {
   getRevenue: (params?: Record<string, string>) =>
     api.get('/analytics/revenue', { params }),
-  getRevenueDrilldown: (period = 'all') =>
-    api.get<RevenueDrilldown>('/analytics/revenue/drilldown', { params: { period } }),
+  getRevenueDrilldown: (period = 'all', scope: 'realized' | 'pipeline' = 'realized') =>
+    api.get<RevenueDrilldown>('/analytics/revenue/drilldown', { params: { period, scope } }),
   getEquipment: () =>
     api.get('/analytics/equipment'),
 };

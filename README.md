@@ -1,5 +1,27 @@
 # RentalCore
 
+## Analyse und Jobpositionen (5.3.115)
+
+Die Umsatzanalyse zeigt standardmäßig nur abgeschlossene Jobs als realisierten
+Umsatz. Über „Umsatzansicht“ lässt sich separat die Pipeline aus geplanten und
+bestätigten Jobs anzeigen; stornierte und archivierte Jobs zählen in keiner der
+beiden Ansichten. Die Zeiträume beziehen sich für realisierten Umsatz auf das
+Enddatum und für die Pipeline auf das Startdatum. Der Monatsverlauf folgt
+derselben Zuordnung. Im Drilldown lassen sich auch einzelne Dienstleistungen,
+Produkte und Geräte öffnen; darunter stehen die zugehörigen Jobs mit
+Jobnummer, Titel, Position und einem Link zum Jobdetail.
+
+Im Jobdetail bezeichnet „Auftragspositionen · Produkte“ die kaufmännischen
+Positionen, aus denen Auftragswert und automatischer Produktbedarf entstehen.
+Ein Link führt von dort direkt zu „Material und Geräte“ für die Zuordnung der
+konkreten Geräte. Diese Unterscheidung ist auch im englischen UI erklärt.
+
+`GET /api/v1/analytics/revenue/drilldown` verwendet standardmäßig
+`scope=realized`; für geplante und bestätigte Jobs gilt `scope=pipeline`.
+`period=30days|90days|1year|all` filtert je nach Ansicht zurück- oder
+vorausblickend. Blattknoten enthalten zusätzlich `jobs` mit Job- und
+Positionsbezug.
+
 ## Job-Arbeitsbereich und Joblogik (5.3.114)
 
 Die Jobübersicht bündelt Suche, Statusfilter und Kennzahlen. Neue Jobs beginnen in
@@ -124,7 +146,7 @@ RentalCore folgt im React-Client und in den verbliebenen Go-Templates dem verbin
 - **M365-Kontaktsync** — Bidirektionale Synchronisation mit Microsoft 365 Shared-Mailbox-Kontakten über die zentrale Cores-App-Registrierung
 - **Nextcloud Filepool** — WebDAV-basierte Dateiablage für auftragsbezogene Dokumente mit automatischer Zuweisung
 - **Passkey / WebAuthn** — Passwortlose Authentifizierung mit FIDO2/WebAuthn (Passkeys)
-- **Analytics Dashboard** — Interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
+- **Analytics Dashboard** — Realisierter Umsatz abgeschlossener Jobs und separate Pipeline geplanter oder bestätigter Jobs; interaktiver Netto-/Brutto-Umsatz-Drilldown aus den live synchronisierten Auftragspositionen über eigene Produkte, Mietprodukte samt Lieferantenkosten/Marge und Dienstleistungen bis zum konkreten Job und Einzelgerät; Mietkosten folgen dabei der Auftragseinstellung „Preis × Veranstaltungstage“
 - **Installierbare Mobile-App (PWA)** — Standalone-Modus mit RentalCore-App-Icon, Safe-Area-Unterstützung, großen Touch-Zielen, App-Tabbar und Drawer-Navigation; eigenständig installierbar und zusätzlich unter `/rentalcore/` nahtlos innerhalb der installierten Cores-PWA nutzbar
 - **Zentrales Branding** — Semantische RentalCore-Logos in Sidebar, Login, Favicon und PWA; Rechnungen, HTML-E-Mails und Geräteetiketten verwenden getrennt davon die zentrale Unternehmensmarke
 - **Einheitliche Navigation** — Ein-/ausklappbare Sidebar mit suite-weitem Core-Auswahlfeld und eigenständigem Dashboard-Link an derselben Position in allen Cores

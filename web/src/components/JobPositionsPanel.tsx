@@ -152,7 +152,7 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-accent-red" />
-            <h3 className="font-semibold text-[var(--text-primary)]">Produkte ({productPositions.length})</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">Auftragspositionen · Produkte ({productPositions.length})</h3>
           </div>
           <button
             onClick={() => setAdding(adding === 'product' ? null : 'product')}
@@ -161,6 +161,9 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
             <Plus className="w-3.5 h-3.5" /> Produkt
           </button>
         </div>
+        <p className="text-sm text-[var(--text-secondary)] mb-4">
+          Diese Positionen bestimmen den Auftragswert und erzeugen automatisch Produktbedarf. Die Zuordnung einzelner Geräte erfolgt in <a href="#job-material" className="text-[var(--color-accent-red)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)]">Material und Geräte</a>.
+        </p>
 
         {adding === 'product' && (
           <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border-default)]">

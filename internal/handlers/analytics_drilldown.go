@@ -8,24 +8,37 @@ import (
 	"strings"
 	"time"
 
+	"go-barcode-webapp/internal/jobstatus"
+
 	"github.com/gin-gonic/gin"
 )
 
+type RevenueDrilldownBooking struct {
+	JobID         uint    `json:"job_id"`
+	JobCode       string  `json:"job_code"`
+	JobTitle      string  `json:"job_title"`
+	PositionID    uint    `json:"position_id"`
+	PositionLabel string  `json:"position_label"`
+	GrossRevenue  float64 `json:"gross_revenue"`
+	NetRevenue    float64 `json:"net_revenue"`
+}
+
 type RevenueDrilldownNode struct {
-	ID            string                 `json:"id"`
-	Type          string                 `json:"type"`
-	Label         string                 `json:"label"`
-	Revenue       float64                `json:"revenue"` // Gross revenue kept for API compatibility.
-	NetRevenue    float64                `json:"net_revenue"`
-	GrossRevenue  float64                `json:"gross_revenue"`
-	TaxAmount     float64                `json:"tax_amount"`
-	Cost          float64                `json:"cost"`
-	Margin        float64                `json:"margin"`
-	MarginPercent float64                `json:"margin_percent"`
-	HasCost       bool                   `json:"has_cost"`
-	Quantity      float64                `json:"quantity"`
-	Bookings      int                    `json:"bookings"`
-	Children      []RevenueDrilldownNode `json:"children"`
+	ID            string                    `json:"id"`
+	Type          string                    `json:"type"`
+	Label         string                    `json:"label"`
+	Revenue       float64                   `json:"revenue"` // Gross revenue kept for API compatibility.
+	NetRevenue    float64                   `json:"net_revenue"`
+	GrossRevenue  float64                   `json:"gross_revenue"`
+	TaxAmount     float64                   `json:"tax_amount"`
+	Cost          float64                   `json:"cost"`
+	Margin        float64                   `json:"margin"`
+	MarginPercent float64                   `json:"margin_percent"`
+	HasCost       bool                      `json:"has_cost"`
+	Quantity      float64                   `json:"quantity"`
+	Bookings      int                       `json:"bookings"`
+	Jobs          []RevenueDrilldownBooking `json:"jobs,omitempty"`
+	Children      []RevenueDrilldownNode    `json:"children"`
 }
 
 type RevenueDrilldownMonth struct {
@@ -37,6 +50,7 @@ type RevenueDrilldownMonth struct {
 
 type RevenueDrilldownResponse struct {
 	Period                 string                  `json:"period"`
+	Scope                  string                  `json:"scope"`
 	StartDate              string                  `json:"start_date,omitempty"`
 	EndDate                string                  `json:"end_date,omitempty"`
 	TotalRevenue           float64                 `json:"total_revenue"`
@@ -60,6 +74,8 @@ type RevenueDrilldownResponse struct {
 
 type revenueDrilldownJob struct {
 	JobID            uint       `gorm:"column:job_id"`
+	JobCode          string     `gorm:"column:job_code"`
+	JobTitle         string     `gorm:"column:job_title"`
 	Revenue          float64    `gorm:"column:revenue"`
 	Discount         float64    `gorm:"column:discount"`
 	DiscountType     string     `gorm:"column:discount_type"`
@@ -105,6 +121,7 @@ type revenueAggregationNode struct {
 	data     RevenueDrilldownNode
 	children map[string]*revenueAggregationNode
 	jobs     map[uint]struct{}
+	bookings []RevenueDrilldownBooking
 }
 
 func newRevenueAggregationNode(id, nodeType, label string) *revenueAggregationNode {
@@ -127,6 +144,14 @@ func (n *revenueAggregationNode) add(amounts revenueAmounts, cost, quantity floa
 	}
 }
 
+func (n *revenueAggregationNode) addBooking(job revenueDrilldownJob, positionID uint, positionLabel string, amounts revenueAmounts) {
+	n.bookings = append(n.bookings, RevenueDrilldownBooking{
+		JobID: job.JobID, JobCode: job.JobCode, JobTitle: job.JobTitle,
+		PositionID: positionID, PositionLabel: positionLabel,
+		NetRevenue: roundAnalyticsMoney(amounts.Net), GrossRevenue: roundAnalyticsMoney(amounts.Gross),
+	})
+}
+
 func (n *revenueAggregationNode) child(id, nodeType, label string) *revenueAggregationNode {
 	if existing, ok := n.children[id]; ok {
 		return existing
@@ -143,6 +168,15 @@ func (n *revenueAggregationNode) finalize() RevenueDrilldownNode {
 	n.data.TaxAmount = roundAnalyticsMoney(n.data.GrossRevenue - n.data.NetRevenue)
 	n.data.Cost = roundAnalyticsMoney(n.data.Cost)
 	n.data.Bookings = len(n.jobs)
+	if len(n.bookings) > 0 {
+		n.data.Jobs = n.bookings
+		sort.SliceStable(n.data.Jobs, func(i, j int) bool {
+			if n.data.Jobs[i].JobID == n.data.Jobs[j].JobID {
+				return n.data.Jobs[i].PositionID < n.data.Jobs[j].PositionID
+			}
+			return n.data.Jobs[i].JobID > n.data.Jobs[j].JobID
+		})
+	}
 	if n.data.HasCost {
 		n.data.Margin = roundAnalyticsMoney(n.data.GrossRevenue - n.data.Cost)
 		if n.data.GrossRevenue != 0 {
@@ -211,7 +245,7 @@ func drilldownItemLabel(position revenueDrilldownPosition, fallback string) stri
 }
 
 func buildRevenueDrilldown(
-	period string,
+	scope, period string,
 	startDate, endDate *time.Time,
 	jobs []revenueDrilldownJob,
 	positions []revenueDrilldownPosition,
@@ -337,6 +371,7 @@ func buildRevenueDrilldown(
 
 				item := category.child(itemID, itemType, itemLabel)
 				item.add(positionAmounts, cost, position.Quantity, hasCost, job.JobID)
+				item.addBooking(job, position.PositionID, itemLabel, positionAmounts)
 				if position.PositionType != "product" {
 					continue
 				}
@@ -352,11 +387,13 @@ func buildRevenueDrilldown(
 					}
 					deviceNode := item.child("device:"+device.DeviceID, "device", label)
 					deviceNode.add(deviceAmounts, 0, 1, false, job.JobID)
+					deviceNode.addBooking(job, position.PositionID, itemLabel, deviceAmounts)
 				}
 				unassignedUnits := allocationUnits - float64(len(positionDevices))
 				if unassignedUnits > 0 {
 					unassigned := item.child(itemID+":unassigned", "device", "Noch keinem Gerät zugeordnet")
 					unassigned.add(deviceAmounts.scale(unassignedUnits), 0, unassignedUnits, false, job.JobID)
+					unassigned.addBooking(job, position.PositionID, itemLabel, deviceAmounts.scale(unassignedUnits))
 				}
 			}
 		}
@@ -370,11 +407,15 @@ func buildRevenueDrilldown(
 			jobAmounts.Net += unattributed
 			jobAmounts.Gross += unattributed
 			categories[4].add(unattributedAmounts, 0, 0, false, job.JobID)
+			categories[4].addBooking(job, 0, "Ohne Auftragsposition", unattributedAmounts)
 		}
 
 		totalAmounts.Net += jobAmounts.Net
 		totalAmounts.Gross += jobAmounts.Gross
 		monthDate := job.StartDate
+		if scope == "realized" && job.EndDate != nil {
+			monthDate = job.EndDate
+		}
 		if monthDate == nil {
 			monthDate = job.CreatedAt
 		}
@@ -403,6 +444,7 @@ func buildRevenueDrilldown(
 		category.add(revenueAmounts{}, storedCost.TotalCost, 0, true, storedCost.JobID)
 		item := category.child(fmt.Sprintf("rental:%d", storedCost.EquipmentID), "rental_product", label)
 		item.add(revenueAmounts{}, storedCost.TotalCost, 0, true, storedCost.JobID)
+		item.addBooking(jobsByID[storedCost.JobID], 0, label+" (nur Mietkosten)", revenueAmounts{})
 	}
 
 	response := RevenueDrilldownResponse{
@@ -446,43 +488,82 @@ func buildRevenueDrilldown(
 	return response
 }
 
-func revenueDrilldownPeriod(period string, now time.Time) (*time.Time, *time.Time, error) {
-	end := now
-	var start time.Time
+func revenueDrilldownPeriod(period, scope string, now time.Time) (*time.Time, *time.Time, error) {
+	if scope != "realized" && scope != "pipeline" {
+		return nil, nil, fmt.Errorf("unsupported revenue scope %q", scope)
+	}
+	if period == "all" {
+		return nil, nil, nil
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	start, end := today, today
 	switch period {
 	case "30days":
-		start = end.AddDate(0, 0, -30)
+		if scope == "pipeline" {
+			end = today.AddDate(0, 0, 30)
+		} else {
+			start = today.AddDate(0, 0, -30)
+		}
 	case "90days":
-		start = end.AddDate(0, 0, -90)
+		if scope == "pipeline" {
+			end = today.AddDate(0, 0, 90)
+		} else {
+			start = today.AddDate(0, 0, -90)
+		}
 	case "1year":
-		start = end.AddDate(-1, 0, 0)
-	case "all":
-		return nil, nil, nil
+		if scope == "pipeline" {
+			end = today.AddDate(1, 0, 0)
+		} else {
+			start = today.AddDate(-1, 0, 0)
+		}
 	default:
 		return nil, nil, fmt.Errorf("unsupported period %q", period)
 	}
 	return &start, &end, nil
 }
 
+func revenueDrilldownScope(scope string) ([]uint, error) {
+	switch scope {
+	case "realized":
+		return []uint{jobstatus.CompletedID}, nil
+	case "pipeline":
+		return jobstatus.OpenIDs, nil
+	default:
+		return nil, fmt.Errorf("unsupported revenue scope %q", scope)
+	}
+}
+
 // GetRevenueDrilldown returns the reconciled revenue hierarchy used by the analysis page.
 func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 	period := c.DefaultQuery("period", "all")
-	startDate, endDate, err := revenueDrilldownPeriod(period, time.Now())
+	scope := c.DefaultQuery("scope", "realized")
+	statusIDs, err := revenueDrilldownScope(scope)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige Umsatzansicht"})
+		return
+	}
+	startDate, endDate, err := revenueDrilldownPeriod(period, scope, time.Now())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültiger Analysezeitraum"})
 		return
 	}
 
 	dateFilter := ""
-	args := []interface{}{}
+	args := []interface{}{statusIDs}
 	if startDate != nil && endDate != nil {
-		dateFilter = " AND COALESCE(j.enddate, j.startdate, j.created_at::date) BETWEEN ? AND ?"
+		dateColumn := "COALESCE(j.enddate, j.startdate, j.created_at::date)"
+		if scope == "pipeline" {
+			dateColumn = "COALESCE(j.startdate, j.enddate, j.created_at::date)"
+		}
+		dateFilter = " AND " + dateColumn + " BETWEEN ? AND ?"
 		args = append(args, *startDate, *endDate)
 	}
 
 	var jobs []revenueDrilldownJob
 	if err := h.db.Raw(`
 		SELECT j.jobid AS job_id,
+		       COALESCE(j.job_code, '') AS job_code,
+		       COALESCE(j.description, '') AS job_title,
 		       COALESCE(j.final_revenue, j.revenue, 0) AS revenue,
 		       COALESCE(j.discount, 0) AS discount,
 		       COALESCE(j.discount_type, 'amount') AS discount_type,
@@ -492,7 +573,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		       j.multiply_by_days,
 		       j.prices_include_tax
 		FROM jobs j
-		WHERE j.deleted_at IS NULL`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY j.jobid`, args...).Scan(&jobs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Umsatzdaten konnten nicht geladen werden"})
 		return
@@ -512,7 +593,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		LEFT JOIN products p ON p.productid = jp.product_id
 		LEFT JOIN service_items s ON s.id = jp.service_item_id
 		LEFT JOIN rental_equipment r ON r.id = jp.rental_equipment_id
-		WHERE j.deleted_at IS NULL`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jp.job_id, jp.sort_order, jp.position_id`, args...).Scan(&positions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Umsatzpositionen konnten nicht geladen werden"})
 		return
@@ -526,7 +607,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		JOIN job_positions jp ON jp.position_id = jpd.position_id
 		JOIN jobs j ON j.jobid = jp.job_id
 		LEFT JOIN devices d ON d.deviceid = jpd.device_id
-		WHERE j.deleted_at IS NULL`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jpd.position_id, jpd.device_id`, args...).Scan(&devices).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gerätezuordnungen konnten nicht geladen werden"})
 		return
@@ -540,12 +621,13 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		FROM job_rental_equipment jre
 		JOIN jobs j ON j.jobid = jre.job_id
 		LEFT JOIN rental_equipment r ON r.id = jre.equipment_id
-		WHERE j.deleted_at IS NULL`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jre.job_id, jre.equipment_id`, args...).Scan(&rentalCosts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Mietkosten konnten nicht geladen werden"})
 		return
 	}
 
-	response := buildRevenueDrilldown(period, startDate, endDate, jobs, positions, devices, rentalCosts)
+	response := buildRevenueDrilldown(scope, period, startDate, endDate, jobs, positions, devices, rentalCosts)
+	response.Scope = scope
 	c.JSON(http.StatusOK, response)
 }

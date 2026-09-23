@@ -7,8 +7,13 @@ import { appBasePath, appPath } from './lib/app-paths'
 import { initSuiteI18n, pairSuiteTranslations } from './lib/cores-design'
 import de from './lib/cores-locales/de.json'
 import en from './lib/cores-locales/en.json'
+import { rentalTranslations } from './lib/rental-i18n'
 
-initSuiteI18n(pairSuiteTranslations(de, en))
+const suiteTranslations = pairSuiteTranslations(de, en)
+initSuiteI18n({
+  de: { ...suiteTranslations.de, ...Object.fromEntries(Object.entries(rentalTranslations).map(([source, translated]) => [translated, source])) },
+  en: { ...suiteTranslations.en, ...rentalTranslations },
+})
 
 document.addEventListener('wheel', (event) => {
   const target = event.target
