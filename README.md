@@ -1,5 +1,12 @@
 # RentalCore
 
+## Gemeinsames Datentransfer-Vokabular (5.3.110)
+
+Die synchronisierten Deutsch-/Englisch-Ressourcen enthalten jetzt auch die
+suiteweit verwendeten Datensatz-, Feld-, Vorschau- und Konfliktbegriffe des
+zentralen Import-/Export-Arbeitsbereichs. Fachliche Nutzdaten und technische
+Spaltenschlüssel bleiben dabei unverändert.
+
 ## Vollständige Dashboard-Lokalisierung (5.3.109)
 
 Deutsch und Englisch funktionieren nun auch bei gemischten Quelltexten
