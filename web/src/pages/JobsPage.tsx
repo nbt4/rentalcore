@@ -407,22 +407,23 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const loadData = useCallback(() => {
-    Promise.all([
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [jRes, dRes, rRes, tRes] = await Promise.allSettled([
       jobsApi.getById(id),
       jobsApi.getDevices(id),
       api.get(`/jobs/${id}/requirements`),
       api.get<JobTotals>(`/jobs/${id}/totals`),
-    ]).then(([jRes, dRes, rRes, tRes]) => {
-      setJob(jRes.data);
-      setDevices(dRes.data.devices || []);
-      setRequirements(rRes.data.requirements || []);
-      setTotals(tRes.data);
-      setError('');
-    }).catch((e: unknown) => {
-      setError('Jobdaten konnten nicht vollständig geladen werden.');
-      toast.error(e);
-    }).finally(() => setLoading(false));
+    ]);
+    if (jRes.status === 'fulfilled') setJob(jRes.value.data);
+    else setJob(null);
+    setDevices(dRes.status === 'fulfilled' ? dRes.value.data.devices || [] : []);
+    setRequirements(rRes.status === 'fulfilled' ? rRes.value.data.requirements || [] : []);
+    setTotals(tRes.status === 'fulfilled' ? tRes.value.data : null);
+    setError([jRes, dRes, rRes, tRes].some((result) => result.status === 'rejected')
+      ? 'Einige Jobdaten konnten nicht geladen werden. Bitte erneut versuchen.'
+      : '');
+    setLoading(false);
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -488,7 +489,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <div className="jobs-card jobs-metric"><span className="jobs-metric-label">Status</span><span className="jobs-metric-value">{job.status?.status || 'Planung'}</span><span className="jobs-metric-caption">Job-Lebenszyklus</span></div>
         <div className="jobs-card jobs-metric"><span className="jobs-metric-label">Zeitraum</span><span className="jobs-metric-value">{formatDate(job.startDate)} – {formatDate(job.endDate)}</span><span className="jobs-metric-caption">Veranstaltung</span></div>
         <div className="jobs-card jobs-metric"><span className="jobs-metric-label">Material gedeckt</span><span className="jobs-metric-value">{fulfilled} / {requirements.length}</span><span className="jobs-metric-caption">Produktbedarfe mit Gerätezuweisung</span></div>
-        <div className="jobs-card jobs-metric"><span className="jobs-metric-label">Auftragswert brutto</span><span className="jobs-metric-value">{(totals?.brutto ?? job.final_revenue ?? job.revenue ?? 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span><span className="jobs-metric-caption">Nach Rabatt und Steuer</span></div>
+        <div className="jobs-card jobs-metric"><span className="jobs-metric-label">Auftragswert brutto</span><span className="jobs-metric-value">{totals ? totals.brutto.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) : '—'}</span><span className="jobs-metric-caption">Nach Rabatt und Steuer</span></div>
       </div>
 
       <div className="jobs-detail-grid">
@@ -1208,7 +1209,7 @@ export function JobsPage() {
                   <th className="text-left px-6 py-3 font-medium">Kunde</th>
                   <th className="text-left px-6 py-3 font-medium hidden md:table-cell">Zeitraum</th>
                   <th className="text-left px-6 py-3 font-medium hidden sm:table-cell">Status</th>
-                  <th className="text-right px-6 py-3 font-medium hidden lg:table-cell">Umsatz (brutto)</th>
+                  <th className="text-right px-6 py-3 font-medium hidden lg:table-cell">Auftragswert</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
