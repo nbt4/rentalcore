@@ -527,7 +527,7 @@ function JobDetail({ id, onBack }: { id: number; onBack: () => void }) {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-center text-sm">
+    <div className="jobs-info-row text-sm">
       <span className="text-[var(--text-secondary)]">{label}</span>
       <span className="text-[var(--text-primary)] font-medium">{value}</span>
     </div>

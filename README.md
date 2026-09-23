@@ -1,6 +1,6 @@
 # RentalCore
 
-## Job-Arbeitsbereich und Joblogik (5.3.112)
+## Job-Arbeitsbereich und Joblogik (5.3.113)
 
 Die Jobübersicht bündelt Suche, Statusfilter und Kennzahlen. Neue Jobs beginnen in
 `Planung` mit Kunde und Titel; Start- und Enddatum müssen gemeinsam angegeben
@@ -18,6 +18,9 @@ berechnet; das Zuweisen eines Geräts überschreibt den Umsatz bei Jobs mit
 Positionen nicht. Der API-Update-Body kann `revision` enthalten; bei einer
 veralteten Revision antwortet RentalCore mit `409`, damit Änderungen anderer
 Bearbeiter nicht überschrieben werden. Die Oberfläche sendet diese Revision.
+Detail und Formular wechseln auf eine Spalte, sobald die Navigation den
+Arbeitsbereich verengt. Positionsfelder brechen innerhalb ihrer Karte um;
+lange Auftragsdaten bleiben in der rechten Spalte lesbar.
 
 Eine erneute PDF-Finalisierung ersetzt nur Positionen, die dem Import
 zugeordnet sind. Ältere Positionen ohne Herkunftsmarkierung bleiben bestehen;
@@ -29,7 +32,9 @@ Wert `quantity` bleibt deren Summe für WarehouseCore.
 `DELETE /api/v1/jobs/:id` archiviert einen Job mit `deleted_at`; Historie,
 Positionen und Gerätebeziehungen bleiben erhalten. Ausgegebene Geräte müssen
 vorher zurückgenommen werden, sonst antwortet die API mit `409`. Das Archivieren
-entfernt den Kalendereintrag. Dokumente werden über den File Pool gespeichert;
+entfernt den Kalendereintrag auch nach dem Soft Delete. Beim Start bereinigt
+RentalCore außerdem noch vorhandene Termine bereits archivierter Jobs und
+wiederholt damit fehlgeschlagene Löschungen. Dokumente werden über den File Pool gespeichert;
 ohne Nextcloud bleiben die Dateien im persistenten Volume `/app/uploads`.
 
 ## Gemeinsames Etikettenbogen-Vokabular (5.3.111)

@@ -432,7 +432,10 @@ func main() {
 				calendarClient, jobRepo, positionRepo, jobEmployeeRepo, cfg.M365.AppBaseURL,
 			)
 			calendarSync = calendarService
-			go calendarService.MigrateUpcomingJobEvents()
+			go func() {
+				calendarService.CleanupArchivedJobEvents()
+				calendarService.MigrateUpcomingJobEvents()
+			}()
 			logger.LogInfo("M365 room calendar sync: initialized for %s", cfg.M365.CalendarMailbox)
 		}
 	} else {

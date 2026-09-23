@@ -169,6 +169,16 @@ func (r *JobRepository) GetByID(id uint) (*models.Job, error) {
 	return &job, nil
 }
 
+// GetByIDIncludingArchived is used only to remove calendar events after a job
+// has been soft-deleted. Normal job reads must continue to hide archived jobs.
+func (r *JobRepository) GetByIDIncludingArchived(id uint) (*models.Job, error) {
+	var job models.Job
+	if err := r.db.Unscoped().First(&job, id).Error; err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
 func (r *JobRepository) Update(job *models.Job) error {
 	return r.UpdateTx(r.db.DB, job)
 }
@@ -228,11 +238,34 @@ func (r *JobRepository) UpdateFields(jobID uint, fields map[string]interface{}) 
 }
 
 func (r *JobRepository) SaveM365EventID(jobID uint, eventID string) error {
-	return r.UpdateFields(jobID, map[string]interface{}{"m365_event_id": eventID})
+	result := r.db.Model(&models.Job{}).Where("jobid = ?", jobID).Update("m365_event_id", eventID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *JobRepository) ClearM365EventID(jobID uint) error {
-	return r.UpdateFields(jobID, map[string]interface{}{"m365_event_id": nil})
+	return r.db.Unscoped().Model(&models.Job{}).Where("jobid = ?", jobID).Update("m365_event_id", nil).Error
+}
+
+// ListArchivedJobsWithCalendarEvents finds stale shared and legacy employee
+// events left behind by an interrupted or previously broken archive cleanup.
+func (r *JobRepository) ListArchivedJobsWithCalendarEvents() ([]uint, error) {
+	var jobIDs []uint
+	err := r.db.Unscoped().Model(&models.Job{}).
+		Where("deleted_at IS NOT NULL").
+		Where(`COALESCE(m365_event_id, '') <> '' OR EXISTS (
+			SELECT 1 FROM job_employees
+			WHERE job_employees.job_id = jobs.jobid
+			AND COALESCE(job_employees.m365_event_id, '') <> ''
+		)`).
+		Order("jobid ASC").
+		Pluck("jobid", &jobIDs).Error
+	return jobIDs, err
 }
 
 func (r *JobRepository) ListJobsNeedingCalendarMigration() ([]uint, error) {

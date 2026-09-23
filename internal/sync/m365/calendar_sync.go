@@ -60,6 +60,23 @@ func (s *CalendarSyncService) MigrateUpcomingJobEvents() {
 	}
 }
 
+// CleanupArchivedJobEvents retries calendar deletion for already archived jobs,
+// including jobs archived before the soft-delete lookup was fixed.
+func (s *CalendarSyncService) CleanupArchivedJobEvents() {
+	jobIDs, err := s.jobRepo.ListArchivedJobsWithCalendarEvents()
+	if err != nil {
+		logger.LogInfo("[CalendarSync] list archived jobs with events: %v", err)
+		return
+	}
+	if len(jobIDs) == 0 {
+		return
+	}
+	logger.LogInfo("[CalendarSync] cleaning up %d archived job events", len(jobIDs))
+	for _, jobID := range jobIDs {
+		s.DeleteJobEvent(jobID)
+	}
+}
+
 // DeleteAllEmployeeEvents ist der rückwärtskompatible Einstiegspunkt.
 func (s *CalendarSyncService) DeleteAllEmployeeEvents(jobID uint) {
 	s.DeleteJobEvent(jobID)
@@ -160,6 +177,9 @@ func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
 	}
 	if err := s.jobRepo.SaveM365EventID(jobID, created.ID); err != nil {
 		logger.LogInfo("[CalendarSync] save shared event id for job %d: %v", jobID, err)
+		if deleteErr := s.client.DeleteEvent(created.ID); deleteErr != nil && !isCalendarNotFound(deleteErr) {
+			logger.LogInfo("[CalendarSync] remove orphaned shared event for job %d: %v", jobID, deleteErr)
+		}
 		return
 	}
 	s.cleanupLegacyEmployeeEvents(employees)
@@ -170,7 +190,7 @@ func (s *CalendarSyncService) DeleteJobEvent(jobID uint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	job, err := s.jobRepo.GetByID(jobID)
+	job, err := s.jobRepo.GetByIDIncludingArchived(jobID)
 	if err != nil {
 		return
 	}
