@@ -311,21 +311,23 @@ export function AnalyticsPage() {
                   <h3 className="font-semibold text-white">Aufträge zu {selectedNode.label}</h3>
                   <p className="text-xs text-gray-500">{selectedNode.bookings} Jobs · Jobnummer, Titel und zugehörige Position</p>
                 </div>
-                <div className="suite-table-wrap mx-5 mb-5">
-                  <table className="w-full min-w-[640px] text-sm">
-                    <thead><tr><th className="text-left px-4 py-3">Job</th><th className="text-left px-4 py-3">Titel</th><th className="text-left px-4 py-3">Position</th><th className="text-right px-4 py-3">Brutto</th><th className="text-right px-4 py-3">Netto</th></tr></thead>
-                    <tbody>
-                      {selectedNode.jobs.map((booking) => (
-                        <tr key={`${booking.job_id}:${booking.position_id}`}>
-                          <td className="px-4 py-3"><Link className="font-medium text-[var(--color-accent-red)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)]" to={`/jobs/${booking.job_id}`}>{booking.job_code || `Job ${booking.job_id}`}</Link></td>
-                          <td className="px-4 py-3">{booking.job_title || 'Ohne Titel'}</td>
-                          <td className="px-4 py-3">{booking.position_label}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.gross_revenue)}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.net_revenue)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="px-5 pb-5">
+                  <div className="suite-table-wrap">
+                    <table className="w-full min-w-[640px] text-sm">
+                      <thead><tr><th className="text-left px-4 py-3">Job</th><th className="text-left px-4 py-3">Titel</th><th className="text-left px-4 py-3">Position</th><th className="text-right px-4 py-3">Brutto</th><th className="text-right px-4 py-3">Netto</th></tr></thead>
+                      <tbody>
+                        {selectedNode.jobs.map((booking) => (
+                          <tr key={`${booking.job_id}:${booking.position_id}`}>
+                            <td className="px-4 py-3"><Link className="font-medium text-[var(--color-accent-red)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-red)]" to={`/jobs/${booking.job_id}`}>{booking.job_code || `Job ${booking.job_id}`}</Link></td>
+                            <td className="px-4 py-3">{booking.job_title || 'Ohne Titel'}</td>
+                            <td className="px-4 py-3">{booking.position_label}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.gross_revenue)}</td>
+                            <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(booking.net_revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
