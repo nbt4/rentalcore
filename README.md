@@ -1,5 +1,44 @@
 # RentalCore
 
+## Vollständige Job-Workflows — Rental 5.3.119 / MCP 1.5.38
+
+Die bestehenden `rental.jobs.prepare_create/create` und
+`rental.jobs.prepare_update/update` nutzen eine gemeinsame Rental-Owner-API.
+Neu sind `prepare_archive/archive`, `prepare_restore/restore` und
+`audit_history`: 346 Werkzeuge (96 Abfragen / 125 Vorschauen / 125 Ausführungen).
+
+Alle Jobfelder sind verfügbar: Titel, Kunde, Status, Kategorie, Venue, Zeitraum,
+Umsatz, Rabatt, Rabattart, Tagesmultiplikator und Steuerdarstellung. Ausgelassene
+Felder bleiben erhalten; `clear_fields` leert ausschließlich nullable Zeitraum-,
+Kategorie- und Venue-Felder. Planung erlaubt einen fehlenden Zeitraum; bestätigte
+und abgeschlossene Jobs brauchen ein gültiges Datumspaar. Jobcode, Identität,
+Revision, Sync-IDs und Endumsatz bleiben servergesteuert. Vorhandene Positionen
+bestimmen den Umsatz mit derselben Berechnung wie die normale Anwendung.
+
+Aktuelle Administrator-/Aktionsrechte, exakte Job- und Kontextversion sowie die
+vollständige Vorschau und deren Bestätigungsphrase sind verpflichtend. Finanzfelder
+und Änderungen berechneter Summen brauchen ausdrücklich `cores:rental:financial`;
+`cores:write` ersetzt diese Freigabe nicht. Wiederholungen prüfen aktuelle Rechte
+im Zielservice und geben dessen gespeicherten Beleg zurück. Aktive fremde
+Bearbeitungssitzungen, neue Geräte-Zeitkonflikte oder veränderte Abhängigkeiten
+stoppen Änderungen. Gleichnamige Jobs brauchen eine geprüfte, explizite
+Duplikatfreigabe; archivierte Treffer werden über Restore erhalten.
+
+Archivierung erhält alle Inhalte und beendet offene Planung als Storniert.
+Ausgegebene Geräte, aktive Cases und offene Warehouse-Aufgaben blockieren sie.
+Restore erhält den historischen Status und alle Inhalte; ein Wiederöffnen folgt
+als eigene geprüfte Statusänderung. Abgeschlossene/stornierte Jobs schicken
+noch ausgegebene Geräte in den bestehenden physischen Rückgabeprozess.
+Job, native Historie, Audit und dauerhafter Wiederholungsbeleg werden atomar
+verbucht. Es werden keine externen Nachrichten oder Kalendereinladungen versandt.
+Die Job-Detailabfrage zeigt auch Archive und exakte Versionen; die separate
+Audit-Abfrage enthält weder rohe Audits noch Sync-IDs.
+
+Rental-Migration 048 / Umbrella-Migration 034 installieren monoton steigende
+Jobversionen für alle Schreiber, Schutz archivierter Inhalte einschließlich
+Positionsgeräten und Paketreservierungen sowie die vorhandenen Personal-
+Zuordnungstabellen auf frischen Installationen. Rental zuerst, MCP danach deployen.
+
 ## Kunden-/Venue-Feldänderung zurücknehmen — Rental 5.3.118 / MCP 1.5.37
 
 `rental.customers` und `rental.venues` ergänzen
