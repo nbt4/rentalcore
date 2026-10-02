@@ -91,6 +91,9 @@ func TestRentalMasterOwnerAtomicLifecycle(t *testing.T) {
 		return w.Code, out
 	}
 	scope := func(op string) string {
+		if op == "revert_update" {
+			op = "update"
+		}
 		if op == "restore" {
 			op = "archive"
 		}
@@ -112,6 +115,9 @@ func TestRentalMasterOwnerAtomicLifecycle(t *testing.T) {
 		copy["expected_context"] = p["expected_context"]
 		copy["confirmation_text"] = p["required_confirmation_text"]
 		copy["confirm_change"] = true
+		if op == "revert_update" {
+			copy["audit_id"] = p["expected_audit_id"]
+		}
 		return copy, p
 	}
 	execute := func(kind, op string, in map[string]any, key string) map[string]any {
@@ -276,4 +282,101 @@ func TestRentalMasterOwnerAtomicLifecycle(t *testing.T) {
 	exec(`UPDATE jobs SET statusid=1;ALTER TABLE jobs DISABLE TRIGGER jobs_guard_master_lifecycle;UPDATE jobs SET deleted_at=NULL;ALTER TABLE jobs ENABLE TRIGGER jobs_guard_master_lifecycle`)
 	exec(`UPDATE jobs SET statusid=statusid`)
 	failSQL(`UPDATE jobs SET statusid=NULL`)
+	_, p = prepare("customer", "revert_update", map[string]any{"id": id})
+	if !has(p, "own_last_update") {
+		t.Fatal("lifecycle action became a field undo", p)
+	}
+	update, _ = prepare("customer", "update", map[string]any{"id": id, "phone": "030 undo", "notes": "temporary private note", "country": "UndoLand"})
+	execute("customer", "update", update, "rental-master-before-undo")
+	undo, p := prepare("customer", "revert_update", map[string]any{"id": id})
+	if p["ready_to_execute"] != true || p["draft"].(map[string]any)["country"] != "Deutschland" || p["draft"].(map[string]any)["phone"] != nil {
+		t.Fatal(p)
+	}
+	auditID := int(p["expected_audit_id"].(float64))
+	var originalBefore string
+	if err = db.QueryRow(`SELECT old_values::text FROM audit_log WHERE id=$1`, auditID).Scan(&originalBefore); err != nil {
+		t.Fatal(err)
+	}
+	exec(`UPDATE audit_log SET old_values=jsonb_set(old_values,'{email}','"Invalid legacy address"'::jsonb) WHERE id=$1`, auditID)
+	_, invalidHistory := prepare("customer", "revert_update", map[string]any{"id": id})
+	if !has(invalidHistory, "valid_update_history") {
+		t.Fatal("invalid legacy before values became undoable", invalidHistory)
+	}
+	exec(`UPDATE audit_log SET old_values=$2::jsonb WHERE id=$1`, auditID, originalBefore)
+	exec(`UPDATE audit_log SET user_id=2 WHERE id=$1`, auditID)
+	_, denied := prepare("customer", "revert_update", map[string]any{"id": id})
+	if !has(denied, "own_last_update") {
+		t.Fatal("another actor update became undoable", denied)
+	}
+	exec(`UPDATE audit_log SET user_id=1 WHERE id=$1`, auditID)
+	badAudit := map[string]any{}
+	for k, v := range undo {
+		badAudit[k] = v
+	}
+	badAudit["audit_id"] = auditID + 1
+	status, out = invoke("customer", "revert_update", badAudit, "rental-master-wrong-audit", scope("revert_update"))
+	if status != 200 || !has(out, "audit_id") {
+		t.Fatal(status, out)
+	}
+	status, _ = invoke("customer", "revert_update", map[string]any{"id": id, "notes": "Injected undo edit"}, "", scope("revert_update"))
+	if status != 400 {
+		t.Fatal("arbitrary field revert accepted", status)
+	}
+	exec(`CREATE FUNCTION reject_revert_audit() RETURNS TRIGGER AS $$ BEGIN IF NEW.action='rental.customer.revert_update' THEN RAISE EXCEPTION 'final undo audit failure';END IF;RETURN NEW;END;$$ LANGUAGE plpgsql;CREATE TRIGGER reject_revert_audit BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION reject_revert_audit()`)
+	status, _ = invoke("customer", "revert_update", undo, "rental-master-undo-retry", scope("revert_update"))
+	if status != 500 {
+		t.Fatal(status)
+	}
+	_, again = prepare("customer", "revert_update", map[string]any{"id": id})
+	if again["expected_context"] != p["expected_context"] {
+		t.Fatal("undo audit failure changed fields", again)
+	}
+	exec(`DROP TRIGGER reject_revert_audit ON audit_log`)
+	reverted := execute("customer", "revert_update", undo, "rental-master-undo-retry")
+	afterRevert := reverted["record"].(map[string]any)
+	if afterRevert["country"] != "Deutschland" || afterRevert["notes"] != "private business note" || afterRevert["phone"] != nil || int(reverted["reverted_audit_id"].(float64)) != auditID {
+		t.Fatal(reverted)
+	}
+	if replay := execute("customer", "revert_update", undo, "rental-master-undo-retry"); !reflect.DeepEqual(replay, reverted) {
+		t.Fatal("undo replay differs")
+	}
+	_, p = prepare("customer", "revert_update", map[string]any{"id": id})
+	if !has(p, "own_last_update") {
+		t.Fatal("recursive undo accepted", p)
+	}
+	update, _ = prepare("customer", "update", map[string]any{"id": id, "city": "New field edit"})
+	execute("customer", "update", update, "rental-master-raw-undo-check")
+	exec(`UPDATE customers SET city='Changed by another writer' WHERE customerid=$1`, id)
+	_, p = prepare("customer", "revert_update", map[string]any{"id": id})
+	if !has(p, "unchanged_update_version") {
+		t.Fatal("legacy overwrite could be silently undone", p)
+	}
+	// Explicitly distinct same-named records can both be archived and then
+	// restored after reviewing the other archived identity. They are not deleted
+	// or silently recreated to escape duplicate handling.
+	twinIDs := []int{}
+	for i := 0; i < 2; i++ {
+		args, _ := prepare("venue", "create", map[string]any{"name": "Intentional twin venue", "allow_duplicate": i == 1})
+		r := execute("venue", "create", args, fmt.Sprintf("rental-master-twin-create-%d", i))
+		twinIDs = append(twinIDs, int(r["record"].(map[string]any)["id"].(float64)))
+	}
+	for _, twin := range twinIDs {
+		args, _ := prepare("venue", "archive", map[string]any{"id": twin})
+		execute("venue", "archive", args, fmt.Sprintf("rental-master-twin-archive-%d", twin))
+	}
+	_, p = prepare("venue", "create", map[string]any{"name": "Intentional twin venue", "allow_duplicate": true})
+	if !has(p, "restoration_required") {
+		t.Fatal("archived identity recreated", p)
+	}
+	for _, twin := range twinIDs {
+		_, p = prepare("venue", "restore", map[string]any{"id": twin})
+		if !has(p, "review_duplicate_and_allow_explicitly") {
+			t.Fatal(p)
+		}
+		args, ready := prepare("venue", "restore", map[string]any{"id": twin, "allow_duplicate": true})
+		if ready["ready_to_execute"] != true {
+			t.Fatal(ready)
+		}
+		execute("venue", "restore", args, fmt.Sprintf("rental-master-twin-restore-%d", twin))
+	}
 }

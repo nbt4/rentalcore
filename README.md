@@ -1,5 +1,29 @@
 # RentalCore
 
+## Kunden-/Venue-Feldänderung zurücknehmen — Rental 5.3.118 / MCP 1.5.37
+
+`rental.customers` und `rental.venues` ergänzen
+`prepare_revert_update` / `revert_update`. Der Katalog enthält 341 Werkzeuge
+(95 Abfragen / 123 Vorschauen / 123 Ausführungen).
+
+Zurücknehmbar ist ausschließlich die eigene letzte MCP-Feldänderung am noch
+unveränderten aktiven Datensatz. Vorschauen zeigen Quellaudit, sämtliche
+fachlichen Vorher-/Nachher-Felder und Diff. Ausführung benötigt den update-Scope,
+aktuelle Adminrechte, `audit_id` aus `expected_audit_id`, genaue Datensatz- und
+Kontextversion, die Vorschauphrase, Bestätigung und Idempotenz. Fremde, ältere,
+zwischenzeitlich bearbeitete oder bereits rückgängig gemachte Änderungen bleiben
+gesperrt. IDs, Lifecycle und Sync-Referenzen werden nicht zurückgeschrieben;
+zusätzliche Feldänderungen im Undo-Aufruf sind nicht erlaubt.
+
+Felder, neuer Audit mit `reverted_audit_id` und dauerhafter Beleg werden atomar
+geschrieben. Historien zeigen den Auditverweis ohne private Feldinhalte.
+Erfolgreiche Belege aus 5.3.117 bleiben über den Versionswechsel identisch
+wiederholbar; offene Vorschauen müssen nach dem Upgrade neu erstellt werden.
+
+Absichtlich verschiedene gleichnamige archivierte Datensätze lassen sich jeweils
+nach expliziter Duplikatprüfung mit `allow_duplicate` unter ihrer ursprünglichen
+ID wiederherstellen. Neuanlage aus einem exakten Archivtreffer bleibt gesperrt.
+
 ## Kunden und Venues — RentalCore 5.3.117 / MCP 1.5.36
 
 `rental.customers` und `rental.venues` bieten `resolve`, `get`, redigierte

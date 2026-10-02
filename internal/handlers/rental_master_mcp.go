@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -44,6 +45,7 @@ type rentalMasterFields struct {
 type rentalMasterRequest struct {
 	rentalMasterFields
 	ID                int64  `json:"id"`
+	AuditID           int64  `json:"audit_id,omitempty"`
 	ExpectedUpdatedAt string `json:"expected_updated_at"`
 	ExpectedContext   string `json:"expected_context"`
 	AllowDuplicate    bool   `json:"allow_duplicate"`
@@ -108,7 +110,7 @@ func masterError(c *gin.Context, err error) {
 
 func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 	op := c.Param("operation")
-	if !map[string]bool{"create": true, "update": true, "archive": true, "restore": true}[op] {
+	if !map[string]bool{"create": true, "update": true, "archive": true, "restore": true, "revert_update": true}[op] {
 		c.JSON(404, gin.H{"error": "Unknown rental master operation"})
 		return
 	}
@@ -127,6 +129,9 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 	}{}
 	tok, err := jwt.ParseWithClaims(cookie, &claims, func(t *jwt.Token) (any, error) { return []byte(os.Getenv("CORES_JWT_SECRET")), nil }, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
 	action := op
+	if op == "revert_update" {
+		action = "update"
+	}
 	if op == "restore" {
 		action = "archive"
 	}
@@ -146,6 +151,10 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 		return
 	}
 	preview := in.Preview || !in.ConfirmChange
+	if in.AuditID < 0 || (in.AuditID != 0 && op != "revert_update") {
+		c.JSON(400, gin.H{"error": "audit_id is restricted to the named field revert"})
+		return
+	}
 	if !preview && !rentalMasterContextPattern.MatchString(in.ExpectedContext) {
 		c.JSON(428, gin.H{"error": "Exact expected_context from the final preview required"})
 		return
@@ -159,7 +168,7 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 			delete(fields, key)
 			continue
 		}
-		if _, allowed := spec.columns[key]; !allowed || op == "archive" || op == "restore" {
+		if _, allowed := spec.columns[key]; !allowed || op == "archive" || op == "restore" || op == "revert_update" {
 			c.JSON(400, gin.H{"error": "Field is not allowed for this entity/operation", "field": key})
 			return
 		}
@@ -243,6 +252,12 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 		masterError(c, err)
 		return
 	}
+	if op == "revert_update" {
+		if _, err = tx.Exec(`LOCK TABLE audit_log IN SHARE ROW EXCLUSIVE MODE`); err != nil {
+			masterError(c, err)
+			return
+		}
+	}
 	current := map[string]any{}
 	draft := map[string]any{}
 	required := []string{}
@@ -288,6 +303,50 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 	if op == "restore" {
 		draft["is_archived"] = false
 	}
+	sourceAudit := map[string]any{}
+	if op == "revert_update" {
+		var auditID int64
+		var actor sql.NullInt64
+		var auditAction string
+		var before, after json.RawMessage
+		var changedAt time.Time
+		err = tx.QueryRow(`SELECT id,user_id,action,old_values,new_values,timestamp FROM audit_log WHERE entity_type=$1 AND entity_id=$2 ORDER BY id DESC LIMIT 1`, "rental_"+kind, fmt.Sprint(in.ID)).Scan(&auditID, &actor, &auditAction, &before, &after, &changedAt)
+		if err == sql.ErrNoRows {
+			required = append(required, "own_last_update")
+		} else if err != nil {
+			masterError(c, err)
+			return
+		} else {
+			oldRecord, newValues := map[string]any{}, map[string]any{}
+			if json.Unmarshal(before, &oldRecord) != nil || json.Unmarshal(after, &newValues) != nil {
+				required = append(required, "valid_update_history")
+			} else {
+				afterRecord, _ := newValues["after"].(map[string]any)
+				sourceAudit = map[string]any{"audit_id": auditID, "user_id": actor.Int64, "action": auditAction, "changed_at": changedAt, "result_version": newValues["updated_at"]}
+				if !actor.Valid || actor.Int64 != int64(user.UserID) || auditAction != "rental."+kind+".update" || newValues["origin"] != "MCP/AI" {
+					required = append(required, "own_last_update")
+				}
+				if afterRecord == nil || newValues["updated_at"] != current["updated_at"] {
+					required = append(required, "unchanged_update_version")
+				}
+				if (!preview && in.AuditID == 0) || (in.AuditID != 0 && in.AuditID != auditID) {
+					required = append(required, "audit_id")
+				}
+				if !rentalMasterRevertFieldsValid(spec, oldRecord) {
+					required = append(required, "valid_update_history")
+				}
+				for _, key := range masterKeys(spec) {
+					value, present := oldRecord[key]
+					if !present {
+						required = append(required, "complete_update_history")
+						break
+					}
+					draft[key] = value
+					fields[key] = value
+				}
+			}
+		}
+	}
 	identity := masterIdentity(kind, draft)
 	if identity == "" {
 		required = append(required, "name")
@@ -315,8 +374,8 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 			return
 		}
 		candidates = append(candidates, map[string]any{"id": id, "name": name, "is_archived": archived, "updated_at": version, "exact": exact})
-		if exact && (op == "create" || op == "update" || op == "restore") {
-			if archived {
+		if exact && (op == "create" || op == "update" || op == "restore" || op == "revert_update") {
+			if archived && op == "create" {
 				required = append(required, "restoration_required")
 			} else if !in.AllowDuplicate {
 				required = append(required, "review_duplicate_and_allow_explicitly")
@@ -353,7 +412,7 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 			diff[k] = map[string]any{"before": current[k], "after": v}
 		}
 	}
-	contextBytes, _ := json.Marshal(map[string]any{"kind": kind, "operation": op, "current": current, "draft": draft, "active_jobs": jobRecords, "candidates": candidates, "allow_duplicate": in.AllowDuplicate})
+	contextBytes, _ := json.Marshal(map[string]any{"kind": kind, "operation": op, "current": current, "draft": draft, "active_jobs": jobRecords, "candidates": candidates, "allow_duplicate": in.AllowDuplicate, "source_audit": sourceAudit})
 	contextDigest := sha256.Sum256(contextBytes)
 	fingerprint := hex.EncodeToString(contextDigest[:])
 	if in.ExpectedContext != "" && in.ExpectedContext != fingerprint {
@@ -365,6 +424,10 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 		return
 	}
 	result := map[string]any{"operation_status": "confirmation_required", "preview": true, "ready_to_execute": len(required) == 0, "required_fields": required, "current": current, "draft": draft, "diff": diff, "active_jobs": jobRecords, "similar_records": candidates, "expected_updated_at": current["updated_at"], "expected_context": fingerprint, "required_confirmation_text": phrase, "effects": map[string]any{"history_retained": true, "historical_jobs_changed": false, "external_messages_sent": false}}
+	if op == "revert_update" {
+		result["source_audit"] = sourceAudit
+		result["expected_audit_id"] = sourceAudit["audit_id"]
+	}
 	if preview || len(required) > 0 {
 		if len(required) > 0 {
 			result["operation_status"] = "needs_input"
@@ -382,7 +445,7 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 			placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)))
 		}
 		err = tx.QueryRow("INSERT INTO "+spec.table+"("+strings.Join(columns, ",")+") VALUES("+strings.Join(placeholders, ",")+") RETURNING "+spec.pk, args...).Scan(&recordID)
-	} else if op == "update" {
+	} else if op == "update" || op == "revert_update" {
 		keys := make([]string, 0, len(fields))
 		for k := range fields {
 			keys = append(keys, k)
@@ -413,12 +476,20 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 		return
 	}
 	before, _ := json.Marshal(current)
-	newAudit, _ := json.Marshal(map[string]any{"origin": "MCP/AI", "after": record, "updated_at": record["updated_at"]})
+	auditValues := map[string]any{"origin": "MCP/AI", "after": record, "updated_at": record["updated_at"]}
+	if op == "revert_update" {
+		auditValues["reverted_audit_id"] = sourceAudit["audit_id"]
+	}
+	newAudit, _ := json.Marshal(auditValues)
 	if _, err = tx.Exec(`INSERT INTO audit_log(user_id,action,entity_type,entity_id,old_values,new_values,timestamp) VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,CURRENT_TIMESTAMP)`, user.UserID, "rental."+kind+"."+op, "rental_"+kind, fmt.Sprint(recordID), string(before), string(newAudit)); err != nil {
 		masterError(c, err)
 		return
 	}
 	result = map[string]any{"operation_status": op + "d", "record": record, "diff": diff, "effects": result["effects"]}
+	if op == "revert_update" {
+		result["operation_status"] = "reverted"
+		result["reverted_audit_id"] = sourceAudit["audit_id"]
+	}
 	response, _ := json.Marshal(result)
 	status := 200
 	if op == "create" {
@@ -436,4 +507,44 @@ func (h *RentalMasterMCP) change(c *gin.Context, kind string) {
 }
 func escapeRentalMasterLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+// Legacy before-values must satisfy current business validation before undo.
+func rentalMasterRevertFieldsValid(spec rentalMasterSpec, values map[string]any) bool {
+	for _, key := range masterKeys(spec) {
+		value, present := values[key]
+		if !present {
+			return false
+		}
+		if key == "is_customer" || key == "is_supplier" {
+			if _, ok := value.(bool); !ok {
+				return false
+			}
+			continue
+		}
+		if value == nil {
+			continue
+		}
+		str, ok := value.(string)
+		if !ok {
+			return false
+		}
+		limit := spec.limits[key]
+		if limit == 0 {
+			limit = 255
+		}
+		if len([]rune(str)) > limit {
+			return false
+		}
+		if key == "email" && str != "" {
+			address, err := mail.ParseAddress(str)
+			if err != nil || address.Address != str {
+				return false
+			}
+		}
+		if key == "customer_type" && str != "" && str != "Unternehmen" && str != "Privat" {
+			return false
+		}
+	}
+	return true
 }
