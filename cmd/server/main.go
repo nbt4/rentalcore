@@ -15,10 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	commonbranding "github.com/nbt4/cores-common/pkg/branding"
-	commonhealth "github.com/nbt4/cores-common/pkg/health"
 	"go-barcode-webapp/internal/cache"
 	"go-barcode-webapp/internal/compliance"
+
+	commonbranding "github.com/nbt4/cores-common/pkg/branding"
+	commonhealth "github.com/nbt4/cores-common/pkg/health"
 
 	"go-barcode-webapp/internal/config"
 	"go-barcode-webapp/internal/handlers"
@@ -39,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.119"
+const rentalCoreVersion = "5.3.120"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -326,6 +327,9 @@ func main() {
 		}
 		if err := schema.EnsureRentalJobLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental job lifecycle: %v", err)
+		}
+		if err := schema.EnsureRentalRequirementLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize rental requirement lifecycle: %v", err)
 		}
 	}
 	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
@@ -1517,6 +1521,8 @@ func setupRoutes(r *gin.Engine,
 		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)
 		rentalJobMCP := handlers.NewRentalJobMCP(db)
 		api.POST("/mcp/jobs/:operation", rentalJobMCP.Change)
+		rentalRequirementMCP := handlers.NewRentalRequirementMCP(db)
+		api.POST("/mcp/requirements/:operation", rentalRequirementMCP.Change)
 		{
 			api.GET("/analytics/revenue/drilldown", analyticsHandler.GetRevenueDrilldown)
 

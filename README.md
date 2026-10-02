@@ -1,5 +1,43 @@
 # RentalCore
 
+## Materialanforderungen — Rental 5.3.120 / Warehouse 5.9.106 / MCP 1.5.39
+
+Existing atomic job receipts remain replayable after the requirement schema upgrade. Previously prepared unversioned requirement writes must be prepared again with the new record, parent-job and context versions before confirmation.
+
+`rental.requirements.prepare_create/create` und `prepare_update/update` nutzen
+nun eine geschlossene Rental-Owner-API mit vollständigem Mengenvorschlag.
+Neu sind `get`, `search`, `audit_history` und `prepare_archive/archive`,
+`prepare_restore/restore`: 353 Werkzeuge (99 Abfragen / 127 Vorschauen /
+127 Ausführungen).
+
+`quantity` ist die Gesamtmenge, `manual_quantity` die zusätzlich geplante
+manuelle Menge. Positionsanteile werden aus den bestehenden Produktpositionen
+berechnet und bleiben servergesteuert. Entweder Gesamt- oder manuelle Menge
+angeben; bei beiden müssen die Werte übereinstimmen. Eine manuelle Menge 0
+ist erlaubt, wenn eine positive Positionsmenge bestehen bleibt. Job-/Produkt-
+Identität ist unveränderlich; andere Identitäten erhalten separate geprüfte Zeilen.
+Exakte Zeilen-, Job- und Kontextversion, aktuelle Admin-/Aktionsrechte sowie
+Vorschau und deren Bestätigungsphrase sind Pflicht. Aktive Bearbeiter und
+Änderungen an Positionen, Geräten oder Produktreferenzen stoppen die Ausführung.
+Native Job-Historie, Audit und dauerhafter Beleg werden atomar gespeichert;
+Wiederholungen prüfen aktuelle Rechte im Zielservice.
+
+Archive erhalten die ursprünglichen Mengen und die Zeilen-ID. Positionen und
+noch zugeordnete Geräte blockieren sie. Archivierte Anforderungen zählen nicht
+mehr für aktive Bedarfe, Packlisten und Produkt-/Beziehungs-Abhängigkeiten.
+Restore erhält alle Felder und prüft Job, aktives Produkt und Positionsquellen.
+Es gibt keine Bestandsbewegungen, Preisänderungen oder externen Nachrichten.
+Native manuelle/Positions-Workflows archivieren entfernte Zeilen ebenfalls;
+späteres Auswählen stellt dieselbe Identität innerhalb der Geschäftstransaktion
+wieder her. Packlisten berücksichtigen zusätzliche manuelle Mengen auch neben
+kommerziellen Positionen und erweitern deren Zubehör mit der gesamten Menge.
+
+Rental `049` / Root `035` ergänzt Archivzeitpunkt, exakte monotone Zeilenversionen,
+Schutz aller Schreiber und einen Index für aktive Anforderungen. Root `032` und
+die Warehouse-Initialisierung behandeln archivierte Materialanforderungen als
+historische Referenzen. Rental zuerst ausrollen, danach Warehouse und MCP;
+frische/aktualisierte Datenbank und tatsächlichen Streamable-HTTP-Verkehr prüfen.
+
 ## Vollständige Job-Workflows — Rental 5.3.119 / MCP 1.5.38
 
 Die bestehenden `rental.jobs.prepare_create/create` und

@@ -62,6 +62,9 @@ func TestRequirementSourceMigrationAndReconcile(t *testing.T) {
 	if err := db.Exec("INSERT INTO jobs (jobid) VALUES (1)").Error; err != nil {
 		t.Fatal(err)
 	}
+	if err := schema.EnsureRentalRequirementLifecycle(sqlDB); err != nil {
+		t.Fatal(err)
+	}
 	var revision int
 	if err := db.Raw("SELECT revision FROM jobs WHERE jobid = 1").Scan(&revision).Error; err != nil || revision != 1 {
 		t.Fatalf("new jobs must start at revision 1: revision %d, error %v", revision, err)
@@ -105,5 +108,23 @@ func TestRequirementSourceMigrationAndReconcile(t *testing.T) {
 	var count int64
 	if err := db.Model(&models.JobProductRequirement{}).Where("job_id = 1 AND product_id = 10").Count(&count).Error; err != nil || count != 0 {
 		t.Fatalf("removed manual requirement remains: count %d, error %v", count, err)
+	}
+	var archived models.JobProductRequirement
+	if err := db.Unscoped().Where("job_id=1 AND product_id=10").First(&archived).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !archived.DeletedAt.Valid || archived.Quantity != 2 || archived.ManualQuantity != 2 {
+		t.Fatal("native removal lost retained fields", archived)
+	}
+	if err := repo.SaveRequirements(1, []models.JobProductRequirement{{ProductID: 10, Quantity: 7}, {ProductID: 20, Quantity: 3}}); err != nil {
+		t.Fatal(err)
+	}
+	assertReq(10, 7, 7, 0)
+	var restored models.JobProductRequirement
+	if err := db.Where("job_id=1 AND product_id=10").First(&restored).Error; err != nil {
+		t.Fatal(err)
+	}
+	if restored.ID != archived.ID || restored.DeletedAt.Valid {
+		t.Fatal("native re-selection changed identity", archived, restored)
 	}
 }

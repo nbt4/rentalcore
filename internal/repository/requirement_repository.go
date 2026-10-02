@@ -34,35 +34,74 @@ func (r *RequirementRepository) SaveRequirements(jobID uint, reqs []models.JobPr
 
 // SaveRequirementsTx is used by the job workflow so the header and material
 // plan commit together. Existing IDs remain stable for warehouse consumers.
+func requirementPositionTotals(tx *gorm.DB, jobID uint) (map[uint]int, error) {
+	var totals []struct {
+		ProductID uint `gorm:"column:product_id"`
+		Quantity  int  `gorm:"column:quantity"`
+	}
+	if err := tx.Raw(`SELECT product_id,SUM(GREATEST(1,ROUND(quantity)::integer)) AS quantity
+        FROM job_positions WHERE job_id=? AND position_type='product' AND product_id IS NOT NULL GROUP BY product_id`, jobID).Scan(&totals).Error; err != nil {
+		return nil, err
+	}
+	result := map[uint]int{}
+	for _, total := range totals {
+		result[total.ProductID] = total.Quantity
+	}
+	return result, nil
+}
+
+// Restore the retained identity in a separate statement before changing values.
+// Both statements remain in the caller's business transaction.
+func restoreNativeRequirement(tx *gorm.DB, req *models.JobProductRequirement) error {
+	if !req.DeletedAt.Valid {
+		return nil
+	}
+	if err := tx.Unscoped().Model(req).Update("deleted_at", nil).Error; err != nil {
+		return err
+	}
+	req.DeletedAt = gorm.DeletedAt{}
+	return nil
+}
+
 func (r *RequirementRepository) SaveRequirementsTx(tx *gorm.DB, jobID uint, reqs []models.JobProductRequirement) error {
-	requested := make(map[uint]int, len(reqs))
+	requested := map[uint]int{}
 	for _, req := range reqs {
-		if req.ProductID == 0 || req.Quantity <= 0 {
-			continue
+		if req.ProductID > 0 && req.Quantity > 0 {
+			requested[req.ProductID] += req.Quantity
 		}
-		requested[req.ProductID] += req.Quantity
+	}
+	positions, err := requirementPositionTotals(tx, jobID)
+	if err != nil {
+		return err
 	}
 	var existing []models.JobProductRequirement
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id = ?", jobID).Find(&existing).Error; err != nil {
+	if err = tx.Unscoped().Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id=?", jobID).Order("id").Find(&existing).Error; err != nil {
 		return err
 	}
 	for _, req := range existing {
 		manual := requested[req.ProductID]
 		delete(requested, req.ProductID)
-		total := manual + req.PositionQuantity
+		position := positions[req.ProductID]
+		total := manual + position
 		if total == 0 {
-			if err := tx.Delete(&req).Error; err != nil {
-				return err
+			if !req.DeletedAt.Valid {
+				if err = tx.Delete(&req).Error; err != nil {
+					return err
+				}
 			}
 			continue
 		}
-		if err := tx.Model(&req).Updates(map[string]interface{}{"manual_quantity": manual, "quantity": total}).Error; err != nil {
+		if err = restoreNativeRequirement(tx, &req); err != nil {
+			return err
+		}
+		if err = tx.Model(&req).Updates(map[string]any{"manual_quantity": manual, "position_quantity": position, "quantity": total}).Error; err != nil {
 			return err
 		}
 	}
-	for productID, quantity := range requested {
-		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: quantity, ManualQuantity: quantity}
-		if err := tx.Create(&req).Error; err != nil {
+	for productID, manual := range requested {
+		position := positions[productID]
+		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: manual + position, ManualQuantity: manual, PositionQuantity: position}
+		if err = tx.Create(&req).Error; err != nil {
 			return err
 		}
 	}
@@ -70,42 +109,45 @@ func (r *RequirementRepository) SaveRequirementsTx(tx *gorm.DB, jobID uint, reqs
 }
 
 // ReconcilePositionRequirements updates only the portion contributed by
-// product positions. Manually planned additional material remains untouched.
+// product positions. Removing the last contribution archives the original row;
+// later source/manual selection restores its stable identity in the same TX.
 func (r *RequirementRepository) ReconcilePositionRequirements(tx *gorm.DB, jobID uint) error {
-	var totals []struct {
-		ProductID uint `gorm:"column:product_id"`
-		Quantity  int  `gorm:"column:quantity"`
-	}
-	if err := tx.Raw(`SELECT product_id, SUM(GREATEST(1, ROUND(quantity)::integer)) AS quantity
-		FROM job_positions WHERE job_id = ? AND position_type = 'product' AND product_id IS NOT NULL
-		GROUP BY product_id`, jobID).Scan(&totals).Error; err != nil {
+	positions, err := requirementPositionTotals(tx, jobID)
+	if err != nil {
 		return err
 	}
-	positions := make(map[uint]int, len(totals))
-	for _, total := range totals {
-		positions[total.ProductID] = total.Quantity
-	}
 	var existing []models.JobProductRequirement
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id = ?", jobID).Find(&existing).Error; err != nil {
+	if err = tx.Unscoped().Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id=?", jobID).Order("id").Find(&existing).Error; err != nil {
 		return err
 	}
 	for _, req := range existing {
-		positionQuantity := positions[req.ProductID]
+		position := positions[req.ProductID]
 		delete(positions, req.ProductID)
-		total := req.ManualQuantity + positionQuantity
+		manual := req.ManualQuantity
+		if req.DeletedAt.Valid {
+			if position == 0 {
+				continue
+			}
+			// Restoring a source position does not revive manually removed demand.
+			manual = 0
+			if err = restoreNativeRequirement(tx, &req); err != nil {
+				return err
+			}
+		}
+		total := manual + position
 		if total == 0 {
-			if err := tx.Delete(&req).Error; err != nil {
+			if err = tx.Delete(&req).Error; err != nil {
 				return err
 			}
 			continue
 		}
-		if err := tx.Model(&req).Updates(map[string]interface{}{"position_quantity": positionQuantity, "quantity": total}).Error; err != nil {
+		if err = tx.Model(&req).Updates(map[string]any{"manual_quantity": manual, "position_quantity": position, "quantity": total}).Error; err != nil {
 			return err
 		}
 	}
-	for productID, quantity := range positions {
-		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: quantity, PositionQuantity: quantity}
-		if err := tx.Create(&req).Error; err != nil {
+	for productID, position := range positions {
+		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: position, PositionQuantity: position}
+		if err = tx.Create(&req).Error; err != nil {
 			return err
 		}
 	}

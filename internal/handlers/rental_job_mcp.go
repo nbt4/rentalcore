@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
 	"go-barcode-webapp/internal/repository"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type rentalJobFields struct {
@@ -416,7 +417,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 			{"job_package_reservations", "package_reservations", `SELECT r.* FROM job_package_reservations r JOIN job_packages p ON p.job_package_id=r.job_package_id WHERE p.job_id=$1`},
 			{"job_position_devices", "position_devices", `SELECT d.* FROM job_position_devices d JOIN job_positions p ON p.position_id=d.position_id WHERE p.job_id=$1`},
 			{"devices", "device_references", `SELECT deviceid AS id,COALESCE(to_jsonb(d)->>'lifecycle_status','active')='active' AS active,updated_at FROM devices d WHERE deviceid IN (SELECT deviceid FROM job_devices WHERE jobid=$1)`},
-			{"products", "product_references", `SELECT productid AS id,lifecycle_status='active' AS active,updated_at FROM products WHERE productid IN (SELECT product_id FROM job_product_requirements WHERE job_id=$1 UNION SELECT product_id FROM job_positions WHERE job_id=$1 UNION SELECT d.productid FROM devices d JOIN job_devices jd ON jd.deviceid=d.deviceid WHERE jd.jobid=$1)`},
+			{"products", "product_references", `SELECT productid AS id,lifecycle_status='active' AS active,updated_at FROM products WHERE productid IN (SELECT product_id FROM job_product_requirements r WHERE job_id=$1 AND COALESCE(to_jsonb(r)->>'deleted_at','')='' UNION SELECT product_id FROM job_positions WHERE job_id=$1 UNION SELECT d.productid FROM devices d JOIN job_devices jd ON jd.deviceid=d.deviceid WHERE jd.jobid=$1)`},
 			{"product_packages", "package_references", `SELECT id,is_active AS active,updated_at FROM product_packages WHERE id IN (SELECT package_id FROM job_packages WHERE job_id=$1)`},
 			{"employees", "employee_references", `SELECT id,is_active AS active,updated_at FROM employees WHERE id IN (SELECT employee_id FROM job_employees WHERE job_id=$1)`},
 			{"rental_equipment", "external_equipment_references", `SELECT id,is_active AS active,updated_at FROM rental_equipment WHERE id IN (SELECT equipment_id FROM job_rental_equipment WHERE job_id=$1)`},
@@ -516,7 +517,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 	candidates := []any{}
 	if op == "create" || op == "update" || op == "restore" {
 		var raw json.RawMessage
-		if err = tx.QueryRow(`SELECT COALESCE(jsonb_agg(to_jsonb(d) ORDER BY d.job_id),'[]'::jsonb) FROM (SELECT jobid AS job_id,job_code,deleted_at IS NOT NULL AS is_archived,updated_at FROM jobs WHERE customerid=$1 AND lower(trim(description))=lower(trim($2)) AND startdate IS NOT DISTINCT FROM $3::date AND enddate IS NOT DISTINCT FROM $4::date AND jobid<>$5 ORDER BY jobid LIMIT 51) d`, job.CustomerID, draft["description"], draft["start_date"], draft["end_date"],in.JobID).Scan(&raw); err != nil {
+		if err = tx.QueryRow(`SELECT COALESCE(jsonb_agg(to_jsonb(d) ORDER BY d.job_id),'[]'::jsonb) FROM (SELECT jobid AS job_id,job_code,deleted_at IS NOT NULL AS is_archived,updated_at FROM jobs WHERE customerid=$1 AND lower(trim(description))=lower(trim($2)) AND startdate IS NOT DISTINCT FROM $3::date AND enddate IS NOT DISTINCT FROM $4::date AND jobid<>$5 ORDER BY jobid LIMIT 51) d`, job.CustomerID, draft["description"], draft["start_date"], draft["end_date"], in.JobID).Scan(&raw); err != nil {
 			masterError(c, err)
 			return
 		}
@@ -526,7 +527,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 		}
 		for _, candidate := range candidates {
 			row := candidate.(map[string]any)
-			if row["is_archived"] == true && op=="create" {
+			if row["is_archived"] == true && op == "create" {
 				required = append(required, "restoration_required")
 			} else if !in.AllowDuplicate {
 				required = append(required, "review_duplicate_and_allow_explicitly")
