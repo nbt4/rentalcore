@@ -1,5 +1,53 @@
 # RentalCore
 
+## Kunden und Venues — RentalCore 5.3.117 / MCP 1.5.36
+
+`rental.customers` und `rental.venues` bieten `resolve`, `get`, redigierte
+`audit_history` sowie Vorschau-/Ausführungspaare für `create`, `update`, `archive`
+und `restore`. Der MCP-Katalog enthält 337 Werkzeuge
+(95 Abfragen / 121 Vorschauen / 121 Ausführungen).
+
+Anlage/Pflege umfasst alle fachlichen Namens-, Rollen-, Adress-, Kontakt- und
+Notizfelder. Kunden benötigen eine Identität (Firma/Name oder Vor-/Nachname)
+und mindestens eine Kunden-/Lieferantenrolle; Standard ist Kunde ohne
+Lieferantenrolle. Kundentypen sind Unternehmen/Privat oder leer. Postleitzahlen
+bleiben Strings; E-Mail-Adressen müssen gültige reine Adressen sein.
+Schema/Werkzeugparameter dokumentieren alle Feldgrenzen. Teilupdates erhalten
+weggelassene Felder; explizite leere optionale Strings leeren auf null.
+Sync-IDs, Bankdaten, Benutzerkonten und private Mitarbeiterdaten sind keine
+schreibbaren Stammdatenfelder.
+
+Normale Abfragen/Resolver zeigen Identität, Ort, Lebenszyklus und Version ohne
+Kontakte, Anschrift, Notizen oder Sync-IDs. Berechtigte Änderungsvorschauen
+zeigen sämtliche fachlichen Felder, den Diff, passende Kandidaten und aktive
+Jobreferenzen. Administratorrechte und der passende Rental create/update/archive-
+Scope sind erforderlich. Der MCP delegiert den ausgewählten Scope in einem
+kurzlebig signierten Suite-Token; Rental prüft diesen und die tatsächlichen
+aktuellen Adminrechte auch vor einem historischen Replay erneut.
+
+Ausführung benötigt `confirm_change`, Idempotenz, genaue `expected_updated_at`
+bei bestehenden Datensätzen, vollständigen SHA-256-`expected_context` und die
+record-/draftgebundene Vorschauphrase. Gleiche aktive Identitäten verlangen
+explizite Prüfung und `allow_duplicate`; exakte archivierte Kandidaten müssen
+wiederhergestellt werden. Keine automatische Neuanlage aus Archivtreffern.
+
+Archivierung erhält sämtliche fachlichen Felder, IDs, Sync-Referenzen und
+Historie; aktive Jobs blockieren sie. Wiederherstellung erhält alle Felder,
+prüft Identität/Rollen/Duplikate erneut und ist von Metadatenpflege getrennt.
+Rental `047` / Root `033` schützt auch bestehende Core-Schreiber: monotone
+Mikrosekundenversionen, unveränderliche IDs, keine Archivbearbeitung oder
+kombinierte Lifecycle-/Feldänderung und keine physische Löschung. Aktive Jobs
+benötigen aktive Kunden/Venues; historische Jobs behalten ihre Referenzen.
+Venue-Listen und Jobvorschläge zeigen aktive Datensätze. Die Root-Migration
+enthält das Venue-Grundschema auch für eine leere gemeinsame Installation.
+
+Datensatz, vollständiger Vorher-/Nachher-Audit und dauerhafter Replay sind eine
+Transaktion. Auditfehler hinterlassen keine Teiländerung; derselbe Schlüssel
+kann erneut versucht werden. Ein erfolgreicher Replay bleibt auch nach Neustart
+identisch. Historien zeigen ausschließlich Aktion, Akteur, Zeitpunkt, Version
+und Lebenszyklusänderung. Die MCP-Aktion versendet keine externen Nachrichten.
+Issues #4/#5 bleiben bis zum Abschluss der übrigen Completion-Bereiche offen.
+
 ## Aktive Produktbeziehungen (5.3.116)
 
 Zubehör-/Verbrauchsmaterialvorschläge aus der gemeinsamen Warehouse-Tabelle

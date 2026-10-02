@@ -39,7 +39,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.116"
+const rentalCoreVersion = "5.3.117"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -320,6 +320,9 @@ func main() {
 		}
 		if err := schema.EnsureJobsVenueID(sqlDB); err != nil {
 			logger.LogInfo("Warning: jobs.venue_id migration failed: %v", err)
+		}
+		if err := schema.EnsureRentalMasterLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize rental master lifecycle: %v", err)
 		}
 	}
 	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
@@ -1506,6 +1509,9 @@ func setupRoutes(r *gin.Engine,
 
 		// API routes
 		api := protected.Group("/api/v1")
+		rentalMasterMCP := handlers.NewRentalMasterMCP(db)
+		api.POST("/mcp/customers/:operation", rentalMasterMCP.Customer)
+		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)
 		{
 			api.GET("/analytics/revenue/drilldown", analyticsHandler.GetRevenueDrilldown)
 

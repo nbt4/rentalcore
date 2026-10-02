@@ -12,7 +12,7 @@ func NewVenueRepository(db *Database) *VenueRepository {
 
 func (r *VenueRepository) List() ([]models.Venue, error) {
 	var venues []models.Venue
-	err := r.db.Order("name ASC").Find(&venues).Error
+	err := r.db.Where("is_archived = false").Order("name ASC").Find(&venues).Error
 	return venues, err
 }
 
