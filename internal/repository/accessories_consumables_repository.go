@@ -59,7 +59,7 @@ func (r *AccessoriesConsumablesRepository) GetProductDependencies(productID uint
 		FROM product_dependencies pd
 		JOIN products p ON pd.dependency_product_id = p.productid
 		LEFT JOIN count_types ct ON p.count_type_id = ct.count_type_id
-		WHERE pd.product_id = ?
+		WHERE pd.product_id = ? AND pd.lifecycle_status='active' AND p.lifecycle_status='active' AND EXISTS(SELECT 1 FROM products source WHERE source.productid=pd.product_id AND source.lifecycle_status='active')
 		ORDER BY pd.is_optional ASC, pd.created_at DESC
 	`
 	err := r.db.Raw(query, productID).Scan(&dependencies).Error

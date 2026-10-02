@@ -1,5 +1,16 @@
 # RentalCore
 
+## Aktive Produktbeziehungen (5.3.116)
+
+Zubehör-/Verbrauchsmaterialvorschläge aus der gemeinsamen Warehouse-Tabelle
+schließen archivierte Beziehungen sowie archivierte Quell-/Zielprodukte aus.
+Archivierung erhält IDs, Felder und Historie; nach geprüfter Wiederherstellung
+werden passende Beziehungen erneut angeboten. WarehouseCore 5.9.105 / Umbrella
+032 liefert das gemeinsame Schema und die vollständigen MCP-Lifecycle-Werkzeuge.
+Ein PostgreSQL-Integrationstest prüft Filter, Restore und unveränderte Historie;
+Frontend-Build und vollständige Go-/Race-Tests gehören zur Release-Prüfung.
+
+
 ## Analyse und Jobpositionen (5.3.115)
 
 Die Umsatzanalyse zeigt standardmäßig nur abgeschlossene Jobs als realisierten
