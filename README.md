@@ -1,5 +1,57 @@
 # RentalCore
 
+## Auftragspositionen — Rental 5.3.121 / Warehouse 5.9.113 / MCP 1.5.59
+
+`rental.job_positions.prepare_create/create`, `prepare_update/update` und
+`prepare_archive/archive` pflegen echte Produkt-Auftragspositionen wie **+ Produkt**.
+`get`, `search` und `audit_history` ergänzen gezielte Abfragen; insgesamt **442
+Werkzeuge** (112 Abfragen / 165 Vorschauen / 165 Ausführungen).
+
+Anlage verlangt Produkt/Job sowie ausdrücklich Menge und Einzelpreis (auch 0).
+Produktmengen sind positive ganze Zahlen; Preise, Faktoren, Steuer und Rabatte
+haben höchstens zwei Nachkommastellen. Standardwerte: Einheit Stück,
+Folgetag-Faktor 0,50, Steuer 19 %, Rabatte 0; Beschreibung aus dem Produktnamen.
+Teilupdates erhalten ausgelassene Felder; Job, Produkt und Herkunft bleiben
+unveränderlich. Dienstleistungen, Fremdmiet- und Paketpositionen behalten ihre
+nativen Abläufe; diese Tools verwalten Produktpositionen.
+
+Die finale Vorschau zeigt Position, Preisberechnung nach den bestehenden
+Job-/Steuer-/Tages-/Rabattregeln, Auftragswert und alle Materialquellen. Bereits
+vorhandene manuelle Zusatzmengen benötigen ausdrücklich `manual_quantity`
+(Ersatzmenge) oder `preserve_manual_quantity=true` (bewusst zusätzlicher Bedarf).
+Beispiel: 9 manuelle Bedarfe mit `quantity=9, manual_quantity=0` übernehmen ergibt
+9 aus Positionen + 0 manuell, nicht 18. Die Bedarfs-ID bleibt erhalten. Bereits
+vorhandene Produktpositionen verlangen bei Anlage zusätzlich `allow_duplicate=true`.
+Archivierung erhält Originalfelder/Historie, entfernt nur den Positionsanteil aus
+aktivem Bedarf und Umsatz und lässt unabhängige Zusatzmengen bestehen.
+
+Alle Vorschauen/Ausführungen benötigen aktuelle Rental-Adminrechte, passenden
+`cores:rental:create|update|archive`-Scope (oder Legacy-write) **und separat**
+`cores:rental:financial`. `get/search` benötigen den Finanzscope; die redigierte
+Historie verlangt Adminrechte und enthält keine Preise. Bestätigte Ausführungen
+benötigen `expected_updated_at` bei bestehenden Positionen,
+`expected_job_updated_at`, `expected_context`, die genaue
+`required_confirmation_text` als `confirmation_text`, `confirm_change=true`
+und `idempotency_key`. Dry-run/Vorschau schreiben nichts. Veraltete Vorschauen,
+fremde aktive Bearbeiter oder widersprüchliche Gerätezuordnungen sperren.
+Position, genau zugehöriger Materialbedarf, Auftragswert, Job-Historie, Audit und
+dauerhafte Wiederholungsantwort sind eine Transaktion. Wiederholungen prüfen
+aktuelle Zielrechte erneut. Beschaffung und physischer Bestand werden nicht geändert.
+
+Rental-Startup `050` / Suite-Migration `047` schützt Originalidentität und Archive,
+versioniert alle Positionsschreiber und verhindert Gerätezuordnung zu Archiven.
+Native Entfernung archiviert; native Listen und Analytics schließen Archive aus.
+Warehouse-Upgrade `063` / Suite `048` aktualisiert den Produktbeziehungskontext.
+Warehouse-Picklisten, Scan-Auswahl und Packlisten berücksichtigen ebenfalls nur
+aktive Positionen. Rental zuerst ausrollen, danach Warehouse und MCP; keine neuen
+Umgebungsvariablen. MCP-Tool-Liste neu laden, zusätzliche Finanz-/Schreibrechte bei
+Bedarf über erneute OAuth-Verbindung freigeben. Bestehende Jobs/Bedarfe werden
+beim Release nicht automatisch übernommen.
+
+Validierung: vollständige Go-Tests aller drei Dienste, PostgreSQL-Tests für
+atomare Übernahme, Preis-/Rabattberechnung, Zusatzmengen, Archive, veraltete
+Kontexte, Rechteentzug, Rollback und dauerhafte Wiederholungen sowie Packlisten.
+
 ## Materialanforderungen — Rental 5.3.120 / Warehouse 5.9.106 / MCP 1.5.39
 
 Existing atomic job receipts remain replayable after the requirement schema upgrade. Previously prepared unversioned requirement writes must be prepared again with the new record, parent-job and context versions before confirmation.

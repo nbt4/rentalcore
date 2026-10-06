@@ -215,7 +215,7 @@ func (h *RentalRequirementMCP) Change(c *gin.Context) {
 	positionQuantity := int64(0)
 	assigned := 0
 	for _, item := range []struct{ key, query string }{
-		{"positions", `SELECT position_id,product_id,position_type,quantity,updated_at FROM job_positions WHERE job_id=$1 AND product_id=$2 AND position_type='product'`},
+		{"positions", `SELECT position_id,product_id,position_type,quantity,updated_at FROM job_positions WHERE job_id=$1 AND product_id=$2 AND position_type='product' AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')=''`},
 		{"assigned_devices", `SELECT jd.deviceid,jd.pack_status,d.lifecycle_status,d.status,d.updated_at FROM job_devices jd JOIN devices d ON d.deviceid=jd.deviceid WHERE jd.jobid=$1 AND d.productid=$2`},
 	} {
 		var raw json.RawMessage

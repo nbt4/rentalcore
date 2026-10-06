@@ -404,6 +404,9 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 			if item.key == "positions" {
 				for _, value := range rows {
 					row := value.(map[string]any)
+					if row["deleted_at"] != nil {
+						continue
+					}
 					positions = append(positions, models.JobPosition{Quantity: rentalJobNumber(row["quantity"]), UnitPrice: rentalJobNumber(row["unit_price"]), FollowDayFactor: rentalJobNumber(row["follow_day_factor"]), DiscountPercent: rentalJobNumber(row["discount_percent"]), DiscountAmount: rentalJobNumber(row["discount_amount"]), TaxRate: rentalJobNumber(row["tax_rate"])})
 				}
 			}
@@ -417,7 +420,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 			{"job_package_reservations", "package_reservations", `SELECT r.* FROM job_package_reservations r JOIN job_packages p ON p.job_package_id=r.job_package_id WHERE p.job_id=$1`},
 			{"job_position_devices", "position_devices", `SELECT d.* FROM job_position_devices d JOIN job_positions p ON p.position_id=d.position_id WHERE p.job_id=$1`},
 			{"devices", "device_references", `SELECT deviceid AS id,COALESCE(to_jsonb(d)->>'lifecycle_status','active')='active' AS active,updated_at FROM devices d WHERE deviceid IN (SELECT deviceid FROM job_devices WHERE jobid=$1)`},
-			{"products", "product_references", `SELECT productid AS id,lifecycle_status='active' AS active,updated_at FROM products WHERE productid IN (SELECT product_id FROM job_product_requirements r WHERE job_id=$1 AND COALESCE(to_jsonb(r)->>'deleted_at','')='' UNION SELECT product_id FROM job_positions WHERE job_id=$1 UNION SELECT d.productid FROM devices d JOIN job_devices jd ON jd.deviceid=d.deviceid WHERE jd.jobid=$1)`},
+			{"products", "product_references", `SELECT productid AS id,lifecycle_status='active' AS active,updated_at FROM products WHERE productid IN (SELECT product_id FROM job_product_requirements r WHERE job_id=$1 AND COALESCE(to_jsonb(r)->>'deleted_at','')='' UNION SELECT product_id FROM job_positions WHERE job_id=$1 AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')='' UNION SELECT d.productid FROM devices d JOIN job_devices jd ON jd.deviceid=d.deviceid WHERE jd.jobid=$1)`},
 			{"product_packages", "package_references", `SELECT id,is_active AS active,updated_at FROM product_packages WHERE id IN (SELECT package_id FROM job_packages WHERE job_id=$1)`},
 			{"employees", "employee_references", `SELECT id,is_active AS active,updated_at FROM employees WHERE id IN (SELECT employee_id FROM job_employees WHERE job_id=$1)`},
 			{"rental_equipment", "external_equipment_references", `SELECT id,is_active AS active,updated_at FROM rental_equipment WHERE id IN (SELECT equipment_id FROM job_rental_equipment WHERE job_id=$1)`},
