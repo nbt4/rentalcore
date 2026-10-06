@@ -40,7 +40,7 @@ func requirementPositionTotals(tx *gorm.DB, jobID uint) (map[uint]int, error) {
 		Quantity  int  `gorm:"column:quantity"`
 	}
 	if err := tx.Raw(`SELECT product_id,SUM(GREATEST(1,ROUND(quantity)::integer)) AS quantity
-        FROM job_positions WHERE job_id=? AND position_type='product' AND product_id IS NOT NULL GROUP BY product_id`, jobID).Scan(&totals).Error; err != nil {
+        FROM job_positions WHERE job_id=? AND position_type='product' AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')='' AND product_id IS NOT NULL GROUP BY product_id`, jobID).Scan(&totals).Error; err != nil {
 		return nil, err
 	}
 	result := map[uint]int{}
@@ -112,12 +112,32 @@ func (r *RequirementRepository) SaveRequirementsTx(tx *gorm.DB, jobID uint, reqs
 // product positions. Removing the last contribution archives the original row;
 // later source/manual selection restores its stable identity in the same TX.
 func (r *RequirementRepository) ReconcilePositionRequirements(tx *gorm.DB, jobID uint) error {
+	return r.reconcilePositionRequirements(tx, jobID, 0, nil)
+}
+
+// ReconcileProductPositionRequirement limits a guided position change to its
+// product and applies an explicitly reviewed manual replacement in the same update.
+func (r *RequirementRepository) ReconcileProductPositionRequirement(tx *gorm.DB, jobID, productID uint, manualQuantity *int64) error {
+	return r.reconcilePositionRequirements(tx, jobID, productID, manualQuantity)
+}
+func (r *RequirementRepository) reconcilePositionRequirements(tx *gorm.DB, jobID, productID uint, manualQuantity *int64) error {
 	positions, err := requirementPositionTotals(tx, jobID)
 	if err != nil {
 		return err
 	}
+	if productID != 0 {
+		for key := range positions {
+			if key != productID {
+				delete(positions, key)
+			}
+		}
+	}
 	var existing []models.JobProductRequirement
-	if err = tx.Unscoped().Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id=?", jobID).Order("id").Find(&existing).Error; err != nil {
+	query := tx.Unscoped()
+	if productID != 0 {
+		query = query.Where("product_id=?", productID)
+	}
+	if err = query.Clauses(clause.Locking{Strength: "UPDATE"}).Where("job_id=?", jobID).Order("id").Find(&existing).Error; err != nil {
 		return err
 	}
 	for _, req := range existing {
@@ -134,6 +154,9 @@ func (r *RequirementRepository) ReconcilePositionRequirements(tx *gorm.DB, jobID
 				return err
 			}
 		}
+		if manualQuantity != nil {
+			manual = int(*manualQuantity)
+		}
 		total := manual + position
 		if total == 0 {
 			if err = tx.Delete(&req).Error; err != nil {
@@ -146,7 +169,11 @@ func (r *RequirementRepository) ReconcilePositionRequirements(tx *gorm.DB, jobID
 		}
 	}
 	for productID, position := range positions {
-		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: position, PositionQuantity: position}
+		manual := 0
+		if manualQuantity != nil {
+			manual = int(*manualQuantity)
+		}
+		req := models.JobProductRequirement{JobID: jobID, ProductID: productID, Quantity: manual + position, ManualQuantity: manual, PositionQuantity: position}
 		if err = tx.Create(&req).Error; err != nil {
 			return err
 		}

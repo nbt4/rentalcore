@@ -30,7 +30,7 @@ func EnsureJobRequirementSources(db *sql.DB) error {
 		`ALTER TABLE job_product_requirements ADD COLUMN position_quantity INTEGER NOT NULL DEFAULT 0`,
 		`WITH totals AS (
 			SELECT job_id, product_id, SUM(GREATEST(1, ROUND(quantity)::integer)) AS quantity
-			FROM job_positions WHERE position_type = 'product' AND product_id IS NOT NULL
+			FROM job_positions WHERE position_type = 'product' AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')='' AND product_id IS NOT NULL
 			GROUP BY job_id, product_id
 		)
 		UPDATE job_product_requirements r
@@ -43,7 +43,7 @@ func EnsureJobRequirementSources(db *sql.DB) error {
 		`INSERT INTO job_product_requirements (job_id, product_id, quantity, manual_quantity, position_quantity)
 		 SELECT p.job_id, p.product_id, p.quantity, 0, p.quantity FROM (
 			SELECT job_id, product_id, SUM(GREATEST(1, ROUND(quantity)::integer)) AS quantity
-			FROM job_positions WHERE position_type = 'product' AND product_id IS NOT NULL
+			FROM job_positions WHERE position_type = 'product' AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')='' AND product_id IS NOT NULL
 			GROUP BY job_id, product_id
 		 ) p ON CONFLICT (job_id, product_id) DO NOTHING`,
 		`ALTER TABLE job_product_requirements ADD CONSTRAINT chk_job_requirement_sources

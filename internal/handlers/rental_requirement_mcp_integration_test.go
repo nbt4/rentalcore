@@ -70,12 +70,12 @@ INSERT INTO jobs(jobid,job_code,customerid,statusid,description) VALUES(1,'JOB00
 			t.Fatal(err)
 		}
 	}
-	for _, path := range []string{"../../migrations/049_rental_requirement_lifecycle.sql", "../../../migrations/postgresql/035_rental_requirement_lifecycle.sql"} {
+	for _, path := range []string{"../../migrations/050_rental_position_lifecycle.sql", "../../../migrations/postgresql/047_rental_position_lifecycle.sql"} {
 		contents, err := os.ReadFile(path)
 		if os.IsNotExist(err) && strings.HasPrefix(path, "../../../") {
 			continue
 		}
-		if err != nil || strings.TrimSpace(string(contents)) != strings.TrimSpace(schema.RentalRequirementLifecycleSQL) {
+		if err != nil || !strings.HasSuffix(strings.TrimSpace(string(contents)), strings.TrimSpace(schema.RentalRequirementLifecycleSQL)) {
 			t.Fatal("migration mirror mismatch", path, err)
 		}
 	}

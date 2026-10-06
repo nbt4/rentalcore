@@ -593,7 +593,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		LEFT JOIN products p ON p.productid = jp.product_id
 		LEFT JOIN service_items s ON s.id = jp.service_item_id
 		LEFT JOIN rental_equipment r ON r.id = jp.rental_equipment_id
-		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND jp.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jp.job_id, jp.sort_order, jp.position_id`, args...).Scan(&positions).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Umsatzpositionen konnten nicht geladen werden"})
 		return
@@ -607,7 +607,7 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		JOIN job_positions jp ON jp.position_id = jpd.position_id
 		JOIN jobs j ON j.jobid = jp.job_id
 		LEFT JOIN devices d ON d.deviceid = jpd.device_id
-		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
+		WHERE j.deleted_at IS NULL AND jp.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jpd.position_id, jpd.device_id`, args...).Scan(&devices).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gerätezuordnungen konnten nicht geladen werden"})
 		return

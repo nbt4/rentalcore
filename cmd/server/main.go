@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.120"
+const rentalCoreVersion = "5.3.121"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -327,6 +327,9 @@ func main() {
 		}
 		if err := schema.EnsureRentalJobLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental job lifecycle: %v", err)
+		}
+		if err := schema.EnsureRentalPositionLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize rental position lifecycle: %v", err)
 		}
 		if err := schema.EnsureRentalRequirementLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental requirement lifecycle: %v", err)
@@ -1521,6 +1524,8 @@ func setupRoutes(r *gin.Engine,
 		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)
 		rentalJobMCP := handlers.NewRentalJobMCP(db)
 		api.POST("/mcp/jobs/:operation", rentalJobMCP.Change)
+		rentalPositionMCP := handlers.NewRentalPositionMCP(db)
+		api.POST("/mcp/job-positions/:operation", rentalPositionMCP.Change)
 		rentalRequirementMCP := handlers.NewRentalRequirementMCP(db)
 		api.POST("/mcp/requirements/:operation", rentalRequirementMCP.Change)
 		{
