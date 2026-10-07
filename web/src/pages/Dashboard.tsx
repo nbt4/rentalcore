@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import type { Customer, Job } from '../lib/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { toast } from '../lib/toast';
 import { suiteDateLabel, suiteGreeting, suiteLocale } from '../lib/cores-design';
 import { isFinishedJob } from '../lib/job-status';

@@ -6,7 +6,7 @@ import {
   Users, Star, MapPin,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { useBranding } from '../hooks/useBranding';
 import { suiteGreetingName } from '../lib/cores-design';
 import { coresDashboardURL } from '../lib/suite-auth';

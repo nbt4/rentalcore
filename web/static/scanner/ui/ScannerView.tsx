@@ -4,6 +4,50 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+interface ScannerCapabilities {
+    torch: boolean;
+    zoom: boolean;
+    pointsOfInterest: boolean;
+    focusMode: boolean;
+    performanceTier: string;
+    deviceType: string;
+    platform: string;
+    zoomRange?: { min: number; max: number; step: number };
+}
+
+interface ScannerEvents {
+    decode: { result?: ScanResult; duplicate?: boolean; processingTime: number };
+    frame: { imageData: ImageData; width: number; height: number };
+    error: { message?: string };
+    pinchZoom: { zoom: number };
+    tapToFocus: { relative: { x: number; y: number } };
+    doubleTap: { targetZoom: number };
+}
+
+interface ScannerManager {
+    addEventListener<T extends keyof ScannerEvents>(name: T, listener: (event: ScannerEvents[T]) => void): void;
+    cleanup(): void;
+}
+
+interface ScannerDecoder extends ScannerManager {
+    decode(data: Uint8ClampedArray, width: number, height: number, options: {
+        priority: number;
+        roi: { x: number; y: number; width: number; height: number } | null;
+    }): Promise<unknown>;
+}
+
+interface ScannerCamera extends ScannerManager {
+    setZoom(zoom: number): Promise<number>;
+    setFocusPoint(x: number, y: number): Promise<void>;
+    setTorch(enabled: boolean): Promise<void>;
+    startFrameCapture(callback: null, frameRate: number): void;
+}
+
+interface ScannerCapabilitiesDetector {
+    detect(): Promise<ScannerCapabilities>;
+    isScannerSupported(): boolean;
+    getRecommendedConfig(): Record<string, unknown>;
+}
 
 interface ScannerViewProps {
     onScanResult?: (result: ScanResult) => void;
@@ -29,7 +73,7 @@ interface ScanResult {
 interface ScannerError {
     error: string;
     message: string;
-    details?: any;
+    details?: unknown;
 }
 
 interface ScannerState {
@@ -52,7 +96,6 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     onScanResult,
     onError,
     onReady,
-    jobId,
     enableTorch = true,
     enableZoom = true,
     enableTapToFocus = true,
@@ -81,16 +124,16 @@ const ScannerView: React.FC<ScannerViewProps> = ({
         focusMode: 'continuous'
     });
 
-    const [capabilities, setCapabilities] = useState<any>(null);
+    const [capabilities, setCapabilities] = useState<ScannerCapabilities | null>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [roiMode, setRoiMode] = useState<'auto' | '1d' | '2d'>('auto');
 
     // Manager instances
     const managersRef = useRef<{
-        decoder?: any;
-        camera?: any;
-        gesture?: any;
-        capabilities?: any;
+        decoder?: ScannerDecoder;
+        camera?: ScannerCamera;
+        gesture?: ScannerManager;
+        capabilities?: ScannerCapabilitiesDetector;
     }>({});
 
     /**
@@ -198,7 +241,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle decode result
      */
-    const handleDecodeResult = useCallback((event: any) => {
+    const handleDecodeResult = useCallback((event: { result?: ScanResult; duplicate?: boolean; processingTime: number }) => {
         const { result, duplicate, processingTime } = event;
 
         if (duplicate) {
@@ -223,7 +266,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle camera frame
      */
-    const handleCameraFrame = useCallback((event: any) => {
+    const handleCameraFrame = useCallback((event: { imageData: ImageData; width: number; height: number }) => {
         const { imageData, width, height } = event;
         const { decoder } = managersRef.current;
 
@@ -269,7 +312,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle zoom gesture
      */
-    const handleZoomGesture = useCallback(async (event: any) => {
+    const handleZoomGesture = useCallback(async (event: { zoom: number }) => {
         const { camera } = managersRef.current;
         if (!camera) return;
 
@@ -284,7 +327,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle focus gesture
      */
-    const handleFocusGesture = useCallback(async (event: any) => {
+    const handleFocusGesture = useCallback(async (event: { relative: { x: number; y: number } }) => {
         const { camera } = managersRef.current;
         if (!camera) return;
 
@@ -298,7 +341,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle double tap gesture
      */
-    const handleDoubleTapGesture = useCallback(async (event: any) => {
+    const handleDoubleTapGesture = useCallback(async (event: { targetZoom: number }) => {
         const { camera } = managersRef.current;
         if (!camera) return;
 
@@ -319,17 +362,6 @@ const ScannerView: React.FC<ScannerViewProps> = ({
 
         camera.startFrameCapture(null, 30); // 30 FPS
         setState(prev => ({ ...prev, isScanning: true }));
-    }, []);
-
-    /**
-     * Stop scanning
-     */
-    const stopScanning = useCallback(() => {
-        const { camera } = managersRef.current;
-        if (!camera) return;
-
-        camera.stopFrameCapture();
-        setState(prev => ({ ...prev, isScanning: false }));
     }, []);
 
     /**
@@ -384,7 +416,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBLLZ9N6VVaS1');
             audio.volume = 0.3;
             audio.play().catch(() => {}); // Ignore audio errors
-        } catch (error) {
+        } catch {
             // Ignore audio errors
         }
 
@@ -400,7 +432,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
     /**
      * Handle errors
      */
-    const handleDecoderError = useCallback((error: any) => {
+    const handleDecoderError = useCallback((error: { message?: string }) => {
         console.error('[ScannerView] Decoder error:', error);
         onError?.({
             error: 'DECODER_ERROR',
@@ -409,7 +441,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
         });
     }, [onError]);
 
-    const handleCameraError = useCallback((error: any) => {
+    const handleCameraError = useCallback((error: { message?: string }) => {
         console.error('[ScannerView] Camera error:', error);
         onError?.({
             error: 'CAMERA_ERROR',
@@ -504,7 +536,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({
                         <label>Scan Mode:</label>
                         <select
                             value={roiMode}
-                            onChange={(e) => setRoiMode(e.target.value as any)}
+                            onChange={(e) => setRoiMode(e.target.value as typeof roiMode)}
                         >
                             <option value="auto">Auto</option>
                             <option value="1d">1D Barcodes</option>

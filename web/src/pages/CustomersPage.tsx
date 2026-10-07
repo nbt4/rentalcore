@@ -26,7 +26,7 @@ function CustomerDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    customersApi.getById(id).then((r) => setCustomer(r.data)).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    customersApi.getById(id).then((r) => setCustomer(r.data)).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
@@ -102,7 +102,7 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
     customersApi.getById(customerId).then((r) => {
       cityManuallyEdited.current = true;
       setForm(r.data);
-    }).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    }).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, [customerId]);
 
   useEffect(() => {
@@ -128,7 +128,7 @@ function CustomerForm({ customerId, onSaved, onCancel }: { customerId?: number; 
         if (!cityManuallyEdited.current) {
           setForm((previous) => ({ ...previous, city: cities[0] }));
         }
-      } catch (lookupError) {
+      } catch {
         if (!controller.signal.aborted) {
           setPostalCities([]);
           setPostalStatus('error');
@@ -304,7 +304,7 @@ export function CustomersPage() {
   const load = useCallback(() => {
     setLoading(true);
     customersApi.getAll(roleFilter === 'all' ? {} : { role: roleFilter })
-      .then((r) => setCustomers(r.data.customers || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+      .then((r) => setCustomers(r.data.customers || [])).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, [roleFilter]);
 
   useEffect(() => { load(); }, [load]);
