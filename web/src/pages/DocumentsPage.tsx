@@ -130,7 +130,7 @@ export function DocumentsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Dokument wirklich löschen?')) return;
-    await api.delete(`/documents/${id}`).catch((e: any) => toast.error(e));
+    await api.delete(`/documents/${id}`).catch((e: unknown) => toast.error(e));
     load();
   };
 

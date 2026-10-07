@@ -74,7 +74,7 @@ export function AnalyticsPage() {
   useEffect(() => {
     api.get<{ jobs: Job[] }>('/jobs')
       .then((r) => setJobs(r.data.jobs || []))
-      .catch((e: any) => toast.error(e))
+      .catch((e: unknown) => toast.error(e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -85,7 +85,7 @@ export function AnalyticsPage() {
     setDrilldownPath([]);
     analyticsApi.getRevenueDrilldown(period, scope)
       .then((response) => { if (active) setDrilldown(response.data); })
-      .catch((error: any) => { if (active) toast.error(error); })
+      .catch((error: unknown) => { if (active) toast.error(error); })
       .finally(() => { if (active) setDrilldownLoading(false); });
     return () => { active = false; };
   }, [period, scope]);

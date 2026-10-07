@@ -117,6 +117,10 @@ func rentalJobModel(draft map[string]any) (models.Job, error) {
 
 func (h *RentalJobMCP) Change(c *gin.Context) {
 	op := c.Param("operation")
+	if op == "external-equipment-create" {
+		h.createExternalEquipment(c)
+		return
+	}
 	if !map[string]bool{"create": true, "update": true, "archive": true, "restore": true}[op] {
 		c.JSON(404, gin.H{"error": "Unknown named job operation"})
 		return

@@ -72,11 +72,11 @@ function ProductPicker({
     setLoading(true);
     let url = `/devices/tree/availability?start_date=${startDate}&end_date=${endDate}`;
     if (jobId) url += `&job_id=${jobId}`;
-    api.get(url).then((r) => setTree(r.data.treeData || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    api.get(url).then((r) => setTree(r.data.treeData || [])).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, [startDate, endDate, jobId]);
 
   const toggle = (id: string) =>
-    setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setExpanded((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const renderProducts = (products: ProductNode[]) =>
     products.map((p) => {
@@ -155,7 +155,7 @@ export function DeviceList({ devices, jobId, onChanged }: { devices: JobDevice[]
   }, {});
 
   const toggle = (name: string) =>
-    setExpanded((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });
+    setExpanded((prev) => { const next = new Set(prev); if (next.has(name)) next.delete(name); else next.add(name); return next; });
 
   const removeDevice = async (deviceId: string) => {
     if (!jobId) return;
@@ -242,7 +242,7 @@ export function RequirementsPanel({ jobId, devices, onDeviceAssigned }: { jobId:
   const load = useCallback(() => {
     api.get(`/jobs/${jobId}/requirements`)
       .then((r) => setRequirements(r.data.requirements || []))
-      .catch((e: any) => toast.error(e));
+      .catch((e: unknown) => toast.error(e));
   }, [jobId]);
 
   useEffect(() => { load(); }, [load]);
@@ -711,7 +711,7 @@ function JobForm({ jobId, onSaved, onCancel }: { jobId?: number; onSaved: (id: n
           quantity: r.manual_quantity,
         })));
       }
-    }).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    }).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, [jobId]);
 
   const isValidDateStr = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -1102,7 +1102,7 @@ export function JobsPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    jobsApi.getAll().then((r) => setJobs(r.data.jobs || [])).catch((e: any) => toast.error(e)).finally(() => setLoading(false));
+    jobsApi.getAll().then((r) => setJobs(r.data.jobs || [])).catch((e: unknown) => toast.error(e)).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);

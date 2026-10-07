@@ -4,6 +4,9 @@ import { positionsApi, api } from '../lib/api';
 import type { JobPosition, JobTotals, RentalCatalogItem } from '../lib/api';
 import { toast } from '../lib/toast';
 
+type PositionProduct = { productID: number; name: string; itemcostperday?: number };
+type PositionService = { id: number; name: string; default_price?: number; unit?: string };
+
 interface Props {
   jobId: number;
   onChanged?: () => void;
@@ -14,8 +17,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   const [totals, setTotals] = useState<JobTotals | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<'product' | 'service' | 'rental' | null>(null);
-  const [products, setProducts] = useState<{ productID: number; name: string; itemcostperday?: number }[]>([]);
-  const [services, setServices] = useState<{ id: number; name: string; default_price?: number; unit?: string }[]>([]);
+  const [products, setProducts] = useState<PositionProduct[]>([]);
+  const [services, setServices] = useState<PositionService[]>([]);
   const [rentalItems, setRentalItems] = useState<RentalCatalogItem[]>([]);
   const [multiplyByDays, setMultiplyByDays] = useState(true);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
@@ -41,12 +44,12 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
-    api.get('/products', { params: { limit: 5000 } }).then(r => {
-      const list = (r.data as any).products || r.data;
+    api.get<PositionProduct[] | { products: PositionProduct[] }>('/products', { params: { limit: 5000 } }).then(r => {
+      const list = Array.isArray(r.data) ? r.data : r.data.products;
       if (Array.isArray(list)) setProducts(list);
     }).catch(() => {});
-    api.get('/service-items').then(r => {
-      const list = (r.data as any).service_items || (r.data as any).items || r.data;
+    api.get<PositionService[] | { service_items?: PositionService[]; items?: PositionService[] }>('/service-items').then(r => {
+      const list = Array.isArray(r.data) ? r.data : r.data.service_items || r.data.items;
       if (Array.isArray(list)) setServices(list);
     }).catch(() => {});
     positionsApi.getRentalCatalog().then(r => {
