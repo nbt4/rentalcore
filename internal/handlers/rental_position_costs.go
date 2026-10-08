@@ -90,6 +90,14 @@ func createRentalPosition(tx *gorm.DB, pos *models.JobPosition, days int64, note
 		if result.RowsAffected != 1 || cost.PositionID != nil || cost.Quantity != pos.Quantity || cost.DaysUsed != days {
 			return &rentalPositionConflictError{"exact unlinked legacy assignment required"}
 		}
+		var consistent bool
+		if err := tx.Raw(`SELECT c.rental_unit_price IS NULL OR c.total_cost=round(c.rental_unit_price*c.quantity*CASE WHEN j.multiply_by_days THEN GREATEST(c.days_used,1) ELSE 1 END,2)
+            FROM job_rental_equipment c JOIN jobs j ON j.jobid=c.job_id WHERE c.job_id=? AND c.equipment_id=?`, pos.JobID, *pos.RentalEquipmentID).Scan(&consistent).Error; err != nil {
+			return err
+		}
+		if !consistent {
+			return &rentalPositionConflictError{"existing supplier cost and snapshot require explicit reconciliation"}
+		}
 	} else if result.RowsAffected != 0 {
 		return &rentalPositionConflictError{"existing supplier assignment requires explicit repair"}
 	}

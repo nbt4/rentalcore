@@ -188,6 +188,15 @@ func (h *RentalJobMCP) createExternalEquipment(c *gin.Context) {
 			required = append(required, "existing_assignment_required")
 		} else {
 			old := duplicates[0].(map[string]any)
+			var consistent bool
+			if err = tx.QueryRow(`SELECT c.rental_unit_price IS NULL OR c.total_cost=round(c.rental_unit_price*c.quantity*CASE WHEN j.multiply_by_days THEN GREATEST(c.days_used,1) ELSE 1 END,2)
+                FROM job_rental_equipment c JOIN jobs j ON j.jobid=c.job_id WHERE c.job_id=$1 AND c.equipment_id=$2`, in.JobID, in.EquipmentID).Scan(&consistent); err != nil {
+				masterError(c, err)
+				return
+			}
+			if !consistent {
+				required = append(required, "consistent_existing_supplier_cost")
+			}
 			if old["position_id"] != nil {
 				required = append(required, "assignment_already_linked")
 			}

@@ -67,3 +67,21 @@ DROP TRIGGER IF EXISTS sync_job_rental_position_costs ON job_positions;
 CREATE TRIGGER sync_job_rental_position_costs AFTER UPDATE OF quantity,job_id,position_type,rental_equipment_id ON job_positions
     FOR EACH ROW WHEN (OLD.position_type='rental' OR NEW.position_type='rental')
     EXECUTE FUNCTION sync_job_rental_position_costs();
+
+-- Old RentalCore versions scale total_cost again after updating the job setting.
+-- Recompute from the captured unit price so schema-first rollout and code rollback
+-- cannot apply a day factor twice. Legacy rows without a snapshot retain their costs.
+CREATE OR REPLACE FUNCTION normalize_job_rental_captured_cost() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE multiply_days BOOLEAN;
+BEGIN
+    IF NEW.rental_unit_price IS NOT NULL THEN
+        SELECT COALESCE(multiply_by_days,true) INTO multiply_days FROM jobs WHERE jobid=NEW.job_id;
+        NEW.total_cost=round(NEW.rental_unit_price * NEW.quantity *
+            CASE WHEN multiply_days THEN GREATEST(NEW.days_used,1) ELSE 1 END,2);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS normalize_job_rental_captured_cost ON job_rental_equipment;
+CREATE TRIGGER normalize_job_rental_captured_cost BEFORE INSERT OR UPDATE ON job_rental_equipment
+    FOR EACH ROW EXECUTE FUNCTION normalize_job_rental_captured_cost();

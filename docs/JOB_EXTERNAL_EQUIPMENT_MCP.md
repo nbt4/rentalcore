@@ -85,7 +85,7 @@ Repair erzeugt genau eine fehlende Position und ergänzt Link/Snapshot am
 bestehenden Kostenbeleg. Menge, Miettage, Gesamtkosten, Notizen, Zeitstempel und
 vorhandene Historie bleiben erhalten; neue Historie/Audit werden ergänzt.
 Vorhandene Rental-Positionen, bereits verknüpfte Kosten, abweichende Menge/Tage,
-fehlende Katalogpreise oder veraltete Vorschauen blockieren. Eine bestehende
+fehlende Katalogpreise, widersprüchliche Kosten-Snapshots oder veraltete Vorschauen blockieren. Eine bestehende
 korrekte Position ohne expliziten Kostenlink muss separat fachlich abgeglichen
 werden; Repair überschreibt sie nicht und erzeugt keine zweite Position.
 Ein erneut vorbereiteter bereits reparierter Datensatz blockiert; Replay der
@@ -101,7 +101,7 @@ Neue, inhaltlich identische Schema-Migrationen:
 - Cores: `migrations/postgresql/049_rental_position_cost_link.sql`
 
 Die Migration ergänzt nullable Link/Snapshot, eindeutigen Index, Linkvalidierung
-und Kosten-Trigger. Sie ist wiederholbar und verändert keine bestehenden
+und Kosten-Trigger mit Schutz gegen doppelte Skalierung durch alte Handler. Sie ist wiederholbar und verändert keine bestehenden
 Zuweisungen oder Auftragspositionen. Bestehende Migrationen bleiben unverändert.
 Keine neue Abhängigkeit, keine Versionspins oder Submodul-Zeiger geändert.
 
@@ -121,3 +121,9 @@ oder Deployment produktiv aus.
   lokale, wegwerfbare `_test`-Datenbank über `RENTALCORE_TEST_POSTGRES_DSN`.
 - MCP: `go test -count=1 ./...`, `go vet ./...`, `go build ./cmd/server`.
   `CORES_MCP_TEST_DATABASE_URL` aktiviert PostgreSQL-Referenz-/Job-Read-Tests.
+
+Der Kosten-Normalisierungstrigger berechnet vorhandene Snapshots bei jedem
+Kostenbeleg-Schreibzugriff kanonisch. Damit ist auch die zusätzliche Skalierung
+älterer RentalCore-Handler während Schema-vor-Code-Rollout und Code-Rollback
+unwirksam. Ein widersprüchliches gespeichertes Kosten-/Snapshot-Paar blockiert
+Repair ausdrücklich, statt beim Verknüpfen still Kosten zu verändern.

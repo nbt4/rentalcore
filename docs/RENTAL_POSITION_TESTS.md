@@ -250,3 +250,43 @@ Echte Ausgabe:
 ℹ todo 0
 ℹ duration_ms 1262.239789
 ```
+
+## Review-Korrektur: Schema-vor-Code und Rückweg
+
+Der unabhängige Reviewer reproduzierte auf lokalem PostgreSQL eine doppelte
+Kostenskalierung mit dem bisherigen Handler. Die unveröffentlichte neue
+Migration ergänzt deshalb den Snapshot-Normalisierungstrigger. Zusätzliche
+Regressionen simulieren den alten API-Followup in beiden Tagesrichtungen:
+225 → 75 → weiterhin 75 sowie 75 → 225 → weiterhin 225. Nullpreise bleiben null,
+Legacy-NULL-Snapshots werden einmalig korrekt abgeleitet. Inkonsistente bestehende
+Kosten-/Snapshot-Paare blockieren Repair und behalten ihre gespeicherten Kosten.
+
+Nach dieser Korrektur: gofmt leer, make build, vollständige lokale PostgreSQL-
+Tests mit -count=1 und Vet grün. Echte Testausgabe:
+
+```text
+?   	go-barcode-webapp/cmd/compliance	[no test files]
+ok  	go-barcode-webapp/cmd/server	0.024s
+?   	go-barcode-webapp/internal/cache	[no test files]
+?   	go-barcode-webapp/internal/compliance	[no test files]
+ok  	go-barcode-webapp/internal/config	0.007s
+ok  	go-barcode-webapp/internal/handlers	7.196s
+ok  	go-barcode-webapp/internal/jev	0.036s
+ok  	go-barcode-webapp/internal/jobstatus	0.005s
+?   	go-barcode-webapp/internal/logger	[no test files]
+?   	go-barcode-webapp/internal/metrics	[no test files]
+?   	go-barcode-webapp/internal/middleware	[no test files]
+?   	go-barcode-webapp/internal/models	[no test files]
+?   	go-barcode-webapp/internal/monitoring	[no test files]
+ok  	go-barcode-webapp/internal/repository	0.132s
+?   	go-barcode-webapp/internal/routes	[no test files]
+?   	go-barcode-webapp/internal/scan	[no test files]
+ok  	go-barcode-webapp/internal/schema	0.645s
+ok  	go-barcode-webapp/internal/services	0.016s
+ok  	go-barcode-webapp/internal/services/pdf	0.026s
+ok  	go-barcode-webapp/internal/services/postalcode	0.010s
+?   	go-barcode-webapp/internal/services/storage	[no test files]
+?   	go-barcode-webapp/internal/services/warehousecore	[no test files]
+ok  	go-barcode-webapp/internal/sync/m365	0.040s
+?   	go-barcode-webapp/tools	[no test files]
+```

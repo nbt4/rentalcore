@@ -341,6 +341,23 @@ func TestRentalJobExternalEquipmentAtomicAssignmentAndGuards(t *testing.T) {
 	exec(`INSERT INTO jobs(jobid,job_code,customerid,statusid,description,startdate,enddate,multiply_by_days) VALUES(2,'REPAIR_TEST',1,1,'Synthetic repair','2026-10-01','2026-10-04',true),(3,'UI_TEST',1,1,'Synthetic UI','2026-10-01','2026-10-04',true);
       INSERT INTO job_rental_equipment(job_id,equipment_id,quantity,days_used,total_cost,notes) VALUES(2,1,2,3,60,'Historic note');
       INSERT INTO job_history(job_id,description) VALUES(2,'Historic MCP assignment')`)
+	// The migration must be compatible with the old UI handler during rollout/rollback.
+	exec(`INSERT INTO jobs(jobid,job_code,customerid,statusid,description,multiply_by_days) VALUES(5,'OLD_HANDLER_TEST',1,1,'Synthetic old handler',true);
+        INSERT INTO job_rental_equipment(job_id,equipment_id,quantity,days_used,total_cost) VALUES(5,1,2,3,225),(5,4,1,3,0)`)
+	exec(`UPDATE jobs SET multiply_by_days=false WHERE jobid=5;
+        UPDATE job_rental_equipment SET total_cost=round(total_cost/GREATEST(days_used,1)::numeric,2) WHERE job_id=5`)
+	if err := db.QueryRow(`SELECT total_cost FROM job_rental_equipment WHERE job_id=5 AND equipment_id=1`).Scan(&cost); err != nil || cost != 75 {
+		t.Fatal("old handler applied day divisor twice", cost, err)
+	}
+	exec(`UPDATE jobs SET multiply_by_days=true WHERE jobid=5;
+        UPDATE job_rental_equipment SET total_cost=round(total_cost*GREATEST(days_used,1)::numeric,2) WHERE job_id=5`)
+	if err := db.QueryRow(`SELECT total_cost FROM job_rental_equipment WHERE job_id=5 AND equipment_id=1`).Scan(&cost); err != nil || cost != 225 {
+		t.Fatal("old handler applied day multiplier twice", cost, err)
+	}
+	if err := db.QueryRow(`SELECT total_cost FROM job_rental_equipment WHERE job_id=5 AND equipment_id=4`).Scan(&cost); err != nil || cost != 0 {
+		t.Fatal("old handler invented zero-price costs", cost, err)
+	}
+	exec(`UPDATE jobs SET statusid=6 WHERE jobid=5`)
 	beforeHistory := count("job_history")
 	repairBase := map[string]any{"job_id": 2, "equipment_id": 1, "quantity": 2, "days_used": 3, "repair_existing": true}
 	var ledgerBefore, ledgerAfter string
@@ -351,6 +368,16 @@ func TestRentalJobExternalEquipmentAtomicAssignmentAndGuards(t *testing.T) {
 	if err := db.QueryRow(`SELECT jsonb_agg(to_jsonb(c) ORDER BY job_id,equipment_id)::text FROM job_rental_equipment c`).Scan(&ledgerAfter); err != nil || ledgerBefore != ledgerAfter {
 		t.Fatal("migration changed legacy costs", err)
 	}
+	// A pre-existing inconsistent snapshot must block repair without changing stored cost.
+	exec(`ALTER TABLE job_rental_equipment DISABLE TRIGGER normalize_job_rental_captured_cost;
+        UPDATE job_rental_equipment SET rental_unit_price=99 WHERE job_id=2;
+        ALTER TABLE job_rental_equipment ENABLE TRIGGER normalize_job_rental_captured_cost`)
+	_, inconsistent := prepare(map[string]any{"job_id": 2, "equipment_id": 1, "quantity": 2, "days_used": 3, "repair_existing": true})
+	required(inconsistent, "consistent_existing_supplier_cost")
+	if err := db.QueryRow(`SELECT total_cost FROM job_rental_equipment WHERE job_id=2`).Scan(&cost); err != nil || cost != 60 {
+		t.Fatal("inconsistent repair changed old cost", cost, err)
+	}
+	exec(`UPDATE job_rental_equipment SET rental_unit_price=NULL WHERE job_id=2`)
 	_, wrongRepair := prepare(map[string]any{"job_id": 2, "equipment_id": 1, "quantity": 3, "days_used": 3, "repair_existing": true})
 	required(wrongRepair, "exact_existing_quantity_and_days_required")
 	_, wrongNotes := prepare(map[string]any{"job_id": 2, "equipment_id": 1, "quantity": 2, "days_used": 3, "repair_existing": true, "notes": "replace historic note"})
