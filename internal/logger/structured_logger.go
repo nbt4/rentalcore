@@ -189,10 +189,10 @@ type ContextLogger struct {
 	ctx    context.Context
 }
 
-func (cl *ContextLogger) Debug(msg string)  { cl.logger.Debug(msg) }
-func (cl *ContextLogger) Info(msg string)   { cl.logger.Info(msg) }
-func (cl *ContextLogger) Warn(msg string)   { cl.logger.Warn(msg) }
-func (cl *ContextLogger) Error(msg string)  { cl.logger.Error(msg) }
+func (cl *ContextLogger) Debug(msg string) { cl.logger.Debug(msg) }
+func (cl *ContextLogger) Info(msg string)  { cl.logger.Info(msg) }
+func (cl *ContextLogger) Warn(msg string)  { cl.logger.Warn(msg) }
+func (cl *ContextLogger) Error(msg string) { cl.logger.Error(msg) }
 
 // ── Global helper functions for convenient logging ──
 

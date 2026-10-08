@@ -26,7 +26,7 @@ type PDFServiceNew struct {
 
 func NewPDFServiceNew(pdfConfig *config.PDFConfig) *PDFServiceNew {
 	tempDir := filepath.Join(os.TempDir(), "rentalcore_pdfs")
-	
+
 	// Ensure temp directory exists
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		logger.LogInfo("Warning: Could not create PDF temp directory: %v", err)
@@ -140,7 +140,7 @@ func (s *PDFServiceNew) generateWithChrome(invoice *models.Invoice, company *mod
 
 	// Set timeout
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	
+
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("Chrome PDF generation failed: %v", err)
 	}
@@ -230,13 +230,13 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetMargins(20, 20, 20)
-	
+
 	// Header with company and invoice info
 	pdf.SetFont("Arial", "B", 16)
 	pdf.SetTextColor(37, 99, 235) // Blue color
 	pdf.Cell(0, 10, company.CompanyName)
 	pdf.Ln(8)
-	
+
 	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(0, 0, 0) // Black
 	if company.AddressLine1 != nil {
@@ -264,35 +264,35 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 		pdf.Cell(0, 5, "Email: "+*company.Email)
 		pdf.Ln(5)
 	}
-	
+
 	pdf.Ln(10)
-	
+
 	// Invoice title and details
 	pdf.SetFont("Arial", "B", 24)
 	pdf.SetTextColor(37, 99, 235)
 	pdf.Cell(0, 15, "INVOICE")
 	pdf.Ln(15)
-	
+
 	// Invoice metadata in table format
 	pdf.SetFont("Arial", "B", 10)
 	pdf.SetTextColor(0, 0, 0)
 	pdf.SetFillColor(248, 249, 250)
-	
+
 	// Two column layout for invoice details
 	colWidth := 40.0
-	
+
 	pdf.CellFormat(colWidth, 8, "Invoice #:", "1", 0, "", true, 0, "")
 	pdf.CellFormat(colWidth, 8, invoice.InvoiceNumber, "1", 1, "", false, 0, "")
-	
+
 	pdf.CellFormat(colWidth, 8, "Issue Date:", "1", 0, "", true, 0, "")
 	pdf.CellFormat(colWidth, 8, invoice.IssueDate.Format("02.01.2006"), "1", 1, "", false, 0, "")
-	
+
 	pdf.CellFormat(colWidth, 8, "Due Date:", "1", 0, "", true, 0, "")
 	pdf.CellFormat(colWidth, 8, invoice.DueDate.Format("02.01.2006"), "1", 1, "", false, 0, "")
-	
+
 	pdf.CellFormat(colWidth, 8, "Status:", "1", 0, "", true, 0, "")
 	pdf.CellFormat(colWidth, 8, strings.ToUpper(invoice.Status), "1", 1, "", false, 0, "")
-	
+
 	pdf.Ln(10)
 
 	// Customer information
@@ -301,14 +301,14 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 		pdf.SetTextColor(37, 99, 235)
 		pdf.Cell(0, 8, "Bill To:")
 		pdf.Ln(8)
-		
+
 		pdf.SetFont("Arial", "", 10)
 		pdf.SetTextColor(0, 0, 0)
 		pdf.SetFillColor(248, 249, 250)
-		
+
 		pdf.Rect(20, pdf.GetY(), 80, 25, "F")
 		pdf.CellFormat(80, 6, invoice.Customer.GetDisplayName(), "", 1, "", false, 0, "")
-		
+
 		if invoice.Customer.Email != nil {
 			pdf.CellFormat(80, 5, *invoice.Customer.Email, "", 1, "", false, 0, "")
 		}
@@ -322,14 +322,14 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 			pdf.CellFormat(80, 5, *invoice.Customer.ZIP+" "+*invoice.Customer.City, "", 1, "", false, 0, "")
 		}
 	}
-	
+
 	pdf.Ln(15)
 
 	// Line items table
 	pdf.SetFont("Arial", "B", 10)
 	pdf.SetTextColor(255, 255, 255)
 	pdf.SetFillColor(37, 99, 235)
-	
+
 	pdf.CellFormat(90, 10, "Description", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(20, 10, "Qty", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(30, 10, "Unit Price", "1", 0, "C", true, 0, "")
@@ -339,7 +339,7 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 	pdf.SetFont("Arial", "", 9)
 	pdf.SetTextColor(0, 0, 0)
 	pdf.SetFillColor(248, 249, 250)
-	
+
 	fill := false
 	for _, item := range invoice.LineItems {
 		pdf.CellFormat(90, 8, item.Description, "1", 0, "", fill, 0, "")
@@ -355,20 +355,20 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 	pdf.SetFont("Arial", "B", 10)
 	totalsX := 120.0
 	pdf.SetX(totalsX)
-	
+
 	pdf.CellFormat(30, 8, "Subtotal:", "", 0, "R", false, 0, "")
 	pdf.CellFormat(30, 8, fmt.Sprintf("%s%.2f", settings.CurrencySymbol, invoice.Subtotal), "", 1, "R", false, 0, "")
-	
+
 	pdf.SetX(totalsX)
 	pdf.CellFormat(30, 8, fmt.Sprintf("Tax (%.1f%%):", invoice.TaxRate), "", 0, "R", false, 0, "")
 	pdf.CellFormat(30, 8, fmt.Sprintf("%s%.2f", settings.CurrencySymbol, invoice.TaxAmount), "", 1, "R", false, 0, "")
-	
+
 	if invoice.DiscountAmount > 0 {
 		pdf.SetX(totalsX)
 		pdf.CellFormat(30, 8, "Discount:", "", 0, "R", false, 0, "")
 		pdf.CellFormat(30, 8, fmt.Sprintf("-%s%.2f", settings.CurrencySymbol, invoice.DiscountAmount), "", 1, "R", false, 0, "")
 	}
-	
+
 	// Total with background
 	pdf.SetX(totalsX)
 	pdf.SetFont("Arial", "B", 12)
@@ -384,15 +384,15 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 		pdf.SetTextColor(37, 99, 235)
 		pdf.Cell(0, 8, "Notes:")
 		pdf.Ln(8)
-		
+
 		pdf.SetFont("Arial", "", 9)
 		pdf.SetTextColor(0, 0, 0)
 		pdf.SetFillColor(248, 249, 250)
-		
+
 		// Create a background for notes
-		notesHeight := float64(len(strings.Split(*invoice.Notes, "\n")) * 5 + 10)
+		notesHeight := float64(len(strings.Split(*invoice.Notes, "\n"))*5 + 10)
 		pdf.Rect(20, pdf.GetY(), 170, notesHeight, "F")
-		
+
 		lines := strings.Split(*invoice.Notes, "\n")
 		for _, line := range lines {
 			if len(line) > 80 {
@@ -421,7 +421,7 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 			}
 		}
 	}
-	
+
 	// Footer
 	pdf.Ln(10)
 	pdf.SetFont("Arial", "I", 8)
@@ -440,7 +440,7 @@ func (s *PDFServiceNew) generateWithGofpdf(invoice *models.Invoice, company *mod
 	}
 
 	pdfBytes := buf.Bytes()
-	
+
 	// Validate PDF output
 	if len(pdfBytes) < 4 || string(pdfBytes[:4]) != "%PDF" {
 		return nil, fmt.Errorf("gofpdf did not generate valid PDF content")

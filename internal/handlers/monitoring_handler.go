@@ -106,10 +106,10 @@ func (h *MonitoringHandler) GetSystemMetrics(c *gin.Context) {
 	metrics := gin.H{
 		"timestamp": time.Now().UTC(),
 		"system": gin.H{
-			"uptime":           uptime,
-			"goroutines":       runtime.NumGoroutine(),
-			"cpu_cores":        runtime.NumCPU(),
-			"go_version":       runtime.Version(),
+			"uptime":     uptime,
+			"goroutines": runtime.NumGoroutine(),
+			"cpu_cores":  runtime.NumCPU(),
+			"go_version": runtime.Version(),
 		},
 		"performance": gin.H{
 			"request_count":    perfMetrics.RequestCount,
@@ -118,17 +118,17 @@ func (h *MonitoringHandler) GetSystemMetrics(c *gin.Context) {
 			"slow_endpoints":   slowEndpoints,
 		},
 		"memory": gin.H{
-			"allocated":      formatBytes(memStats.Alloc),
-			"total_alloc":    formatBytes(memStats.TotalAlloc),
-			"sys":            formatBytes(memStats.Sys),
-			"heap_in_use":    formatBytes(memStats.HeapInuse),
-			"heap_released":  formatBytes(memStats.HeapReleased),
-			"gc_runs":        memStats.NumGC,
-			"gc_pause":       memStats.PauseNs[(memStats.NumGC+255)%256],
+			"allocated":     formatBytes(memStats.Alloc),
+			"total_alloc":   formatBytes(memStats.TotalAlloc),
+			"sys":           formatBytes(memStats.Sys),
+			"heap_in_use":   formatBytes(memStats.HeapInuse),
+			"heap_released": formatBytes(memStats.HeapReleased),
+			"gc_runs":       memStats.NumGC,
+			"gc_pause":      memStats.PauseNs[(memStats.NumGC+255)%256],
 		},
-		"database":     dbStats,
-		"cache":        cacheStats,
-		"errors":       errorSummary,
+		"database": dbStats,
+		"cache":    cacheStats,
+		"errors":   errorSummary,
 	}
 
 	c.JSON(http.StatusOK, metrics)
@@ -239,7 +239,7 @@ func (h *MonitoringHandler) GetApplicationHealth(c *gin.Context) {
 	// Memory health check
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	
+
 	memoryStatus := "healthy"
 	if memStats.Alloc > 500*1024*1024 { // 500MB threshold
 		memoryStatus = "warning"
@@ -294,7 +294,7 @@ func (h *MonitoringHandler) GetPerformanceMetrics(c *gin.Context) {
 	}
 
 	metrics := h.perfMonitor.GetMetrics()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"performance": metrics,
 		"endpoints":   h.perfMonitor.GetTopSlowEndpoints(20),
@@ -411,11 +411,11 @@ func (h *MonitoringHandler) TriggerTestError(c *gin.Context) {
 	}
 
 	// Create test error
-	h.errorTracker.CaptureRequestError(c, "Test Error", 
-		fmt.Errorf("This is a test error triggered by %s", user.Username), 
+	h.errorTracker.CaptureRequestError(c, "Test Error",
+		fmt.Errorf("This is a test error triggered by %s", user.Username),
 		severity,
 		map[string]interface{}{
-			"test":        true,
+			"test":         true,
 			"triggered_by": user.Username,
 		})
 

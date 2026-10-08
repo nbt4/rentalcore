@@ -308,7 +308,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 		email := "[Email Address]"
 		taxNumber := "[Tax Number]"
 		vatNumber := "[VAT Number]"
-		
+
 		company = &models.CompanySettings{
 			CompanyName:  "[Your Company Name]",
 			AddressLine1: &addressLine1,
@@ -331,7 +331,7 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 	customerEmail := "[customer@email.com]"
 	customerPhone := "[Phone Number]"
 	customerCompanyName := "[Customer Company Name]"
-	
+
 	sampleInvoice := &models.Invoice{
 		InvoiceNumber: "INV-PREVIEW-001",
 		IssueDate:     time.Now(),
@@ -340,15 +340,15 @@ func (h *InvoiceTemplateHandler) PreviewTemplate(c *gin.Context) {
 		TaxAmount:     19.00,
 		TotalAmount:   119.00,
 		Customer: &models.Customer{
-			CompanyName:  &customerCompanyName,
-			Street:       &customerStreet,
-			HouseNumber:  &customerHouseNumber,
-			ZIP:          &customerZIP,
-			City:         &customerCity,
-			FirstName:    &customerFirstName,
-			LastName:     &customerLastName,
-			Email:        &customerEmail,
-			PhoneNumber:  &customerPhone,
+			CompanyName: &customerCompanyName,
+			Street:      &customerStreet,
+			HouseNumber: &customerHouseNumber,
+			ZIP:         &customerZIP,
+			City:        &customerCity,
+			FirstName:   &customerFirstName,
+			LastName:    &customerLastName,
+			Email:       &customerEmail,
+			PhoneNumber: &customerPhone,
 		},
 		LineItems: []models.InvoiceLineItem{
 			{

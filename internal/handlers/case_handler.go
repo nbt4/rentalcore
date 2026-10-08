@@ -29,7 +29,7 @@ func NewCaseHandler(caseRepo *repository.CaseRepository, deviceRepo *repository.
 // Web interface handlers
 func (h *CaseHandler) ListCases(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
 	params := &models.FilterParams{}
 	if err := c.ShouldBindQuery(params); err != nil {
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=400&message=Bad Request&details=%s", err.Error()))
@@ -38,7 +38,7 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 
 	// DEBUG: Log all query parameters
 	logger.LogWarn("DEBUG Case Handler: All query params: %+v\n", c.Request.URL.Query())
-	
+
 	// Manual parameter extraction to ensure search works
 	searchParam := c.Query("search")
 	logger.LogWarn("DEBUG Case Handler: Raw search parameter: '%s'\n", searchParam)
@@ -46,7 +46,7 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 		params.SearchTerm = searchParam
 		logger.LogWarn("DEBUG Case Handler: Search parameter SET to: '%s'\n", searchParam)
 	}
-	
+
 	// DEBUG: Log params after binding
 	logger.LogWarn("DEBUG Case Handler: Final params: SearchTerm='%s'\n", params.SearchTerm)
 
@@ -67,19 +67,17 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 	})
 }
 
-
-
 func (h *CaseHandler) NewCaseForm(c *gin.Context) {
 	// Only allow fetch requests from modals, block direct browser access
 	acceptHeader := c.GetHeader("Accept")
 	xRequestedWith := c.GetHeader("X-Requested-With")
-	
+
 	// Block direct browser access - only allow modal/fetch requests
 	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
 		c.Redirect(http.StatusFound, "/cases")
 		return
 	}
-	
+
 	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
 	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
 		c.Redirect(http.StatusFound, "/cases")
@@ -87,19 +85,19 @@ func (h *CaseHandler) NewCaseForm(c *gin.Context) {
 	}
 
 	user, _ := GetCurrentUser(c)
-	
+
 	// Get available devices for new case
 	availableDevices, err := h.caseRepo.GetAvailableDevices()
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/error?code=500&message=Database Error&details=%s", err.Error()))
 		return
 	}
-	
+
 	c.HTML(http.StatusOK, "case_form.html", gin.H{
-		"title": "New Case",
-		"case":  &models.Case{},
+		"title":            "New Case",
+		"case":             &models.Case{},
 		"availableDevices": availableDevices,
-		"user": user,
+		"user":             user,
 	})
 }
 
@@ -150,7 +148,7 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 			"title": "New Case",
 			"case":  &case_,
 			"error": err.Error(),
-			"user": user,
+			"user":  user,
 		})
 		return
 	}
@@ -162,13 +160,13 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 	// Only allow fetch requests from modals, block direct browser access
 	acceptHeader := c.GetHeader("Accept")
 	xRequestedWith := c.GetHeader("X-Requested-With")
-	
+
 	// Block direct browser access - only allow modal/fetch requests
 	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
 		c.Redirect(http.StatusFound, "/cases")
 		return
 	}
-	
+
 	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
 	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
 		c.Redirect(http.StatusFound, "/cases")
@@ -176,7 +174,7 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 	}
 
 	user, _ := GetCurrentUser(c)
-	
+
 	caseIDStr := c.Param("id")
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
@@ -200,13 +198,13 @@ func (h *CaseHandler) EditCaseForm(c *gin.Context) {
 	// Only allow fetch requests from modals, block direct browser access
 	acceptHeader := c.GetHeader("Accept")
 	xRequestedWith := c.GetHeader("X-Requested-With")
-	
+
 	// Block direct browser access - only allow modal/fetch requests
 	if xRequestedWith != "XMLHttpRequest" && !strings.Contains(acceptHeader, "application/json") && !strings.Contains(acceptHeader, "text/html") {
 		c.Redirect(http.StatusFound, "/cases")
 		return
 	}
-	
+
 	// If it's a direct browser request (Accept: text/html without XMLHttpRequest), redirect
 	if strings.Contains(acceptHeader, "text/html") && xRequestedWith != "XMLHttpRequest" {
 		c.Redirect(http.StatusFound, "/cases")
@@ -214,7 +212,7 @@ func (h *CaseHandler) EditCaseForm(c *gin.Context) {
 	}
 
 	user, _ := GetCurrentUser(c)
-	
+
 	caseIDStr := c.Param("id")
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
@@ -248,16 +246,16 @@ func (h *CaseHandler) EditCaseForm(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "case_form.html", gin.H{
-		"title": "Edit Case",
-		"case":  case_,
+		"title":            "Edit Case",
+		"case":             case_,
 		"availableDevices": availableDevices,
-		"user": user,
+		"user":             user,
 	})
 }
 
 func (h *CaseHandler) UpdateCase(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
 	caseIDStr := c.Param("id")
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
@@ -308,18 +306,18 @@ func (h *CaseHandler) UpdateCase(c *gin.Context) {
 		// Get available devices for error display
 		availableDevices, _ := h.deviceRepo.GetAvailableDevicesForCaseManagement()
 		c.HTML(http.StatusInternalServerError, "case_form.html", gin.H{
-			"title": "Edit Case",
-			"case":  &case_,
+			"title":            "Edit Case",
+			"case":             &case_,
 			"availableDevices": availableDevices,
-			"error": err.Error(),
-			"user": user,
+			"error":            err.Error(),
+			"user":             user,
 		})
 		return
 	}
 
 	// Process device associations
 	var deviceIDs []string
-	
+
 	// Parse device form data - handle both devices[] and devices[*] formats
 	for key, values := range c.Request.PostForm {
 		if key == "devices[]" || (strings.HasPrefix(key, "devices[") && strings.HasSuffix(key, "]")) {
@@ -401,7 +399,7 @@ func (h *CaseHandler) DeleteCase(c *gin.Context) {
 // Device mapping handlers
 func (h *CaseHandler) CaseDeviceMapping(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
 	caseIDStr := c.Param("id")
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
@@ -425,7 +423,7 @@ func (h *CaseHandler) CaseDeviceMapping(c *gin.Context) {
 		"title":       "Case Device Mapping",
 		"case":        case_,
 		"deviceCases": deviceCases,
-		"user": user,
+		"user":        user,
 	})
 }
 
@@ -460,7 +458,7 @@ func (h *CaseHandler) GetAvailableDevicesWithCaseInfo(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"treeData": treeData,
-		"devices": devices,
+		"devices":  devices,
 	})
 }
 
@@ -627,7 +625,7 @@ func (h *CaseHandler) DeleteCaseAPI(c *gin.Context) {
 func (h *CaseHandler) GetCaseDevicesAPI(c *gin.Context) {
 	caseIDStr := c.Param("id")
 	logger.LogInfo("GetCaseDevicesAPI: Getting devices for case ID: %s", caseIDStr)
-	
+
 	caseID, err := strconv.ParseUint(caseIDStr, 10, 32)
 	if err != nil {
 		logger.LogInfo("GetCaseDevicesAPI: Invalid case ID: %s, error: %v", caseIDStr, err)
@@ -659,19 +657,19 @@ func (h *CaseHandler) GetCaseDevicesAPI(c *gin.Context) {
 
 // Tree structure definitions for case device management
 type CaseTreeCategory struct {
-	ID            uint                   `json:"id"`
-	Name          string                 `json:"name"`
-	DeviceCount   int                    `json:"device_count"`
-	DirectDevices []CaseTreeDevice       `json:"direct_devices"`
-	Subcategories []CaseTreeSubcategory  `json:"subcategories"`
+	ID            uint                  `json:"id"`
+	Name          string                `json:"name"`
+	DeviceCount   int                   `json:"device_count"`
+	DirectDevices []CaseTreeDevice      `json:"direct_devices"`
+	Subcategories []CaseTreeSubcategory `json:"subcategories"`
 }
 
 type CaseTreeSubcategory struct {
-	ID                string                      `json:"id"`
-	Name              string                      `json:"name"`
-	DeviceCount       int                         `json:"device_count"`
-	DirectDevices     []CaseTreeDevice            `json:"direct_devices"`
-	Subbiercategories []CaseTreeSubbiercategory   `json:"subbiercategories"`
+	ID                string                    `json:"id"`
+	Name              string                    `json:"name"`
+	DeviceCount       int                       `json:"device_count"`
+	DirectDevices     []CaseTreeDevice          `json:"direct_devices"`
+	Subbiercategories []CaseTreeSubbiercategory `json:"subbiercategories"`
 }
 
 type CaseTreeSubbiercategory struct {
@@ -682,13 +680,13 @@ type CaseTreeSubbiercategory struct {
 }
 
 type CaseTreeDevice struct {
-	DeviceID       string  `json:"deviceid"`
-	ProductName    string  `json:"productName"`
-	SerialNumber   string  `json:"serialNumber"`
-	Status         string  `json:"status"`
-	Available      bool    `json:"available"`
-	AssignedToCase *uint   `json:"assignedToCase,omitempty"`
-	CaseName       string  `json:"caseName,omitempty"`
+	DeviceID       string `json:"deviceid"`
+	ProductName    string `json:"productName"`
+	SerialNumber   string `json:"serialNumber"`
+	Status         string `json:"status"`
+	Available      bool   `json:"available"`
+	AssignedToCase *uint  `json:"assignedToCase,omitempty"`
+	CaseName       string `json:"caseName,omitempty"`
 }
 
 // buildTreeDataWithCaseInfo creates tree structure with case assignment information
@@ -699,7 +697,7 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 
 	// Group devices by category structure
 	categoryMap := make(map[uint]*CaseTreeCategory)
-	
+
 	for _, device := range devices {
 		if device.Product == nil {
 			continue // Skip devices without products
@@ -719,7 +717,7 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 			if device.Product.Category != nil {
 				categoryName = device.Product.Category.Name
 			}
-			
+
 			category = &CaseTreeCategory{
 				ID:            *categoryID,
 				Name:          categoryName,
@@ -736,7 +734,7 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 		// Check if device has subcategory
 		if device.Product.SubcategoryID != nil {
 			subcategoryID := *device.Product.SubcategoryID
-			
+
 			// Find or create subcategory
 			var subcategory *CaseTreeSubcategory
 			for i := range category.Subcategories {
@@ -745,13 +743,13 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 					break
 				}
 			}
-			
+
 			if subcategory == nil {
 				subcategoryName := "Unknown Subcategory"
 				if device.Product.Subcategory != nil {
 					subcategoryName = device.Product.Subcategory.Name
 				}
-				
+
 				newSubcategory := CaseTreeSubcategory{
 					ID:                subcategoryID,
 					Name:              subcategoryName,
@@ -766,7 +764,7 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 			// Check if device has subbiercategory
 			if device.Product.SubbiercategoryID != nil {
 				subbiercategoryID := *device.Product.SubbiercategoryID
-				
+
 				// Find or create subbiercategory
 				var subbiercategory *CaseTreeSubbiercategory
 				for i := range subcategory.Subbiercategories {
@@ -775,13 +773,13 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 						break
 					}
 				}
-				
+
 				if subbiercategory == nil {
 					subbiercategoryName := "Unknown Subbiercategory"
 					if device.Product.Subbiercategory != nil {
 						subbiercategoryName = device.Product.Subbiercategory.Name
 					}
-					
+
 					newSubbiercategory := CaseTreeSubbiercategory{
 						ID:          subbiercategoryID,
 						Name:        subbiercategoryName,
@@ -791,7 +789,7 @@ func (h *CaseHandler) buildTreeDataWithCaseInfo(devices []models.Device, deviceT
 					subcategory.Subbiercategories = append(subcategory.Subbiercategories, newSubbiercategory)
 					subbiercategory = &subcategory.Subbiercategories[len(subcategory.Subbiercategories)-1]
 				}
-				
+
 				// Add device to subbiercategory - count in all levels
 				subbiercategory.Devices = append(subbiercategory.Devices, treeDevice)
 				subbiercategory.DeviceCount++
@@ -843,7 +841,7 @@ func (h *CaseHandler) convertToTreeDeviceWithCaseInfo(device models.Device, devi
 	if caseAssignment, exists := deviceToCaseMap[device.DeviceID]; exists {
 		treeDevice.Available = false
 		treeDevice.AssignedToCase = &caseAssignment.CaseID
-		
+
 		// Try to get case name if we have case information
 		if caseAssignment.Case.Name != "" {
 			treeDevice.CaseName = caseAssignment.Case.Name

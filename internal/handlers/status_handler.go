@@ -25,4 +25,3 @@ func (h *StatusHandler) ListStatuses(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
 }
-

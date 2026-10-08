@@ -12,8 +12,8 @@ import (
 
 // JobHistoryHandler handles job history related endpoints
 type JobHistoryHandler struct {
-	DB              *gorm.DB
-	HistoryService  *services.JobHistoryService
+	DB             *gorm.DB
+	HistoryService *services.JobHistoryService
 }
 
 // NewJobHistoryHandler creates a new job history handler

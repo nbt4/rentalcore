@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"go-barcode-webapp/internal/models"
+	"gorm.io/gorm"
 
 	"go-barcode-webapp/internal/logger"
 )
@@ -62,10 +62,10 @@ func NewComplianceMiddleware(db *gorm.DB, archivePath, encryptionKey string) (*C
 func (cm *ComplianceMiddleware) AuditMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		
+
 		// Get user ID from context/session
 		userID := cm.getUserIDFromContext(c)
-		
+
 		// Capture request data
 		requestData := map[string]interface{}{
 			"method":     c.Request.Method,
@@ -81,7 +81,7 @@ func (cm *ComplianceMiddleware) AuditMiddleware() gin.HandlerFunc {
 
 		// Log after processing
 		duration := time.Since(start)
-		
+
 		// Create audit log entry
 		contextData := make(map[string]interface{})
 		for k, v := range requestData {
@@ -90,7 +90,7 @@ func (cm *ComplianceMiddleware) AuditMiddleware() gin.HandlerFunc {
 		contextData["status_code"] = c.Writer.Status()
 		contextData["duration_ms"] = duration.Milliseconds()
 		contextData["response_size"] = c.Writer.Size()
-		
+
 		cm.auditLogger.LogSystemEvent(
 			"http_request",
 			"request",
@@ -123,9 +123,9 @@ func (cm *ComplianceMiddleware) ConsentCheckMiddleware(dataType GDPRDataType, pu
 
 		if !hasConsent {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Data processing consent required",
-				"data_type": dataType,
-				"purpose": purpose,
+				"error":       "Data processing consent required",
+				"data_type":   dataType,
+				"purpose":     purpose,
 				"consent_url": "/privacy/consent",
 			})
 			c.Abort()
@@ -183,8 +183,8 @@ func (cm *ComplianceMiddleware) handleInvoiceCompliance(invoiceID uint, method s
 	// In a full implementation, this would fetch the actual invoice from the database
 	invoiceData := map[string]interface{}{
 		"invoice_id": invoiceID,
-		"timestamp": time.Now(),
-		"method": method,
+		"timestamp":  time.Now(),
+		"method":     method,
 	}
 
 	// Archive the invoice for GoBD compliance
@@ -208,10 +208,10 @@ func (cm *ComplianceMiddleware) handleInvoiceCompliance(invoiceID uint, method s
 		action,
 		0, // System action
 		map[string]interface{}{
-			"invoice_id": invoiceID,
+			"invoice_id":           invoiceID,
 			"compliance_processed": true,
-			"gobd_compliant": true,
-			"digitally_signed": true,
+			"gobd_compliant":       true,
+			"digitally_signed":     true,
 		},
 		"",
 		"TS-Lager Compliance System",
@@ -250,7 +250,7 @@ func (cm *ComplianceMiddleware) runRetentionCleanup() {
 		0,
 		map[string]interface{}{
 			"scheduled_cleanup": true,
-			"executed_at": time.Now(),
+			"executed_at":       time.Now(),
 		},
 		"",
 		"TS-Lager Retention System",
@@ -292,7 +292,7 @@ func (cm *ComplianceMiddleware) GDPRRequestMiddleware() gin.HandlerFunc {
 				map[string]interface{}{
 					"request_type": request.RequestType,
 					"description":  request.Description,
-					"status": "pending",
+					"status":       "pending",
 				},
 				c.ClientIP(),
 				c.GetHeader("User-Agent"),
@@ -373,11 +373,11 @@ func (cm *ComplianceMiddleware) GetComplianceStatus() gin.HandlerFunc {
 				"digital_signatures": true,
 			},
 			"gdpr_compliance": map[string]interface{}{
-				"enabled":              true,
-				"consent_tracking":     true,
-				"data_encryption":      true,
-				"retention_policies":   true,
-				"subject_requests":     true,
+				"enabled":            true,
+				"consent_tracking":   true,
+				"data_encryption":    true,
+				"retention_policies": true,
+				"subject_requests":   true,
 			},
 			"data_protection": map[string]interface{}{
 				"encryption_algorithm": "AES-256-GCM",
@@ -385,9 +385,9 @@ func (cm *ComplianceMiddleware) GetComplianceStatus() gin.HandlerFunc {
 				"backup_encryption":    true,
 			},
 			"audit_trail": map[string]interface{}{
-				"immutable_logs":    true,
-				"hash_chain":        true,
-				"log_retention":     "6_years",
+				"immutable_logs": true,
+				"hash_chain":     true,
+				"log_retention":  "6_years",
 			},
 		}
 
@@ -454,7 +454,7 @@ func (cm *ComplianceMiddleware) generateDailyComplianceReport() {
 		"report_generated",
 		0,
 		map[string]interface{}{
-			"report": string(reportJSON),
+			"report":       string(reportJSON),
 			"generated_at": time.Now(),
 		},
 		"",

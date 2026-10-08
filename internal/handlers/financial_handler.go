@@ -26,7 +26,7 @@ func NewFinancialHandler(db *gorm.DB) *FinancialHandler {
 // FinancialDashboard displays the financial overview
 func (h *FinancialHandler) FinancialDashboard(c *gin.Context) {
 	user, _ := GetCurrentUser(c)
-	
+
 	// Get summary statistics
 	stats, err := h.getFinancialStats()
 	if err != nil {
@@ -54,26 +54,26 @@ func (h *FinancialHandler) FinancialDashboard(c *gin.Context) {
 func (h *FinancialHandler) ListTransactions(c *gin.Context) {
 	var transactions []models.FinancialTransaction
 	var customers []models.Customer
-	
+
 	// Load customers for filter dropdown
 	h.db.Find(&customers)
-	
+
 	query := h.db.Preload("Job").Preload("Customer").Preload("Creator").
 		Order("transaction_date DESC")
-	
+
 	// Apply filters
 	if transactionType := c.Query("type"); transactionType != "" {
 		query = query.Where("type = ?", transactionType)
 	}
-	
+
 	if status := c.Query("status"); status != "" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	if customerID := c.Query("customerid"); customerID != "" {
 		query = query.Where("customerID = ?", customerID)
 	}
-	
+
 	result := query.Find(&transactions)
 	if result.Error != nil {
 		user, _ := GetCurrentUser(c)
@@ -99,7 +99,7 @@ func (h *FinancialHandler) NewTransactionForm(c *gin.Context) {
 	// Load related data
 	var jobs []models.Job
 	var customers []models.Customer
-	
+
 	h.db.Find(&jobs)
 	h.db.Find(&customers)
 
@@ -147,20 +147,20 @@ func (h *FinancialHandler) CreateTransaction(c *gin.Context) {
 	}
 
 	transaction := models.FinancialTransaction{
-		JobID:             request.JobID,
-		CustomerID:        request.CustomerID,
-		Type:              request.Type,
-		Amount:            request.Amount,
-		Currency:          request.Currency,
-		Status:            "pending",
-		PaymentMethod:     request.PaymentMethod,
-		TransactionDate:   time.Now(),
-		DueDate:           dueDate,
-		ReferenceNumber:   request.ReferenceNumber,
-		Notes:             request.Notes,
-		CreatedBy:         &currentUser.UserID,
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		JobID:           request.JobID,
+		CustomerID:      request.CustomerID,
+		Type:            request.Type,
+		Amount:          request.Amount,
+		Currency:        request.Currency,
+		Status:          "pending",
+		PaymentMethod:   request.PaymentMethod,
+		TransactionDate: time.Now(),
+		DueDate:         dueDate,
+		ReferenceNumber: request.ReferenceNumber,
+		Notes:           request.Notes,
+		CreatedBy:       &currentUser.UserID,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	if request.Currency == "" {
@@ -357,11 +357,11 @@ func (h *FinancialHandler) GetRevenueReport(c *gin.Context) {
 	endDate := c.Query("enddate")
 
 	var results []struct {
-		Period      string  `json:"period"`
-		Revenue     float64 `json:"revenue"`
-		Expenses    float64 `json:"expenses"`
-		NetProfit   float64 `json:"netProfit"`
-		Transactions int    `json:"transactions"`
+		Period       string  `json:"period"`
+		Revenue      float64 `json:"revenue"`
+		Expenses     float64 `json:"expenses"`
+		NetProfit    float64 `json:"netProfit"`
+		Transactions int     `json:"transactions"`
 	}
 
 	query := h.db.Model(&models.FinancialTransaction{}).
@@ -406,10 +406,10 @@ func (h *FinancialHandler) GetRevenueReport(c *gin.Context) {
 // GetPaymentReport generates payment status report
 func (h *FinancialHandler) GetPaymentReport(c *gin.Context) {
 	var results []struct {
-		Status       string  `json:"status"`
-		Count        int64   `json:"count"`
-		TotalAmount  float64 `json:"totalAmount"`
-		AvgAmount    float64 `json:"avgAmount"`
+		Status      string  `json:"status"`
+		Count       int64   `json:"count"`
+		TotalAmount float64 `json:"totalAmount"`
+		AvgAmount   float64 `json:"avgAmount"`
 	}
 
 	h.db.Model(&models.FinancialTransaction{}).
@@ -461,10 +461,10 @@ func (h *FinancialHandler) getFinancialStats() (map[string]interface{}, error) {
 		Scan(&pendingPayments)
 
 	// Monthly revenue (current month)
-	startOfMonth := time.Now().Truncate(24 * time.Hour).AddDate(0, 0, -time.Now().Day()+1)
+	startOfMonth := time.Now().Truncate(24*time.Hour).AddDate(0, 0, -time.Now().Day()+1)
 	var monthlyRevenue float64
 	h.db.Model(&models.FinancialTransaction{}).
-		Where("status = ? AND type IN (?) AND transaction_date >= ?", 
+		Where("status = ? AND type IN (?) AND transaction_date >= ?",
 			"completed", []string{"rental", "payment"}, startOfMonth).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&monthlyRevenue)
@@ -500,16 +500,16 @@ func (h *FinancialHandler) generateInvoiceNumber() string {
 	h.db.Model(&models.FinancialTransaction{}).
 		Where("type = ? AND reference_number LIKE ?", "rental", "INV-"+timestamp+"%").
 		Count(&count)
-	
+
 	return "INV-" + timestamp + "-" + fmt.Sprintf("%04d", count+1)
 }
 
 func (h *FinancialHandler) calculateReportSummary(results []struct {
-	Period      string  `json:"period"`
-	Revenue     float64 `json:"revenue"`
-	Expenses    float64 `json:"expenses"`
-	NetProfit   float64 `json:"netProfit"`
-	Transactions int    `json:"transactions"`
+	Period       string  `json:"period"`
+	Revenue      float64 `json:"revenue"`
+	Expenses     float64 `json:"expenses"`
+	NetProfit    float64 `json:"netProfit"`
+	Transactions int     `json:"transactions"`
 }) map[string]interface{} {
 	var totalRevenue, totalExpenses, totalNetProfit float64
 	var totalTransactions int
@@ -610,7 +610,7 @@ func (h *FinancialHandler) GetFinancialStatsAPI(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load financial statistics"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, stats)
 }
 
@@ -636,7 +636,7 @@ func (h *FinancialHandler) ExportTransactions(c *gin.Context) {
 
 	// Build query
 	query := h.db.Model(&models.FinancialTransaction{})
-	
+
 	if startDate != "" {
 		query = query.Where("transaction_date >= ?", startDate)
 	}
@@ -658,7 +658,7 @@ func (h *FinancialHandler) ExportTransactions(c *gin.Context) {
 
 	// Generate CSV
 	csvContent := "Date,Type,Amount,Status,Customer,Description,Reference,Job ID\n"
-	
+
 	for _, transaction := range transactions {
 		customerName := ""
 		if transaction.CustomerID != nil {
@@ -756,7 +756,7 @@ func (h *FinancialHandler) ExportRevenue(c *gin.Context) {
 
 	// Generate CSV
 	csvContent := "Period,Revenue,Expenses,Net Profit,Transactions\n"
-	
+
 	totalRevenue := 0.0
 	totalExpenses := 0.0
 	totalTransactions := 0
@@ -790,7 +790,7 @@ func (h *FinancialHandler) ExportTaxReportCSV(c *gin.Context) {
 	// Implementation for tax report export
 	c.Header("Content-Type", "text/csv")
 	c.Header("Content-Disposition", "attachment; filename=tax_report.csv")
-	
+
 	// Get tax data
 	var transactions []models.FinancialTransaction
 	if err := h.db.Find(&transactions).Error; err != nil {

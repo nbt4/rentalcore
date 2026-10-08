@@ -115,8 +115,8 @@ func (h *ScanBoardHandler) ScanDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Device scanned successfully",
+		"success":  true,
+		"message":  "Device scanned successfully",
 		"deviceid": deviceID,
 	})
 }
