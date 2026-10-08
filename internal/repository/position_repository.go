@@ -19,6 +19,7 @@ func (r *PositionRepository) GetByJobID(jobID uint) ([]models.JobPosition, error
 	err := r.db.Where("job_id = ?", jobID).
 		Preload("Product").
 		Preload("ServiceItem").
+		Preload("RentalEquipment").
 		Preload("Devices").
 		Order("sort_order ASC, position_id ASC").
 		Find(&positions).Error
@@ -30,6 +31,7 @@ func (r *PositionRepository) GetByID(positionID uint) (*models.JobPosition, erro
 	err := r.db.Where("position_id = ?", positionID).
 		Preload("Product").
 		Preload("ServiceItem").
+		Preload("RentalEquipment").
 		Preload("Devices").
 		First(&pos).Error
 	if err != nil {

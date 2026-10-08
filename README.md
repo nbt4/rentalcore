@@ -1,5 +1,9 @@
 # RentalCore
 
+Mietprodukt-Korrektur: UI und MCP erzeugen echte Rental-Auftragspositionen zum
+Kundenpreis und verknüpfte Lieferantenkosten.
+[Modell, Migration und bestätigter Repair](docs/JOB_EXTERNAL_EQUIPMENT_MCP.md).
+
 ## Auftragspositionen — Rental 5.3.121 / Warehouse 5.9.113 / MCP 1.5.59
 
 `rental.job_positions.prepare_create/create`, `prepare_update/update` und

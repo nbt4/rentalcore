@@ -528,17 +528,18 @@ type PackageDeviceResponse struct {
 // ================================================================
 
 type RentalEquipment struct {
-	EquipmentID  uint      `gorm:"primaryKey;autoIncrement;column:equipment_id" json:"equipmentID"`
-	ProductName  string    `gorm:"not null;size:200;column:product_name" json:"productName" binding:"required,min=1,max=200"`
-	SupplierName string    `gorm:"not null;size:100;column:supplier_name" json:"supplierName" binding:"required,min=1,max=100"`
-	RentalPrice  float64   `gorm:"type:decimal(12,2);not null;column:rental_price" json:"rentalPrice" binding:"required,min=0"`
-	Category     string    `gorm:"size:50;column:category" json:"category" binding:"max=50"`
-	Description  string    `gorm:"size:1000;column:description" json:"description" binding:"max=1000"`
-	Notes        string    `gorm:"size:500;column:notes" json:"notes" binding:"max=500"`
-	IsActive     bool      `gorm:"default:true;column:is_active" json:"isActive"`
-	CreatedAt    time.Time `gorm:"column:created_at" json:"createdAt"`
-	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updatedAt"`
-	CreatedBy    *uint     `gorm:"column:created_by" json:"createdBy"`
+	EquipmentID   uint      `gorm:"primaryKey;autoIncrement;column:id" json:"equipmentID"`
+	ProductName   string    `gorm:"not null;size:200;column:name" json:"productName" binding:"required,min=1,max=200"`
+	SupplierName  string    `gorm:"not null;size:100;column:supplier" json:"supplierName" binding:"required,min=1,max=100"`
+	RentalPrice   float64   `gorm:"type:decimal(12,2);not null;column:rental_price" json:"rentalPrice" binding:"required,min=0"`
+	CustomerPrice *float64  `gorm:"type:decimal(12,2);column:customer_price" json:"customerPrice"`
+	Category      string    `gorm:"size:50;column:category" json:"category" binding:"max=50"`
+	Description   string    `gorm:"size:1000;column:description" json:"description" binding:"max=1000"`
+	Notes         string    `gorm:"size:500;column:notes" json:"notes" binding:"max=500"`
+	IsActive      bool      `gorm:"default:true;column:is_active" json:"isActive"`
+	CreatedAt     time.Time `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt     time.Time `gorm:"column:updated_at" json:"updatedAt"`
+	CreatedBy     *uint     `gorm:"column:created_by" json:"createdBy"`
 
 	// Analytics fields (computed)
 	TotalUsed    int        `gorm:"-:all" json:"totalUsed"`

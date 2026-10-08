@@ -13,6 +13,9 @@ func TestValidatePosition(t *testing.T) {
 		pos  models.JobPosition
 		ok   bool
 	}{
+		{"rental reference required", models.JobPosition{PositionType: "rental", Quantity: 1}, false},
+		{"fractional rental", models.JobPosition{PositionType: "rental", RentalEquipmentID: &productID, Quantity: 1.5}, false},
+		{"valid rental", models.JobPosition{PositionType: "rental", RentalEquipmentID: &productID, Quantity: 2, UnitPrice: 50}, true},
 		{"valid product", models.JobPosition{PositionType: "product", ProductID: &productID, Quantity: 2, UnitPrice: 10}, true},
 		{"fractional product", models.JobPosition{PositionType: "product", ProductID: &productID, Quantity: 1.5}, false},
 		{"zero quantity", models.JobPosition{PositionType: "service", Quantity: 0}, false},

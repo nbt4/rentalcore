@@ -45,7 +45,7 @@ func validatePosition(pos *models.JobPosition) error {
 	if math.IsNaN(pos.Quantity) || math.IsInf(pos.Quantity, 0) || pos.Quantity <= 0 {
 		return fmt.Errorf("Menge muss größer als 0 sein")
 	}
-	if pos.PositionType == "product" && math.Trunc(pos.Quantity) != pos.Quantity {
+	if (pos.PositionType == "product" || pos.PositionType == "rental") && math.Trunc(pos.Quantity) != pos.Quantity {
 		return fmt.Errorf("Produktmenge muss eine ganze Zahl sein")
 	}
 	for name, value := range map[string]float64{
@@ -64,6 +64,9 @@ func validatePosition(pos *models.JobPosition) error {
 	}
 	if pos.PositionType == "product" && (pos.ProductID == nil || *pos.ProductID == 0) {
 		return fmt.Errorf("Produkt ist erforderlich")
+	}
+	if pos.PositionType == "rental" && (pos.RentalEquipmentID == nil || *pos.RentalEquipmentID == 0 || pos.ProductID != nil || pos.ServiceItemID != nil || pos.Quantity > 1000) {
+		return fmt.Errorf("Mietprodukt und ganze Menge 1–1000 sind erforderlich")
 	}
 	return nil
 }
@@ -109,6 +112,7 @@ type CreatePositionInput struct {
 	DiscountPercent   float64  `json:"discount_percent"`
 	DiscountAmount    float64  `json:"discount_amount"`
 	TaxRate           *float64 `json:"tax_rate"`
+	DaysUsed          *int64   `json:"days_used"`
 }
 
 func (h *PositionHandler) CreatePosition(c *gin.Context) {
@@ -173,7 +177,22 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&pos).Error; err != nil {
+		if err := lockRentalPositionJob(tx, pos.JobID); err != nil {
+			return err
+		}
+		if pos.PositionType == "rental" {
+			var lockedJob models.Job
+			if err := tx.Select("startdate,enddate").Where("jobid=?", pos.JobID).First(&lockedJob).Error; err != nil {
+				return err
+			}
+			days := int64(positionEventDays(lockedJob.StartDate, lockedJob.EndDate))
+			if input.DaysUsed != nil {
+				days = *input.DaysUsed
+			}
+			if err := createRentalPosition(tx, &pos, days, "", false); err != nil {
+				return err
+			}
+		} else if err := tx.Create(&pos).Error; err != nil {
 			return err
 		}
 		if input.PositionType == "product" {
@@ -183,7 +202,7 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 		}
 		return syncJobRevenue(tx, uint(jobID))
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(rentalPositionErrorStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -262,7 +281,10 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	pos.UpdatedAt = time.Now()
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(pos).Error; err != nil {
+		if err := lockRentalPositionJob(tx, pos.JobID); err != nil {
+			return err
+		}
+		if err := tx.Omit("Product", "ServiceItem", "RentalEquipment", "Devices").Save(pos).Error; err != nil {
 			return err
 		}
 		if pos.PositionType == "product" {
@@ -303,6 +325,9 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := lockRentalPositionJob(tx, pos.JobID); err != nil {
+			return err
+		}
 		if err := tx.Where("position_id = ?", uint(posID)).Delete(&models.JobPosition{}).Error; err != nil {
 			return err
 		}
@@ -522,8 +547,8 @@ func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
 	}
 
 	err = h.db.Transaction(func(tx *gorm.DB) error {
-		var currentMultiplyByDays bool
-		result := tx.Raw("SELECT multiply_by_days FROM jobs WHERE jobid = ? FOR UPDATE", uint(jobID)).Scan(&currentMultiplyByDays)
+		var lockedJobID uint
+		result := tx.Raw("SELECT jobid FROM jobs WHERE jobid = ? FOR UPDATE", uint(jobID)).Scan(&lockedJobID)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -534,20 +559,6 @@ func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
 		result = tx.Model(&models.Job{}).Where("jobid = ?", uint(jobID)).Updates(updates)
 		if result.Error != nil {
 			return result.Error
-		}
-		if input.MultiplyByDays != nil && currentMultiplyByDays != *input.MultiplyByDays {
-			if err := tx.Exec(`
-				UPDATE job_rental_equipment AS jre
-				SET total_cost = ROUND((
-					jre.total_cost * CASE
-						WHEN ? THEN GREATEST(jre.days_used, 1)::numeric
-						ELSE 1.0 / GREATEST(jre.days_used, 1)::numeric
-					END
-				)::numeric, 2),
-				updated_at = NOW()
-				WHERE jre.job_id = ?`, *input.MultiplyByDays, uint(jobID)).Error; err != nil {
-				return err
-			}
 		}
 		return syncJobRevenueIfPositions(tx, uint(jobID))
 	})
@@ -575,21 +586,21 @@ func calcEventDays(start, end *time.Time) int {
 }
 
 // GetRentalCatalog returns all active rental equipment items for selection in job positions.
-// Uses raw column names matching the actual PostgreSQL schema (id, name, supplier)
-// rather than the GORM model tags which reference a different legacy schema.
+// Purchase and customer prices stay nullable and separate; a missing price is never zero.
 func (h *PositionHandler) GetRentalCatalog(c *gin.Context) {
 	type catalogItem struct {
-		EquipmentID  uint    `json:"equipmentID"`
-		ProductName  string  `json:"productName"`
-		SupplierName string  `json:"supplierName"`
-		RentalPrice  float64 `json:"rentalPrice"`
-		Category     string  `json:"category"`
+		EquipmentID   uint     `json:"equipmentID"`
+		ProductName   string   `json:"productName"`
+		SupplierName  string   `json:"supplierName"`
+		RentalPrice   *float64 `json:"rentalPrice"`
+		CustomerPrice *float64 `json:"customerPrice"`
+		Category      string   `json:"category"`
 	}
 	var items []catalogItem
 	if err := h.db.Table("rental_equipment").
 		Where("is_active = ?", true).
 		Order("name ASC").
-		Select("id AS equipment_id, name AS product_name, supplier AS supplier_name, rental_price, category").
+		Select("id AS equipment_id, name AS product_name, supplier AS supplier_name, rental_price, customer_price, category").
 		Scan(&items).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

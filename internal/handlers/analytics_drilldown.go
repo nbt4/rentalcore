@@ -178,9 +178,9 @@ func (n *revenueAggregationNode) finalize() RevenueDrilldownNode {
 		})
 	}
 	if n.data.HasCost {
-		n.data.Margin = roundAnalyticsMoney(n.data.GrossRevenue - n.data.Cost)
-		if n.data.GrossRevenue != 0 {
-			n.data.MarginPercent = math.Round((n.data.Margin/n.data.GrossRevenue)*1000) / 10
+		n.data.Margin = roundAnalyticsMoney(n.data.NetRevenue - n.data.Cost)
+		if n.data.NetRevenue != 0 {
+			n.data.MarginPercent = math.Round((n.data.Margin/n.data.NetRevenue)*1000) / 10
 		}
 	}
 
@@ -224,7 +224,7 @@ func analyticsRentalCost(job revenueDrilldownJob, position revenueDrilldownPosit
 	if job.MultiplyByDays {
 		dayFactor = float64(analyticsEventDays(job))
 	}
-	return position.SupplierUnitCost * math.Max(position.Quantity, 1) * dayFactor
+	return position.SupplierUnitCost * position.Quantity * dayFactor
 }
 
 func drilldownItemKey(prefix string, id *uint, label string) string {
@@ -328,7 +328,7 @@ func buildRevenueDrilldown(
 		}
 		discountFactor := jobDiscountFactor(rawTotal, job.Discount, job.DiscountType)
 		jobAmounts := revenueAmounts{}
-		if rawTotal > 0 {
+		if len(jobPositions) > 0 {
 			for _, position := range jobPositions {
 				category, ok := categoryByType[position.PositionType]
 				if !ok {
@@ -621,7 +621,8 @@ func (h *AnalyticsHandler) GetRevenueDrilldown(c *gin.Context) {
 		FROM job_rental_equipment jre
 		JOIN jobs j ON j.jobid = jre.job_id
 		LEFT JOIN rental_equipment r ON r.id = jre.equipment_id
-		WHERE j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
+		LEFT JOIN job_positions linked ON linked.position_id=jre.position_id
+		WHERE (jre.position_id IS NULL OR linked.deleted_at IS NULL) AND j.deleted_at IS NULL AND j.statusid IN ?`+dateFilter+`
 		ORDER BY jre.job_id, jre.equipment_id`, args...).Scan(&rentalCosts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Mietkosten konnten nicht geladen werden"})
 		return

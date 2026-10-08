@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Package, Wrench, Plus, Trash2, Check, Cpu, Building2 } from 'lucide-react';
 import { positionsApi, api } from '../lib/api';
 import type { JobPosition, JobTotals, RentalCatalogItem } from '../lib/api';
+import { rentalPositionInput } from '../lib/rental-position';
 import { toast } from '../lib/toast';
 
 type PositionProduct = { productID: number; name: string; itemcostperday?: number };
@@ -90,16 +91,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
       });
     } else {
       const item = rentalItems.find(r => r.equipmentID === itemId);
-      if (!item) return;
-      await positionsApi.create(jobId, {
-        position_type: 'rental',
-        rental_equipment_id: item.equipmentID,
-        description: item.productName,
-        quantity: 1,
-        unit: 'Stück',
-        unit_price: item.rentalPrice,
-        follow_day_factor: 0,
-      });
+      if (!item || item.customerPrice == null || item.rentalPrice == null) return;
+      await positionsApi.create(jobId, rentalPositionInput(item));
     }
     setAdding(null);
     await loadData();
@@ -259,8 +252,8 @@ export default function JobPositionsPanel({ jobId, onChanged }: Props) {
             >
               <option value="">Mietprodukt auswählen...</option>
               {rentalItems.map(r => (
-                <option key={r.equipmentID} value={r.equipmentID}>
-                  {r.productName} — {r.supplierName} ({fmt(r.rentalPrice)} €/Tag)
+                <option key={r.equipmentID} value={r.equipmentID} disabled={r.customerPrice == null || r.rentalPrice == null}>
+                  {r.productName} — {r.supplierName} ({r.customerPrice == null ? "—" : fmt(r.customerPrice)} €)
                 </option>
               ))}
             </select>
