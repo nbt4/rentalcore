@@ -50,14 +50,14 @@ func (SignedDocument) TableName() string {
 
 // DocumentIntegrity represents document integrity information
 type DocumentIntegrity struct {
-	DocumentHash    string    `json:"document_hash"`
-	Signature       string    `json:"signature"`
-	SignedAt        time.Time `json:"signed_at"`
-	SignedBy        string    `json:"signed_by"`
-	IsValid         bool      `json:"is_valid"`
-	VerifiedAt      time.Time `json:"verified_at"`
-	CompanyName     string    `json:"company_name"`
-	SigningMethod   string    `json:"signing_method"`
+	DocumentHash  string    `json:"document_hash"`
+	Signature     string    `json:"signature"`
+	SignedAt      time.Time `json:"signed_at"`
+	SignedBy      string    `json:"signed_by"`
+	IsValid       bool      `json:"is_valid"`
+	VerifiedAt    time.Time `json:"verified_at"`
+	CompanyName   string    `json:"company_name"`
+	SigningMethod string    `json:"signing_method"`
 }
 
 // NewDigitalSignatureManager creates a new digital signature manager
@@ -287,7 +287,7 @@ func (dsm *DigitalSignatureManager) SignDocument(documentType, documentID string
 func (dsm *DigitalSignatureManager) VerifySignature(signedDoc *SignedDocument, documentData []byte) (bool, error) {
 	// Calculate current document hash
 	currentHash := dsm.calculateHash(documentData)
-	
+
 	// Check if document hash matches
 	if currentHash != signedDoc.DocumentHash {
 		return false, fmt.Errorf("document hash mismatch: document has been modified")
@@ -379,4 +379,3 @@ func (dsm *DigitalSignatureManager) ExportPublicKey() (string, error) {
 
 	return string(pem.EncodeToMemory(publicKeyPEM)), nil
 }
-

@@ -19,13 +19,13 @@ import (
 )
 
 var (
-	db                *gorm.DB
-	complianceSystem  *compliance.ComplianceMiddleware
-	gobdCompliance    *compliance.GoBDCompliance
-	gdprCompliance    *compliance.GDPRCompliance
-	auditLogger       *compliance.AuditLogger
-	retentionManager  *compliance.RetentionManager
-	digitalSignature  *compliance.DigitalSignatureManager
+	db               *gorm.DB
+	complianceSystem *compliance.ComplianceMiddleware
+	gobdCompliance   *compliance.GoBDCompliance
+	gdprCompliance   *compliance.GDPRCompliance
+	auditLogger      *compliance.AuditLogger
+	retentionManager *compliance.RetentionManager
+	digitalSignature *compliance.DigitalSignatureManager
 )
 
 func init() {
@@ -45,24 +45,24 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to create compliance middleware: %v", err)
 	}
-	
+
 	gobdCompliance, err = compliance.NewGoBDCompliance(db, "./archives")
 	if err != nil {
 		log.Fatalf("Failed to create GoBD compliance: %v", err)
 	}
-	
+
 	gdprCompliance = compliance.NewGDPRCompliance(db, cfg.Security.EncryptionKey)
-	
+
 	auditLogger, err = compliance.NewAuditLogger(db)
 	if err != nil {
 		log.Fatalf("Failed to create audit logger: %v", err)
 	}
-	
+
 	retentionManager, err = compliance.NewRetentionManager(db)
 	if err != nil {
 		log.Fatalf("Failed to create retention manager: %v", err)
 	}
-	
+
 	digitalSignature, err = compliance.NewDigitalSignatureManager("./keys", "TS-Lager")
 	if err != nil {
 		log.Fatalf("Failed to create digital signature manager: %v", err)
@@ -231,14 +231,14 @@ func archiveDocument(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Archiving %s document ID: %d\n", documentType, documentID)
-	
+
 	// Create placeholder document data
 	documentData := map[string]interface{}{
-		"id": documentID,
-		"type": documentType,
+		"id":          documentID,
+		"type":        documentType,
 		"archived_at": time.Now(),
 	}
-	
+
 	err = gobdCompliance.ArchiveDocument(documentType, fmt.Sprintf("%d", documentID), documentData, 0)
 	if err != nil {
 		log.Fatalf("Failed to archive document: %v", err)
@@ -249,7 +249,7 @@ func archiveDocument(cmd *cobra.Command, args []string) {
 
 func verifyAuditIntegrity(cmd *cobra.Command, args []string) {
 	fmt.Println("Verifying audit log integrity...")
-	
+
 	_, err := auditLogger.VerifyChainIntegrity()
 	if err != nil {
 		log.Fatalf("Audit integrity verification failed: %v", err)
@@ -270,13 +270,13 @@ func exportAuditLogs(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Exporting audit logs from %s to %s\n", args[0], args[1])
-	
+
 	// Create filters for the date range
 	filters := compliance.AuditFilters{
 		StartDate: startDate,
 		EndDate:   endDate,
 	}
-	
+
 	logs, _, err := auditLogger.GetAuditEvents(filters)
 	if err != nil {
 		log.Fatalf("Failed to export audit logs: %v", err)
@@ -306,14 +306,14 @@ func signDocument(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Signing %s document ID: %d\n", documentType, documentID)
-	
+
 	// Create placeholder document data
 	documentData := map[string]interface{}{
-		"id": documentID,
-		"type": documentType,
+		"id":        documentID,
+		"type":      documentType,
 		"signed_at": time.Now(),
 	}
-	
+
 	_, err = digitalSignature.SignDocument(documentType, fmt.Sprintf("%d", documentID), documentData, "TS-Lager CLI")
 	if err != nil {
 		log.Fatalf("Failed to sign document: %v", err)
@@ -334,7 +334,7 @@ func recordConsent(cmd *cobra.Command, args []string) {
 	legalBasis := args[3]
 
 	fmt.Printf("Recording consent for user %d\n", userID)
-	
+
 	err = gdprCompliance.RecordConsent(uint(userID), dataType, purpose, legalBasis, "127.0.0.1", "CLI-Tool", nil)
 	if err != nil {
 		log.Fatalf("Failed to record consent: %v", err)
@@ -353,7 +353,7 @@ func withdrawConsent(cmd *cobra.Command, args []string) {
 	purpose := args[2]
 
 	fmt.Printf("Withdrawing consent for user %d\n", userID)
-	
+
 	err = gdprCompliance.WithdrawConsent(uint(userID), dataType, purpose)
 	if err != nil {
 		log.Fatalf("Failed to withdraw consent: %v", err)
@@ -369,7 +369,7 @@ func exportUserData(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Exporting data for user %d\n", userID)
-	
+
 	data, err := gdprCompliance.ExportUserData(uint(userID))
 	if err != nil {
 		log.Fatalf("Failed to export user data: %v", err)
@@ -399,7 +399,7 @@ func deleteUserData(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("WARNING: This will permanently delete all data for user %d\n", userID)
 	fmt.Print("Are you sure? (yes/no): ")
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	response, _ := reader.ReadString('\n')
 	response = strings.TrimSpace(strings.ToLower(response))
@@ -447,10 +447,10 @@ func listGDPRRequests(cmd *cobra.Command, args []string) {
 	fmt.Println("Pending GDPR Requests:")
 	fmt.Println("ID\tUser ID\tType\t\tRequested At\t\tDescription")
 	fmt.Println("--\t-------\t----\t\t------------\t\t-----------")
-	
+
 	for _, req := range requests {
-		fmt.Printf("%d\t%d\t%s\t\t%s\t%s\n", 
-			req.ID, req.UserID, req.RequestType, 
+		fmt.Printf("%d\t%d\t%s\t\t%s\t%s\n",
+			req.ID, req.UserID, req.RequestType,
 			req.RequestedAt.Format("2006-01-02 15:04"), req.Description)
 	}
 }
@@ -458,7 +458,7 @@ func listGDPRRequests(cmd *cobra.Command, args []string) {
 // Retention Command Implementations
 func runRetentionCleanup(cmd *cobra.Command, args []string) {
 	fmt.Println("Running data retention cleanup...")
-	
+
 	_, err := retentionManager.PerformRetentionCleanup()
 	if err != nil {
 		log.Fatalf("Retention cleanup failed: %v", err)
@@ -481,9 +481,9 @@ func listRetentionPolicies(cmd *cobra.Command, args []string) {
 	fmt.Println("Active Retention Policies:")
 	fmt.Println("Data Type\t\tRetention Period\tLegal Basis")
 	fmt.Println("---------\t\t----------------\t-----------")
-	
+
 	for _, policy := range policies {
-		fmt.Printf("%s\t\t%d years\t\t%s\n", 
+		fmt.Printf("%s\t\t%d years\t\t%s\n",
 			policy.DocumentType, policy.RetentionYears, policy.LegalBasis)
 	}
 }
@@ -497,14 +497,14 @@ func addRetentionPolicy(cmd *cobra.Command, args []string) {
 	legalBasis := args[2]
 
 	policy := &compliance.RetentionPolicy{
-		DocumentType:     dataType,
-		RetentionYears:   retentionDays / 365, // Convert days to years
-		LegalBasis:       legalBasis,
-		Description:      "Added via CLI",
-		IsActive:         true,
-		AutoDeleteAfter:  false,
+		DocumentType:    dataType,
+		RetentionYears:  retentionDays / 365, // Convert days to years
+		LegalBasis:      legalBasis,
+		Description:     "Added via CLI",
+		IsActive:        true,
+		AutoDeleteAfter: false,
 	}
-	
+
 	err = retentionManager.CreateRetentionPolicy(policy)
 	if err != nil {
 		log.Fatalf("Failed to add retention policy: %v", err)
@@ -517,7 +517,7 @@ func addRetentionPolicy(cmd *cobra.Command, args []string) {
 func showComplianceStatus(cmd *cobra.Command, args []string) {
 	fmt.Println("TS-Lager Compliance Status")
 	fmt.Println("==========================")
-	
+
 	// Check audit log integrity
 	fmt.Print("Audit Log Integrity: ")
 	if _, err := auditLogger.VerifyChainIntegrity(); err != nil {
@@ -528,7 +528,7 @@ func showComplianceStatus(cmd *cobra.Command, args []string) {
 
 	// Count various records
 	var auditCount, archivedCount, consentCount, requestCount int64
-	
+
 	db.Model(&compliance.AuditEvent{}).Count(&auditCount)
 	db.Model(&compliance.GoBDRecord{}).Count(&archivedCount)
 	db.Model(&compliance.ConsentRecord{}).Where("consent_given = true AND withdrawn_at IS NULL").Count(&consentCount)
@@ -556,20 +556,20 @@ func generateDailyReport(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Generating daily compliance report for %s\n", args[0])
-	
+
 	// Generate comprehensive daily report
 	report := map[string]interface{}{
 		"date": args[0],
 		"compliance_checks": map[string]interface{}{
-			"audit_integrity": "verified",
-			"retention_cleanup": "completed",
+			"audit_integrity":         "verified",
+			"retention_cleanup":       "completed",
 			"gdpr_requests_processed": 0,
-			"documents_archived": 0,
+			"documents_archived":      0,
 		},
 		"statistics": map[string]interface{}{
 			"total_audit_entries": 0,
-			"active_consents": 0,
-			"pending_requests": 0,
+			"active_consents":     0,
+			"pending_requests":    0,
 		},
 	}
 
@@ -601,7 +601,7 @@ func generateMonthlyReport(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Generating monthly compliance report for %04d-%02d\n", year, month)
-	
+
 	// This would generate a comprehensive monthly report
 	filename := fmt.Sprintf("monthly_compliance_report_%04d_%02d.json", year, month)
 	fmt.Printf("Monthly compliance report would be generated: %s\n", filename)
@@ -609,7 +609,7 @@ func generateMonthlyReport(cmd *cobra.Command, args []string) {
 
 func initializeCompliance(cmd *cobra.Command, args []string) {
 	fmt.Println("Initializing TS-Lager compliance system...")
-	
+
 	err := complianceSystem.InitializeCompliance()
 	if err != nil {
 		log.Fatalf("Failed to initialize compliance system: %v", err)

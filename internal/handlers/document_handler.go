@@ -45,17 +45,17 @@ func NewDocumentHandler(db *gorm.DB) (*DocumentHandler, error) { // FIXED: retur
 	}
 
 	allowedTypes := map[string]bool{
-		"application/pdf":                    true,
-		"application/octet-stream":           true, // generic fallback browsers often send
-		"image/jpeg":                         true,
-		"image/jpg":                          true,
-		"image/png":                          true,
-		"image/gif":                          true,
-		"image/webp":                         true,
-		"text/plain":                         true,
-		"application/msword":                 true,
+		"application/pdf":          true,
+		"application/octet-stream": true, // generic fallback browsers often send
+		"image/jpeg":               true,
+		"image/jpg":                true,
+		"image/png":                true,
+		"image/gif":                true,
+		"image/webp":               true,
+		"text/plain":               true,
+		"application/msword":       true,
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-		"application/vnd.ms-excel":           true,
+		"application/vnd.ms-excel": true,
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
 	}
 
@@ -153,15 +153,15 @@ func (h *DocumentHandler) UploadDocumentForm(c *gin.Context) {
 	entityID := c.Query("entityID")
 
 	if entityType == "" || entityID == "" {
-	// FIXED: validate against path traversal
-	if err := validatePathComponent(entityType); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
-		return
-	}
-	if err := validatePathComponent(entityID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
-		return
-	}
+		// FIXED: validate against path traversal
+		if err := validatePathComponent(entityType); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
+			return
+		}
+		if err := validatePathComponent(entityID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
+			return
+		}
 		user, _ := GetCurrentUser(c)
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
 			"title": "Error",
@@ -189,15 +189,15 @@ func (h *DocumentHandler) UploadDocument(c *gin.Context) {
 	isPublic := c.PostForm("isPublic") == "true"
 
 	if entityType == "" || entityID == "" {
-	// FIXED: validate against path traversal
-	if err := validatePathComponent(entityType); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
-		return
-	}
-	if err := validatePathComponent(entityID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
-		return
-	}
+		// FIXED: validate against path traversal
+		if err := validatePathComponent(entityType); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity type"})
+			return
+		}
+		if err := validatePathComponent(entityID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Entity type and ID are required"})
 		return
 	}
@@ -1367,7 +1367,6 @@ func (h *DocumentHandler) GetNextcloudClient() *storage.NextcloudClient {
 func (h *DocumentHandler) GetUploadPath() string {
 	return h.uploadPath
 }
-
 
 // FIXED: validatePathComponent prevents path traversal attacks
 func validatePathComponent(name string) error {

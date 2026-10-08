@@ -4,6 +4,14 @@ Mietprodukt-Korrektur: UI und MCP erzeugen echte Rental-Auftragspositionen zum
 Kundenpreis und verknüpfte Lieferantenkosten.
 [Modell, Migration und bestätigter Repair](docs/JOB_EXTERNAL_EQUIPMENT_MCP.md).
 
+## Terminradar — RentalCore 5.3.123
+
+Das Dashboard aktualisiert sichtbare Daten alle 60 Sekunden und bei Rückkehr zum
+Tab. Laufende und kommende Termine bleiben im Radar sichtbar; überfällige Jobs
+stehen weiterhin unter „Jetzt bearbeiten“. Ein Tageswechsel aktualisiert auch
+bei unveränderten Jobs die Tageskennzahlen und Termine.
+[Verhalten und Regressionstests](docs/TERMINRADAR.md).
+
 ## Auftragspositionen — Rental 5.3.121 / Warehouse 5.9.113 / MCP 1.5.59
 
 `rental.job_positions.prepare_create/create`, `prepare_update/update` und

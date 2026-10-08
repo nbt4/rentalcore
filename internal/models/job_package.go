@@ -30,14 +30,14 @@ func (JobPackage) TableName() string {
 
 // JobPackageReservation tracks device reservations for packages assigned to jobs
 type JobPackageReservation struct {
-	ReservationID     uint           `gorm:"primaryKey;column:reservation_id" json:"reservation_id"`
-	JobPackageID      uint           `gorm:"column:job_package_id;not null" json:"job_package_id"`
-	DeviceID          string         `gorm:"column:device_id;not null" json:"device_id"`
-	Quantity          uint           `gorm:"column:quantity;not null;default:1" json:"quantity"`
-	ReservationStatus string         `gorm:"column:reservation_status;not null;default:'reserved'" json:"reservation_status"`
-	ReservedAt        time.Time      `gorm:"column:reserved_at;not null;default:CURRENT_TIMESTAMP" json:"reserved_at"`
-	AssignedAt        sql.NullTime   `gorm:"column:assigned_at" json:"assigned_at"`
-	ReleasedAt        sql.NullTime   `gorm:"column:released_at" json:"released_at"`
+	ReservationID     uint         `gorm:"primaryKey;column:reservation_id" json:"reservation_id"`
+	JobPackageID      uint         `gorm:"column:job_package_id;not null" json:"job_package_id"`
+	DeviceID          string       `gorm:"column:device_id;not null" json:"device_id"`
+	Quantity          uint         `gorm:"column:quantity;not null;default:1" json:"quantity"`
+	ReservationStatus string       `gorm:"column:reservation_status;not null;default:'reserved'" json:"reservation_status"`
+	ReservedAt        time.Time    `gorm:"column:reserved_at;not null;default:CURRENT_TIMESTAMP" json:"reserved_at"`
+	AssignedAt        sql.NullTime `gorm:"column:assigned_at" json:"assigned_at"`
+	ReleasedAt        sql.NullTime `gorm:"column:released_at" json:"released_at"`
 
 	// Relationships
 	JobPackage *JobPackage `gorm:"foreignKey:JobPackageID;references:JobPackageID" json:"job_package,omitempty"`

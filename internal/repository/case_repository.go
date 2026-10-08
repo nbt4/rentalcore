@@ -22,7 +22,7 @@ func (r *CaseRepository) GetAll() ([]models.Case, error) {
 	if err != nil {
 		return cases, err
 	}
-	
+
 	// Add device counts using simple COUNT queries
 	for i := range cases {
 		var deviceCount int64
@@ -33,7 +33,7 @@ func (r *CaseRepository) GetAll() ([]models.Case, error) {
 		// Don't load full device data for list view
 		cases[i].Devices = []models.DeviceCase{}
 	}
-	
+
 	return cases, err
 }
 
@@ -44,14 +44,14 @@ func (r *CaseRepository) GetByID(id uint) (*models.Case, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Add device count
 	var deviceCount int64
 	if err := r.db.DB.Table("devicescases").Where("caseID = ?", case_.CaseID).Count(&deviceCount).Error; err != nil {
 		deviceCount = 0
 	}
 	case_.DeviceCount = int(deviceCount)
-	
+
 	return &case_, nil
 }
 
@@ -72,7 +72,7 @@ func (r *CaseRepository) Delete(id uint) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Then delete the case
 	return r.db.DB.Delete(&models.Case{}, id).Error
 }
@@ -110,7 +110,7 @@ func (r *CaseRepository) AddDeviceToCase(caseID uint, deviceID string) error {
 		CaseID:   caseID,
 		DeviceID: deviceID,
 	}
-	
+
 	return r.db.DB.Create(&deviceCase).Error
 }
 
@@ -159,7 +159,7 @@ func (r *CaseRepository) GetDeviceCount(caseID uint) (int64, error) {
 // List returns cases with optional filtering
 func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error) {
 	logger.LogInfo("CaseRepository.List called")
-	
+
 	// Use direct SQL with COUNT for better performance
 	sqlQuery := `
 		SELECT 
@@ -174,18 +174,18 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 			COALESCE(COUNT(dc.deviceid), 0) as device_count
 		FROM cases c 
 		LEFT JOIN devicescases dc ON c.caseid = dc.caseid`
-	
+
 	var args []interface{}
 	if filter != nil && filter.SearchTerm != "" {
 		sqlQuery += " WHERE c.name LIKE ? OR c.description LIKE ?"
 		searchTerm := "%" + filter.SearchTerm + "%"
 		args = append(args, searchTerm, searchTerm)
 	}
-	
+
 	sqlQuery += " GROUP BY c.caseid ORDER BY c.caseid"
-	
+
 	logger.LogInfo("Executing SQL: %s", sqlQuery)
-	
+
 	type CaseResult struct {
 		CaseID      uint     `json:"caseID" gorm:"column:caseID"`
 		Name        string   `json:"name" gorm:"column:name"`
@@ -197,20 +197,20 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 		Status      string   `json:"status" gorm:"column:status"`
 		DeviceCount int      `json:"device_count" gorm:"column:device_count"`
 	}
-	
+
 	var results []CaseResult
 	err := r.db.DB.Raw(sqlQuery, args...).Scan(&results).Error
 	if err != nil {
 		logger.LogInfo("SQL ERROR: %v", err)
 		return nil, err
 	}
-	
+
 	logger.LogInfo("Found %d cases", len(results))
-	
+
 	var cases []models.Case
 	for _, result := range results {
 		logger.LogInfo("Case %d ('%s') = %d devices", result.CaseID, result.Name, result.DeviceCount)
-		
+
 		case_ := models.Case{
 			CaseID:      result.CaseID,
 			Name:        result.Name,
@@ -223,10 +223,10 @@ func (r *CaseRepository) List(filter *models.FilterParams) ([]models.Case, error
 			DeviceCount: result.DeviceCount,
 			Devices:     []models.DeviceCase{},
 		}
-		
+
 		cases = append(cases, case_)
 	}
-	
+
 	logger.LogInfo("Returning %d cases", len(cases))
 	return cases, nil
 }
@@ -244,7 +244,7 @@ func (r *CaseRepository) IsDeviceInAnyCase(deviceID string) (bool, error) {
 func (r *CaseRepository) GetAllDeviceCaseAssignments() ([]models.DeviceCase, error) {
 	var deviceCases []models.DeviceCase
 	err := r.db.DB.
-		Preload("Case").  // Load case information
+		Preload("Case"). // Load case information
 		Find(&deviceCases).Error
 	return deviceCases, err
 }

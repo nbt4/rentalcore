@@ -1206,7 +1206,7 @@ func (h *DeviceHandler) buildProductTreeData(startDate, endDate *time.Time, excl
 	}
 
 	// 5. Link Hierarchy (Bottom-Up for counts, Top-Down for structure)
-	
+
 	// Link Subbiercategories to Subcategories
 	// We iterate the map, but order doesn't matter for linking, only for the final slice.
 	// We'll sort the slices at the end.
@@ -1283,7 +1283,7 @@ func (h *DeviceHandler) buildProductTreeData(startDate, endDate *time.Time, excl
 			sort.Slice(sub.Products, func(i, j int) bool {
 				return strings.ToLower(sub.Products[i].Name) < strings.ToLower(sub.Products[j].Name)
 			})
-			
+
 			// Sort products within subbiercategories
 			for l := range sub.Subbiercategories {
 				subbier := &sub.Subbiercategories[l]

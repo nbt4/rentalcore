@@ -40,53 +40,53 @@ func (h *SecurityHandler) GetPermissionDefinitions() []Permission {
 		{Code: "users.create", Name: "Create Users", Description: "Create new user accounts", Category: "User Management"},
 		{Code: "users.edit", Name: "Edit Users", Description: "Modify existing user information", Category: "User Management"},
 		{Code: "users.delete", Name: "Delete Users", Description: "Remove user accounts", Category: "User Management"},
-		
+
 		// Job Management
 		{Code: "jobs.manage", Name: "Manage Jobs", Description: "Full access to job creation and management", Category: "Job Management"},
 		{Code: "jobs.view", Name: "View Jobs", Description: "View job listings and details", Category: "Job Management"},
 		{Code: "jobs.create", Name: "Create Jobs", Description: "Create new jobs and projects", Category: "Job Management"},
 		{Code: "jobs.edit", Name: "Edit Jobs", Description: "Modify existing job information", Category: "Job Management"},
 		{Code: "jobs.delete", Name: "Delete Jobs", Description: "Remove jobs from the system", Category: "Job Management"},
-		
+
 		// Device Management
 		{Code: "devices.manage", Name: "Manage Equipment", Description: "Add, edit, and track equipment inventory", Category: "Equipment"},
 		{Code: "devices.view", Name: "View Equipment", Description: "View equipment lists and availability", Category: "Equipment"},
 		{Code: "devices.create", Name: "Add Equipment", Description: "Add new equipment to inventory", Category: "Equipment"},
 		{Code: "devices.edit", Name: "Edit Equipment", Description: "Modify equipment information", Category: "Equipment"},
 		{Code: "devices.delete", Name: "Remove Equipment", Description: "Remove equipment from inventory", Category: "Equipment"},
-		
+
 		// Customer Management
 		{Code: "customers.manage", Name: "Manage Customers", Description: "Create and edit customer information", Category: "Customer Management"},
 		{Code: "customers.view", Name: "View Customers", Description: "View customer listings and details", Category: "Customer Management"},
 		{Code: "customers.create", Name: "Create Customers", Description: "Add new customers to database", Category: "Customer Management"},
 		{Code: "customers.edit", Name: "Edit Customers", Description: "Modify customer information", Category: "Customer Management"},
 		{Code: "customers.delete", Name: "Delete Customers", Description: "Remove customers from database", Category: "Customer Management"},
-		
+
 		// Reports & Analytics
 		{Code: "reports.view", Name: "View Reports", Description: "Access analytics and generate reports", Category: "Reports & Analytics"},
 		{Code: "analytics.view", Name: "View Analytics", Description: "Access dashboard analytics and insights", Category: "Reports & Analytics"},
 		{Code: "analytics.export", Name: "Export Data", Description: "Export analytics data and reports", Category: "Reports & Analytics"},
-		
+
 		// System Settings
 		{Code: "settings.manage", Name: "System Settings", Description: "Configure application settings", Category: "System"},
 		{Code: "roles.manage", Name: "Manage Roles", Description: "Create and modify user roles and permissions", Category: "System"},
 		{Code: "audit.view", Name: "View Audit Logs", Description: "Access system audit trail and logs", Category: "System"},
-		
+
 		// Scanner & Mobile
 		{Code: "scan.use", Name: "Use Scanner", Description: "Access mobile barcode scanning features", Category: "Scanner & Mobile"},
 		{Code: "mobile.access", Name: "Mobile Access", Description: "Access mobile app features", Category: "Scanner & Mobile"},
-		
+
 		// Documents
 		{Code: "documents.manage", Name: "Manage Documents", Description: "Upload, view, and organize documents", Category: "Documents"},
 		{Code: "documents.view", Name: "View Documents", Description: "View and download documents", Category: "Documents"},
 		{Code: "documents.upload", Name: "Upload Documents", Description: "Upload new documents and files", Category: "Documents"},
 		{Code: "documents.sign", Name: "Digital Signatures", Description: "Create and verify digital signatures", Category: "Documents"},
-		
+
 		// Financial
 		{Code: "financial.view", Name: "View Financial Data", Description: "Access financial reports and transactions", Category: "Financial"},
 		{Code: "financial.manage", Name: "Manage Finances", Description: "Create invoices and manage transactions", Category: "Financial"},
 		{Code: "invoices.generate", Name: "Generate Invoices", Description: "Create and send customer invoices", Category: "Financial"},
-		
+
 		// Super Admin
 		{Code: "*", Name: "Full System Access", Description: "Complete administrative access to all features", Category: "Super Admin"},
 	}
@@ -278,7 +278,7 @@ func (h *SecurityHandler) DeleteRole(c *gin.Context) {
 // GetUserRoles returns roles assigned to a user
 func (h *SecurityHandler) GetUserRoles(c *gin.Context) {
 	userID := c.Param("userId")
-	
+
 	// Users can view their own roles, admins can view any user's roles
 	currentUser, exists := GetCurrentUser(c)
 	if !exists {
@@ -309,7 +309,7 @@ func (h *SecurityHandler) AssignUserRole(c *gin.Context) {
 	}
 
 	userID := c.Param("userId")
-	
+
 	var request struct {
 		RoleID    uint       `json:"roleId" binding:"required"`
 		ExpiresAt *time.Time `json:"expiresAt"`
@@ -363,20 +363,20 @@ func (h *SecurityHandler) AssignUserRole(c *gin.Context) {
 			existing.AssignedAt = time.Now()
 			existing.AssignedBy = &currentUser.UserID
 			existing.ExpiresAt = request.ExpiresAt
-			
+
 			result = h.db.Save(&existing)
 			if result.Error != nil {
 				logger.LogWarn("ERROR reactivating user role: %v\n", result.Error)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role", "details": result.Error.Error()})
 				return
 			}
-			
+
 			// Load role data for response
 			h.db.Preload("Role").First(&existing, "userID = ? AND roleID = ?", userID, request.RoleID)
-			
+
 			// Log the action
 			h.logAction(c, "assign_role", "user", userID, nil, existing)
-			
+
 			c.JSON(http.StatusCreated, gin.H{"userRole": existing})
 			return
 		}
@@ -519,9 +519,9 @@ func (h *SecurityHandler) GetAuditLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"auditLogs": auditLogs,
 		"pagination": gin.H{
-			"page":      page,
-			"pageSize":  pageSize,
-			"total":     total,
+			"page":       page,
+			"pageSize":   pageSize,
+			"total":      total,
 			"totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
 		},
 	})
@@ -737,9 +737,9 @@ func (h *SecurityHandler) hasPermission(c *gin.Context, permission string) bool 
 
 	// Get user's active roles
 	var userRoles []models.UserRole
-	result := h.db.Preload("Role").Where("userID = ? AND is_active = ? AND (expires_at IS NULL OR expires_at > ?)", 
+	result := h.db.Preload("Role").Where("userID = ? AND is_active = ? AND (expires_at IS NULL OR expires_at > ?)",
 		currentUser.UserID, true, time.Now()).Find(&userRoles)
-	
+
 	if result.Error != nil {
 		return false
 	}
@@ -768,7 +768,7 @@ func (h *SecurityHandler) hasPermission(c *gin.Context, permission string) bool 
 // logAction logs an action to the audit trail
 func (h *SecurityHandler) logAction(c *gin.Context, action, entityType, entityID string, oldValues, newValues interface{}) {
 	currentUser, exists := GetCurrentUser(c)
-	
+
 	auditLog := models.AuditLog{
 		Action:     action,
 		EntityType: entityType,
@@ -809,7 +809,7 @@ func (h *SecurityHandler) InitializeDefaultRoles() error {
 	// Admin role
 	adminPermissions := []string{"*"} // All permissions
 	adminPermsJSON, _ := json.Marshal(adminPermissions)
-	
+
 	adminRole := models.Role{
 		Name:         "admin",
 		DisplayName:  "Administrator",
@@ -832,7 +832,7 @@ func (h *SecurityHandler) InitializeDefaultRoles() error {
 		"user.read",
 	}
 	managerPermsJSON, _ := json.Marshal(managerPermissions)
-	
+
 	managerRole := models.Role{
 		Name:         "manager",
 		DisplayName:  "Manager",
@@ -853,7 +853,7 @@ func (h *SecurityHandler) InitializeDefaultRoles() error {
 		"analytics.read",
 	}
 	employeePermsJSON, _ := json.Marshal(employeePermissions)
-	
+
 	employeeRole := models.Role{
 		Name:         "employee",
 		DisplayName:  "Employee",
@@ -874,7 +874,7 @@ func (h *SecurityHandler) InitializeDefaultRoles() error {
 		"analytics.read",
 	}
 	viewerPermsJSON, _ := json.Marshal(viewerPermissions)
-	
+
 	viewerRole := models.Role{
 		Name:         "viewer",
 		DisplayName:  "Viewer",

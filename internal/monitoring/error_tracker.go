@@ -83,11 +83,11 @@ type ErrorSummary struct {
 
 // AlertRule defines when to send alerts
 type AlertRule struct {
-	Severity    ErrorSeverity
-	Threshold   int           // Number of occurrences
-	TimeWindow  time.Duration // Time window for threshold
-	Component   string        // Optional component filter
-	Enabled     bool
+	Severity   ErrorSeverity
+	Threshold  int           // Number of occurrences
+	TimeWindow time.Duration // Time window for threshold
+	Component  string        // Optional component filter
+	Enabled    bool
 }
 
 // AlertChannel defines how alerts are sent
@@ -129,12 +129,12 @@ func (sac *SlackAlertChannel) SendAlert(error *ErrorDetails, rule *AlertRule) er
 
 // ErrorTracker manages error tracking and alerting
 type ErrorTracker struct {
-	errors       map[string]*ErrorDetails
-	rules        []AlertRule
-	channels     []AlertChannel
-	mutex        sync.RWMutex
-	maxErrors    int
-	retention    time.Duration
+	errors    map[string]*ErrorDetails
+	rules     []AlertRule
+	channels  []AlertChannel
+	mutex     sync.RWMutex
+	maxErrors int
+	retention time.Duration
 }
 
 // NewErrorTracker creates a new error tracker
@@ -156,16 +156,16 @@ func NewErrorTracker(maxErrors int, retention time.Duration) *ErrorTracker {
 // CaptureError captures and processes an error
 func (et *ErrorTracker) CaptureError(message string, err error, severity ErrorSeverity, context map[string]interface{}) *ErrorDetails {
 	errorDetails := &ErrorDetails{
-		ID:          et.generateErrorID(),
-		Message:     message,
-		Error:       "",
-		Severity:    severity.String(),
-		Timestamp:   time.Now().UTC(),
-		Context:     context,
-		Count:       1,
-		FirstSeen:   time.Now().UTC(),
-		LastSeen:    time.Now().UTC(),
-		Resolved:    false,
+		ID:        et.generateErrorID(),
+		Message:   message,
+		Error:     "",
+		Severity:  severity.String(),
+		Timestamp: time.Now().UTC(),
+		Context:   context,
+		Count:     1,
+		FirstSeen: time.Now().UTC(),
+		LastSeen:  time.Now().UTC(),
+		Resolved:  false,
 	}
 
 	if err != nil {
@@ -542,7 +542,7 @@ func (et *ErrorTracker) cleanup() {
 	for range ticker.C {
 		et.mutex.Lock()
 		cutoff := time.Now().UTC().Add(-et.retention)
-		
+
 		for key, error := range et.errors {
 			if error.LastSeen.Before(cutoff) && error.Resolved {
 				delete(et.errors, key)

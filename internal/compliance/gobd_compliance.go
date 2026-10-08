@@ -74,15 +74,15 @@ func (AuditEvent) TableName() string {
 
 // RetentionPolicy defines data retention rules according to German law
 type RetentionPolicy struct {
-	ID               uint      `json:"id" gorm:"primaryKey"`
-	DocumentType     string    `json:"document_type" gorm:"not null;unique"` // invoice, receipt, contract, etc.
-	RetentionYears   int       `json:"retention_years" gorm:"not null"`      // Legal retention period
-	LegalBasis       string    `json:"legal_basis" gorm:"not null"`          // Reference to law (e.g., "§ 147 AO")
-	Description      string    `json:"description" gorm:"type:text"`         // Human-readable description
-	IsActive         bool      `json:"is_active" gorm:"default:true"`
-	AutoDeleteAfter  bool      `json:"auto_delete_after" gorm:"default:false"` // Auto-delete after retention
-	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	DocumentType    string    `json:"document_type" gorm:"not null;unique"` // invoice, receipt, contract, etc.
+	RetentionYears  int       `json:"retention_years" gorm:"not null"`      // Legal retention period
+	LegalBasis      string    `json:"legal_basis" gorm:"not null"`          // Reference to law (e.g., "§ 147 AO")
+	Description     string    `json:"description" gorm:"type:text"`         // Human-readable description
+	IsActive        bool      `json:"is_active" gorm:"default:true"`
+	AutoDeleteAfter bool      `json:"auto_delete_after" gorm:"default:false"` // Auto-delete after retention
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 func (RetentionPolicy) TableName() string {
@@ -155,7 +155,7 @@ func (gbc *GoBDCompliance) ArchiveInvoice(invoice *models.Invoice, userID uint) 
 	// Create archive file
 	fileName := fmt.Sprintf("invoice_%s_%s.json", invoice.InvoiceNumber, time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(gbc.archivePath, "invoices", fileName)
-	
+
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)
 	}
@@ -217,7 +217,7 @@ func (gbc *GoBDCompliance) ArchiveDocument(documentType, documentID string, data
 	// Create archive file
 	fileName := fmt.Sprintf("%s_%s_%s.json", documentType, documentID, time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(gbc.archivePath, documentType, fileName)
-	
+
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)
 	}
@@ -304,7 +304,7 @@ func (gbc *GoBDCompliance) GetArchivedDocument(documentType, documentID string) 
 // CleanupExpiredRecords removes records that have passed their retention period
 func (gbc *GoBDCompliance) CleanupExpiredRecords() error {
 	now := time.Now()
-	
+
 	// Find expired records
 	var expiredRecords []GoBDRecord
 	if err := gbc.db.Where("retention_date < ?", now).Find(&expiredRecords).Error; err != nil {
@@ -352,7 +352,7 @@ func (gbc *GoBDCompliance) GetComplianceReport() (*ComplianceReport, error) {
 		DocumentType string
 		Count        int64
 	}
-	
+
 	if err := gbc.db.Model(&GoBDRecord{}).
 		Select("document_type, COUNT(*) as count").
 		Group("document_type").
@@ -477,12 +477,12 @@ func (gbc *GoBDCompliance) initializeDefaultPolicies() error {
 
 // ComplianceReport represents a GoBD compliance report
 type ComplianceReport struct {
-	GeneratedAt        time.Time         `json:"generated_at"`
-	ArchivedDocuments  map[string]int64  `json:"archived_documents"`
-	TotalArchiveSize   int64             `json:"total_archive_size"`
-	ExpiringRecords    int64             `json:"expiring_records"`
-	AuditEvents        int64             `json:"audit_events"`
-	IntegrityChecks    int64             `json:"integrity_checks"`
-	ComplianceStatus   string            `json:"compliance_status"`
-	Recommendations    []string          `json:"recommendations"`
+	GeneratedAt       time.Time        `json:"generated_at"`
+	ArchivedDocuments map[string]int64 `json:"archived_documents"`
+	TotalArchiveSize  int64            `json:"total_archive_size"`
+	ExpiringRecords   int64            `json:"expiring_records"`
+	AuditEvents       int64            `json:"audit_events"`
+	IntegrityChecks   int64            `json:"integrity_checks"`
+	ComplianceStatus  string           `json:"compliance_status"`
+	Recommendations   []string         `json:"recommendations"`
 }
