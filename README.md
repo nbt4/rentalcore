@@ -1,5 +1,7 @@
 # RentalCore
 
+## Mietprodukt-Positionen — RentalCore 5.3.124
+
 Mietprodukt-Korrektur: UI und MCP erzeugen echte Rental-Auftragspositionen zum
 Kundenpreis und verknüpfte Lieferantenkosten.
 [Modell, Migration und bestätigter Repair](docs/JOB_EXTERNAL_EQUIPMENT_MCP.md).
