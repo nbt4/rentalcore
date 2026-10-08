@@ -37,16 +37,16 @@ func (ProductAccessory) TableName() string {
 
 // ProductConsumable links a product to its available consumables
 type ProductConsumable struct {
-	ProductID            uint      `json:"product_id" gorm:"primaryKey;column:product_id"`
-	ConsumableProductID  uint      `json:"consumable_product_id" gorm:"primaryKey;column:consumable_product_id"`
-	DefaultQuantity      float64   `json:"default_quantity" gorm:"column:default_quantity;type:decimal(10,3);default:1.000"`
-	SortOrder            *int      `json:"sort_order" gorm:"column:sort_order"`
-	CreatedAt            time.Time `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP"`
-	UpdatedAt            time.Time `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
+	ProductID           uint      `json:"product_id" gorm:"primaryKey;column:product_id"`
+	ConsumableProductID uint      `json:"consumable_product_id" gorm:"primaryKey;column:consumable_product_id"`
+	DefaultQuantity     float64   `json:"default_quantity" gorm:"column:default_quantity;type:decimal(10,3);default:1.000"`
+	SortOrder           *int      `json:"sort_order" gorm:"column:sort_order"`
+	CreatedAt           time.Time `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP"`
+	UpdatedAt           time.Time `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
 
 	// Relations
-	Product            *Product `json:"product,omitempty" gorm:"foreignKey:ProductID;references:ProductID"`
-	ConsumableProduct  *Product `json:"consumable_product,omitempty" gorm:"foreignKey:ConsumableProductID;references:ProductID"`
+	Product           *Product `json:"product,omitempty" gorm:"foreignKey:ProductID;references:ProductID"`
+	ConsumableProduct *Product `json:"consumable_product,omitempty" gorm:"foreignKey:ConsumableProductID;references:ProductID"`
 }
 
 func (ProductConsumable) TableName() string {
@@ -115,28 +115,27 @@ func (JobAccessory) TableName() string {
 
 // JobConsumable tracks consumables assigned to a job
 type JobConsumable struct {
-	JobConsumableID      uint64    `json:"job_consumable_id" gorm:"primaryKey;column:job_consumable_id;autoIncrement"`
-	JobID                uint      `json:"job_id" gorm:"not null;column:job_id;index"`
-	ParentDeviceID       *string   `json:"parent_device_id" gorm:"column:parent_device_id;index"`
-	ConsumableProductID  uint      `json:"consumable_product_id" gorm:"not null;column:consumable_product_id;index"`
-	QuantityAssigned     float64   `json:"quantity_assigned" gorm:"column:quantity_assigned;type:decimal(10,3);default:1.000"`
-	QuantityScannedOut   float64   `json:"quantity_scanned_out" gorm:"column:quantity_scanned_out;type:decimal(10,3);default:0.000"`
-	QuantityScannedIn    float64   `json:"quantity_scanned_in" gorm:"column:quantity_scanned_in;type:decimal(10,3);default:0.000"`
-	PricePerUnit         *float64  `json:"price_per_unit" gorm:"column:price_per_unit;type:decimal(10,2)"`
-	Notes                *string   `json:"notes" gorm:"column:notes;type:text"`
-	CreatedAt            time.Time `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP"`
-	UpdatedAt            time.Time `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
+	JobConsumableID     uint64    `json:"job_consumable_id" gorm:"primaryKey;column:job_consumable_id;autoIncrement"`
+	JobID               uint      `json:"job_id" gorm:"not null;column:job_id;index"`
+	ParentDeviceID      *string   `json:"parent_device_id" gorm:"column:parent_device_id;index"`
+	ConsumableProductID uint      `json:"consumable_product_id" gorm:"not null;column:consumable_product_id;index"`
+	QuantityAssigned    float64   `json:"quantity_assigned" gorm:"column:quantity_assigned;type:decimal(10,3);default:1.000"`
+	QuantityScannedOut  float64   `json:"quantity_scanned_out" gorm:"column:quantity_scanned_out;type:decimal(10,3);default:0.000"`
+	QuantityScannedIn   float64   `json:"quantity_scanned_in" gorm:"column:quantity_scanned_in;type:decimal(10,3);default:0.000"`
+	PricePerUnit        *float64  `json:"price_per_unit" gorm:"column:price_per_unit;type:decimal(10,2)"`
+	Notes               *string   `json:"notes" gorm:"column:notes;type:text"`
+	CreatedAt           time.Time `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP"`
+	UpdatedAt           time.Time `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
 
 	// Relations
-	Job                *Job     `json:"job,omitempty" gorm:"foreignKey:JobID;references:JobID"`
-	ParentDevice       *Device  `json:"parent_device,omitempty" gorm:"foreignKey:ParentDeviceID;references:DeviceID"`
-	ConsumableProduct  *Product `json:"consumable_product,omitempty" gorm:"foreignKey:ConsumableProductID;references:ProductID"`
+	Job               *Job     `json:"job,omitempty" gorm:"foreignKey:JobID;references:JobID"`
+	ParentDevice      *Device  `json:"parent_device,omitempty" gorm:"foreignKey:ParentDeviceID;references:DeviceID"`
+	ConsumableProduct *Product `json:"consumable_product,omitempty" gorm:"foreignKey:ConsumableProductID;references:ProductID"`
 }
 
 func (JobConsumable) TableName() string {
 	return "job_consumables"
 }
-
 
 // View Models - These represent the database views for easier querying
 
@@ -162,17 +161,17 @@ func (ProductAccessoryView) TableName() string {
 
 // ProductConsumableView represents the vw_product_consumables view
 type ProductConsumableView struct {
-	ProductID            uint     `json:"product_id" gorm:"column:product_id"`
-	ProductName          string   `json:"product_name" gorm:"column:product_name"`
-	ConsumableProductID  uint     `json:"consumable_product_id" gorm:"column:consumable_product_id"`
-	ConsumableName       string   `json:"consumable_name" gorm:"column:consumable_name"`
-	ConsumableStock      *float64 `json:"consumable_stock" gorm:"column:consumable_stock"`
-	ConsumablePrice      *float64 `json:"consumable_price" gorm:"column:consumable_price"`
-	CountType            *string  `json:"count_type" gorm:"column:count_type"`
-	CountTypeAbbr        *string  `json:"count_type_abbr" gorm:"column:count_type_abbr"`
-	DefaultQuantity      float64  `json:"default_quantity" gorm:"column:default_quantity"`
-	SortOrder            *int     `json:"sort_order" gorm:"column:sort_order"`
-	GenericBarcode       *string  `json:"generic_barcode" gorm:"column:generic_barcode"`
+	ProductID           uint     `json:"product_id" gorm:"column:product_id"`
+	ProductName         string   `json:"product_name" gorm:"column:product_name"`
+	ConsumableProductID uint     `json:"consumable_product_id" gorm:"column:consumable_product_id"`
+	ConsumableName      string   `json:"consumable_name" gorm:"column:consumable_name"`
+	ConsumableStock     *float64 `json:"consumable_stock" gorm:"column:consumable_stock"`
+	ConsumablePrice     *float64 `json:"consumable_price" gorm:"column:consumable_price"`
+	CountType           *string  `json:"count_type" gorm:"column:count_type"`
+	CountTypeAbbr       *string  `json:"count_type_abbr" gorm:"column:count_type_abbr"`
+	DefaultQuantity     float64  `json:"default_quantity" gorm:"column:default_quantity"`
+	SortOrder           *int     `json:"sort_order" gorm:"column:sort_order"`
+	GenericBarcode      *string  `json:"generic_barcode" gorm:"column:generic_barcode"`
 }
 
 func (ProductConsumableView) TableName() string {

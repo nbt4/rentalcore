@@ -20,12 +20,12 @@ type AuditLogger struct {
 
 // AuditStatistics provides audit logging statistics
 type AuditStatistics struct {
-	TotalEvents     int64 `json:"total_events"`
+	TotalEvents     int64            `json:"total_events"`
 	EventsByType    map[string]int64 `json:"events_by_type"`
 	EventsByUser    map[string]int64 `json:"events_by_user"`
-	IntegrityChecks int64 `json:"integrity_checks"`
-	LastEvent       time.Time `json:"last_event"`
-	ChainIntact     bool  `json:"chain_intact"`
+	IntegrityChecks int64            `json:"integrity_checks"`
+	LastEvent       time.Time        `json:"last_event"`
+	ChainIntact     bool             `json:"chain_intact"`
 }
 
 // NewAuditLogger creates a new GoBD-compliant audit logger
@@ -368,7 +368,7 @@ func (al *AuditLogger) generateEventHash(event *AuditEvent) string {
 		event.OldValues,
 		event.NewValues,
 	)
-	
+
 	hash := sha256.Sum256([]byte(hashData))
 	return hex.EncodeToString(hash[:])
 }
@@ -383,4 +383,3 @@ type AuditFilters struct {
 	Limit      int       `form:"limit"`
 	Offset     int       `form:"offset"`
 }
-

@@ -27,84 +27,84 @@ const (
 
 // ConsentRecord tracks user consent for data processing
 type ConsentRecord struct {
-	ID           uint      `json:"id" gorm:"primaryKey"`
-	UserID       uint      `json:"user_id" gorm:"not null;index"`
-	DataType     string    `json:"data_type" gorm:"not null"`
-	Purpose      string    `json:"purpose" gorm:"not null"`
-	ConsentGiven bool      `json:"consent_given" gorm:"not null"`
-	ConsentDate  time.Time `json:"consent_date" gorm:"not null"`
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	UserID       uint       `json:"user_id" gorm:"not null;index"`
+	DataType     string     `json:"data_type" gorm:"not null"`
+	Purpose      string     `json:"purpose" gorm:"not null"`
+	ConsentGiven bool       `json:"consent_given" gorm:"not null"`
+	ConsentDate  time.Time  `json:"consent_date" gorm:"not null"`
 	ExpiryDate   *time.Time `json:"expiry_date"`
-	LegalBasis   string    `json:"legal_basis" gorm:"not null"` // Art. 6 GDPR basis
+	LegalBasis   string     `json:"legal_basis" gorm:"not null"` // Art. 6 GDPR basis
 	WithdrawnAt  *time.Time `json:"withdrawn_at"`
-	Version      string    `json:"version" gorm:"not null"` // Consent version
-	IPAddress    string    `json:"ip_address"`
-	UserAgent    string    `json:"user_agent"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Version      string     `json:"version" gorm:"not null"` // Consent version
+	IPAddress    string     `json:"ip_address"`
+	UserAgent    string     `json:"user_agent"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // DataProcessingRecord tracks all data processing activities
 type DataProcessingRecord struct {
-	ID              uint      `json:"id" gorm:"primaryKey"`
-	UserID          uint      `json:"user_id" gorm:"not null;index"`
-	DataType        string    `json:"data_type" gorm:"not null"`
-	ProcessingType  string    `json:"processing_type" gorm:"not null"` // collection, storage, transfer, deletion
-	Purpose         string    `json:"purpose" gorm:"not null"`
-	LegalBasis      string    `json:"legal_basis" gorm:"not null"`
-	DataController  string    `json:"data_controller" gorm:"not null"`
-	DataProcessor   *string   `json:"data_processor"`
-	Recipients      string    `json:"recipients"` // JSON array of recipients
-	TransferCountry *string   `json:"transfer_country"`
-	RetentionPeriod string    `json:"retention_period" gorm:"not null"`
-	ProcessedAt     time.Time `json:"processed_at" gorm:"not null"`
+	ID              uint       `json:"id" gorm:"primaryKey"`
+	UserID          uint       `json:"user_id" gorm:"not null;index"`
+	DataType        string     `json:"data_type" gorm:"not null"`
+	ProcessingType  string     `json:"processing_type" gorm:"not null"` // collection, storage, transfer, deletion
+	Purpose         string     `json:"purpose" gorm:"not null"`
+	LegalBasis      string     `json:"legal_basis" gorm:"not null"`
+	DataController  string     `json:"data_controller" gorm:"not null"`
+	DataProcessor   *string    `json:"data_processor"`
+	Recipients      string     `json:"recipients"` // JSON array of recipients
+	TransferCountry *string    `json:"transfer_country"`
+	RetentionPeriod string     `json:"retention_period" gorm:"not null"`
+	ProcessedAt     time.Time  `json:"processed_at" gorm:"not null"`
 	ExpiresAt       *time.Time `json:"expires_at"`
-	CreatedAt       time.Time `json:"created_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 // DataSubjectRequest tracks GDPR data subject requests (Art. 15-22)
 type DataSubjectRequest struct {
-	ID            uint      `json:"id" gorm:"primaryKey"`
-	UserID        uint      `json:"user_id" gorm:"not null;index"`
-	RequestType   string    `json:"request_type" gorm:"not null"` // access, rectification, erasure, portability, restriction, objection
-	Status        string    `json:"status" gorm:"not null"`       // pending, processing, completed, rejected
-	Description   string    `json:"description"`
-	RequestedAt   time.Time `json:"requested_at" gorm:"not null"`
-	ProcessedAt   *time.Time `json:"processed_at"`
-	CompletedAt   *time.Time `json:"completed_at"`
-	ProcessorID   *uint     `json:"processor_id"` // User who processed the request
-	Response      string    `json:"response"`      // Response to the request
-	ResponseData  string    `json:"response_data"` // Exported data for portability requests
-	Verification  string    `json:"verification"`  // Identity verification details
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	UserID       uint       `json:"user_id" gorm:"not null;index"`
+	RequestType  string     `json:"request_type" gorm:"not null"` // access, rectification, erasure, portability, restriction, objection
+	Status       string     `json:"status" gorm:"not null"`       // pending, processing, completed, rejected
+	Description  string     `json:"description"`
+	RequestedAt  time.Time  `json:"requested_at" gorm:"not null"`
+	ProcessedAt  *time.Time `json:"processed_at"`
+	CompletedAt  *time.Time `json:"completed_at"`
+	ProcessorID  *uint      `json:"processor_id"`  // User who processed the request
+	Response     string     `json:"response"`      // Response to the request
+	ResponseData string     `json:"response_data"` // Exported data for portability requests
+	Verification string     `json:"verification"`  // Identity verification details
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // EncryptedPersonalData stores encrypted personal data
 type EncryptedPersonalData struct {
-	ID           uint      `json:"id" gorm:"primaryKey"`
-	UserID       uint      `json:"user_id" gorm:"not null;index"`
-	DataType     string    `json:"data_type" gorm:"not null"`
-	EncryptedData string   `json:"encrypted_data" gorm:"type:text;not null"`
-	KeyVersion   string    `json:"key_version" gorm:"not null"`
-	Algorithm    string    `json:"algorithm" gorm:"not null"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID            uint      `json:"id" gorm:"primaryKey"`
+	UserID        uint      `json:"user_id" gorm:"not null;index"`
+	DataType      string    `json:"data_type" gorm:"not null"`
+	EncryptedData string    `json:"encrypted_data" gorm:"type:text;not null"`
+	KeyVersion    string    `json:"key_version" gorm:"not null"`
+	Algorithm     string    `json:"algorithm" gorm:"not null"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // GDPRCompliance handles GDPR compliance operations
 type GDPRCompliance struct {
-	db           *gorm.DB
+	db            *gorm.DB
 	encryptionKey []byte
-	keyVersion   string
+	keyVersion    string
 }
 
 // NewGDPRCompliance creates a new GDPR compliance handler
 func NewGDPRCompliance(db *gorm.DB, encryptionKey string) *GDPRCompliance {
 	key := sha256.Sum256([]byte(encryptionKey))
 	return &GDPRCompliance{
-		db:           db,
+		db:            db,
 		encryptionKey: key[:],
-		keyVersion:   "v1.0",
+		keyVersion:    "v1.0",
 	}
 }
 
@@ -130,7 +130,7 @@ func (g *GDPRCompliance) RecordConsent(userID uint, dataType GDPRDataType, purpo
 func (g *GDPRCompliance) WithdrawConsent(userID uint, dataType GDPRDataType, purpose string) error {
 	now := time.Now()
 	return g.db.Model(&ConsentRecord{}).
-		Where("user_id = ? AND data_type = ? AND purpose = ? AND consent_given = true AND withdrawn_at IS NULL", 
+		Where("user_id = ? AND data_type = ? AND purpose = ? AND consent_given = true AND withdrawn_at IS NULL",
 			userID, string(dataType), purpose).
 		Update("withdrawn_at", now).Error
 }
@@ -139,18 +139,18 @@ func (g *GDPRCompliance) WithdrawConsent(userID uint, dataType GDPRDataType, pur
 func (g *GDPRCompliance) CheckConsent(userID uint, dataType GDPRDataType, purpose string) (bool, error) {
 	var count int64
 	err := g.db.Model(&ConsentRecord{}).
-		Where("user_id = ? AND data_type = ? AND purpose = ? AND consent_given = true AND withdrawn_at IS NULL", 
+		Where("user_id = ? AND data_type = ? AND purpose = ? AND consent_given = true AND withdrawn_at IS NULL",
 			userID, string(dataType), purpose).
 		Where("(expiry_date IS NULL OR expiry_date > ?)", time.Now()).
 		Count(&count).Error
-	
+
 	return count > 0, err
 }
 
 // RecordDataProcessing records data processing activity
 func (g *GDPRCompliance) RecordDataProcessing(userID uint, dataType GDPRDataType, processingType, purpose, legalBasis, controller string, processor *string, recipients []string, transferCountry *string, retentionPeriod string) error {
 	recipientsJSON, _ := json.Marshal(recipients)
-	
+
 	var expiresAt *time.Time
 	if retentionPeriod != "indefinite" {
 		// Parse retention period and calculate expiry
@@ -284,7 +284,7 @@ func (g *GDPRCompliance) ExportUserData(userID uint) (map[string]interface{}, er
 	// Export encrypted personal data (decrypted for export)
 	var encryptedRecords []EncryptedPersonalData
 	g.db.Where("user_id = ?", userID).Find(&encryptedRecords)
-	
+
 	personalData := make(map[string]interface{})
 	for _, record := range encryptedRecords {
 		var data interface{}
@@ -401,7 +401,7 @@ func (g *GDPRCompliance) GetDataProcessingRegistry() ([]map[string]interface{}, 
 // CleanupExpiredData removes data that has exceeded its retention period
 func (g *GDPRCompliance) CleanupExpiredData() error {
 	now := time.Now()
-	
+
 	// Find expired processing records
 	var expiredRecords []DataProcessingRecord
 	if err := g.db.Where("expires_at IS NOT NULL AND expires_at < ?", now).Find(&expiredRecords).Error; err != nil {
@@ -412,7 +412,7 @@ func (g *GDPRCompliance) CleanupExpiredData() error {
 	for _, record := range expiredRecords {
 		// Delete encrypted personal data
 		g.db.Where("user_id = ? AND data_type = ?", record.UserID, record.DataType).Delete(&EncryptedPersonalData{})
-		
+
 		// Mark processing record as expired
 		g.db.Model(&record).Update("processing_type", "expired_deleted")
 	}

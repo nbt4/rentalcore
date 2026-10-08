@@ -60,7 +60,7 @@ func (h *PWAHandler) SubscribePush(c *gin.Context) {
 	// Try to find existing subscription first
 	var existing models.PushSubscription
 	result := h.db.Where("userID = ? AND endpoint = ?", currentUser.UserID, subscription.Endpoint).First(&existing)
-	
+
 	if result.Error == gorm.ErrRecordNotFound {
 		// Create new subscription
 		if err := h.db.Create(&pushSub).Error; err != nil {
@@ -73,7 +73,7 @@ func (h *PWAHandler) SubscribePush(c *gin.Context) {
 		existing.KeysAuth = subscription.Keys.Auth
 		existing.IsActive = true
 		existing.LastUsed = time.Now()
-		
+
 		if err := h.db.Save(&existing).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update subscription"})
 			return
@@ -88,7 +88,7 @@ func (h *PWAHandler) UnsubscribePush(c *gin.Context) {
 	var request struct {
 		Endpoint string `json:"endpoint"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -118,7 +118,7 @@ func (h *PWAHandler) SyncOfflineData(c *gin.Context) {
 	var request struct {
 		Actions []models.OfflineSyncQueue `json:"actions"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -131,7 +131,7 @@ func (h *PWAHandler) SyncOfflineData(c *gin.Context) {
 	}
 
 	results := make([]map[string]interface{}, len(request.Actions))
-	
+
 	for i, action := range request.Actions {
 		result := h.processOfflineAction(currentUser.UserID, action)
 		results[i] = result
@@ -165,7 +165,7 @@ func (h *PWAHandler) processOfflineAction(userID uint, action models.OfflineSync
 			result["status"] = "success"
 			delete(result, "error")
 		}
-	
+
 	case "assign_device":
 		if err := h.processAssignDevice(action); err != nil {
 			result["error"] = err.Error()
@@ -173,7 +173,7 @@ func (h *PWAHandler) processOfflineAction(userID uint, action models.OfflineSync
 			result["status"] = "success"
 			delete(result, "error")
 		}
-	
+
 	case "update_status":
 		if err := h.processUpdateStatus(action); err != nil {
 			result["error"] = err.Error()
@@ -181,7 +181,7 @@ func (h *PWAHandler) processOfflineAction(userID uint, action models.OfflineSync
 			result["status"] = "success"
 			delete(result, "error")
 		}
-	
+
 	default:
 		// Save unknown action for manual review
 		h.db.Create(&action)
@@ -202,7 +202,7 @@ func (h *PWAHandler) processCreateJob(action models.OfflineSyncQueue) error {
 	statusID := uint(jobData["statusid"].(float64))
 	jobCategoryID := uint(jobData["jobCategoryID"].(float64))
 	description := jobData["description"].(string)
-	
+
 	job := models.Job{
 		CustomerID:    customerID,
 		StatusID:      statusID,
@@ -238,7 +238,7 @@ func (h *PWAHandler) processAssignDevice(action models.OfflineSyncQueue) error {
 	// Check if assignment already exists
 	var existing models.JobDevice
 	result := h.db.Where("jobID = ? AND deviceID = ?", jobID, deviceID).First(&existing)
-	
+
 	if result.Error == gorm.ErrRecordNotFound {
 		// Create new assignment
 		assignment := models.JobDevice{
@@ -268,12 +268,12 @@ func (h *PWAHandler) processUpdateStatus(action models.OfflineSyncQueue) error {
 		return h.db.Model(&models.Device{}).
 			Where("deviceID = ?", entityID).
 			Update("status", newStatus).Error
-	
+
 	case "case":
 		return h.db.Model(&models.Case{}).
 			Where("caseID = ?", entityID).
 			Update("status", newStatus).Error
-	
+
 	default:
 		return gorm.ErrRecordNotFound
 	}

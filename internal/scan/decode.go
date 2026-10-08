@@ -15,22 +15,22 @@ import (
 
 // DecodeRequest represents a server-side decode request
 type DecodeRequest struct {
-	ImageData string  `json:"imageData" binding:"required"` // Base64 encoded image
-	Width     int     `json:"width" binding:"required"`
-	Height    int     `json:"height" binding:"required"`
-	ROI       *ROI    `json:"roi,omitempty"`
-	Priority  int     `json:"priority"` // 0=auto, 1=1D, 2=2D
+	ImageData string   `json:"imageData" binding:"required"` // Base64 encoded image
+	Width     int      `json:"width" binding:"required"`
+	Height    int      `json:"height" binding:"required"`
+	ROI       *ROI     `json:"roi,omitempty"`
+	Priority  int      `json:"priority"` // 0=auto, 1=1D, 2=2D
 	Formats   []string `json:"formats,omitempty"`
 }
 
 // DecodeResponse represents a server-side decode response
 type DecodeResponse struct {
-	Success      bool      `json:"success"`
-	Result       *Result   `json:"result,omitempty"`
-	Error        string    `json:"error,omitempty"`
+	Success        bool    `json:"success"`
+	Result         *Result `json:"result,omitempty"`
+	Error          string  `json:"error,omitempty"`
 	ProcessingTime int64   `json:"processingTime"` // milliseconds
-	Timestamp    int64     `json:"timestamp"`
-	ServerDecode bool      `json:"serverDecode"` // Indicates this was server-side
+	Timestamp      int64   `json:"timestamp"`
+	ServerDecode   bool    `json:"serverDecode"` // Indicates this was server-side
 }
 
 // Result represents a decode result

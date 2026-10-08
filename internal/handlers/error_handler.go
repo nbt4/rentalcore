@@ -45,7 +45,7 @@ func SafeHTML(c *gin.Context, statusCode int, templateName string, data gin.H) {
 			data["scanner_enabled"] = true // Default to enabled for backwards compatibility
 		}
 	}
-	
+
 	// Attempt to render the template
 	defer func() {
 		if r := recover(); r != nil {
@@ -53,7 +53,7 @@ func SafeHTML(c *gin.Context, statusCode int, templateName string, data gin.H) {
 			renderErrorPage(c, http.StatusInternalServerError, "Template rendering error", data["user"])
 		}
 	}()
-	
+
 	logger.LogInfo("SafeHTML: Rendering template %s with status %d", templateName, statusCode)
 	c.HTML(statusCode, templateName, data)
 }
@@ -75,7 +75,7 @@ func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 			})
 		}
 	}()
-	
+
 	logger.LogInfo("SafeJSON: Rendering JSON with status %d", statusCode)
 	commonresponse.JSON(c.Writer, statusCode, data)
 }
@@ -83,19 +83,19 @@ func SafeJSON(c *gin.Context, statusCode int, data interface{}) {
 // renderErrorPage renders a safe error page that should never fail
 func renderErrorPage(c *gin.Context, statusCode int, message string, user interface{}) {
 	logger.LogInfo("renderErrorPage: Rendering error page - Status: %d, Message: %s", statusCode, message)
-	
+
 	// Check if response has already been written
 	if c.Writer.Written() {
 		logger.LogInfo("renderErrorPage: Response already written, skipping error page")
 		return
 	}
-	
+
 	// Get request ID for debugging
 	requestID := ""
 	if id, exists := c.Get("request_id"); exists {
 		requestID = id.(string)
 	}
-	
+
 	// Try to use the enhanced error template first
 	defer func() {
 		if r := recover(); r != nil {
@@ -127,7 +127,7 @@ func renderErrorPage(c *gin.Context, statusCode int, message string, user interf
 </html>`, statusCode, statusCode, message, requestID)
 		}
 	}()
-	
+
 	// Try to render enhanced error template first
 	errorData := gin.H{
 		"error_code":    statusCode,
@@ -137,12 +137,12 @@ func renderErrorPage(c *gin.Context, statusCode int, message string, user interf
 		"timestamp":     time.Now().Format("2006-01-02 15:04:05"),
 		"user":          user,
 	}
-	
+
 	// Ensure user is not nil to prevent template errors
 	if user == nil {
 		errorData["user"] = gin.H{"Username": "Guest", "FirstName": "", "LastName": ""}
 	}
-	
+
 	c.HTML(statusCode, "error_page.html", errorData)
 }
 
@@ -175,10 +175,10 @@ func getErrorMessage(statusCode int, originalMessage string) string {
 func GlobalErrorHandler() gin.HandlerFunc {
 	return gin.CustomRecoveryWithWriter(gin.DefaultWriter, func(c *gin.Context, recovered interface{}) {
 		logger.LogInfo("GlobalErrorHandler: Panic recovered: %v", recovered)
-		
+
 		// Get user context for error page
 		user, _ := GetCurrentUser(c)
-		
+
 		// Render safe error page
 		renderErrorPage(c, http.StatusInternalServerError, "An unexpected error occurred", user)
 	})
@@ -188,19 +188,19 @@ func GlobalErrorHandler() gin.HandlerFunc {
 func NotFoundHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.LogInfo("NotFoundHandler: 404 for path: %s", c.Request.URL.Path)
-		
+
 		user, _ := GetCurrentUser(c)
-		
+
 		// Check if this is an API request
-		if c.GetHeader("Accept") == "application/json" || 
-		   c.ContentType() == "application/json" {
+		if c.GetHeader("Accept") == "application/json" ||
+			c.ContentType() == "application/json" {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Resource not found",
 				"path":  c.Request.URL.Path,
 			})
 			return
 		}
-		
+
 		// Render 404 page
 		renderErrorPage(c, http.StatusNotFound, "Page not found", user)
 	}
@@ -211,56 +211,56 @@ func TemplateExistsCheck(templateName string) bool {
 	// This is a simple check - in production you might want to maintain
 	// a registry of available templates
 	commonTemplates := map[string]bool{
-		"base.html":                       true,
-		"error.html":                      true,
-		"error_standalone.html":           true,
-		"error_page.html":                 true,
-		"login.html":                      true,
-		"home.html":                   true,
-		"cases_list.html":                 true,
-		"case_form.html":                  true,
-		"case_detail.html":                true,
-		"case_management_simple.html":     true,
-		"customers.html":              true,
-		"customer_form.html":          true,
-		"customer_detail.html":            true,
-		"devices.html":                true,
-		"device_form_new.html":            true,
-		"device_detail.html":              true,
-		"jobs_new.html":                   true,
-		"job_form.html":               true,
-		"job_detail.html":                 true,
+		"base.html":                          true,
+		"error.html":                         true,
+		"error_standalone.html":              true,
+		"error_page.html":                    true,
+		"login.html":                         true,
+		"home.html":                          true,
+		"cases_list.html":                    true,
+		"case_form.html":                     true,
+		"case_detail.html":                   true,
+		"case_management_simple.html":        true,
+		"customers.html":                     true,
+		"customer_form.html":                 true,
+		"customer_detail.html":               true,
+		"devices.html":                       true,
+		"device_form_new.html":               true,
+		"device_detail.html":                 true,
+		"jobs_new.html":                      true,
+		"job_form.html":                      true,
+		"job_detail.html":                    true,
 		"equipment_packages_standalone.html": true,
-		"equipment_package_form.html":     true,
-		"equipment_package_detail.html":   true,
-		"bulk_operations.html":            true,
-		"documents_list.html":             true,
-		"document_upload_form.html":       true,
-		"signature_form.html":             true,
-		"financial_dashboard.html":        true,
-		"transactions_list.html":          true,
-		"transaction_form.html":           true,
-		"transaction_detail.html":         true,
-		"financial_reports.html":          true,
-		"users_list.html":                 true,
-		"user_form.html":                  true,
-		"user_detail.html":                true,
-		"analytics_dashboard.html":        true,
-		"search_results.html":             true,
-		"scan_select_job.html":            true,
-		"scan_job.html":                   true,
-		"mobile_scanner.html":             true,
-		"mobile_scanner_enhanced.html":    true,
-		"security_roles.html":             true,
-		"security_audit.html":             true,
-		"profile_settings.html":           true,
-		"devices_standalone.html":         true,
-		"invoices_list.html":              true,
-		"invoices_content.html":           true,
-		"company_settings.html":           true,
-		"monitoring_dashboard.html":       true,
+		"equipment_package_form.html":        true,
+		"equipment_package_detail.html":      true,
+		"bulk_operations.html":               true,
+		"documents_list.html":                true,
+		"document_upload_form.html":          true,
+		"signature_form.html":                true,
+		"financial_dashboard.html":           true,
+		"transactions_list.html":             true,
+		"transaction_form.html":              true,
+		"transaction_detail.html":            true,
+		"financial_reports.html":             true,
+		"users_list.html":                    true,
+		"user_form.html":                     true,
+		"user_detail.html":                   true,
+		"analytics_dashboard.html":           true,
+		"search_results.html":                true,
+		"scan_select_job.html":               true,
+		"scan_job.html":                      true,
+		"mobile_scanner.html":                true,
+		"mobile_scanner_enhanced.html":       true,
+		"security_roles.html":                true,
+		"security_audit.html":                true,
+		"profile_settings.html":              true,
+		"devices_standalone.html":            true,
+		"invoices_list.html":                 true,
+		"invoices_content.html":              true,
+		"company_settings.html":              true,
+		"monitoring_dashboard.html":          true,
 	}
-	
+
 	return commonTemplates[templateName]
 }
 

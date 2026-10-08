@@ -130,7 +130,7 @@ func (r *CustomerRepository) ListByRole(params *models.FilterParams, role string
 		query = query.Where("is_customer = true")
 	case "supplier":
 		query = query.Where("is_supplier = true")
-	// empty string: no filter — return all
+		// empty string: no filter — return all
 	}
 
 	if params.SearchTerm != "" {

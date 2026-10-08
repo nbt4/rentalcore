@@ -85,9 +85,9 @@ func (h *ScanFallbackHandler) DecodeFallback(c *gin.Context) {
 // GetDecoderStatus returns the status of the fallback decoder
 func (h *ScanFallbackHandler) GetDecoderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":     h.enabled,
-		"status":      "ready",
-		"serverSide":  true,
+		"enabled":    h.enabled,
+		"status":     "ready",
+		"serverSide": true,
 		"supportedFormats": []string{
 			"CODE_128", "CODE_39", "EAN_13", "EAN_8",
 			"UPC_A", "UPC_E", "ITF", "QR_CODE",
