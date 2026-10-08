@@ -1375,7 +1375,10 @@ func (h *AuthHandler) LoginAPI(c *gin.Context) {
 	c.SetCookie("session_id", sessionID, h.config.Security.SessionTimeout, "/", cookieDomain, true, true) // FIXED: Secure=true, SameSite=Lax
 
 	var userRoles []models.UserRole
-	h.db.Preload("Role").Where("user_id = ?", user.UserID).Find(&userRoles)
+	if err := h.db.Preload("Role").Where("userid = ?", user.UserID).Find(&userRoles).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Rollen konnten nicht geladen werden"})
+		return
+	}
 
 	type roleResp struct {
 		ID   uint   `json:"id"`
@@ -1425,7 +1428,10 @@ func (h *AuthHandler) MeAPI(c *gin.Context) {
 	}
 
 	var userRoles []models.UserRole
-	h.db.Preload("Role").Where("user_id = ?", user.UserID).Find(&userRoles)
+	if err := h.db.Preload("Role").Where("userid = ?", user.UserID).Find(&userRoles).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rollen konnten nicht geladen werden"})
+		return
+	}
 
 	type roleResp struct {
 		ID   uint   `json:"id"`
