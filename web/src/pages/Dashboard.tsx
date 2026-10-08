@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -20,18 +20,11 @@ import { useAuth } from '../contexts/useAuth';
 import { toast } from '../lib/toast';
 import { suiteDateLabel, suiteGreeting, suiteLocale } from '../lib/cores-design';
 import { isFinishedJob } from '../lib/job-status';
+import { parseDate, selectSchedule, startOfDay } from '../lib/dashboard-schedule';
+import { subscribeDashboardRefresh } from '../lib/dashboard-refresh';
+import { loadDashboardData } from '../lib/dashboard-data';
 
 const DAY_IN_MS = 86_400_000;
-
-function startOfDay(date = new Date()) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function parseDate(value?: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function isFinished(job: Job) {
 	return isFinishedJob(job.status_id);
@@ -96,29 +89,44 @@ export function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [today, setToday] = useState(() => startOfDay());
+  const activeRequest = useRef<AbortController | null>(null);
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    setLoadFailed(false);
+  const loadDashboard = useCallback(async (foreground = false) => {
+    setToday(startOfDay());
+    if (activeRequest.current) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    if (foreground) setLoading(true);
     try {
-      const [jobsRes, customersRes] = await Promise.all([
-        api.get<{ jobs: Job[] }>('/jobs'),
-        api.get<{ customers: Customer[] }>('/customers'),
-      ]);
-      setJobs(jobsRes.data.jobs || []);
-      setCustomers(customersRes.data.customers || []);
+      const data = await loadDashboardData(api, controller);
+      if (controller.signal.aborted) return;
+      setJobs(data.jobs);
+      setCustomers(data.customers);
+      setLoadFailed(false);
     } catch (error) {
+      if (activeRequest.current !== controller) return;
       setLoadFailed(true);
-      toast.error(error);
+      if (foreground) toast.error(error);
     } finally {
-      setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }, []);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => {
+    void loadDashboard(true);
+    const unsubscribe = subscribeDashboardRefresh(() => { void loadDashboard(); });
+    return () => {
+      unsubscribe();
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+    };
+  }, [loadDashboard]);
 
   const dashboard = useMemo(() => {
-    const today = startOfDay();
     const activeJobs = jobs.filter((job) => !isFinished(job));
     const happeningNow = activeJobs.filter((job) => {
       const start = parseDate(job.startDate);
@@ -151,22 +159,10 @@ export function Dashboard() {
     const workQueue = [...overdue, ...happeningNow, ...recentJobs]
       .filter((job, index, allJobs) => allJobs.findIndex((candidate) => candidate.jobID === job.jobID) === index)
       .slice(0, 6);
-    const schedule = [...activeJobs]
-      .filter((job) => job.startDate || job.endDate)
-      .sort((a, b) => {
-        const aEnd = parseDate(a.endDate);
-        const bEnd = parseDate(b.endDate);
-        const aOverdue = Boolean(aEnd && startOfDay(aEnd).getTime() < today.getTime());
-        const bOverdue = Boolean(bEnd && startOfDay(bEnd).getTime() < today.getTime());
-        if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-        if (aOverdue && bOverdue) return bEnd!.getTime() - aEnd!.getTime();
-        return (parseDate(a.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER)
-          - (parseDate(b.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER);
-      })
-      .slice(0, 5);
+    const schedule = selectSchedule(activeJobs, today);
 
     return { today, activeJobs, happeningNow, overdue, upcoming, monthValue, workQueue, schedule };
-  }, [jobs]);
+  }, [jobs, today]);
 
   const todayLabel = suiteDateLabel();
 
@@ -217,7 +213,7 @@ export function Dashboard() {
       {loadFailed && !loading && (
         <div className="flex flex-col gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100 sm:flex-row sm:items-center sm:justify-between" role="alert">
           <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Dashboard-Daten konnten nicht geladen werden.</div>
-          <button type="button" onClick={loadDashboard} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white/10 px-3 font-medium hover:bg-white/15">
+          <button type="button" onClick={() => { void loadDashboard(true); }} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white/10 px-3 font-medium hover:bg-white/15">
             <RefreshCw className="h-4 w-4" /> Erneut versuchen
           </button>
         </div>
