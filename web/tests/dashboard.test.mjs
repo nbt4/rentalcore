@@ -10,7 +10,7 @@ import ts from 'typescript';
 const output = mkdtempSync(join(tmpdir(), 'rentalcore-dashboard-tests-'));
 after(() => rmSync(output, { recursive: true, force: true }));
 writeFileSync(join(output, 'package.json'), '{"type":"module"}');
-for (const name of ['job-status', 'dashboard-schedule', 'dashboard-refresh']) {
+for (const name of ['job-status', 'dashboard-schedule', 'dashboard-refresh', 'dashboard-data']) {
   const source = readFileSync(new URL(`../src/lib/${name}.ts`, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
     compilerOptions: {
@@ -23,6 +23,7 @@ for (const name of ['job-status', 'dashboard-schedule', 'dashboard-refresh']) {
 }
 const { selectSchedule, startOfDay } = await import(pathToFileURL(join(output, 'dashboard-schedule.js')).href);
 const { subscribeDashboardRefresh } = await import(pathToFileURL(join(output, 'dashboard-refresh.js')).href);
+const { loadDashboardData } = await import(pathToFileURL(join(output, 'dashboard-data.js')).href);
 
 const today = new Date(2026, 9, 8);
 const job = (jobID, startDate, endDate, status_id = 2) => ({
@@ -126,4 +127,60 @@ test('leaving the dashboard removes timers and browser listeners', (t) => {
   window.dispatchEvent(new Event('focus'));
   document.dispatchEvent(new Event('visibilitychange'));
   assert.equal(calls, 0);
+});
+
+test('dashboard data returns the fresh jobs and customers together', async () => {
+  const jobs = [job(1, '2026-10-09', '2026-10-10')];
+  const customers = [{ customer_id: 1 }];
+  const controller = new AbortController();
+  const client = {
+    get: async (path, { signal }) => {
+      assert.equal(signal, controller.signal);
+      return { data: path === '/jobs' ? { jobs } : { customers } };
+    },
+  };
+  assert.deepEqual(await loadDashboardData(client, controller), { jobs, customers });
+  assert.equal(controller.signal.aborted, false);
+});
+
+test('a failed request cancels its still-pending partner and preserves the original error', async () => {
+  for (const failingPath of ['/jobs', '/customers']) {
+    const controller = new AbortController();
+    const error = new Error('synthetic HTTP failure');
+    let pendingRequests = 0;
+    const client = {
+      get: (path, { signal }) => {
+        if (path === failingPath) return Promise.reject(error);
+        pendingRequests++;
+        return new Promise((resolve, reject) => {
+          signal.addEventListener('abort', () => {
+            pendingRequests--;
+            reject(new DOMException('Aborted', 'AbortError'));
+          }, { once: true });
+        });
+      },
+    };
+    await assert.rejects(loadDashboardData(client, controller), (actual) => actual === error);
+    assert.equal(controller.signal.aborted, true);
+    assert.equal(pendingRequests, 0);
+  }
+});
+
+test('cleanup cancels both pending data requests', async () => {
+  const controller = new AbortController();
+  let pendingRequests = 0;
+  const client = {
+    get: (path, { signal }) => new Promise((resolve, reject) => {
+      pendingRequests++;
+      signal.addEventListener('abort', () => {
+        pendingRequests--;
+        reject(new DOMException('Aborted', 'AbortError'));
+      }, { once: true });
+    }),
+  };
+  const request = loadDashboardData(client, controller);
+  assert.equal(pendingRequests, 2);
+  controller.abort();
+  await assert.rejects(request, { name: 'AbortError' });
+  assert.equal(pendingRequests, 0);
 });

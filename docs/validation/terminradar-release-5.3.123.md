@@ -14,18 +14,19 @@ sich die bestehenden PostgreSQL-Integrationstests selbst. Der Terminradar-Fix
 Im Browser wurden nur erfundene Daten benutzt; keine Produktionstests oder
 Fachmutationen fanden statt.
 
-Ein lokaler Docker-Kandidat `rentalcore-terminradar:verify` wurde aus der
-aktuellen Basis und den ausdrücklich ausgewählten Fix-Dateien erfolgreich
-gebaut. Die unveränderte Dockerfile-Prüfung der OCR-Imports lief erfolgreich.
-Seine Image-ID ist `sha256:723d169f271ad21549f1f668971f463a45c48abba824fbd807ae99e6431ea436`.
-Dieser Kandidat ist noch kein veröffentlichtes Release-Abbild. Das endgültige
-Abbild muss aus dem eingecheckten Dienst-Commit mit korrektem OCI-Revisionslabel
-entstehen und darf erst nach dem Merge veröffentlicht werden.
+Das endgültige Release-Abbild entsteht aus dem finalen eingecheckten Dienst-Commit
+mit korrektem OCI-Revisionslabel. Build-Nachweis und Image-ID werden im
+Suite-Release-Protokoll festgehalten. Veröffentlichung erfolgt erst nach Merge.
 
 Die suiteweiten Gates bestehen auf dem sauberen Suite-main `c11fe81`.
 Insbesondere sind dessen Designsystem-Kopien aktuell. Die frühere Prüfung
 gegen den bestehenden Entwicklungs-Workspace mit veränderten PlannerCore-Dateien
 ist kein Befund dieses Releases.
+
+Zwölf Regressionstests prüfen zusätzlich den gemeinsamen Abbruch nach einem
+Teilfehler und beim Aufräumen. Ohne den Teilfehler-Fix schlägt genau dieser
+Regressionstest fehl (11 bestanden, 1 fehlgeschlagen). Die Browserprüfung bestätigt
+den sichtbaren Fehlerzustand, Wiederholung und Abbruch beider Anfragen bei Navigation.
 
 Die folgende Ausgabe stammt aus den erneuten tatsächlichen Läufen.
 
@@ -115,13 +116,13 @@ transforming...
 Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
-✓ 1767 modules transformed.
+✓ 1768 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                   1.64 kB │ gzip:   0.72 kB
 dist/assets/index-CAnzfy0W.css   89.45 kB │ gzip:  16.59 kB
-dist/assets/index-TVeDGtA7.js   489.70 kB │ gzip: 145.56 kB
-✓ built in 6.48s
+dist/assets/index-1XhhrN_R.js   489.80 kB │ gzip: 145.61 kB
+✓ built in 6.64s
 ```
 
 ## Go-Build: grün
@@ -139,28 +140,28 @@ go build -o server cmd/server/main.go
 
 ```text
 ?   	go-barcode-webapp/cmd/compliance	[no test files]
-ok  	go-barcode-webapp/cmd/server	0.025s
+ok  	go-barcode-webapp/cmd/server	0.022s
 ?   	go-barcode-webapp/internal/cache	[no test files]
 ?   	go-barcode-webapp/internal/compliance	[no test files]
-ok  	go-barcode-webapp/internal/config	0.005s
-ok  	go-barcode-webapp/internal/handlers	0.047s
-ok  	go-barcode-webapp/internal/jev	0.061s
-ok  	go-barcode-webapp/internal/jobstatus	0.059s
+ok  	go-barcode-webapp/internal/config	0.006s
+ok  	go-barcode-webapp/internal/handlers	0.048s
+ok  	go-barcode-webapp/internal/jev	0.021s
+ok  	go-barcode-webapp/internal/jobstatus	0.006s
 ?   	go-barcode-webapp/internal/logger	[no test files]
 ?   	go-barcode-webapp/internal/metrics	[no test files]
 ?   	go-barcode-webapp/internal/middleware	[no test files]
 ?   	go-barcode-webapp/internal/models	[no test files]
 ?   	go-barcode-webapp/internal/monitoring	[no test files]
-ok  	go-barcode-webapp/internal/repository	0.051s
+ok  	go-barcode-webapp/internal/repository	0.038s
 ?   	go-barcode-webapp/internal/routes	[no test files]
 ?   	go-barcode-webapp/internal/scan	[no test files]
-ok  	go-barcode-webapp/internal/schema	0.055s
-ok  	go-barcode-webapp/internal/services	0.078s
-ok  	go-barcode-webapp/internal/services/pdf	0.037s
+ok  	go-barcode-webapp/internal/schema	0.044s
+ok  	go-barcode-webapp/internal/services	0.028s
+ok  	go-barcode-webapp/internal/services/pdf	0.034s
 ok  	go-barcode-webapp/internal/services/postalcode	0.019s
 ?   	go-barcode-webapp/internal/services/storage	[no test files]
 ?   	go-barcode-webapp/internal/services/warehousecore	[no test files]
-ok  	go-barcode-webapp/internal/sync/m365	0.022s
+ok  	go-barcode-webapp/internal/sync/m365	0.040s
 ?   	go-barcode-webapp/tools	[no test files]
 ?   	go-barcode-webapp/web/node_modules/flatted/golang/pkg/flatted	[no test files]
 ```
@@ -173,68 +174,83 @@ ok  	go-barcode-webapp/internal/sync/m365	0.022s
 (leere Ausgabe)
 ```
 
-## Regressionstests mit Node 20.19.5: 9/9 grün
+## Regressionstests mit Node 20.19.5: 12/12 grün
 
 `node --test web/tests/dashboard.test.mjs`
 
 ```text
 TAP version 13
-# (node:336890) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (node:346407) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
 # (Use `node --trace-warnings ...` to show where the warning was created)
 # Subtest: overdue jobs cannot displace current and upcoming appointments
 ok 1 - overdue jobs cannot displace current and upcoming appointments
   ---
-  duration_ms: 6.983447
+  duration_ms: 6.170533
   ...
 # Subtest: completed, cancelled and undated jobs stay out of the radar
 ok 2 - completed, cancelled and undated jobs stay out of the radar
   ---
-  duration_ms: 0.345753
+  duration_ms: 0.307372
   ...
 # Subtest: running jobs precede the next five appointments without changing the source list
 ok 3 - running jobs precede the next five appointments without changing the source list
   ---
-  duration_ms: 0.357466
+  duration_ms: 0.349771
   ...
 # Subtest: a job ending today leaves the radar after the local day changes
 ok 4 - a job ending today leaves the radar after the local day changes
   ---
-  duration_ms: 0.379245
+  duration_ms: 0.362144
   ...
 # Subtest: end-only dates are ordered with upcoming jobs
 ok 5 - end-only dates are ordered with upcoming jobs
   ---
-  duration_ms: 0.298162
+  duration_ms: 0.284494
   ...
 # Subtest: day boundaries use the local calendar date
 ok 6 - day boundaries use the local calendar date
   ---
-  duration_ms: 0.323595
+  duration_ms: 0.321371
   ...
 # Subtest: visible dashboards refresh every minute and on focus
 ok 7 - visible dashboards refresh every minute and on focus
   ---
-  duration_ms: 3.155592
+  duration_ms: 3.356648
   ...
 # Subtest: hidden tabs pause refresh and reload when visible again
 ok 8 - hidden tabs pause refresh and reload when visible again
   ---
-  duration_ms: 1.152469
+  duration_ms: 1.133048
   ...
 # Subtest: leaving the dashboard removes timers and browser listeners
 ok 9 - leaving the dashboard removes timers and browser listeners
   ---
-  duration_ms: 0.913348
+  duration_ms: 0.962083
   ...
-1..9
-# tests 9
+# Subtest: dashboard data returns the fresh jobs and customers together
+ok 10 - dashboard data returns the fresh jobs and customers together
+  ---
+  duration_ms: 0.76751
+  ...
+# Subtest: a failed request cancels its still-pending partner and preserves the original error
+ok 11 - a failed request cancels its still-pending partner and preserves the original error
+  ---
+  duration_ms: 2.073894
+  ...
+# Subtest: cleanup cancels both pending data requests
+ok 12 - cleanup cancels both pending data requests
+  ---
+  duration_ms: 0.917561
+  ...
+1..12
+# tests 12
 # suites 0
-# pass 9
+# pass 12
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 1768.381593
+# duration_ms 1698.81458
 ```
 
 ## Lokaler Chromium: grün
@@ -250,6 +266,103 @@ PASS: periodic reload updates visible job data
 PASS: hidden tabs pause polling; visible tabs reload immediately
 PASS: concurrent refreshes deduplicated; existing data stays visible
 PASS: refresh errors retain data and retry recovers
+PASS: failed jobs request aborts its pending customer request
 PASS: day rollover recalculates schedule even with unchanged jobs
 PASS: leaving dashboard stops polling; no browser runtime errors
+PASS: navigation aborts both pending dashboard requests
+```
+
+## Negativnachweis: Teilfehlertest ohne Fix
+
+Nur eine isolierte Testkopie wurde verändert; der Release-Quellcode blieb erhalten.
+
+```text
+TAP version 13
+# (node:346437) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: overdue jobs cannot displace current and upcoming appointments
+ok 1 - overdue jobs cannot displace current and upcoming appointments
+  ---
+  duration_ms: 6.441866
+  ...
+# Subtest: completed, cancelled and undated jobs stay out of the radar
+ok 2 - completed, cancelled and undated jobs stay out of the radar
+  ---
+  duration_ms: 0.372588
+  ...
+# Subtest: running jobs precede the next five appointments without changing the source list
+ok 3 - running jobs precede the next five appointments without changing the source list
+  ---
+  duration_ms: 0.429414
+  ...
+# Subtest: a job ending today leaves the radar after the local day changes
+ok 4 - a job ending today leaves the radar after the local day changes
+  ---
+  duration_ms: 0.34172
+  ...
+# Subtest: end-only dates are ordered with upcoming jobs
+ok 5 - end-only dates are ordered with upcoming jobs
+  ---
+  duration_ms: 0.321188
+  ...
+# Subtest: day boundaries use the local calendar date
+ok 6 - day boundaries use the local calendar date
+  ---
+  duration_ms: 0.39891
+  ...
+# Subtest: visible dashboards refresh every minute and on focus
+ok 7 - visible dashboards refresh every minute and on focus
+  ---
+  duration_ms: 3.50321
+  ...
+# Subtest: hidden tabs pause refresh and reload when visible again
+ok 8 - hidden tabs pause refresh and reload when visible again
+  ---
+  duration_ms: 1.168838
+  ...
+# Subtest: leaving the dashboard removes timers and browser listeners
+ok 9 - leaving the dashboard removes timers and browser listeners
+  ---
+  duration_ms: 1.052968
+  ...
+# Subtest: dashboard data returns the fresh jobs and customers together
+ok 10 - dashboard data returns the fresh jobs and customers together
+  ---
+  duration_ms: 0.795898
+  ...
+# Subtest: a failed request cancels its still-pending partner and preserves the original error
+not ok 11 - a failed request cancels its still-pending partner and preserves the original error
+  ---
+  duration_ms: 4.090585
+  location: '/tmp/rentalcore-terminradar-negative-lq0h_xud/tests/dashboard.test.mjs:146:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/rentalcore-terminradar-negative-lq0h_xud/tests/dashboard.test.mjs:164:12)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: cleanup cancels both pending data requests
+ok 12 - cleanup cancels both pending data requests
+  ---
+  duration_ms: 1.143358
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2032.617405
 ```

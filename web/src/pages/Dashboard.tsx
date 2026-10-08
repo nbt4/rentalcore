@@ -22,6 +22,7 @@ import { suiteDateLabel, suiteGreeting, suiteLocale } from '../lib/cores-design'
 import { isFinishedJob } from '../lib/job-status';
 import { parseDate, selectSchedule, startOfDay } from '../lib/dashboard-schedule';
 import { subscribeDashboardRefresh } from '../lib/dashboard-refresh';
+import { loadDashboardData } from '../lib/dashboard-data';
 
 const DAY_IN_MS = 86_400_000;
 
@@ -98,21 +99,20 @@ export function Dashboard() {
     activeRequest.current = controller;
     if (foreground) setLoading(true);
     try {
-      const [jobsRes, customersRes] = await Promise.all([
-        api.get<{ jobs: Job[] }>('/jobs', { signal: controller.signal }),
-        api.get<{ customers: Customer[] }>('/customers', { signal: controller.signal }),
-      ]);
+      const data = await loadDashboardData(api, controller);
       if (controller.signal.aborted) return;
-      setJobs(jobsRes.data.jobs || []);
-      setCustomers(customersRes.data.customers || []);
+      setJobs(data.jobs);
+      setCustomers(data.customers);
       setLoadFailed(false);
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (activeRequest.current !== controller) return;
       setLoadFailed(true);
       if (foreground) toast.error(error);
     } finally {
-      if (activeRequest.current === controller) activeRequest.current = null;
-      if (!controller.signal.aborted) setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }, []);
 

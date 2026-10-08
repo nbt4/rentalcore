@@ -15,7 +15,8 @@ Jobs erscheinen nicht im Radar. Der lokale Kalendertag wird bei jeder
 Aktualisierung neu bestimmt, damit auch ein über Mitternacht geöffnetes Dashboard
 seine Termine und Tageskennzahlen aktualisiert.
 
-Bei einem Ladefehler bleiben die letzten Daten sichtbar. Die bestehende
+Bei einem Ladefehler wird auch die andere laufende Anfrage abgebrochen, bevor
+ein weiterer Ladevorgang starten kann. Die letzten Daten bleiben sichtbar. Die bestehende
 Fehlermeldung bietet „Erneut versuchen“; die nächste automatische Aktualisierung
 kann den Fehler ebenfalls beheben.
 
