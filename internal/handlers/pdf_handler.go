@@ -185,10 +185,20 @@ func ensurePackageMappingIndex(db *sql.DB) error {
 func ensurePackageMappingFK(db *sql.DB) error {
 	const query = `
 		SELECT COUNT(*)
-		FROM information_schema.table_constraints
-		WHERE table_schema = 'public'
-		  AND table_name = 'pdf_extraction_items'
-		  AND constraint_name = 'fk_pdf_items_package'
+		FROM information_schema.table_constraints tc
+		JOIN information_schema.key_column_usage kcu
+		  ON kcu.constraint_schema = tc.constraint_schema
+		 AND kcu.constraint_name = tc.constraint_name
+		JOIN information_schema.constraint_column_usage ccu
+		  ON ccu.constraint_schema = tc.constraint_schema
+		 AND ccu.constraint_name = tc.constraint_name
+		WHERE tc.constraint_type = 'FOREIGN KEY'
+		  AND tc.table_schema = 'public'
+		  AND tc.table_name = 'pdf_extraction_items'
+		  AND kcu.column_name = 'mapped_package_id'
+		  AND ccu.table_schema = 'public'
+		  AND ccu.table_name = 'product_packages'
+		  AND ccu.column_name = 'id'
 	`
 	var count int
 	if err := db.QueryRow(query).Scan(&count); err != nil {
@@ -201,7 +211,7 @@ func ensurePackageMappingFK(db *sql.DB) error {
 		ALTER TABLE pdf_extraction_items
 		ADD CONSTRAINT fk_pdf_items_package
 			FOREIGN KEY (mapped_package_id)
-			REFERENCES product_packages(package_id)
+			REFERENCES product_packages(id)
 			ON DELETE SET NULL
 	`)
 	return err
