@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.123"
+const rentalCoreVersion = "5.3.124"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")

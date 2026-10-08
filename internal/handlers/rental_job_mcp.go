@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm"
 	"io"
 	"math"
 	"os"
@@ -47,11 +48,14 @@ type rentalJobRequest struct {
 	ConfirmationText  string   `json:"confirmation_text"`
 	Preview           bool     `json:"preview"`
 }
-type RentalJobMCP struct{ db *sql.DB }
+type RentalJobMCP struct {
+	db  *sql.DB
+	orm *gorm.DB
+}
 
 func NewRentalJobMCP(db *repository.Database) *RentalJobMCP {
 	sqlDB, _ := db.DB.DB()
-	return &RentalJobMCP{db: sqlDB}
+	return &RentalJobMCP{db: sqlDB, orm: db.DB}
 }
 
 var rentalJobColumns = map[string]string{"description": "description", "customer_id": "customerid", "status_id": "statusid", "job_category_id": "jobcategoryid", "venue_id": "venue_id", "start_date": "startdate", "end_date": "enddate", "revenue": "revenue", "discount": "discount", "discount_type": "discount_type", "multiply_by_days": "multiply_by_days", "prices_include_tax": "prices_include_tax"}

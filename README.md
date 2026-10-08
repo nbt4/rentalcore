@@ -1,5 +1,11 @@
 # RentalCore
 
+## Mietprodukt-Positionen — RentalCore 5.3.124
+
+Mietprodukt-Korrektur: UI und MCP erzeugen echte Rental-Auftragspositionen zum
+Kundenpreis und verknüpfte Lieferantenkosten.
+[Modell, Migration und bestätigter Repair](docs/JOB_EXTERNAL_EQUIPMENT_MCP.md).
+
 ## Terminradar — RentalCore 5.3.123
 
 Das Dashboard aktualisiert sichtbare Daten alle 60 Sekunden und bei Rückkehr zum

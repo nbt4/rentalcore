@@ -238,7 +238,8 @@ export interface RentalCatalogItem {
   equipmentID: number;
   productName: string;
   supplierName: string;
-  rentalPrice: number;
+  rentalPrice: number | null;
+  customerPrice: number | null;
   category: string;
 }
 

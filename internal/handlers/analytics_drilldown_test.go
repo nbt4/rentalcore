@@ -204,3 +204,31 @@ func assertClose(t *testing.T, got, want float64) {
 		t.Fatalf("got %.4f, want %.4f", got, want)
 	}
 }
+
+func TestRentalMarginUsesNetCustomerRevenueAndNeverDuplicatesStoredCosts(t *testing.T) {
+	id := uint(20)
+	result := buildRevenueDrilldown("realized", "all", nil, nil,
+		[]revenueDrilldownJob{{JobID: 1, Revenue: 160.65, Discount: 10, DiscountType: "percent"}},
+		[]revenueDrilldownPosition{
+			{PositionID: 1, JobID: 1, PositionType: "rental", RentalEquipmentID: &id, Quantity: 2, UnitPrice: 50, TaxRate: 19, SupplierUnitCost: 37.50},
+			{PositionID: 2, JobID: 1, PositionType: "rental", RentalEquipmentID: &id, Quantity: 1, UnitPrice: 50, TaxRate: 19, SupplierUnitCost: 37.50},
+		}, nil, []revenueDrilldownRentalCost{{JobID: 1, EquipmentID: id, TotalCost: 112.50}})
+	assertClose(t, result.RentalNetRevenue, 135)
+	assertClose(t, result.RentalGrossRevenue, 160.65)
+	assertClose(t, result.RentalCost, 112.50)
+	assertClose(t, result.RentalMargin, 22.50)
+	assertClose(t, result.Categories[1].Children[0].Margin, 22.50)
+}
+
+func TestZeroRentalCustomerRevenueStillCarriesSupplierCosts(t *testing.T) {
+	id := uint(20)
+	for _, p := range []revenueDrilldownPosition{
+		{PositionID: 1, JobID: 1, PositionType: "rental", RentalEquipmentID: &id, Quantity: 2, UnitPrice: 0},
+		{PositionID: 1, JobID: 1, PositionType: "rental", RentalEquipmentID: &id, Quantity: 2, UnitPrice: 50, DiscountPercent: 100},
+	} {
+		result := buildRevenueDrilldown("realized", "all", nil, nil, []revenueDrilldownJob{{JobID: 1}}, []revenueDrilldownPosition{p}, nil, []revenueDrilldownRentalCost{{JobID: 1, EquipmentID: id, TotalCost: 75}})
+		assertClose(t, result.RentalNetRevenue, 0)
+		assertClose(t, result.RentalCost, 75)
+		assertClose(t, result.RentalMargin, -75)
+	}
+}
