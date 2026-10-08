@@ -338,9 +338,9 @@ not ok 11 - a failed request cancels its still-pending partner and preserves the
   failureType: 'testCodeFailure'
   error: |-
     Expected values to be strictly equal:
-    
+
     false !== true
-    
+
   code: 'ERR_ASSERTION'
   name: 'AssertionError'
   expected: true
