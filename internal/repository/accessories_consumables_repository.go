@@ -23,7 +23,7 @@ func NewAccessoriesConsumablesRepository(db *Database) *AccessoriesConsumablesRe
 
 func (r *AccessoriesConsumablesRepository) GetAllCountTypes() ([]models.CountType, error) {
 	var countTypes []models.CountType
-	err := r.db.Where("is_active = ?", true).Order("name ASC").Find(&countTypes).Error
+	err := r.db.Where("is_active = ? AND COALESCE(to_jsonb(count_types)->>'lifecycle_status','active')='active'", true).Order("name ASC").Find(&countTypes).Error
 	return countTypes, err
 }
 
@@ -55,11 +55,12 @@ func (r *AccessoriesConsumablesRepository) GetProductDependencies(productID uint
 			p.stock_quantity,
 			pd.is_optional,
 			pd.default_quantity,
-			pd.notes
+			pd.notes,
+ COALESCE(to_jsonb(pd)->>'relation_type',CASE WHEN pd.is_optional THEN 'recommended' ELSE 'required' END) AS relation_type, COALESCE(to_jsonb(pd)->>'assignment_scope','product') AS assignment_scope
 		FROM product_dependencies pd
 		JOIN products p ON pd.dependency_product_id = p.productid
 		LEFT JOIN count_types ct ON p.count_type_id = ct.count_type_id
-		WHERE pd.product_id = ? AND pd.lifecycle_status='active' AND p.lifecycle_status='active' AND EXISTS(SELECT 1 FROM products source WHERE source.productid=pd.product_id AND source.lifecycle_status='active')
+		WHERE pd.product_id = ? AND pd.lifecycle_status='active' AND p.lifecycle_status='active' AND COALESCE(to_jsonb(pd)->>'relation_type',CASE WHEN pd.is_optional THEN 'recommended' ELSE 'required' END) IN ('required','recommended','consumes') AND COALESCE(to_jsonb(pd)->>'assignment_scope','product') IN ('product','device') AND EXISTS(SELECT 1 FROM products source WHERE source.productid=pd.product_id AND source.lifecycle_status='active')
 		ORDER BY pd.is_optional ASC, pd.created_at DESC
 	`
 	err := r.db.Raw(query, productID).Scan(&dependencies).Error

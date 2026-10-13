@@ -75,6 +75,8 @@ func (ProductDependency) TableName() string {
 
 // ProductDependencyView represents a denormalized view of product dependencies with product details
 type ProductDependencyView struct {
+	RelationType        string   `json:"relation_type" gorm:"column:relation_type"`
+	AssignmentScope     string   `json:"assignment_scope" gorm:"column:assignment_scope"`
 	ID                  int      `json:"id" gorm:"column:id"`
 	ProductID           int      `json:"product_id" gorm:"column:product_id"`
 	DependencyProductID int      `json:"dependency_product_id" gorm:"column:dependency_product_id"`
