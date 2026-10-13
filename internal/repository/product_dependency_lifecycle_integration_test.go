@@ -67,4 +67,48 @@ func TestProductDependencySuggestionsRetainArchives(t *testing.T) {
 	if err = db.Table("product_dependencies").Count(&count).Error; err != nil || count != 3 {
 		t.Fatal("history removed", count, err)
 	}
+	if err = db.Exec(`ALTER TABLE product_dependencies ADD COLUMN relation_type TEXT;ALTER TABLE product_dependencies ADD COLUMN assignment_scope TEXT;UPDATE product_dependencies SET relation_type='required',assignment_scope='device';INSERT INTO product_dependencies(id,product_id,dependency_product_id,is_optional,default_quantity,lifecycle_status,relation_type,assignment_scope) VALUES(4,1,2,true,1,'active','compatible','product'),(5,1,2,true,1,'active','alternative','product'),(6,1,2,false,1,'active','included','device'),(7,1,2,false,1,'active','required','case'),(8,1,2,false,0.25,'active','consumes','device'),(9,1,2,true,1,'active','recommended','product')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	rows, err = repo.GetProductDependencies(1)
+	if err != nil || len(rows) != 5 {
+		t.Fatalf("typed suggestions mismatch: %#v %v", rows, err)
+	}
+	for _, row := range rows {
+		if row.RelationType == "compatible" || row.RelationType == "alternative" || row.RelationType == "included" || row.AssignmentScope == "case" {
+			t.Fatal("nonselectable pack rule offered", row)
+		}
+	}
+
+}
+
+func TestCountTypeSuggestionsExcludeArchivedWarehouseUnits(t *testing.T) {
+	dsn := os.Getenv("RENTALCORE_TEST_POSTGRES_DSN")
+	if dsn == "" {
+		t.Skip("disposable _test PostgreSQL required")
+	}
+	u, err := url.Parse(dsn)
+	if err != nil || !strings.HasSuffix(u.Path, "_test") {
+		t.Fatal("owned _test database required")
+	}
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	sqlDB.SetMaxOpenConns(1)
+	const schema = "rental_catalog_units_test"
+	if err = db.Exec(`DROP SCHEMA IF EXISTS ` + schema + ` CASCADE;CREATE SCHEMA ` + schema + `;SET search_path TO ` + schema + `;CREATE TABLE count_types(count_type_id INT PRIMARY KEY,name TEXT,abbreviation TEXT,is_active BOOLEAN,lifecycle_status TEXT);INSERT INTO count_types VALUES(1,'Piece','pc',true,'active'),(2,'Archived','old',true,'archived'),(3,'Inactive','off',false,'active')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	defer db.Exec(`DROP SCHEMA ` + schema + ` CASCADE`)
+	repo := NewAccessoriesConsumablesRepository(&Database{DB: db})
+	rows, err := repo.GetAllCountTypes()
+	if err != nil || len(rows) != 1 || rows[0].CountTypeID != 1 {
+		t.Fatal("archived unit remains selectable", rows, err)
+	}
 }

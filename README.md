@@ -1,5 +1,15 @@
 # RentalCore
 
+## Produktbeziehungen · RentalCore 5.3.125
+
+Warehouse-Beziehungen liefern jetzt `relation_type` und `assignment_scope`.
+Der ältere Zubehördialog erhält nur erforderliche, empfohlene und verbrauchte
+Artikel mit Produkt-/Gerätebezug. Case-Regeln, physisch enthaltene Komponenten,
+Kompatibilität und Alternativen werden dort nicht als zusätzliche Auswahl angeboten.
+Archivierte Warehouse-Einheiten bleiben aus Rental-Auswahllisten ausgeschlossen.
+Legacy-Schemata ohne die zusätzlichen Felder behalten ihre bisherigen Defaults.
+
+
 ## Mietprodukt-Positionen — RentalCore 5.3.124
 
 Mietprodukt-Korrektur: UI und MCP erzeugen echte Rental-Auftragspositionen zum
