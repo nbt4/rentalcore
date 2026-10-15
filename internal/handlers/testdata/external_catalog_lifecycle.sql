@@ -1,0 +1,18 @@
+CREATE TABLE users(userid INTEGER PRIMARY KEY,is_admin BOOLEAN,is_active BOOLEAN);
+INSERT INTO users VALUES(1,true,true),(2,false,true);
+CREATE TABLE customers(customerid INTEGER PRIMARY KEY,name TEXT,companyname TEXT,firstname TEXT,lastname TEXT,is_supplier BOOLEAN,is_archived BOOLEAN,updated_at TIMESTAMP DEFAULT NOW());
+INSERT INTO customers(customerid,name,is_supplier,is_archived) VALUES(1,'Synthetic Supplier',true,false),(2,'Closed Supplier',true,true),(3,'Not a supplier',false,false);
+CREATE TABLE status(statusid INTEGER PRIMARY KEY,status TEXT);INSERT INTO status VALUES(1,'planning'),(2,'completed'),(3,'paid'),(4,'cancelled');
+CREATE TABLE jobs(jobid INTEGER PRIMARY KEY,job_code TEXT,statusid INTEGER,deleted_at TIMESTAMPTZ,updated_at TIMESTAMP DEFAULT NOW());
+INSERT INTO jobs(jobid,job_code,statusid) VALUES(1,'SYNTHETIC-OPEN',1),(2,'SYNTHETIC-CLOSED',2),(3,'SYNTHETIC-OTHER',1);
+CREATE TABLE rental_equipment(id SERIAL PRIMARY KEY,name VARCHAR(255) NOT NULL,supplier VARCHAR(255),supplier_id INTEGER REFERENCES customers(customerid),category VARCHAR(100),description TEXT,notes TEXT,rental_price NUMERIC(10,2),customer_price NUMERIC(10,2),is_active BOOLEAN NOT NULL DEFAULT true,created_at TIMESTAMP DEFAULT NOW(),updated_at TIMESTAMP DEFAULT NOW());
+INSERT INTO rental_equipment(name,supplier,supplier_id,category,description,notes,rental_price,customer_price) VALUES('Synthetic Rental','Synthetic Supplier',1,'Audio','Business description','Private catalog note',12.35,25.50);
+CREATE TABLE job_positions(position_id SERIAL PRIMARY KEY,job_id INTEGER,position_type TEXT DEFAULT 'rental',rental_equipment_id INTEGER,deleted_at TIMESTAMPTZ,unit_price NUMERIC(10,2));
+CREATE TABLE job_rental_equipment(job_id INTEGER,equipment_id INTEGER,position_id INTEGER,quantity INTEGER DEFAULT 1,days_used INTEGER DEFAULT 1,rental_unit_price NUMERIC(10,2),total_cost NUMERIC(10,2),PRIMARY KEY(job_id,equipment_id));
+CREATE TABLE rental_equipment_field_definitions(id INTEGER PRIMARY KEY,name TEXT,field_type TEXT,updated_at TIMESTAMP DEFAULT NOW());
+INSERT INTO rental_equipment_field_definitions VALUES(1,'IP Rating','text',NOW());
+CREATE TABLE rental_equipment_field_values(id SERIAL PRIMARY KEY,equipment_id INTEGER,field_definition_id INTEGER,value TEXT,sort_order INTEGER);
+INSERT INTO rental_equipment_field_values(equipment_id,field_definition_id,value,sort_order) VALUES(1,1,'IP44',0);
+CREATE TABLE rental_mcp_mutation_receipts(id BIGSERIAL PRIMARY KEY,user_id INTEGER,operation TEXT,key_hash TEXT,request_hash TEXT,response JSONB,status_code INTEGER DEFAULT 200,UNIQUE(user_id,operation,key_hash));
+CREATE TABLE audit_log(id BIGSERIAL PRIMARY KEY,user_id INTEGER,action TEXT,entity_type TEXT,entity_id TEXT,old_values JSONB,new_values JSONB,timestamp TIMESTAMPTZ DEFAULT NOW());
+CREATE FUNCTION rental_master_job_is_closed(value TEXT) RETURNS BOOLEAN AS $$ SELECT lower(trim(COALESCE(value,''))) IN ('abgeschlossen','storniert','completed','paid','canceled','cancelled','abgerechnet');$$ LANGUAGE SQL IMMUTABLE;
