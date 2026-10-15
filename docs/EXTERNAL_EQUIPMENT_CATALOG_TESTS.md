@@ -6,8 +6,8 @@ wurde zum Test angelegt oder geändert. Alle Befehle endeten mit Exit 0.
 
 Reihenfolge: geänderte Go-Dateien mit gofmt/goimports formatieren; Suite-Designprüfung;
 Frontend-Lint und -Build; make build; vollständige Go-Tests mit -count=1; Vet.
-Zusätzlich gezielte Race-Integration. Unveränderte 43 Go-Formatabweichungen und
-fünf Frontend-Hook-Warnungen sind im vorhandenen Releaseprotokoll dokumentiert.
+Zusätzlich gezielte Race-Integration. `gofmt -l .` meldet im Releaseworktree
+keine Formatabweichungen; der Frontend-Lint zeigt fünf bestehende Hook-Warnungen.
 
 ## make build
 
