@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.126"
+const rentalCoreVersion = "5.3.127"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -333,6 +333,9 @@ func main() {
 		}
 		if err := schema.EnsureRentalRequirementLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental requirement lifecycle: %v", err)
+		}
+		if err := schema.EnsureRentalExternalCatalogLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize external rental catalog lifecycle: %v", err)
 		}
 	}
 	if err := db.DB.AutoMigrate(&models.M365Settings{}); err != nil {
@@ -1519,7 +1522,9 @@ func setupRoutes(r *gin.Engine,
 
 		// API routes
 		api := protected.Group("/api/v1")
-		api.POST("/mcp/external-equipment/create", handlers.NewRentalExternalEquipmentMCP(db).Create)
+		externalCatalogMCP := handlers.NewRentalExternalEquipmentMCP(db)
+		api.POST("/mcp/external-equipment/create", externalCatalogMCP.Create)
+		api.POST("/mcp/external-equipment/:operation", externalCatalogMCP.Change)
 		rentalMasterMCP := handlers.NewRentalMasterMCP(db)
 		api.POST("/mcp/customers/:operation", rentalMasterMCP.Customer)
 		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)

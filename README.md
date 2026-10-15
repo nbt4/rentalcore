@@ -1,5 +1,16 @@
 # RentalCore
 
+## Fremdmietkatalog-Lebenszyklus · Rental 5.3.127 / Warehouse 5.9.116 / MCP 1.5.66
+
+Fremdmietprodukte lassen sich jetzt gezielt lesen, suchen, ändern, archivieren
+und wiederherstellen. Vorschau, exakte Version/Kontext, gebundene Bestätigung,
+aktuelle Admin-/Aktions- und separate Finanzrechte sowie atomarer Audit/Replay
+sichern jede Änderung. Offene Jobs blockieren Archivierung/Identitätswechsel;
+historische Jobpreise, Lieferantenkosten und Zusatzfelder bleiben erhalten.
+Native Warehouse-Löschung archiviert mit Audit und denselben Datenbankschutzregeln.
+[Vertrag und Rollout](docs/EXTERNAL_EQUIPMENT_LIFECYCLE.md).
+Jobzuweisungs-Lebenszyklus und weitere Teilbereiche aus #4/#5 bleiben offen.
+
 ## Fremdmietkatalog — RentalCore 5.3.126 / MCP 1.5.63
 
 `rental.external_equipment.prepare_create/create` legt neue Fremdmietprodukte
