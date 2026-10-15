@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.125"
+const rentalCoreVersion = "5.3.126"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -1519,6 +1519,7 @@ func setupRoutes(r *gin.Engine,
 
 		// API routes
 		api := protected.Group("/api/v1")
+		api.POST("/mcp/external-equipment/create", handlers.NewRentalExternalEquipmentMCP(db).Create)
 		rentalMasterMCP := handlers.NewRentalMasterMCP(db)
 		api.POST("/mcp/customers/:operation", rentalMasterMCP.Customer)
 		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)
