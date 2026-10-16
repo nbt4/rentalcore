@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.128"
+const rentalCoreVersion = "5.3.129"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -336,6 +336,9 @@ func main() {
 		}
 		if err := schema.EnsureRentalAssignmentLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental assignment lifecycle: %v", err)
+		}
+		if err := schema.EnsureRentalStaffingLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Rental staffing lifecycle: %v", err)
 		}
 		if err := schema.EnsureRentalExternalCatalogLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize external rental catalog lifecycle: %v", err)
@@ -911,7 +914,7 @@ func main() {
 	}
 
 	// Routes
-	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, db, venueHandler, m365SettingsHandler)
+	setupRoutes(r, cfg, jobHandler, jobHistoryHandler, deviceHandler, customerHandler, statusHandler, productHandler, cableHandler, infoHandler, barcodeHandler, authHandler, webauthnHandler, homeHandler, profileHandler, caseHandler, analyticsHandler, searchHandler, pwaHandler, workflowHandler, equipmentPackageHandler, rentalEquipmentHandler, documentHandler, financialHandler, securityHandler, invoiceHandler, templateHandler, companyHandler, monitoringHandler, jobAttachmentHandler, pdfHandler, accessoriesConsumablesHandler, positionHandler, rbacMiddleware, complianceMiddleware, skillHandler, employeeHandler, db, venueHandler, m365SettingsHandler, calendarSync)
 
 	// Add dedicated error route
 	r.GET("/error", func(c *gin.Context) {
@@ -1066,7 +1069,8 @@ func setupRoutes(r *gin.Engine,
 	employeeHandler *handlers.EmployeeHandler,
 	db *repository.Database,
 	venueHandler *handlers.VenueHandler,
-	m365SettingsHandler *handlers.M365SettingsHandler) {
+	m365SettingsHandler *handlers.M365SettingsHandler,
+	calendarSync handlers.CalendarSyncServiceInterface) {
 
 	// Root route - serve SPA
 	r.GET("/", func(c *gin.Context) {
@@ -1531,6 +1535,8 @@ func setupRoutes(r *gin.Engine,
 		rentalMasterMCP := handlers.NewRentalMasterMCP(db)
 		api.POST("/mcp/customers/:operation", rentalMasterMCP.Customer)
 		api.POST("/mcp/venues/:operation", rentalMasterMCP.Venue)
+		rentalStaffingMCP := handlers.NewRentalStaffingMCP(db, calendarSync)
+		api.POST("/mcp/staffing/:operation", rentalStaffingMCP.Change)
 		rentalJobMCP := handlers.NewRentalJobMCP(db)
 		api.POST("/mcp/jobs/:operation", rentalJobMCP.Change)
 		rentalPositionMCP := handlers.NewRentalPositionMCP(db)

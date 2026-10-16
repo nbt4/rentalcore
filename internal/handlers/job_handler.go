@@ -2312,6 +2312,9 @@ func (h *JobHandler) GetJobCablePlanning(c *gin.Context) {
 }
 
 func (h *JobHandler) ListJobEmployees(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
@@ -2326,50 +2329,34 @@ func (h *JobHandler) ListJobEmployees(c *gin.Context) {
 }
 
 func (h *JobHandler) AssignEmployee(c *gin.Context) {
-	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
+	jobID, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	if err != nil || jobID < 1 {
+		c.JSON(400, gin.H{"error": "invalid job id"})
 		return
 	}
 	var body struct {
-		EmployeeID uint    `json:"employee_id"`
+		EmployeeID int64   `json:"employee_id"`
 		Role       *string `json:"role"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil || body.EmployeeID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "employee_id required"})
+	if err = c.ShouldBindJSON(&body); err != nil || body.EmployeeID < 1 || body.EmployeeID > 2147483647 {
+		c.JSON(400, gin.H{"error": "employee_id required"})
 		return
 	}
-	if err := h.jobEmployeeRepo.Assign(uint(jobID), body.EmployeeID, body.Role); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if h.calendarSync != nil {
-		go h.calendarSync.SyncEmployeeEvent(uint(jobID), body.EmployeeID)
-	}
-	c.JSON(http.StatusCreated, gin.H{"ok": true})
+	h.changeNativeStaffing(c, jobID, body.EmployeeID, body.Role, false)
 }
 
 func (h *JobHandler) RemoveEmployee(c *gin.Context) {
-	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job id"})
+	if rejectDelegatedRentalPosition(c) {
 		return
 	}
-	employeeID, err := strconv.ParseUint(c.Param("employeeId"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid employee id"})
+	jobID, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	employeeID, e := strconv.ParseInt(c.Param("employeeId"), 10, 32)
+	if err != nil || e != nil || jobID < 1 || employeeID < 1 {
+		c.JSON(400, gin.H{"error": "invalid job/employee id"})
 		return
 	}
-	if h.calendarSync != nil {
-		// Entfernt bei Upgrades noch vorhandene eigenständige Mitarbeitertermine.
-		h.calendarSync.DeleteEmployeeEvent(uint(jobID), uint(employeeID))
-	}
-	if err := h.jobEmployeeRepo.Remove(uint(jobID), uint(employeeID)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if h.calendarSync != nil {
-		go h.calendarSync.SyncJobEvent(uint(jobID))
-	}
-	c.Status(http.StatusNoContent)
+	h.changeNativeStaffing(c, jobID, employeeID, nil, true)
 }

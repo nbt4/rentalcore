@@ -136,9 +136,17 @@ func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
 		return
 	}
 
+	// Retained archived rows may still have a legacy event after a failed cleanup.
+	// They must never become attendees of the shared job event.
+	legacyEmployees, err := s.empRepo.ListForJobIncludingArchived(jobID)
+	if err != nil {
+		logger.LogInfo("[CalendarSync] list retained employees for job %d: %v", jobID, err)
+		return
+	}
+
 	if job.StartDate == nil {
 		s.deleteCentralEvent(job)
-		s.cleanupLegacyEmployeeEvents(employees)
+		s.cleanupLegacyEmployeeEvents(legacyEmployees)
 		return
 	}
 
@@ -151,7 +159,7 @@ func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
 	if job.M365EventID != nil && *job.M365EventID != "" {
 		err = s.client.UpdateEvent(*job.M365EventID, *event)
 		if err == nil {
-			s.cleanupLegacyEmployeeEvents(employees)
+			s.cleanupLegacyEmployeeEvents(legacyEmployees)
 			if updated, getErr := s.client.GetEvent(*job.M365EventID); getErr != nil {
 				logger.LogInfo("[CalendarSync] load shared event for attendee acceptance on job %d: %v", jobID, getErr)
 			} else {
@@ -182,7 +190,7 @@ func (s *CalendarSyncService) SyncJobEvent(jobID uint) {
 		}
 		return
 	}
-	s.cleanupLegacyEmployeeEvents(employees)
+	s.cleanupLegacyEmployeeEvents(legacyEmployees)
 	s.scheduleAttendeeAcceptance(event.Attendees, created.ICalUID)
 }
 
@@ -194,7 +202,7 @@ func (s *CalendarSyncService) DeleteJobEvent(jobID uint) {
 	if err != nil {
 		return
 	}
-	employees, err := s.empRepo.ListForJob(jobID)
+	employees, err := s.empRepo.ListForJobIncludingArchived(jobID)
 	if err == nil {
 		s.cleanupLegacyEmployeeEvents(employees)
 	}

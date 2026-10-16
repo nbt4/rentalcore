@@ -1,5 +1,16 @@
 # RentalCore
 
+## Personalzuordnung · RentalCore 5.3.129 / MCP 1.5.68
+
+Mitarbeiter lassen sich einem Job zuweisen, ihre Rolle ändern und Zuordnungen
+mit erhaltener Historie archivieren oder wiederherstellen. Der Entwurf zeigt
+Terminkonflikte; Überschneidungen müssen ausdrücklich bestätigt werden.
+Aktuelle Admin-/Aktionsrechte, exakte Versionen und gebundene Bestätigung
+schützen den atomaren Audit-/Historien-/Replay-Pfad. Finanzrechte sind dafür
+nicht erforderlich. Mitarbeitersuche gibt nur Identität, Aktivstatus und
+Qualifikationen aus. Die vorhandene Kalenderanbindung läuft nach dem Commit.
+[Vertrag und Prüfungen](docs/RENTAL_STAFFING_MCP.md).
+
 ## Fremdmiet-Zuweisungen · RentalCore 5.3.128 / MCP 1.5.67
 
 Geführte Teiländerung, Archivierung und Wiederherstellung verwalten Position,

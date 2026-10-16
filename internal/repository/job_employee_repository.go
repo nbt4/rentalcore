@@ -13,8 +13,15 @@ func NewJobEmployeeRepository(db *gorm.DB) *JobEmployeeRepository {
 
 func (r *JobEmployeeRepository) ListForJob(jobID uint) ([]models.JobEmployee, error) {
 	var je []models.JobEmployee
-	err := r.db.Preload("Employee.Skills").Where("job_id = ?", jobID).Find(&je).Error
+	err := r.db.Preload("Employee.Skills").Where("job_id = ? AND deleted_at IS NULL", jobID).Find(&je).Error
 	return je, err
+}
+
+// ListForJobIncludingArchived is for legacy calendar cleanup, never attendee construction.
+func (r *JobEmployeeRepository) ListForJobIncludingArchived(jobID uint) ([]models.JobEmployee, error) {
+	var entries []models.JobEmployee
+	err := r.db.Preload("Employee").Where("job_id = ?", jobID).Find(&entries).Error
+	return entries, err
 }
 
 func (r *JobEmployeeRepository) Assign(jobID, employeeID uint, role *string) error {
@@ -25,7 +32,7 @@ func (r *JobEmployeeRepository) Assign(jobID, employeeID uint, role *string) err
 
 func (r *JobEmployeeRepository) Remove(jobID, employeeID uint) error {
 	return r.db.Where("job_id = ? AND employee_id = ?", jobID, employeeID).
-		Delete(&models.JobEmployee{}).Error
+		Model(&models.JobEmployee{}).Where("deleted_at IS NULL").Update("deleted_at", gorm.Expr("clock_timestamp() AT TIME ZONE 'UTC'")).Error
 }
 
 func (r *JobEmployeeRepository) GetOne(jobID, employeeID uint) (*models.JobEmployee, error) {
