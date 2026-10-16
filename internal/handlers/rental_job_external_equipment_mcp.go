@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-barcode-webapp/internal/models"
-	"gorm.io/gorm"
 	"io"
 	"math"
 	"os"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -119,8 +120,12 @@ func (h *RentalJobMCP) createExternalEquipment(c *gin.Context) {
 	}
 	// Freeze the job, assignments and catalog prices in the same lock order as
 	// the existing job workflow; native UI/catalog edits invalidate the preview.
-	if _, err = tx.Exec(`LOCK TABLE jobs IN SHARE ROW EXCLUSIVE MODE;LOCK TABLE job_positions IN SHARE ROW EXCLUSIVE MODE;LOCK TABLE job_rental_equipment IN SHARE ROW EXCLUSIVE MODE;LOCK TABLE rental_equipment IN SHARE MODE`); err != nil {
-		masterError(c, err)
+	if _, err = tx.Exec(`LOCK TABLE jobs IN SHARE ROW EXCLUSIVE MODE NOWAIT;LOCK TABLE job_positions IN SHARE ROW EXCLUSIVE MODE NOWAIT;LOCK TABLE job_rental_equipment IN SHARE ROW EXCLUSIVE MODE NOWAIT;LOCK TABLE rental_equipment IN SHARE MODE NOWAIT`); err != nil {
+		rentalCatalogError(c, err)
+		return
+	}
+	if _, err = tx.Exec(`SELECT jobid FROM jobs WHERE jobid=$1 FOR UPDATE NOWAIT`, in.JobID); err != nil {
+		rentalCatalogError(c, err)
 		return
 	}
 	required := []string{}

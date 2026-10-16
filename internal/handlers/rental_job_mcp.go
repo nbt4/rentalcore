@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"gorm.io/gorm"
 	"io"
 	"math"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 
 	"go-barcode-webapp/internal/jobstatus"
 	"go-barcode-webapp/internal/models"
@@ -121,6 +122,10 @@ func rentalJobModel(draft map[string]any) (models.Job, error) {
 
 func (h *RentalJobMCP) Change(c *gin.Context) {
 	op := c.Param("operation")
+	if strings.HasPrefix(op, "external-equipment-") && op != "external-equipment-create" {
+		h.changeExternalEquipment(c, strings.TrimPrefix(op, "external-equipment-"))
+		return
+	}
 	if op == "external-equipment-create" {
 		h.createExternalEquipment(c)
 		return

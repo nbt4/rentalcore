@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -116,6 +117,9 @@ type CreatePositionInput struct {
 }
 
 func (h *PositionHandler) CreatePosition(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
@@ -200,7 +204,13 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 				return err
 			}
 		}
-		return syncJobRevenue(tx, uint(jobID))
+		if err := syncJobRevenue(tx, uint(jobID)); err != nil {
+			return err
+		}
+		if pos.PositionType == "rental" {
+			return auditNativeRentalAssignment(tx, c, pos.PositionID, pos.JobID, "create", json.RawMessage(`{}`))
+		}
+		return nil
 	}); err != nil {
 		c.JSON(rentalPositionErrorStatus(err), gin.H{"error": err.Error()})
 		return
@@ -223,6 +233,9 @@ type UpdatePositionInput struct {
 }
 
 func (h *PositionHandler) UpdatePosition(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	posID, err := strconv.ParseUint(c.Param("posId"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid position ID"})
@@ -250,40 +263,55 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 		return
 	}
 
-	if input.Description != nil {
-		pos.Description = *input.Description
-	}
-	if input.Quantity != nil {
-		pos.Quantity = *input.Quantity
-	}
-	if input.Unit != nil {
-		pos.Unit = *input.Unit
-	}
-	if input.UnitPrice != nil {
-		pos.UnitPrice = *input.UnitPrice
-	}
-	if input.FollowDayFactor != nil {
-		pos.FollowDayFactor = *input.FollowDayFactor
-	}
-	if input.DiscountPercent != nil {
-		pos.DiscountPercent = *input.DiscountPercent
-	}
-	if input.DiscountAmount != nil {
-		pos.DiscountAmount = *input.DiscountAmount
-	}
-	if input.TaxRate != nil {
-		pos.TaxRate = *input.TaxRate
-	}
-	if err := validatePosition(pos); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	pos.UpdatedAt = time.Now()
-
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		if err := lockRentalPositionJob(tx, pos.JobID); err != nil {
 			return err
 		}
+		initialVersion := pos.UpdatedAt
+		var current models.JobPosition
+		if err := tx.Where("position_id=? AND job_id=?", posID, jobID).First(&current).Error; err != nil {
+			return &rentalPositionConflictError{"Position changed; reload before editing"}
+		}
+		if !current.UpdatedAt.Equal(initialVersion) {
+			return &rentalPositionConflictError{"Position changed; reload before editing"}
+		}
+		pos = &current
+		var before json.RawMessage
+		if pos.PositionType == "rental" {
+			var err error
+			before, err = nativeRentalAssignmentSnapshot(tx, pos.PositionID)
+			if err != nil {
+				return err
+			}
+		}
+		if input.Description != nil {
+			pos.Description = *input.Description
+		}
+		if input.Quantity != nil {
+			pos.Quantity = *input.Quantity
+		}
+		if input.Unit != nil {
+			pos.Unit = *input.Unit
+		}
+		if input.UnitPrice != nil {
+			pos.UnitPrice = *input.UnitPrice
+		}
+		if input.FollowDayFactor != nil {
+			pos.FollowDayFactor = *input.FollowDayFactor
+		}
+		if input.DiscountPercent != nil {
+			pos.DiscountPercent = *input.DiscountPercent
+		}
+		if input.DiscountAmount != nil {
+			pos.DiscountAmount = *input.DiscountAmount
+		}
+		if input.TaxRate != nil {
+			pos.TaxRate = *input.TaxRate
+		}
+		if err := validatePosition(pos); err != nil {
+			return &rentalPositionInputError{err.Error()}
+		}
+
 		if err := tx.Omit("Product", "ServiceItem", "RentalEquipment", "Devices").Save(pos).Error; err != nil {
 			return err
 		}
@@ -292,9 +320,15 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 				return err
 			}
 		}
-		return syncJobRevenue(tx, pos.JobID)
+		if err := syncJobRevenue(tx, pos.JobID); err != nil {
+			return err
+		}
+		if pos.PositionType == "rental" {
+			return auditNativeRentalAssignment(tx, c, pos.PositionID, pos.JobID, "update", before)
+		}
+		return nil
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(rentalPositionErrorStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -304,6 +338,9 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 }
 
 func (h *PositionHandler) DeletePosition(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
@@ -328,6 +365,23 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 		if err := lockRentalPositionJob(tx, pos.JobID); err != nil {
 			return err
 		}
+		initialVersion := pos.UpdatedAt
+		var current models.JobPosition
+		if err := tx.Where("position_id=? AND job_id=?", posID, jobID).First(&current).Error; err != nil {
+			return &rentalPositionConflictError{"Position changed; reload before archiving"}
+		}
+		if !current.UpdatedAt.Equal(initialVersion) {
+			return &rentalPositionConflictError{"Position changed; reload before archiving"}
+		}
+		pos = &current
+		var before json.RawMessage
+		if pos.PositionType == "rental" {
+			var err error
+			before, err = nativeRentalAssignmentSnapshot(tx, pos.PositionID)
+			if err != nil {
+				return err
+			}
+		}
 		if err := tx.Where("position_id = ?", uint(posID)).Delete(&models.JobPosition{}).Error; err != nil {
 			return err
 		}
@@ -336,9 +390,15 @@ func (h *PositionHandler) DeletePosition(c *gin.Context) {
 				return err
 			}
 		}
-		return syncJobRevenue(tx, pos.JobID)
+		if err := syncJobRevenue(tx, pos.JobID); err != nil {
+			return err
+		}
+		if pos.PositionType == "rental" {
+			return auditNativeRentalAssignment(tx, c, pos.PositionID, pos.JobID, "archive", before)
+		}
+		return nil
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(rentalPositionErrorStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -350,6 +410,9 @@ type ReorderInput struct {
 }
 
 func (h *PositionHandler) ReorderPositions(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})
@@ -376,6 +439,9 @@ type AssignDeviceInput struct {
 }
 
 func (h *PositionHandler) AssignDevice(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	posID, err := strconv.ParseUint(c.Param("posId"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid position ID"})
@@ -397,6 +463,9 @@ func (h *PositionHandler) AssignDevice(c *gin.Context) {
 }
 
 func (h *PositionHandler) RemoveDevice(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	posID, err := strconv.ParseUint(c.Param("posId"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid position ID"})
@@ -521,6 +590,9 @@ type PriceSettingsInput struct {
 }
 
 func (h *PositionHandler) UpdatePriceSettings(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid job ID"})

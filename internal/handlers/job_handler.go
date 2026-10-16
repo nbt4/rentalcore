@@ -240,7 +240,9 @@ func (h *JobHandler) processRentalEquipmentSelections(jobID uint, selections []R
 	var existingRentals []models.JobRentalEquipment
 	if err := h.rentalEquipRepo.GetJobRentalEquipment(jobID, &existingRentals); err == nil {
 		for _, rental := range existingRentals {
-			h.rentalEquipRepo.RemoveRentalFromJob(jobID, rental.EquipmentID)
+			if err := h.rentalEquipRepo.RemoveRentalFromJob(jobID, rental.EquipmentID); err != nil {
+				return fmt.Errorf("Retained rental assignments must be changed through the position workflow: %w", err)
+			}
 		}
 	}
 
@@ -403,6 +405,9 @@ func (h *JobHandler) NewJobForm(c *gin.Context) {
 }
 
 func (h *JobHandler) CreateJob(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	customerID, _ := strconv.ParseUint(c.PostForm("customer_id"), 10, 32)
 	statusID, _ := strconv.ParseUint(c.PostForm("status_id"), 10, 32)
 
@@ -618,6 +623,9 @@ func (h *JobHandler) EditJobForm(c *gin.Context) {
 }
 
 func (h *JobHandler) UpdateJob(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	user, _ := GetCurrentUser(c)
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)

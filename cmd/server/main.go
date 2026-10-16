@@ -40,7 +40,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const rentalCoreVersion = "5.3.127"
+const rentalCoreVersion = "5.3.128"
 
 func buildWarehouseProductsURL(r *http.Request) string {
 	warehouseDomain := os.Getenv("WAREHOUSECORE_DOMAIN")
@@ -333,6 +333,9 @@ func main() {
 		}
 		if err := schema.EnsureRentalRequirementLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize rental requirement lifecycle: %v", err)
+		}
+		if err := schema.EnsureRentalAssignmentLifecycle(sqlDB); err != nil {
+			logger.LogFatal("Failed to initialize rental assignment lifecycle: %v", err)
 		}
 		if err := schema.EnsureRentalExternalCatalogLifecycle(sqlDB); err != nil {
 			logger.LogFatal("Failed to initialize external rental catalog lifecycle: %v", err)

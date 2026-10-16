@@ -55,43 +55,50 @@ func (r *RentalEquipmentRepository) DeleteRentalEquipment(equipmentID uint) erro
 
 // AddRentalToJob adds rental equipment to a job
 func (r *RentalEquipmentRepository) AddRentalToJob(jobRental *models.JobRentalEquipment) error {
-	// Use raw SQL because live DB uses column "id" not "equipment_id".
-	// Rental costs follow the same per-event-day setting as the job price.
-	var pricing struct {
-		RentalPrice    float64 `gorm:"column:rental_price"`
-		MultiplyByDays bool    `gorm:"column:multiply_by_days"`
-	}
-	result := r.db.Raw(`
-		SELECT re.rental_price, COALESCE(j.multiply_by_days, TRUE) AS multiply_by_days
-		FROM rental_equipment re
-		JOIN jobs j ON j.jobid = ?
-		WHERE re.id = ?`, jobRental.JobID, jobRental.EquipmentID).Scan(&pricing)
-	if result.Error != nil {
-		return fmt.Errorf("failed to load rental pricing: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("rental equipment or job not found")
-	}
-
-	jobRental.TotalCost = calculateRentalTotalCost(pricing.RentalPrice, jobRental.Quantity, jobRental.DaysUsed, pricing.MultiplyByDays)
-
-	// Check if already exists, then update or create
-	var existingRental models.JobRentalEquipment
-	err := r.db.Where("job_id = ? AND equipment_id = ?", jobRental.JobID, jobRental.EquipmentID).First(&existingRental).Error
-
-	if err == gorm.ErrRecordNotFound {
-		// Create new
-		return r.db.Create(jobRental).Error
-	} else if err != nil {
-		return err
-	} else {
-		// Update existing
-		existingRental.Quantity = jobRental.Quantity
-		existingRental.DaysUsed = jobRental.DaysUsed
-		existingRental.TotalCost = jobRental.TotalCost
-		existingRental.Notes = jobRental.Notes
-		return r.db.Save(&existingRental).Error
-	}
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var jobID uint
+		result := tx.Raw(`SELECT jobid FROM jobs WHERE jobid=? AND deleted_at IS NULL FOR UPDATE NOWAIT`, jobRental.JobID).Scan(&jobID)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		var linked bool
+		if err := tx.Raw(`SELECT EXISTS(SELECT 1 FROM job_rental_equipment WHERE job_id=? AND equipment_id=? AND position_id IS NOT NULL)`, jobRental.JobID, jobRental.EquipmentID).Scan(&linked).Error; err != nil {
+			return err
+		}
+		if linked {
+			return fmt.Errorf("Linked rental assignment must be changed through its commercial position workflow")
+		}
+		var pricing struct {
+			RentalPrice    float64
+			MultiplyByDays bool
+		}
+		result = tx.Raw(`SELECT re.rental_price,j.multiply_by_days FROM rental_equipment re JOIN jobs j ON j.jobid=? WHERE re.id=? AND re.is_active FOR SHARE OF re`, jobRental.JobID, jobRental.EquipmentID).Scan(&pricing)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		jobRental.TotalCost = calculateRentalTotalCost(pricing.RentalPrice, jobRental.Quantity, jobRental.DaysUsed, pricing.MultiplyByDays)
+		var existing int64
+		if err := tx.Model(&models.JobRentalEquipment{}).Where("job_id=? AND equipment_id=?", jobRental.JobID, jobRental.EquipmentID).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing == 0 {
+			return tx.Create(jobRental).Error
+		}
+		result = tx.Model(&models.JobRentalEquipment{}).Where("job_id=? AND equipment_id=? AND position_id IS NULL", jobRental.JobID, jobRental.EquipmentID).Updates(map[string]any{"quantity": jobRental.Quantity, "days_used": jobRental.DaysUsed, "total_cost": jobRental.TotalCost, "notes": jobRental.Notes})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return fmt.Errorf("Rental assignment changed; reload before editing")
+		}
+		return nil
+	})
 }
 
 // CreateRentalEquipmentFromManualEntry creates rental equipment and adds it to job in one transaction
@@ -157,7 +164,7 @@ func calculateRentalTotalCost(rentalPrice float64, quantity, daysUsed uint, mult
 
 // GetJobRentalEquipment returns all rental equipment for a specific job
 func (r *RentalEquipmentRepository) GetJobRentalEquipment(jobID uint, jobRentals *[]models.JobRentalEquipment) error {
-	return r.db.Preload("RentalEquipment").Where("job_id = ?", jobID).Find(jobRentals).Error
+	return r.db.Preload("RentalEquipment").Where("job_id = ? AND (position_id IS NULL OR EXISTS(SELECT 1 FROM job_positions p WHERE p.position_id=job_rental_equipment.position_id AND p.deleted_at IS NULL))", jobID).Find(jobRentals).Error
 }
 
 // RemoveRentalFromJob removes rental equipment from a job
