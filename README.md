@@ -1,5 +1,15 @@
 # RentalCore
 
+## Fremdmiet-Zuweisungen · RentalCore 5.3.128 / MCP 1.5.67
+
+Geführte Teiländerung, Archivierung und Wiederherstellung verwalten Position,
+Lieferantenkosten und Jobumsatz gemeinsam mit Audit, Historie und dauerhaftem
+Replay. Gespeicherte Stückpreise bleiben erhalten, bis sie ausdrücklich geändert
+werden. Archivierte Zuweisungen sind gezielt auffindbar und ihre Kosten bleiben
+bei späteren Jobänderungen erhalten. Neue Scopes: keine; die Aktionen verlangen
+bestehende Update-/Archive- und separate Finanzrechte mit aktuellen Adminrechten.
+[Vertrag und Rollout](docs/RENTAL_ASSIGNMENT_LIFECYCLE.md).
+
 ## Fremdmietkatalog-Lebenszyklus · Rental 5.3.127 / Warehouse 5.9.116 / MCP 1.5.66
 
 Fremdmietprodukte lassen sich jetzt gezielt lesen, suchen, ändern, archivieren

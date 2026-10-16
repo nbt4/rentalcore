@@ -1763,6 +1763,9 @@ func (h *PDFHandler) CreateCustomerFromExtraction(c *gin.Context) {
 // FinalizeExtraction creates or links a job for the PDF extraction
 // POST /api/v1/pdf/extractions/:extraction_id/finalize
 func (h *PDFHandler) FinalizeExtraction(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	extractionID := c.Param("extraction_id")
 
 	var extraction models.PDFExtraction
