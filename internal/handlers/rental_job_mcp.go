@@ -435,7 +435,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 			{"devices", "device_references", `SELECT deviceid AS id,COALESCE(to_jsonb(d)->>'lifecycle_status','active')='active' AS active,updated_at FROM devices d WHERE deviceid IN (SELECT deviceid FROM job_devices WHERE jobid=$1)`},
 			{"products", "product_references", `SELECT productid AS id,lifecycle_status='active' AS active,updated_at FROM products WHERE productid IN (SELECT product_id FROM job_product_requirements r WHERE job_id=$1 AND COALESCE(to_jsonb(r)->>'deleted_at','')='' UNION SELECT product_id FROM job_positions WHERE job_id=$1 AND COALESCE(to_jsonb(job_positions)->>'deleted_at','')='' UNION SELECT d.productid FROM devices d JOIN job_devices jd ON jd.deviceid=d.deviceid WHERE jd.jobid=$1)`},
 			{"product_packages", "package_references", `SELECT id,is_active AS active,updated_at FROM product_packages WHERE id IN (SELECT package_id FROM job_packages WHERE job_id=$1)`},
-			{"employees", "employee_references", `SELECT id,is_active AS active,updated_at FROM employees WHERE id IN (SELECT employee_id FROM job_employees WHERE job_id=$1)`},
+			{"employees", "employee_references", `SELECT id,is_active AS active,updated_at FROM employees WHERE id IN (SELECT employee_id FROM job_employees je WHERE job_id=$1 AND COALESCE(to_jsonb(je)->>'deleted_at','')='')`},
 			{"rental_equipment", "external_equipment_references", `SELECT id,is_active AS active,updated_at FROM rental_equipment WHERE id IN (SELECT equipment_id FROM job_rental_equipment WHERE job_id=$1)`},
 		} {
 			var exists bool

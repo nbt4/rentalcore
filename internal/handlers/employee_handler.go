@@ -71,6 +71,9 @@ func (r *employeeRequest) toEmployee() (models.Employee, error) {
 }
 
 func (h *EmployeeHandler) List(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	employees, err := h.repo.List()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -80,6 +83,9 @@ func (h *EmployeeHandler) List(c *gin.Context) {
 }
 
 func (h *EmployeeHandler) ListActive(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	employees, err := h.repo.ListActive()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -89,6 +95,9 @@ func (h *EmployeeHandler) ListActive(c *gin.Context) {
 }
 
 func (h *EmployeeHandler) GetByID(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -103,6 +112,9 @@ func (h *EmployeeHandler) GetByID(c *gin.Context) {
 }
 
 func (h *EmployeeHandler) Create(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	var req employeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -121,6 +133,9 @@ func (h *EmployeeHandler) Create(c *gin.Context) {
 }
 
 func (h *EmployeeHandler) Update(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -145,13 +160,16 @@ func (h *EmployeeHandler) Update(c *gin.Context) {
 }
 
 func (h *EmployeeHandler) Delete(c *gin.Context) {
+	if rejectDelegatedRentalPosition(c) {
+		return
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 	if err := h.repo.Delete(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusConflict, gin.H{"error": "Referenced staffing is retained; deactivate the employee instead"})
 		return
 	}
 	c.Status(http.StatusNoContent)
