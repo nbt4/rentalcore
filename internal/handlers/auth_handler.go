@@ -421,6 +421,9 @@ func (h *AuthHandler) Login2FAVerify(c *gin.Context) {
 // AuthMiddleware checks if user is authenticated
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !rentalMCPRequestAllowed(c) {
+			return
+		}
 		// Helper to check if request expects JSON or is API
 		isAPI := strings.HasPrefix(c.Request.URL.Path, "/api") ||
 			c.GetHeader("Accept") == "application/json" ||
