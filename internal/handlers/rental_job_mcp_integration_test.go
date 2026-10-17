@@ -150,6 +150,39 @@ func TestRentalJobOwnerAtomicFieldsAndLifecycle(t *testing.T) {
 		t.Fatal("cached actor rights bypass", s)
 	}
 	exec(`UPDATE users SET is_admin=true WHERE userid=1`)
+	// An operational receipt may contain historical commercial fields, but losing
+	// the financial grant must project its response without changing the receipt.
+	operational, preview := prepare("update", map[string]any{"job_id": id, "description": "Complete MCP job"}, true)
+	operationalResult := execute("update", operational, "job-operational-financial-replay", true)
+	var originalReceipt string
+	if err := db.QueryRow(`SELECT response::text FROM rental_mcp_mutation_receipts WHERE operation='job.update' ORDER BY id DESC LIMIT 1`).Scan(&originalReceipt); err != nil {
+		t.Fatal(err)
+	}
+	for _, op := range []string{"update", "archive"} {
+		_, safe := prepare(op, map[string]any{"job_id": id}, false)
+		if safe["financial_fields_omitted"] != true {
+			t.Fatal("financial preview not projected", safe)
+		}
+		for _, section := range []string{"current", "draft", "diff"} {
+			for _, field := range []string{"revenue", "final_revenue", "discount", "discount_type", "multiply_by_days", "prices_include_tax"} {
+				if _, exists := safe[section].(map[string]any)[field]; exists {
+					t.Fatal("preview leaked", section, field)
+				}
+			}
+		}
+	}
+	s, safeReplay := invoke("update", operational, "job-operational-financial-replay", false)
+	if s != 200 || safeReplay["financial_fields_omitted"] != true || safeReplay["job"].(map[string]any)["revenue"] != nil || safeReplay["job"].(map[string]any)["job_id"] != float64(id) {
+		t.Fatal("operational replay leaked", s, safeReplay)
+	}
+	var unchangedReceipt string
+	if err := db.QueryRow(`SELECT response::text FROM rental_mcp_mutation_receipts WHERE operation='job.update' ORDER BY id DESC LIMIT 1`).Scan(&unchangedReceipt); err != nil || originalReceipt != unchangedReceipt {
+		t.Fatal("receipt rewritten", err)
+	}
+	s, replay = invoke("update", operational, "job-operational-financial-replay", true)
+	if s != 200 || !reflect.DeepEqual(operationalResult, replay) || preview["expected_context"] == nil {
+		t.Fatal("granted receipt changed", s, replay)
+	}
 	_, p = prepare("create", map[string]any{"description": "Complete MCP job", "customer_id": 1, "start_date": "2030-10-01", "end_date": "2030-10-03"}, false)
 	required(p, "review_duplicate_and_allow_explicitly")
 	in, p = prepare("update", map[string]any{"job_id": id, "description": "Changed title", "discount": 20, "clear_fields": []string{"job_category_id", "venue_id"}}, true)

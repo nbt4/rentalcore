@@ -222,6 +222,16 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 			fields[key] = nil
 		}
 	}
+	financialInput := false
+	for _, key := range []string{"revenue", "discount", "discount_type", "multiply_by_days", "prices_include_tax"} {
+		if _, exists := fields[key]; exists {
+			financialInput = true
+		}
+	}
+	if financialInput && !claims.Financial {
+		c.JSON(403, gin.H{"error": "Selected rental financial scope required for commercial fields"})
+		return
+	}
 	tx, err := h.db.BeginTx(c.Request.Context(), nil)
 	if err != nil {
 		masterError(c, err)
@@ -235,16 +245,6 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 	var admin bool
 	if err = tx.QueryRow(`SELECT is_admin AND is_active FROM users WHERE userid=$1 FOR SHARE`, user.UserID).Scan(&admin); err != nil || !admin {
 		c.JSON(403, gin.H{"error": "Current rental administrator rights required"})
-		return
-	}
-	financialInput := false
-	for _, key := range []string{"revenue", "discount", "discount_type", "multiply_by_days", "prices_include_tax"} {
-		if _, exists := fields[key]; exists {
-			financialInput = true
-		}
-	}
-	if financialInput && !claims.Financial {
-		c.JSON(403, gin.H{"error": "Selected rental financial scope required for commercial fields"})
 		return
 	}
 	receiptID := int64(0)
@@ -284,7 +284,7 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 				c.JSON(403, gin.H{"error": "Selected rental financial scope required for this saved commercial operation"})
 				return
 			}
-			c.Data(status, "application/json", response)
+			rentalJobFinancialResponse(c, status, response, claims.Financial)
 			return
 		}
 		if err != nil {
@@ -588,7 +588,8 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 		if len(required) > 0 {
 			result["operation_status"] = "needs_input"
 		}
-		c.JSON(200, result)
+		response, _ := json.Marshal(result)
+		rentalJobFinancialResponse(c, 200, response, claims.Financial)
 		return
 	}
 	id := in.JobID
@@ -665,5 +666,5 @@ func (h *RentalJobMCP) Change(c *gin.Context) {
 		masterError(c, err)
 		return
 	}
-	c.Data(status, "application/json", response)
+	rentalJobFinancialResponse(c, status, response, claims.Financial)
 }

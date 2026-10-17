@@ -1354,6 +1354,9 @@ func (h *JobHandler) DeleteJobAPI(c *gin.Context) {
 }
 
 func (h *JobHandler) AssignDeviceAPI(c *gin.Context) {
+	if !rentalMCPDeviceAssignmentAllowed(c) {
+		return
+	}
 	jobID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid job ID"})
